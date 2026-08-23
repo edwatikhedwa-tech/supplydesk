@@ -908,7 +908,7 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .request-positions-editor-title { display:grid; gap:4px; color:var(--ink-muted); font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
   .request-positions-editor-title .mail-inline-muted { font-weight:400; letter-spacing:0; text-transform:none; }
   .request-positions-list { display:grid; gap:8px; }
-  .request-position-row { display:grid; grid-template-columns:28px minmax(0,1.45fr) minmax(150px,.75fr) 32px; align-items:end; gap:8px; padding:10px; border:1px solid #d9dde5; border-radius:10px; background:#fbfcfe; }
+  .request-position-row { display:grid; grid-template-columns:28px minmax(0,1fr) 32px; align-items:end; gap:8px; padding:10px; border:1px solid #d9dde5; border-radius:10px; background:#fbfcfe; }
   .request-position-index { align-self:center; color:var(--cobalt); font-size:11px; font-weight:800; letter-spacing:.06em; }
   .request-position-row label { display:grid; gap:5px; color:var(--ink-muted); font-size:9px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; }
   .request-position-row input { min-width:0; width:100%; box-sizing:border-box; min-height:36px; padding:8px 9px; border:1px solid #d9dde5; border-radius:7px; background:#fff; color:var(--ink); font:inherit; outline:0; }
@@ -919,7 +919,7 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .form-actions { display:flex; justify-content:flex-end; gap:9px; padding:0 18px 18px; }
   @media (max-width:1150px) and (min-width:821px) { .sidebar .nav-item { width:46px; justify-content:center; padding:0; } }
   @media (max-width:900px) { .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .workspace-two-col { grid-template-columns:1fr; } .workspace-hero { align-items:flex-start; flex-direction:column; } .workspace-table { min-width:720px; } .workspace-card-body.table-scroll { overflow-x:auto; } }
-  @media (max-width:560px) { .kpi-grid { grid-template-columns:1fr 1fr; gap:8px; } .kpi-card { min-height:96px; padding:13px; } .kpi-card strong { margin-top:9px; font-size:23px; } .form-grid { grid-template-columns:1fr; } .form-grid .wide { grid-column:auto; } .request-positions-editor-head { align-items:stretch; flex-direction:column; } .request-positions-editor-head .btn { width:100%; } .request-position-row { grid-template-columns:24px minmax(0,1fr) 32px; } .request-position-row label:nth-of-type(1),.request-position-row label:nth-of-type(2) { grid-column:2; } .request-position-row label:nth-of-type(2) { grid-row:2; } .request-position-remove { grid-column:3; grid-row:1 / span 2; align-self:center; } .workspace-hero h1 { font-size:29px; } .workspace-card-body.table-scroll { overflow-x:visible; } .workspace-table { min-width:0; table-layout:fixed; } .workspace-table th,.workspace-table td { padding:10px 8px; overflow-wrap:anywhere; white-space:normal; } .workspace-table th { font-size:8px; } .workspace-table th:last-child { width:84px; } .workspace-table .row-actions .btn { padding-left:6px; padding-right:6px; white-space:nowrap; } .workspace-table th:nth-child(n+4):not(:last-child),.workspace-table td:nth-child(n+4):not(:last-child) { display:none; } .thread-card-foot { align-items:flex-start; flex-direction:column; } .thread-open { width:100%; } .mail-message-body { margin-left:18px; margin-right:18px; max-height:58vh; } }
+  @media (max-width:560px) { .kpi-grid { grid-template-columns:1fr 1fr; gap:8px; } .kpi-card { min-height:96px; padding:13px; } .kpi-card strong { margin-top:9px; font-size:23px; } .form-grid { grid-template-columns:1fr; } .form-grid .wide { grid-column:auto; } .request-positions-editor-head { align-items:stretch; flex-direction:column; } .request-positions-editor-head .btn { width:100%; } .request-position-row { grid-template-columns:24px minmax(0,1fr) 32px; } .request-position-remove { align-self:center; } .workspace-hero h1 { font-size:29px; } .workspace-card-body.table-scroll { overflow-x:visible; } .workspace-table { min-width:0; table-layout:fixed; } .workspace-table th,.workspace-table td { padding:10px 8px; overflow-wrap:anywhere; white-space:normal; } .workspace-table th { font-size:8px; } .workspace-table th:last-child { width:84px; } .workspace-table .row-actions .btn { padding-left:6px; padding-right:6px; white-space:nowrap; } .workspace-table th:nth-child(n+4):not(:last-child),.workspace-table td:nth-child(n+4):not(:last-child) { display:none; } .thread-card-foot { align-items:flex-start; flex-direction:column; } .thread-open { width:100%; } .mail-message-body { margin-left:18px; margin-right:18px; max-height:58vh; } }
   @media (max-width:820px) { .sidebar.mobile-open { display:flex; width:232px; align-items:stretch; padding:28px 16px 18px; } .sidebar.mobile-open .brand-sidebar { padding:0 8px; } .sidebar.mobile-open .brand-sidebar > span:last-child,.sidebar.mobile-open .workspace-copy,.sidebar.mobile-open .workspace-chevron,.sidebar.mobile-open .nav-label,.sidebar.mobile-open .nav-item > span:not(.nav-icon):not(.nav-counter),.sidebar.mobile-open .support-card,.sidebar.mobile-open .user-copy,.sidebar.mobile-open .user-chevron { display:flex; } .sidebar.mobile-open .nav-label { display:block; } .sidebar.mobile-open .workspace-switcher { width:auto; justify-content:flex-start; margin-top:25px; padding:9px; } .sidebar.mobile-open .nav-item { width:100%; justify-content:flex-start; padding:0 10px; } .sidebar.mobile-open .nav-counter { position:static; margin-left:auto; transform:none; } }
 </style>
 <style id="ux-overhaul-styles">
@@ -1478,7 +1478,7 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
         <label class="wide">Описание<textarea id="requestDescription" maxlength="5000" placeholder="Коротко опишите задачу и условия поставки"></textarea></label>
         <div class="request-positions-editor wide">
           <div class="request-positions-editor-head">
-            <div class="request-positions-editor-title"><span>Позиции</span><span class="mail-inline-muted">Каждая позиция — отдельная строка с собственным плейсхолдером.</span></div>
+            <div class="request-positions-editor-title"><span>Позиции</span><span class="mail-inline-muted">По каждой позиции поставщики ищутся отдельно.</span></div>
             <button class="btn" type="button" id="addRequestPosition">+ Добавить позицию</button>
           </div>
           <div class="request-positions-list" id="requestPositionsList" aria-live="polite"></div>
@@ -2142,15 +2142,13 @@ function updateRequestPositionRows() {
   });
 }
 
-function addRequestPositionRow(name = "", quantity = "") {
+function addRequestPositionRow(name = "") {
   const list = $("requestPositionsList");
   requestPositionSequence += 1;
   const nameId = `requestPositionName-${requestPositionSequence}`;
-  const quantityId = `requestPositionQuantity-${requestPositionSequence}`;
-  list.insertAdjacentHTML("beforeend", `<div class="request-position-row" data-request-position-row><span class="request-position-index" aria-hidden="true">01</span><label for="${nameId}"><span>Наименование</span><input id="${nameId}" class="request-position-name" type="text" maxlength="240" placeholder="Например, Кирпич М150" required></label><label for="${quantityId}"><span>Количество</span><input id="${quantityId}" class="request-position-quantity" type="text" maxlength="120" placeholder="Например, 12 000 шт"></label><button class="request-position-remove" type="button" data-remove-request-position aria-label="Удалить позицию">×</button></div>`);
+  list.insertAdjacentHTML("beforeend", `<div class="request-position-row" data-request-position-row><span class="request-position-index" aria-hidden="true">01</span><label for="${nameId}"><span>Наименование</span><input id="${nameId}" class="request-position-name" type="text" maxlength="240" placeholder="Например, Кирпич М150" required></label><button class="request-position-remove" type="button" data-remove-request-position aria-label="Удалить позицию">×</button></div>`);
   const row = list.lastElementChild;
   row.querySelector(".request-position-name").value = name;
-  row.querySelector(".request-position-quantity").value = quantity;
   updateRequestPositionRows();
 }
 
@@ -2170,7 +2168,6 @@ $("requestPositionsList").addEventListener("click", event => {
   const rows = document.querySelectorAll("[data-request-position-row]");
   if (rows.length === 1) {
     rows[0].querySelector(".request-position-name").value = "";
-    rows[0].querySelector(".request-position-quantity").value = "";
   } else {
     remove.closest("[data-request-position-row]").remove();
   }
@@ -2181,7 +2178,7 @@ resetRequestPositionRows();
 $("requestCreateForm").onsubmit = async event => {
   event.preventDefault();
   const form = event.currentTarget;
-  const positions = [...document.querySelectorAll("[data-request-position-row]")].map(row => ({ name: row.querySelector(".request-position-name").value.trim(), quantity: row.querySelector(".request-position-quantity").value.trim() })).filter(position => position.name);
+  const positions = [...document.querySelectorAll("[data-request-position-row]")].map(row => ({ name: row.querySelector(".request-position-name").value.trim(), quantity: "" })).filter(position => position.name);
   if (!positions.length) { $("requestCreateFeedback").textContent = "Добавьте хотя бы одну позицию."; return; }
   const submit = $("requestCreateSubmit"); submit.disabled = true;
   try { const result = await mailApi("/api/requests", { method:"POST", body:JSON.stringify({ name:$("requestName").value, description:$("requestDescription").value, positions, sender_name:mailClient.authenticated ? (await mailApi("/api/auth/me")).user.display_name : "Снабжение" }) }); closeMailModals(); form.reset(); resetRequestPositionRows(); toast(`Заявка № ${result.request_id} создана.`); await switchView("requests"); }
