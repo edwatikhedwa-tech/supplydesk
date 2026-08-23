@@ -766,6 +766,37 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .login-fallback { margin-top:18px; border-top:1px solid var(--line); padding-top:14px; }
   .login-fallback summary { cursor:pointer; font-size:12.5px; color:var(--muted); }
   .login-fallback form { margin-top:12px; }
+
+  /* Login backdrop: quiet graphite grid with two slow-drifting glows, only behind the sign-in card. */
+  #mailLoginModal {
+    background:
+      radial-gradient(640px 460px at 20% 24%, rgba(15,107,93,.38), transparent 62%),
+      radial-gradient(560px 420px at 82% 78%, rgba(225,139,42,.24), transparent 64%),
+      linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px),
+      #101a16;
+    background-size: auto, auto, 46px 46px, 46px 46px, auto;
+    animation: loginBackdropDrift 24s ease-in-out infinite;
+  }
+  @keyframes loginBackdropDrift {
+    0%, 100% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0; }
+    50% { background-position: 46px -34px, -34px 46px, 0 0, 0 0, 0 0; }
+  }
+
+  /* Yandex mark: small rotating glow ring behind a solid "Я" badge, echoes the app's own accent glow. */
+  .yandex-badge { position:relative; width:24px; height:24px; margin-right:9px; flex:none; }
+  .yandex-badge::before {
+    content:""; position:absolute; inset:0; border-radius:50%;
+    background:conic-gradient(from 0deg, #ff5a3c, #ffb020, #ff5a3c);
+    filter:blur(1.5px);
+    animation: yandexBadgeSpin 3.2s linear infinite;
+  }
+  .yandex-badge::after {
+    content:"Я"; position:absolute; inset:3px; border-radius:50%;
+    background:#d92c1c; color:#fff; font-family:"Golos Text",sans-serif; font-weight:800; font-size:11.5px;
+    display:flex; align-items:center; justify-content:center; line-height:1;
+  }
+  @keyframes yandexBadgeSpin { to { transform:rotate(360deg); } }
   .mail-inline-muted { color:var(--muted); font-size:12px; }
   #mobileMailSettings { display:none; }
   @media (max-width:640px) {
@@ -1384,7 +1415,7 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
     <div class="mail-dialog-head"><div><div class="section-kicker">SUPPLYDESK</div><h2 id="loginTitle">Вход в кабинет снабженца</h2></div></div>
     <div class="mail-dialog-body">
       <p class="mail-dialog-note">Войдите через аккаунт Яндекса — тот же вход откроет доступ к данным и позволит подключить рабочую почту.</p>
-      <a class="btn primary login-yandex-btn" id="yandexLoginBtn" href="/api/auth/yandex/start">Войти через Яндекс</a>
+      <a class="btn primary login-yandex-btn" id="yandexLoginBtn" href="/api/auth/yandex/start"><span class="yandex-badge" aria-hidden="true"></span>Войти через Яндекс</a>
       <p class="mail-feedback" id="loginFeedback" aria-live="polite"></p>
       <details class="login-fallback">
         <summary>Локальный вход для разработки</summary>
