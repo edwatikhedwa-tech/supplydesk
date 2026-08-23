@@ -767,20 +767,34 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .login-fallback summary { cursor:pointer; font-size:12.5px; color:var(--muted); }
   .login-fallback form { margin-top:12px; }
 
-  /* Login backdrop: quiet graphite grid with two slow-drifting glows, only behind the sign-in card. */
-  #mailLoginModal {
-    background:
-      radial-gradient(640px 460px at 20% 24%, rgba(15,107,93,.38), transparent 62%),
-      radial-gradient(560px 420px at 82% 78%, rgba(225,139,42,.24), transparent 64%),
-      linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px),
-      #101a16;
-    background-size: auto, auto, 46px 46px, 46px 46px, auto;
-    animation: loginBackdropDrift 24s ease-in-out infinite;
+  /* Login backdrop: a slow radar sweep on a quiet grid, echoing "search for suppliers".
+     Only behind the sign-in card; app accent/signal tokens stand in for the reference's purple. */
+  #mailLoginModal { background:#0d1613; overflow:hidden; }
+  #mailLoginModal .mail-dialog { position:relative; z-index:1; }
+  .login-radar {
+    position:absolute; inset:0; overflow:hidden;
+    background-image:
+      linear-gradient(rgba(101,200,178,.14) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(101,200,178,.14) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
-  @keyframes loginBackdropDrift {
-    0%, 100% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0; }
-    50% { background-position: 46px -34px, -34px 46px, 0 0, 0 0, 0 0; }
+  .login-radar::before {
+    content:""; position:absolute; top:50%; left:50%; width:150vw; height:150vh; transform:translate(-50%,-50%);
+    background: repeating-radial-gradient(circle, transparent 0, transparent 46px, rgba(101,200,178,.22) 48px);
+  }
+  .login-radar::after {
+    content:""; position:absolute; top:50%; left:50%; width:70vmax; height:70vmax; margin:-35vmax 0 0 -35vmax; border-radius:50%;
+    background: conic-gradient(from 0deg, transparent 78%, rgba(225,139,42,.55) 100%);
+    animation: loginRadarSpin 5s linear infinite;
+  }
+  .login-radar-center {
+    position:absolute; top:50%; left:50%; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%;
+    background:#E18B2A; animation: loginRadarPulse 2.2s ease-in-out infinite;
+  }
+  @keyframes loginRadarSpin { to { transform:rotate(360deg); } }
+  @keyframes loginRadarPulse {
+    0%, 100% { box-shadow:0 0 12px 3px rgba(225,139,42,.5); }
+    50% { box-shadow:0 0 32px 8px rgba(225,139,42,.9); }
   }
 
   /* Yandex mark: small rotating glow ring behind a solid "Я" badge, echoes the app's own accent glow. */
@@ -1411,6 +1425,7 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
 </div>
 
 <div class="mail-overlay" id="mailLoginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <div class="login-radar" aria-hidden="true"><div class="login-radar-center"></div></div>
   <section class="mail-dialog mail-login-copy">
     <div class="mail-dialog-head"><div><div class="section-kicker">SUPPLYDESK</div><h2 id="loginTitle">Вход в кабинет снабженца</h2></div></div>
     <div class="mail-dialog-body">
