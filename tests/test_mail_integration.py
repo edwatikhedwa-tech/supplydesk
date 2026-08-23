@@ -448,6 +448,76 @@ class MailIntegrationTests(unittest.TestCase):
         self.assertEqual(provider.client_id, "client-id")
         self.assertEqual(provider.client_secret, "client-secret")
 
+    def _seed_unmatched_inbox_message(self) -> int:
+        incoming = IncomingMessage(
+            provider_message_id="imap:INBOX:1:99", message_id="<original@lad-academy.ru>",
+            in_reply_to=None, references=None, from_email="info@lad-academy.ru", to_email="user@example.com",
+            subject="Бесплатный практикум", body_text="Подключайтесь сейчас", body_html="<p>Подключайтесь сейчас</p>",
+            received_at=datetime.now(timezone.utc),
+        )
+        self.repo.import_incoming_messages(
+            workspace_id=self.user["workspace_id"], user_id=self.user["id"], account_id=self.account_id, messages=[incoming],
+        )
+        return self.repo.list_unmatched_incoming(self.user["workspace_id"])[0]["id"]
+
+    def test_reply_to_unmatched_inbox_message_sends_and_threads_without_a_supplier(self) -> None:
+        # The whole point of this flow: a sender with no заявка/поставщик can
+        # still get a reply, without a fake supplier/request being invented for them.
+        message_id = self._seed_unmatched_inbox_message()
+        with self.repo.connect() as connection:
+            supplier_count_before = connection.execute("SELECT COUNT(*) FROM suppliers").fetchone()[0]
+            request_count_before = connection.execute("SELECT COUNT(*) FROM requests").fetchone()[0]
+        result = self.service.reply_to_inbox(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+            inbox_message_id=message_id, subject="", body="Спасибо, не сейчас.",
+        )
+        self.assertIn("thread_id", result)
+        sent = self.provider.sent[0]
+        self.assertEqual(sent.to_email, "info@lad-academy.ru")
+        self.assertEqual(sent.subject, "Re: Бесплатный практикум")
+        self.assertEqual(sent.in_reply_to, "<original@lad-academy.ru>")
+        self.assertIn("<original@lad-academy.ru>", sent.references)
+
+        conversation = self.repo.inbox_conversation(self.user["workspace_id"], message_id)
+        self.assertEqual(len(conversation["replies"]), 1)
+        self.assertEqual(conversation["replies"][0]["status"], "sent")
+        self.assertIn("Спасибо", conversation["replies"][0]["body_text"])
+
+        with self.repo.connect() as connection:
+            supplier_count = connection.execute("SELECT COUNT(*) FROM suppliers").fetchone()[0]
+            request_count = connection.execute("SELECT COUNT(*) FROM requests").fetchone()[0]
+        self.assertEqual(supplier_count, supplier_count_before)
+        self.assertEqual(request_count, request_count_before)
+
+    def test_reply_to_missing_inbox_message_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            self.service.reply_to_inbox(
+                user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+                inbox_message_id=999999, subject="Re: тест", body="Текст",
+            )
+
+    def test_reply_to_inbox_respects_the_daily_send_limit(self) -> None:
+        message_id = self._seed_unmatched_inbox_message()
+        self.service.daily_limit = 0
+        with self.assertRaises(ProviderError) as ctx:
+            self.service.reply_to_inbox(
+                user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+                inbox_message_id=message_id, subject="Re: тест", body="Текст",
+            )
+        self.assertTrue(ctx.exception.rate_limited)
+        self.assertEqual(len(self.provider.sent), 0)
+
+    def test_reply_to_inbox_failure_is_recorded_and_token_not_marked_sent(self) -> None:
+        message_id = self._seed_unmatched_inbox_message()
+        self.provider.fail_with = ProviderError("СМТП недоступен", transient=True)
+        with self.assertRaises(ProviderError):
+            self.service.reply_to_inbox(
+                user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+                inbox_message_id=message_id, subject="Re: тест", body="Текст",
+            )
+        conversation = self.repo.inbox_conversation(self.user["workspace_id"], message_id)
+        self.assertEqual(conversation["replies"][0]["status"], "failed")
+
     def test_yandex_xoauth2_callback_returns_text_for_smtplib(self) -> None:
         class DummySMTP:
             def __init__(self, *args, **kwargs):

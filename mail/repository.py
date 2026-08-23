@@ -398,6 +398,7 @@ class MailRepository:
             rows = connection.execute(
                 """SELECT t.id, t.request_id, t.supplier_id, t.subject, t.last_message_at, t.created_at,
                           r.name AS request_name, s.name AS supplier_name, s.email AS supplier_email,
+                          s.host AS supplier_host, s.external_key AS supplier_external_key,
                           (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id) AS messages_count,
                           (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='inbound') AS replies_count
                    FROM mail_threads t JOIN requests r ON r.id=t.request_id JOIN suppliers s ON s.id=t.supplier_id
@@ -989,3 +990,97 @@ class MailRepository:
                 (workspace_id, request_id, supplier_id),
             ).fetchall()
         return [_readable_message(dict(row)) for row in rows]
+
+    # ------------------------------------------------------ inbox reply threads
+    #
+    # A reply to an unmatched inbox message (no заявка/поставщик) cannot live in
+    # mail_threads/mail_messages: their request_id/supplier_id are NOT NULL by
+    # design. These methods back a small, separate model instead — see
+    # migrations/006_inbox_reply.sql for why.
+
+    def get_inbox_message(self, workspace_id: int, message_id: int) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT id, from_email, to_email, subject, body_text, body_html, received_at, status, message_id, references_header, mail_account_id"
+                " FROM mail_inbox_messages WHERE workspace_id=? AND id=?",
+                (workspace_id, message_id),
+            ).fetchone()
+        return _readable_message(dict(row)) if row else None
+
+    def get_or_create_inbox_thread(self, *, workspace_id: int, user_id: int, mail_account_id: int, peer_email: str, subject: str) -> int:
+        now = iso_now()
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT id FROM mail_inbox_threads WHERE workspace_id=? AND mail_account_id=? AND peer_email=?",
+                (workspace_id, mail_account_id, peer_email),
+            ).fetchone()
+            if row:
+                thread_id = int(row["id"])
+            else:
+                connection.execute(
+                    "INSERT INTO mail_inbox_threads(workspace_id, user_id, mail_account_id, peer_email, subject, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    (workspace_id, user_id, mail_account_id, peer_email, subject, now),
+                )
+                thread_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+            connection.commit()
+        return thread_id
+
+    def record_inbox_reply(
+        self,
+        *,
+        inbox_thread_id: int,
+        workspace_id: int,
+        user_id: int,
+        mail_account_id: int,
+        from_email: str,
+        to_email: str,
+        subject: str,
+        body_text: str,
+        body_html: str,
+        message_id_header: str,
+        in_reply_to: str | None,
+        references_header: str | None,
+    ) -> int:
+        now = iso_now()
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT INTO mail_inbox_replies(inbox_thread_id, workspace_id, user_id, mail_account_id, message_id, in_reply_to, references_header, from_email, to_email, subject, body_text, body_html, status, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'sending', ?)""",
+                (inbox_thread_id, workspace_id, user_id, mail_account_id, message_id_header, in_reply_to, references_header, from_email, to_email, subject, body_text, body_html, now),
+            )
+            reply_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+            connection.execute("UPDATE mail_inbox_threads SET last_message_at=? WHERE id=?", (now, inbox_thread_id))
+            connection.commit()
+        return reply_id
+
+    def mark_inbox_reply_sent(self, reply_id: int, provider_message_id: str | None, generated_message_id: str, sent_at: str) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "UPDATE mail_inbox_replies SET status='sent', provider_message_id=?, message_id=?, sent_at=?, error=NULL WHERE id=?",
+                (provider_message_id, generated_message_id, sent_at, reply_id),
+            )
+            connection.commit()
+
+    def mark_inbox_reply_failed(self, reply_id: int, error: str) -> None:
+        with self.connect() as connection:
+            connection.execute("UPDATE mail_inbox_replies SET status='failed', error=? WHERE id=?", (error[:500], reply_id))
+            connection.commit()
+
+    def inbox_conversation(self, workspace_id: int, message_id: int) -> dict[str, Any] | None:
+        original = self.get_inbox_message(workspace_id, message_id)
+        if not original:
+            return None
+        with self.connect() as connection:
+            thread = connection.execute(
+                "SELECT id FROM mail_inbox_threads WHERE workspace_id=? AND mail_account_id=? AND peer_email=?",
+                (workspace_id, original["mail_account_id"], original["from_email"]),
+            ).fetchone()
+            replies = []
+            if thread:
+                rows = connection.execute(
+                    "SELECT id, from_email, to_email, subject, body_text, body_html, status, error, message_id, in_reply_to, references_header, created_at, sent_at FROM mail_inbox_replies WHERE inbox_thread_id=? ORDER BY created_at",
+                    (int(thread["id"]),),
+                ).fetchall()
+                replies = [_readable_message(dict(row)) for row in rows]
+        return {**original, "replies": replies}

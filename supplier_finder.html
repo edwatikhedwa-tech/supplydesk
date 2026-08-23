@@ -1353,6 +1353,11 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .mail-images-blocked button { flex:none; padding:5px 10px; border:1px solid #e6d9b8; border-radius:7px; background:#fff; color:#7a5c14; font-size:11.5px; font-weight:700; cursor:pointer; }
   .mail-images-blocked button:hover { background:#fdf3e0; }
 
+  .mail-reply-form { margin-top:22px; padding-top:18px; border-top:1px solid var(--line); }
+  .mail-reply-form .mail-field { margin-bottom:11px; }
+  .mail-reply-form textarea { min-height:110px; }
+  .mail-reply-actions { display:flex; justify-content:flex-end; }
+
   @media (max-width:820px) {
     .mail-workspace { flex-direction:column; height:auto; min-height:0; }
     .mail-list { width:100%; max-height:280px; border-right:0; border-bottom:1px solid var(--line); }
@@ -2262,7 +2267,8 @@ async function selectMailEntry(kind, id) {
   if (!entry) { reader.innerHTML = mailReaderEmptyHtml("Письмо больше не найдено — обновите список."); return; }
   try {
     if (kind === "inbox") {
-      renderInboxReader(reader, entry);
+      const conversation = await mailApi(`/api/mail/inbox/conversation?inbox_message_id=${id}`);
+      renderInboxReader(reader, entry, conversation);
     } else {
       const data = await mailApi(`/api/mail/threads?request_id=${entry.requestId}&supplier_id=${entry.supplierId}`);
       renderThreadReader(reader, entry, data.items || []);
@@ -2272,17 +2278,63 @@ async function selectMailEntry(kind, id) {
   }
 }
 
-function renderInboxReader(container, entry) {
-  const item = entry.raw;
+function renderInboxReader(container, entry, conversation) {
+  const item = conversation || entry.raw;
+  const replies = item.replies || [];
   container.innerHTML = `<div class="mail-reader-head"><span class="mail-avatar is-unmatched" aria-hidden="true">${escapeHtml(mailInitials(item.from_email))}</span><div class="mail-reader-title"><h2>Неразобранное входящее</h2><p class="mail-reader-meta">${escapeHtml(item.from_email)} · ${escapeHtml(formatDate(item.received_at))} · без привязки к заявке</p><p class="mail-reader-subject">${escapeHtml(item.subject || "Без темы")}</p></div></div><div class="mail-reader-body" id="mailReaderBody"></div>`;
-  renderMailBody($("mailReaderBody"), item);
+  const body = $("mailReaderBody");
+  renderMailBody(body, item);
+  replies.forEach(reply => {
+    const wrap = document.createElement("div");
+    wrap.className = "mail-conversation-item";
+    wrap.innerHTML = `<div class="mail-conversation-item-head"><span class="dir-tag out">Исходящее</span><span>${escapeHtml(reply.status === "sent" ? "Отправлено" : reply.status === "failed" ? "Ошибка отправки" : "Отправляется")}</span><span>·</span><span>${escapeHtml(formatDate(reply.sent_at || reply.created_at))}</span></div>`;
+    const bodyHost = document.createElement("div");
+    wrap.append(bodyHost);
+    body.append(wrap);
+    renderMailBody(bodyHost, reply);
+  });
+  body.insertAdjacentHTML("beforeend", inboxReplyFormHtml(item));
+  const replyForm = $("inboxReplyForm");
+  if (replyForm) replyForm.onsubmit = event => { event.preventDefault(); submitInboxReply(replyForm); };
+}
+
+function inboxReplyFormHtml(item) {
+  const subject = /^re\s*:/i.test(item.subject || "") ? item.subject : `Re: ${item.subject || ""}`;
+  return `<form class="mail-reply-form" id="inboxReplyForm" data-inbox-message-id="${escapeHtml(String(item.id))}">
+    <div class="mail-field"><label for="inboxReplySubject">Тема</label><input id="inboxReplySubject" maxlength="240" value="${escapeHtml(subject)}" required></div>
+    <div class="mail-field"><label for="inboxReplyBody">Ответ для ${escapeHtml(item.from_email)}</label><textarea id="inboxReplyBody" maxlength="20000" placeholder="Текст ответа…" required></textarea></div>
+    <p class="mail-feedback" id="inboxReplyFeedback" aria-live="polite"></p>
+    <div class="mail-reply-actions"><button class="btn primary" type="submit" id="inboxReplySubmit">Ответить</button></div>
+  </form>`;
+}
+
+async function submitInboxReply(form) {
+  const submit = $("inboxReplySubmit");
+  submit.disabled = true;
+  setMailFeedback("inboxReplyFeedback", "Отправляем ответ…", false);
+  try {
+    const inboxMessageId = form.dataset.inboxMessageId;
+    await mailApi("/api/mail/inbox/reply", {
+      method: "POST",
+      body: JSON.stringify({
+        inbox_message_id: Number(inboxMessageId),
+        subject: $("inboxReplySubject").value,
+        body: $("inboxReplyBody").value,
+      }),
+    });
+    toast("Ответ отправлен.");
+    await selectMailEntry("inbox", inboxMessageId);
+  } catch (error) {
+    setMailFeedback("inboxReplyFeedback", error.message);
+    submit.disabled = false;
+  }
 }
 
 function renderThreadReader(container, entry, messages) {
   const total = messages.length;
   container.innerHTML = `<div class="mail-reader-head"><span class="mail-avatar" aria-hidden="true">${escapeHtml(mailInitials(entry.name || entry.email))}</span><div class="mail-reader-title"><h2>${escapeHtml(entry.name || "Без названия")}</h2><p class="mail-reader-meta">${escapeHtml(entry.email || "")} · Заявка № ${entry.requestId} · ${total} ${pluralize(total, "сообщение", "сообщения", "сообщений")}</p></div></div><div class="mail-reader-body" id="mailReaderBody"></div>`;
   const body = $("mailReaderBody");
-  if (!total) { body.innerHTML = mailReaderEmptyHtml("В этом треде пока нет сообщений."); return; }
+  if (!total) { body.innerHTML = mailReaderEmptyHtml("В этом треде пока нет сообщений."); }
   messages.forEach((message, index) => {
     const item = document.createElement("div");
     item.className = "mail-conversation-item";
@@ -2292,6 +2344,42 @@ function renderThreadReader(container, entry, messages) {
     body.append(item);
     renderMailBody(bodyHost, message);
   });
+  if (!entry.email) return;
+  body.insertAdjacentHTML("beforeend", threadReplyFormHtml(entry));
+  const replyForm = $("threadReplyForm");
+  if (replyForm) replyForm.onsubmit = event => { event.preventDefault(); submitThreadReply(replyForm, entry); };
+}
+
+function threadReplyFormHtml(entry) {
+  const subject = /^re\s*:/i.test(entry.subject || "") ? entry.subject : `Re: ${entry.subject || "Запрос коммерческого предложения"}`;
+  return `<form class="mail-reply-form" id="threadReplyForm">
+    <div class="mail-field"><label for="threadReplySubject">Тема</label><input id="threadReplySubject" maxlength="240" value="${escapeHtml(subject)}" required></div>
+    <div class="mail-field"><label for="threadReplyBody">Ответ для ${escapeHtml(entry.name || entry.email)}</label><textarea id="threadReplyBody" maxlength="20000" placeholder="Текст ответа…" required></textarea></div>
+    <p class="mail-feedback" id="threadReplyFeedback" aria-live="polite"></p>
+    <div class="mail-reply-actions"><button class="btn primary" type="submit" id="threadReplySubmit">Ответить</button></div>
+  </form>`;
+}
+
+async function submitThreadReply(form, entry) {
+  const submit = $("threadReplySubmit");
+  submit.disabled = true;
+  setMailFeedback("threadReplyFeedback", "Отправляем ответ…", false);
+  try {
+    await mailApi("/api/mail/send", {
+      method: "POST",
+      body: JSON.stringify({
+        request_id: entry.requestId,
+        supplier: { name: entry.name, email: entry.email, host: entry.host, external_key: entry.externalKey },
+        subject: $("threadReplySubject").value,
+        body: $("threadReplyBody").value,
+      }),
+    });
+    toast("Ответ поставлен в очередь на отправку.");
+    await selectMailEntry("thread", entry.id);
+  } catch (error) {
+    setMailFeedback("threadReplyFeedback", error.message);
+    submit.disabled = false;
+  }
 }
 
 function renderWorkspaceError(message) {
@@ -2423,7 +2511,8 @@ async function renderCorrespondenceView({ sync = true } = {}) {
     ...threads.map(thread => ({
       kind: "thread", id: `${thread.request_id}:${thread.supplier_id}`,
       requestId: thread.request_id, supplierId: thread.supplier_id,
-      name: thread.supplier_name, email: thread.supplier_email, subject: thread.subject,
+      name: thread.supplier_name, email: thread.supplier_email,
+      host: thread.supplier_host, externalKey: thread.supplier_external_key, subject: thread.subject,
       date: thread.last_message_at || thread.created_at, replied: (thread.replies_count || 0) > 0,
       snippet: `Заявка № ${thread.request_id} · ${thread.messages_count} ${pluralize(thread.messages_count, "сообщение", "сообщения", "сообщений")}`,
     })),

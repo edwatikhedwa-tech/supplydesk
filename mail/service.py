@@ -233,6 +233,72 @@ class MailService:
             for supplier in suppliers
         ]
 
+    def reply_to_inbox(
+        self,
+        *,
+        user_id: int,
+        workspace_id: int,
+        inbox_message_id: int,
+        subject: str,
+        body: str,
+        attachments: list[dict[str, Any]] | None = None,
+    ) -> dict[str, int]:
+        """Reply to an unmatched inbox message — no заявка/поставщик involved.
+
+        Sent synchronously (unlike queue_one/queue_bulk's async job queue):
+        this is always a single, user-initiated send, not bulk outreach, so
+        there is no batch to protect with a retry queue — a failure surfaces
+        immediately and the user can just try again.
+        """
+        original = self.repository.get_inbox_message(workspace_id, inbox_message_id)
+        if not original:
+            raise ValueError("Письмо не найдено.")
+        peer_email = self.validate_email(original["from_email"], "Адрес отправителя")
+        account, access_token = self._get_account_and_token(user_id, workspace_id)
+        if self.repository.count_sent_today(account["id"]) >= self.daily_limit:
+            raise ProviderError(
+                "Достигнут безопасный дневной предел отправки. Попробуйте завтра.",
+                transient=True, rate_limited=True, provider_code="local-daily-limit",
+            )
+        body_text = self._validate_body(body).strip()
+        subject = self._validate_subject(subject or self._reply_subject(original["subject"]))
+        body_html = f"<p>{escape(body_text).replace(chr(10), '<br>')}</p>"
+        parsed_attachments = self.validate_attachments(attachments or [])
+        message_id_header = make_msgid(domain=account["email"].split("@", 1)[-1])
+        references = " ".join(token for token in (original.get("references_header"), original.get("message_id")) if token) or None
+        thread_id = self.repository.get_or_create_inbox_thread(
+            workspace_id=workspace_id, user_id=user_id, mail_account_id=account["id"],
+            peer_email=peer_email, subject=subject,
+        )
+        reply_id = self.repository.record_inbox_reply(
+            inbox_thread_id=thread_id, workspace_id=workspace_id, user_id=user_id, mail_account_id=account["id"],
+            from_email=account["email"], to_email=peer_email, subject=subject, body_text=body_text, body_html=body_html,
+            message_id_header=message_id_header, in_reply_to=original.get("message_id") or None, references_header=references,
+        )
+        provider = self.provider_factory(account["provider"])
+        outgoing = OutgoingMessage(
+            from_email=account["email"], to_email=peer_email, subject=subject,
+            body_text=body_text, body_html=body_html,
+            message_id=message_id_header, in_reply_to=original.get("message_id") or None, references=references,
+            attachments=[Attachment(filename=item["filename"], mime_type=item["mime_type"], content=item["content"]) for item in parsed_attachments],
+        )
+        try:
+            result = provider.send_message(access_token, outgoing)
+        except ProviderError as exc:
+            if exc.revoked:
+                self.mark_refresh_error(account["id"], exc)
+            self.repository.mark_inbox_reply_failed(reply_id, exc.message)
+            raise
+        self.repository.mark_inbox_reply_sent(reply_id, result.provider_message_id, result.message_id, result.sent_at.isoformat())
+        return {"thread_id": thread_id, "reply_id": reply_id}
+
+    @staticmethod
+    def _reply_subject(original_subject: str) -> str:
+        subject = str(original_subject or "").strip()
+        if re.match(r"(?i)^re\s*:", subject):
+            return subject
+        return f"Re: {subject}" if subject else "Re:"
+
     def send_claimed_job(self, job: dict[str, Any]) -> SendResult:
         account = self.repository.get_mail_account_by_id(job["mail_account_id"])
         if not account or account["status"] != "connected":

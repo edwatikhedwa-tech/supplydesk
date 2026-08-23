@@ -232,6 +232,20 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             if session:
                 self._thread_messages(session, parse_qs(parsed.query))
             return
+        if parsed.path == "/api/mail/inbox/conversation":
+            session = self._require_session()
+            if session:
+                try:
+                    message_id = int(parse_qs(parsed.query).get("inbox_message_id", [0])[0])
+                except ValueError:
+                    self._json(400, {"error": "Некорректный идентификатор письма."})
+                    return
+                conversation = self.app.repository.inbox_conversation(session["workspace_id"], message_id)
+                if not conversation:
+                    self._json(404, {"error": "Письмо не найдено."})
+                    return
+                self._json(200, conversation)
+            return
         if parsed.path == "/api/mail/yandex/start":
             self._oauth_start()
             return
@@ -289,6 +303,13 @@ class SupplierHandler(SimpleHTTPRequestHandler):
                 )
                 self.app.queue.wake()
                 self._json(202, {"ok": True, "queued": results})
+            elif parsed.path == "/api/mail/inbox/reply":
+                result = self.app.service.reply_to_inbox(
+                    user_id=session["user_id"], workspace_id=session["workspace_id"],
+                    inbox_message_id=int(body.get("inbox_message_id", 0)),
+                    subject=body.get("subject", ""), body=body.get("body", ""), attachments=body.get("attachments") or [],
+                )
+                self._json(200, {"ok": True, **result})
             elif parsed.path == "/api/requests":
                 positions = body.get("positions") or []
                 if isinstance(positions, str):
