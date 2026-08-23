@@ -1,26 +1,26 @@
-"""Helpers for turning untrusted email content into a readable plain-text view."""
+"""Turning untrusted email content into something a browser can render safely,
+and something a human can actually read.
+
+Two independent jobs live here:
+
+- sanitize_email_html() / email_has_remote_images() — the allowlist layer.
+  The outer layer is a fully sandboxed <iframe> in supplier_finder.html; this
+  is the inner one. Built on nh3 (Rust's Ammonia via PyO3) instead of a
+  hand-rolled tag walker, so the allowlist is enforced by a real HTML parser
+  with no regex edge cases to rediscover later.
+- collapse_quoted_html() / collapse_quoted_text() — the quotequail layer.
+  A reply thread otherwise repeats every prior message verbatim; this finds
+  where the quoted history starts and lets the UI fold it behind a toggle,
+  the way every real mail client does.
+"""
 
 from __future__ import annotations
 
 import re
 
+import nh3
+import quotequail
 from bs4 import BeautifulSoup
-
-
-_CSS_BLOCK_RE = re.compile(
-    r"(?ms)(?:^|\n)\s*(?:[.#][\w-][^\n]*\n?)+\s*\{[^{}]*\}\s*"
-)
-_CSS_PROPERTY_RE = re.compile(
-    r"(?im)^\s*(?:text-decoration|color|font(?:-[\w-]+)?|margin(?:-[\w-]+)?|"
-    r"padding(?:-[\w-]+)?|background(?:-[\w-]+)?|display|white-space|"
-    r"border(?:-[\w-]+)?|line-height)\s*:\s*[^;{}\n]+;?\s*$"
-)
-_CSS_SIGNAL_RE = re.compile(r"(?:\{|\}|\b(?:text-decoration|font-size|background-color)\s*:)", re.IGNORECASE)
-_CSS_SELECTOR_PREFIX_RE = re.compile(
-    r"(?is)(?:^|(?<=[\s;]))(?:@[\w-]+\b[^\{]*|"
-    r"(?:\*|[.#:*]?[A-Za-z][\w-]*(?:\[[^\]]+\])?|\[[^\]]+\])[^\{]*)\s*$",
-)
-
 
 # Tags an email may keep. Everything structural and inline that carries meaning
 # or layout; nothing that can execute, embed, or phone home on its own.
@@ -43,7 +43,25 @@ _ALLOWED_ATTRS = {
     "colgroup": {"span", "width"},
     "font": {"color", "size"},
 }
-_SAFE_URL_SCHEMES = ("http://", "https://", "mailto:", "tel:")
+# "data" has to be in the global scheme allowlist for nh3 to keep inline images
+# at all — it rejects data: URIs before attribute_filter even runs otherwise.
+# That is too permissive for links (a data: href opened via target="_blank"
+# lands in a fresh, unsandboxed tab and can carry a full HTML+script payload),
+# so attribute_filter below strips data: specifically on <a href>.
+_URL_SCHEMES = {"http", "https", "mailto", "tel", "data"}
+
+
+def _attribute_filter(tag: str, attribute: str, value: str) -> str | None:
+    if tag == "a" and attribute == "href" and value.strip().lower().startswith("data:"):
+        return None
+    if tag == "img" and attribute == "src":
+        source = value.strip().lower()
+        if source.startswith(("data:image/", "http://", "https://")):
+            return value
+        # cid:, relative paths, anything else: cannot render outside the
+        # original mailbox anyway, and a bare src="" would just show a broken-image icon.
+        return None
+    return value
 
 
 def sanitize_email_html(value: str | None, *, allow_remote_images: bool = False) -> str:
@@ -52,41 +70,37 @@ def sanitize_email_html(value: str | None, *, allow_remote_images: bool = False)
     This is the inner layer of a two-layer defence: the browser renders the result
     inside a fully sandboxed iframe, so scripts cannot run even if something slips
     through here. Remote images stay blocked by default because a message body is
-    the classic place to hide a tracking pixel.
+    the classic place to hide a tracking pixel — but the vetted URL survives as
+    `data-remote-src`, so a per-message "show images" click can restore it purely
+    in the DOM (the iframe keeps allow-same-origin for exactly this), no extra
+    request to re-sanitize a second copy of the message needed.
     """
 
     if not value:
         return ""
-    soup = BeautifulSoup(value, "html.parser")
-
-    for node in soup(["script", "style", "head", "title", "meta", "link", "base",
-                      "iframe", "frame", "frameset", "object", "embed", "applet",
-                      "form", "input", "button", "select", "textarea", "svg", "math"]):
-        node.decompose()
-
-    for node in list(soup.find_all(True)):
-        name = node.name.lower()
-        if name not in _ALLOWED_TAGS:
-            node.unwrap()  # keep the words, drop the wrapper
+    cleaned = nh3.clean(
+        value,
+        tags=_ALLOWED_TAGS,
+        attributes=_ALLOWED_ATTRS,
+        url_schemes=_URL_SCHEMES,
+        link_rel="noopener noreferrer nofollow",
+        attribute_filter=_attribute_filter,
+        set_tag_attribute_values={"a": {"target": "_blank"}},
+    )
+    # nh3 stamps target="_blank" on every <a>, including ones whose href it just
+    # stripped (bad scheme, disallowed). A target with no href does nothing, so
+    # this is cosmetic-only, not a second gap in the scheme allowlist above.
+    if "<img" not in cleaned:
+        return cleaned
+    soup = BeautifulSoup(cleaned, "html.parser")
+    for img in soup.find_all("img"):
+        source = (img.get("src") or "").strip()
+        if not source:
+            img.decompose()  # attribute_filter already rejected it outright
             continue
-        allowed = _ALLOWED_ATTRS.get(name, set())
-        for attribute in list(node.attrs):
-            if attribute.lower() not in allowed:
-                del node[attribute]
-        href = (node.get("href") or "").strip()
-        if href and not href.lower().startswith(_SAFE_URL_SCHEMES):
-            del node["href"]
-        if name == "a" and node.get("href"):
-            node["rel"] = "noopener noreferrer nofollow"
-            node["target"] = "_blank"
-        if name == "img":
-            source = (node.get("src") or "").strip().lower()
-            inline = source.startswith("data:image/")
-            remote = source.startswith(("http://", "https://"))
-            # Keep only inline images, plus remote ones when the reader opts in.
-            # Anything else (cid:, relative, javascript:) cannot render here anyway.
-            if not (inline or (remote and allow_remote_images)):
-                node.decompose()
+        if source.lower().startswith(("http://", "https://")) and not allow_remote_images:
+            del img["src"]
+            img["data-remote-src"] = source
     return str(soup)
 
 
@@ -100,6 +114,77 @@ def email_has_remote_images(value: str | None) -> bool:
                for tag in soup.find_all("img"))
 
 
+# ------------------------------------------------------------- quoted history
+#
+# Must run AFTER sanitize_email_html(): quotequail only decides where to fold
+# the markup, the <details> wrapper it produces here is Claude-authored markup,
+# not email content, so building it directly is safe as long as the chunks
+# quotequail hands back already went through the allowlist.
+
+
+def collapse_quoted_html(sanitized_html: str | None) -> str:
+    """Fold quoted history in already-sanitized HTML behind a <details> toggle.
+
+    quotequail's `expand` flag means "show by default" — True is the new text,
+    False is the quoted tail. Getting this backwards silently folds short,
+    unquoted replies (a one-paragraph message with nothing to quote comes back
+    as a single `[(True, whole_thing)]` segment, i.e. "show it all").
+    """
+
+    if not sanitized_html:
+        return sanitized_html or ""
+    try:
+        segments = quotequail.quote_html(sanitized_html)
+    except Exception:  # noqa: BLE001 - malformed markup degrades to "show everything", not a crash
+        return sanitized_html
+    if not any(not expand for expand, _ in segments):
+        return sanitized_html  # nothing quotequail thinks should be hidden
+
+    out: list[str] = []
+    quoted_chunk: list[str] = []
+
+    def flush_quote() -> None:
+        if not quoted_chunk:
+            return
+        body = "".join(quoted_chunk)
+        quoted_chunk.clear()
+        out.append(
+            '<details class="mail-quote"><summary>Показать процитированный текст</summary>'
+            f'<div class="mail-quote-body">{body}</div></details>'
+        )
+
+    for expand, chunk in segments:
+        if expand:
+            flush_quote()
+            out.append(chunk)
+        else:
+            quoted_chunk.append(chunk)
+    flush_quote()
+
+    # If folding would hide the entire message (quotequail found nothing to
+    # show by default — rare, but seen on very short or unusual markup),
+    # showing everything beats a message that opens to an empty pane.
+    if not out:
+        return sanitized_html
+    return "".join(out)
+
+
+def collapse_quoted_text(text: str | None) -> str:
+    """Drop quoted history from the plain-text fallback; the HTML view is where
+    it stays foldable and visible. Used only when a message has no HTML part."""
+
+    if not text:
+        return text or ""
+    try:
+        segments = quotequail.quote(text)
+    except Exception:  # noqa: BLE001
+        return text
+    if not any(not expand for expand, _ in segments):
+        return text
+    visible = "".join(chunk for expand, chunk in segments if expand).strip()
+    return visible or text
+
+
 def html_to_text(value: str | None) -> str:
     """Extract readable text while excluding presentation and executable nodes."""
 
@@ -111,6 +196,21 @@ def html_to_text(value: str | None) -> str:
     for node in soup.find_all("br"):
         node.replace_with("\n")
     return _normalize_text(soup.get_text("\n"))
+
+
+_CSS_BLOCK_RE = re.compile(
+    r"(?ms)(?:^|\n)\s*(?:[.#][\w-][^\n]*\n?)+\s*\{[^{}]*\}\s*"
+)
+_CSS_PROPERTY_RE = re.compile(
+    r"(?im)^\s*(?:text-decoration|color|font(?:-[\w-]+)?|margin(?:-[\w-]+)?|"
+    r"padding(?:-[\w-]+)?|background(?:-[\w-]+)?|display|white-space|"
+    r"border(?:-[\w-]+)?|line-height)\s*:\s*[^;{}\n]+;?\s*$"
+)
+_CSS_SIGNAL_RE = re.compile(r"(?:\{|\}|\b(?:text-decoration|font-size|background-color)\s*:)", re.IGNORECASE)
+_CSS_SELECTOR_PREFIX_RE = re.compile(
+    r"(?is)(?:^|(?<=[\s;]))(?:@[\w-]+\b[^\{]*|"
+    r"(?:\*|[.#:*]?[A-Za-z][\w-]*(?:\[[^\]]+\])?|\[[^\]]+\])[^\{]*)\s*$",
+)
 
 
 def clean_email_text(value: str | None, body_html: str | None = None) -> str:

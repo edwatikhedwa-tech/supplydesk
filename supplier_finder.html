@@ -901,9 +901,6 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .thread-open:hover { border-color:var(--cobalt); background:#f7f9ff; }
   .inbox-card { border-color:rgba(49,94,251,.22); }
   .inbox-card .thread-card-head { background:linear-gradient(180deg,#f7f9ff 0%,var(--paper-raised) 100%); }
-  .mail-message-dialog { width:min(760px,100%); }
-  .mail-message-meta { margin:5px 0 0; color:var(--ink-muted); font-size:11px; }
-  .mail-message-body { max-height:min(65vh,560px); margin:10px 18px 18px; padding:18px; overflow:auto; border:1px solid var(--line); border-radius:12px; background:#fff; color:var(--ink-soft); font-size:13px; line-height:1.7; overflow-wrap:anywhere; }
   /* Plain-text fallback keeps the old preformatted behaviour; HTML mail renders in the frame. */
   .mail-body-plain { white-space:pre-wrap; overflow-wrap:anywhere; }
   .mail-body-frame { display:block; width:100%; min-height:120px; border:0; background:#fff; }
@@ -930,7 +927,7 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .form-actions { display:flex; justify-content:flex-end; gap:9px; padding:0 18px 18px; }
   @media (max-width:1150px) and (min-width:821px) { .sidebar .nav-item { width:46px; justify-content:center; padding:0; } }
   @media (max-width:900px) { .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .workspace-two-col { grid-template-columns:1fr; } .workspace-hero { align-items:flex-start; flex-direction:column; } .workspace-table { min-width:720px; } .workspace-card-body.table-scroll { overflow-x:auto; } }
-  @media (max-width:560px) { .kpi-grid { grid-template-columns:1fr 1fr; gap:8px; } .kpi-card { min-height:96px; padding:13px; } .kpi-card strong { margin-top:9px; font-size:23px; } .form-grid { grid-template-columns:1fr; } .form-grid .wide { grid-column:auto; } .request-positions-editor-head { align-items:stretch; flex-direction:column; } .request-positions-editor-head .btn { width:100%; } .request-position-row { grid-template-columns:24px minmax(0,1fr) 32px; } .request-position-remove { align-self:center; } .workspace-hero h1 { font-size:29px; } .workspace-card-body.table-scroll { overflow-x:visible; } .workspace-table { min-width:0; table-layout:fixed; } .workspace-table th,.workspace-table td { padding:10px 8px; overflow-wrap:anywhere; white-space:normal; } .workspace-table th { font-size:8px; } .workspace-table th:last-child { width:84px; } .workspace-table .row-actions .btn { padding-left:6px; padding-right:6px; white-space:nowrap; } .workspace-table th:nth-child(n+4):not(:last-child),.workspace-table td:nth-child(n+4):not(:last-child) { display:none; } .thread-card-foot { align-items:flex-start; flex-direction:column; } .thread-open { width:100%; } .mail-message-body { margin-left:18px; margin-right:18px; max-height:58vh; } }
+  @media (max-width:560px) { .kpi-grid { grid-template-columns:1fr 1fr; gap:8px; } .kpi-card { min-height:96px; padding:13px; } .kpi-card strong { margin-top:9px; font-size:23px; } .form-grid { grid-template-columns:1fr; } .form-grid .wide { grid-column:auto; } .request-positions-editor-head { align-items:stretch; flex-direction:column; } .request-positions-editor-head .btn { width:100%; } .request-position-row { grid-template-columns:24px minmax(0,1fr) 32px; } .request-position-remove { align-self:center; } .workspace-hero h1 { font-size:29px; } .workspace-card-body.table-scroll { overflow-x:visible; } .workspace-table { min-width:0; table-layout:fixed; } .workspace-table th,.workspace-table td { padding:10px 8px; overflow-wrap:anywhere; white-space:normal; } .workspace-table th { font-size:8px; } .workspace-table th:last-child { width:84px; } .workspace-table .row-actions .btn { padding-left:6px; padding-right:6px; white-space:nowrap; } .workspace-table th:nth-child(n+4):not(:last-child),.workspace-table td:nth-child(n+4):not(:last-child) { display:none; } .thread-card-foot { align-items:flex-start; flex-direction:column; } .thread-open { width:100%; } }
   @media (max-width:820px) { .sidebar.mobile-open { display:flex; width:232px; align-items:stretch; padding:28px 16px 18px; } .sidebar.mobile-open .brand-sidebar { padding:0 8px; } .sidebar.mobile-open .brand-sidebar > span:last-child,.sidebar.mobile-open .workspace-copy,.sidebar.mobile-open .workspace-chevron,.sidebar.mobile-open .nav-label,.sidebar.mobile-open .nav-item > span:not(.nav-icon):not(.nav-counter),.sidebar.mobile-open .support-card,.sidebar.mobile-open .user-copy,.sidebar.mobile-open .user-chevron { display:flex; } .sidebar.mobile-open .nav-label { display:block; } .sidebar.mobile-open .workspace-switcher { width:auto; justify-content:flex-start; margin-top:25px; padding:9px; } .sidebar.mobile-open .nav-item { width:100%; justify-content:flex-start; padding:0 10px; } .sidebar.mobile-open .nav-counter { position:static; margin-left:auto; transform:none; } }
 </style>
 <style id="ux-overhaul-styles">
@@ -1317,6 +1314,50 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .card .row-actions .btn.danger-quiet:hover,
   .card [data-act="blacklist"]:hover,
   .card [data-act="mark-irrelevant"]:hover { color:#b6493e; border-color:#e3b6ae; background:#fff8f6; }
+
+  /* Mail reader: a real split view — list on the left, full-height reading pane
+     on the right — replacing a small popup that showed one flattened preview. */
+  .mail-workspace { display:flex; align-items:stretch; height:calc(100vh - 158px); min-height:520px; border:1px solid var(--line); border-radius:var(--radius-md,14px); background:var(--paper-raised); overflow:hidden; box-shadow:var(--shadow); }
+  .mail-list { width:340px; flex:none; overflow-y:auto; border-right:1px solid var(--line); background:var(--paper); }
+  .mail-list-empty { padding:26px 18px; color:var(--ink-muted); font-size:12.5px; line-height:1.6; }
+  .mail-row { display:flex; align-items:flex-start; gap:10px; width:100%; padding:12px 14px; border:0; border-bottom:1px solid var(--line); background:transparent; text-align:left; cursor:pointer; }
+  .mail-row:hover { background:var(--paper-inset); }
+  .mail-row.is-active { background:var(--cobalt-wash); }
+  .mail-row.is-active .mail-row-name { color:var(--cobalt-deep); }
+  .mail-avatar { flex:none; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--graphite); color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.01em; }
+  .mail-avatar.is-unmatched { background:var(--ink-muted); }
+  .mail-row-main { min-width:0; flex:1; }
+  .mail-row-top { display:flex; align-items:baseline; gap:8px; }
+  .mail-row-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); font-size:12.5px; font-weight:700; }
+  .mail-row-date { flex:none; margin-left:auto; color:var(--ink-muted); font-size:10.5px; }
+  .mail-row-subject { margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-soft); font-size:12px; font-weight:600; }
+  .mail-row-snippet { margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-muted); font-size:11.5px; }
+  .mail-row-tags { display:flex; align-items:center; gap:6px; margin-top:5px; }
+
+  .mail-reader { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
+  .mail-reader-empty { margin:auto; padding:20px; max-width:280px; text-align:center; color:var(--ink-muted); font-size:12.5px; line-height:1.6; }
+  .mail-reader-head { flex:none; display:flex; align-items:flex-start; gap:12px; padding:18px 22px; border-bottom:1px solid var(--line); }
+  .mail-reader-head .mail-avatar { width:40px; height:40px; font-size:13px; }
+  .mail-reader-title { min-width:0; flex:1; }
+  .mail-reader-title h2 { margin:0; overflow-wrap:anywhere; color:var(--ink); font-size:16px; font-weight:800; letter-spacing:-.01em; }
+  .mail-reader-meta { margin-top:3px; color:var(--ink-muted); font-size:11.5px; }
+  .mail-reader-subject { margin-top:6px; color:var(--ink-soft); font-size:12.5px; font-weight:600; }
+  .mail-reader-body { flex:1; overflow-y:auto; padding:18px 22px 28px; }
+  .mail-conversation-item + .mail-conversation-item { margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+  .mail-conversation-item-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:11.5px; color:var(--ink-muted); }
+  .mail-conversation-item-head .dir-tag { padding:2px 7px; border-radius:99px; font-weight:700; font-size:10px; letter-spacing:.02em; text-transform:uppercase; }
+  .mail-conversation-item-head .dir-tag.out { background:var(--cobalt-wash); color:var(--cobalt-deep); }
+  .mail-conversation-item-head .dir-tag.in { background:var(--green-wash); color:var(--green); }
+
+  .mail-images-blocked { display:flex; align-items:center; gap:10px; margin:0 0 12px; padding:8px 11px; border:1px solid #e6d9b8; border-radius:8px; background:#fdf7e6; color:#7a5c14; font-size:12px; line-height:1.5; }
+  .mail-images-blocked button { flex:none; padding:5px 10px; border:1px solid #e6d9b8; border-radius:7px; background:#fff; color:#7a5c14; font-size:11.5px; font-weight:700; cursor:pointer; }
+  .mail-images-blocked button:hover { background:#fdf3e0; }
+
+  @media (max-width:820px) {
+    .mail-workspace { flex-direction:column; height:auto; min-height:0; }
+    .mail-list { width:100%; max-height:280px; border-right:0; border-bottom:1px solid var(--line); }
+    .mail-reader { min-height:420px; }
+  }
 </style>
 </head>
 <body>
@@ -1557,16 +1598,6 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
       <p class="mail-feedback" id="requestCreateFeedback" aria-live="polite"></p>
       <div class="mail-dialog-actions"><button class="btn primary" type="submit" id="requestCreateSubmit">Создать заявку</button><button class="btn" type="button" data-close-mail>Отмена</button></div>
     </form>
-  </section>
-</div>
-
-<div class="mail-overlay" id="mailMessageModal" role="dialog" aria-modal="true" aria-labelledby="mailMessageTitle">
-  <section class="mail-dialog mail-message-dialog">
-    <div class="mail-dialog-head">
-      <div><div class="section-kicker">ПЕРЕПИСКА</div><h2 id="mailMessageTitle">Без темы</h2><p class="mail-message-meta" id="mailMessageMeta"></p></div>
-      <button class="btn" type="button" data-close-mail>Закрыть</button>
-    </div>
-    <div class="mail-message-body" id="mailMessageBody" tabindex="0"></div>
   </section>
 </div>
 
@@ -2062,9 +2093,6 @@ function pollMailStatuses(remaining = 8) {
 
 const viewState = { current: "search", currentRequestId: 1043 };
 const viewStatusLabels = { draft: "Черновик", searching: "В поиске", completed: "Завершена", updating: "Обновляется", error: "Ошибка", sent: "Отправлено", failed: "Ошибка отправки", queued: "В очереди", sending: "Отправляется", not_sent: "Не отправлено", replied: "Есть ответ", received: "Получено" };
-const mailMessageStore = new Map();
-let mailMessageSequence = 0;
-
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>\"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[char]));
 }
@@ -2087,18 +2115,19 @@ function cleanMailDisplayText(value) {
   return text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-function rememberMailMessage(item, label) {
-  const key = `mail-message-${++mailMessageSequence}`;
-  mailMessageStore.set(key, { ...item, label, body_text: cleanMailDisplayText(item.body_text) });
-  return key;
-}
-
-// The server already allowlists the markup; the sandbox is the layer that actually
-// stops scripts, so both must stay. `sandbox` with no tokens denies everything —
-// no scripts, no forms, no same-origin access back into the app.
+// The server already allowlists the markup (nh3, tag/attribute whitelist, no
+// style attribute); the sandbox is the layer that actually stops scripts, so
+// both must stay. allow-same-origin without allow-scripts is the safe half of
+// that combination: it lets *this* page's own trusted script reach into
+// frame.contentDocument (for auto-height and the "show images" toggle) while
+// the sandbox still refuses to execute anything written inside the srcdoc
+// itself. <base target="_blank"> plus allow-popups(+escape-sandbox) means a
+// clicked link opens as a normal new tab instead of trying to navigate the
+// (sandboxed, un-navigable) frame in place.
 function mailBodyDocument(html) {
   return `<!doctype html><html><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:">
+<base target="_blank">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src data:">
 <style>
   :root { color-scheme: light; }
   body { margin:0; padding:2px 0; font-family:"IBM Plex Sans",-apple-system,"Segoe UI",system-ui,sans-serif;
@@ -2110,7 +2139,27 @@ function mailBodyDocument(html) {
   blockquote { margin:12px 0; padding:2px 0 2px 14px; border-left:3px solid #d9dde5; color:#515b6c; }
   pre { white-space:pre-wrap; overflow-wrap:anywhere; }
   h1,h2,h3,h4 { font-family:"Golos Text","IBM Plex Sans",system-ui,sans-serif; margin:14px 0 6px; }
+  .mail-quote { margin-top:10px; }
+  .mail-quote summary { cursor:pointer; padding:4px 0; color:#7b8794; font-size:12.5px; user-select:none; }
+  .mail-quote summary:hover { color:#4c5260; }
+  .mail-quote-body { margin-top:6px; padding-left:12px; border-left:2px solid #e2e5ea; color:#4c5260; }
 </style></head><body>${html}</body></html>`;
+}
+
+function autoSizeMailFrame(frame) {
+  let doc;
+  try { doc = frame.contentDocument; } catch (_) { frame.style.height = "420px"; return; }
+  if (!doc) { frame.style.height = "420px"; return; }
+  const apply = () => { frame.style.height = Math.min(doc.documentElement.scrollHeight + 8, 6000) + "px"; };
+  apply();
+  // Images and <details> toggles change height after load fires; keep watching
+  // rather than freezing the size from a single snapshot.
+  if ("ResizeObserver" in window) {
+    new ResizeObserver(apply).observe(doc.documentElement);
+  } else {
+    doc.addEventListener("toggle", apply, true);
+    doc.querySelectorAll("img").forEach(img => img.addEventListener("load", apply));
+  }
 }
 
 function renderMailBody(container, item) {
@@ -2123,40 +2172,126 @@ function renderMailBody(container, item) {
     container.append(pre);
     return;
   }
-  if (item.has_remote_images) {
-    const note = document.createElement("p");
-    note.className = "mail-images-blocked";
-    note.textContent = "Внешние изображения не загружены — так письмо не сможет отследить открытие.";
-    container.append(note);
-  }
   const frame = document.createElement("iframe");
   frame.className = "mail-body-frame";
-  frame.setAttribute("sandbox", "");
+  frame.setAttribute("sandbox", "allow-same-origin allow-popups allow-popups-to-escape-sandbox");
   frame.setAttribute("referrerpolicy", "no-referrer");
   frame.setAttribute("title", "Содержимое письма");
   frame.srcdoc = mailBodyDocument(html);
-  frame.addEventListener("load", () => {
-    try {
-      const doc = frame.contentDocument;
-      if (doc) frame.style.height = Math.min(doc.documentElement.scrollHeight + 8, 4000) + "px";
-    } catch (_) { frame.style.height = "420px"; }
-  });
+  frame.addEventListener("load", () => autoSizeMailFrame(frame));
+  if (item.has_remote_images) {
+    const note = document.createElement("p");
+    note.className = "mail-images-blocked";
+    const text = document.createElement("span");
+    text.textContent = "Внешние изображения не загружены — так письмо не сможет отследить открытие.";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Показать изображения";
+    button.addEventListener("click", () => {
+      // The URL already passed sanitize_email_html()'s scheme allowlist server-side;
+      // this only decides whether *this* reader loads it right now. allow-same-origin
+      // is what makes this direct DOM reach-in possible without a second server call.
+      try {
+        const doc = frame.contentDocument;
+        doc.querySelectorAll("img[data-remote-src]").forEach(img => {
+          img.src = img.getAttribute("data-remote-src");
+          img.removeAttribute("data-remote-src");
+        });
+      } catch (_) { /* frame not ready yet; ignore */ }
+      note.remove();
+      autoSizeMailFrame(frame);
+    });
+    note.append(text, button);
+    container.append(note);
+  }
   container.append(frame);
 }
 
-function mailMessageMarkup(item, label) {
-  const key = rememberMailMessage(item, label);
-  const body = cleanMailDisplayText(item.body_text) || "Текст письма не найден.";
-  return `<div class="thread-message"><strong>${escapeHtml(label)}</strong><div class="thread-message-copy">${escapeHtml(body)}</div></div><div class="thread-card-foot"><span>${body.length > 340 ? "Есть полный текст письма" : "Сообщение отображается полностью"}</span><button class="thread-open" type="button" data-dashboard-action="open-message" data-message-key="${key}">Открыть письмо</button></div>`;
+function mailInitials(source) {
+  const text = (source || "").trim();
+  if (!text) return "??";
+  if (text.includes("@")) return text.slice(0, 2).toUpperCase();
+  const words = text.replace(/^(ООО|ИП|ЗАО|ОАО|АО)\s+/i, "").replace(/["'«»]/g, "").trim().split(/\s+/).filter(Boolean);
+  const letters = words.slice(0, 2).map(word => word[0]).join("");
+  return (letters || text.slice(0, 2)).toUpperCase();
 }
 
-function openMailMessage(key) {
-  const item = mailMessageStore.get(key);
-  if (!item) return;
-  $("mailMessageTitle").textContent = item.subject || "Без темы";
-  $("mailMessageMeta").textContent = [item.label, item.from_email, formatDate(item.received_at || item.created_at)].filter(Boolean).join(" · ");
-  renderMailBody($("mailMessageBody"), item);
-  openMailModal("mailMessageModal");
+function pluralize(count, one, few, many) {
+  const mod10 = count % 10, mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
+}
+
+let mailEntries = [];
+let activeMailKey = null;
+
+function mailRowHtml(entry) {
+  const key = `${entry.kind}:${entry.id}`;
+  const title = entry.kind === "inbox" ? "Неразобранное входящее" : (entry.name || "Без названия");
+  const avatarSource = entry.kind === "inbox" ? entry.email : (entry.name || entry.email);
+  const tag = entry.kind === "inbox"
+    ? '<span class="status-badge draft">Без заявки</span>'
+    : (entry.replied ? '<span class="status-badge sent">Ответили</span>' : '<span class="status-badge draft">Без ответа</span>');
+  return `<button type="button" class="mail-row" data-dashboard-action="select-mail" data-mail-kind="${entry.kind}" data-mail-id="${escapeHtml(String(entry.id))}" aria-current="${activeMailKey === key ? "true" : "false"}">
+    <span class="mail-avatar${entry.kind === "inbox" ? " is-unmatched" : ""}" aria-hidden="true">${escapeHtml(mailInitials(avatarSource))}</span>
+    <span class="mail-row-main">
+      <span class="mail-row-top"><span class="mail-row-name">${escapeHtml(title)}</span><span class="mail-row-date">${escapeHtml(formatDate(entry.date))}</span></span>
+      <span class="mail-row-subject">${escapeHtml(entry.subject || "Без темы")}</span>
+      <span class="mail-row-snippet">${escapeHtml(entry.snippet || "")}</span>
+      <span class="mail-row-tags">${tag}</span>
+    </span>
+  </button>`;
+}
+
+function mailReaderEmptyHtml(text) {
+  return `<div class="mail-reader-empty">${escapeHtml(text || "Выберите письмо слева, чтобы прочитать его здесь.")}</div>`;
+}
+
+async function selectMailEntry(kind, id) {
+  activeMailKey = `${kind}:${id}`;
+  document.querySelectorAll(".mail-row").forEach(row => {
+    const isActive = row.dataset.mailKind === kind && row.dataset.mailId === String(id);
+    row.classList.toggle("is-active", isActive);
+    row.setAttribute("aria-current", isActive ? "true" : "false");
+  });
+  const reader = $("mailReader");
+  if (!reader) return;
+  reader.innerHTML = mailReaderEmptyHtml("Загружаем письмо…");
+  const entry = mailEntries.find(item => item.kind === kind && String(item.id) === String(id));
+  if (!entry) { reader.innerHTML = mailReaderEmptyHtml("Письмо больше не найдено — обновите список."); return; }
+  try {
+    if (kind === "inbox") {
+      renderInboxReader(reader, entry);
+    } else {
+      const data = await mailApi(`/api/mail/threads?request_id=${entry.requestId}&supplier_id=${entry.supplierId}`);
+      renderThreadReader(reader, entry, data.items || []);
+    }
+  } catch (error) {
+    reader.innerHTML = mailReaderEmptyHtml(`Не удалось загрузить письмо: ${error.message}`);
+  }
+}
+
+function renderInboxReader(container, entry) {
+  const item = entry.raw;
+  container.innerHTML = `<div class="mail-reader-head"><span class="mail-avatar is-unmatched" aria-hidden="true">${escapeHtml(mailInitials(item.from_email))}</span><div class="mail-reader-title"><h2>Неразобранное входящее</h2><p class="mail-reader-meta">${escapeHtml(item.from_email)} · ${escapeHtml(formatDate(item.received_at))} · без привязки к заявке</p><p class="mail-reader-subject">${escapeHtml(item.subject || "Без темы")}</p></div></div><div class="mail-reader-body" id="mailReaderBody"></div>`;
+  renderMailBody($("mailReaderBody"), item);
+}
+
+function renderThreadReader(container, entry, messages) {
+  const total = messages.length;
+  container.innerHTML = `<div class="mail-reader-head"><span class="mail-avatar" aria-hidden="true">${escapeHtml(mailInitials(entry.name || entry.email))}</span><div class="mail-reader-title"><h2>${escapeHtml(entry.name || "Без названия")}</h2><p class="mail-reader-meta">${escapeHtml(entry.email || "")} · Заявка № ${entry.requestId} · ${total} ${pluralize(total, "сообщение", "сообщения", "сообщений")}</p></div></div><div class="mail-reader-body" id="mailReaderBody"></div>`;
+  const body = $("mailReaderBody");
+  if (!total) { body.innerHTML = mailReaderEmptyHtml("В этом треде пока нет сообщений."); return; }
+  messages.forEach((message, index) => {
+    const item = document.createElement("div");
+    item.className = "mail-conversation-item";
+    item.innerHTML = `<div class="mail-conversation-item-head"><span class="dir-tag ${message.direction === "inbound" ? "in" : "out"}">${message.direction === "inbound" ? "Входящее" : "Исходящее"}</span><span>Ответ ${index + 1} из ${total}</span><span>·</span><span>${escapeHtml(formatDate(message.created_at))}</span></div>`;
+    const bodyHost = document.createElement("div");
+    item.append(bodyHost);
+    body.append(item);
+    renderMailBody(bodyHost, message);
+  });
 }
 
 function renderWorkspaceError(message) {
@@ -2283,16 +2418,27 @@ async function renderCorrespondenceView({ sync = true } = {}) {
   catch (error) { failures.push(`История переписки: ${error.message}`); }
   try { inbox = (await mailApi("/api/mail/inbox")).items || []; }
   catch (error) { failures.push(`Входящие: ${error.message}`); }
-  mailMessageStore.clear();
-  const inboxCards = inbox.map(item => `<article class="thread-card inbox-card"><div class="thread-card-head"><div><h3>Неразобранное входящее</h3><p>${escapeHtml(item.from_email)} · ${formatDate(item.received_at)}</p></div>${statusBadge("received")}</div><div class="thread-card-subject">${escapeHtml(item.subject || "Без темы")}</div>${mailMessageMarkup(item, "Входящее письмо")}</article>`);
-  const cards = await Promise.all(threads.map(async thread => {
-    const messages = await mailApi(`/api/mail/threads?request_id=${thread.request_id}&supplier_id=${thread.supplier_id}`);
-    const last = (messages.items || []).slice(-1)[0];
-    return `<article class="thread-card"><div class="thread-card-head"><div><h3>${escapeHtml(thread.supplier_name)}</h3><p>${escapeHtml(thread.supplier_email)} · заявка № ${thread.request_id} · ${thread.messages_count} сообщений</p></div>${statusBadge(last?.status || "sent")}</div><div class="thread-card-subject">${escapeHtml(thread.subject || "Без темы")} · ${formatDate(thread.last_message_at)}</div>${last ? mailMessageMarkup(last, `${last.direction === "inbound" ? "Входящее" : "Исходящее"} · ${last.from_email}`) : ""}</article>`;
-  }));
-  const allCards = [...inboxCards, ...cards];
+
+  mailEntries = [
+    ...threads.map(thread => ({
+      kind: "thread", id: `${thread.request_id}:${thread.supplier_id}`,
+      requestId: thread.request_id, supplierId: thread.supplier_id,
+      name: thread.supplier_name, email: thread.supplier_email, subject: thread.subject,
+      date: thread.last_message_at || thread.created_at, replied: (thread.replies_count || 0) > 0,
+      snippet: `Заявка № ${thread.request_id} · ${thread.messages_count} ${pluralize(thread.messages_count, "сообщение", "сообщения", "сообщений")}`,
+    })),
+    ...inbox.map(item => ({
+      kind: "inbox", id: String(item.id), name: null, email: item.from_email, subject: item.subject,
+      date: item.received_at, snippet: (item.body_text || "").slice(0, 100), raw: item,
+    })),
+  ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
   const initialNotice = failures.length ? failures.join(" ") : (sync ? "Проверяем входящие…" : "Показаны сохранённые сообщения.");
-  $("workspaceView").innerHTML = `<div class="workspace-hero"><div><div class="section-kicker">ПЕРЕПИСКА</div><h1>Коммуникации</h1><p>Каждая заявка и компания имеют отдельную историю сообщений.</p></div><div class="workspace-actions"><button class="btn" data-dashboard-action="sync-incoming">Обновить входящие</button><button class="btn" data-dashboard-action="open-suppliers">К поставщикам</button></div></div><section class="workspace-card"><div class="workspace-card-head"><div><h2>Последние треды и входящие</h2><div class="mail-sync-banner ${failures.length ? "is-error" : ""}" id="mailSyncBanner" role="status">${escapeHtml(initialNotice)}</div></div></div>${allCards.length ? `<div class="mail-thread-list">${allCards.join("")}</div>` : `<div class="workspace-empty"><strong>Переписка пока пуста</strong><p>Отправьте первый запрос поставщику из карточки.</p></div>`}</section>`;
+  $("workspaceView").innerHTML = `<div class="workspace-hero"><div><div class="section-kicker">ПЕРЕПИСКА</div><h1>Коммуникации</h1><p>Каждая заявка и компания имеют отдельную историю сообщений.</p></div><div class="workspace-actions"><button class="btn" data-dashboard-action="sync-incoming">Обновить входящие</button><button class="btn" data-dashboard-action="open-suppliers">К поставщикам</button></div></div><div class="mail-sync-banner ${failures.length ? "is-error" : ""}" id="mailSyncBanner" role="status">${escapeHtml(initialNotice)}</div><div class="mail-workspace"><nav class="mail-list" id="mailList" aria-label="Список писем">${mailEntries.length ? mailEntries.map(mailRowHtml).join("") : `<div class="mail-list-empty">Переписка пока пуста. Отправьте первый запрос поставщику из карточки.</div>`}</nav><section class="mail-reader" id="mailReader">${mailReaderEmptyHtml()}</section></div>`;
+
+  const toSelect = mailEntries.find(entry => `${entry.kind}:${entry.id}` === activeMailKey) || mailEntries[0];
+  if (toSelect) await selectMailEntry(toSelect.kind, toSelect.id);
+
   if (!sync) return;
   // Cached data is already on screen; the slow IMAP call runs in the background and only updates the banner
   // (and re-renders once) if it actually found something new — it never blocks the view from appearing.
@@ -2316,7 +2462,7 @@ $("workspaceView").addEventListener("click", async event => {
     if (action === "open-suppliers") { await switchView("suppliers"); return; }
     if (action === "open-correspondence") { await switchView("correspondence"); return; }
     if (action === "sync-incoming") { const result = await syncIncomingMail(); toast(`Входящие проверены: добавлено ${result.imported || 0}.`); await renderCorrespondenceView({ sync: false }); return; }
-    if (action === "open-message") { openMailMessage(event.target.closest("[data-message-key]").dataset.messageKey); return; }
+    if (action === "select-mail") { const row = event.target.closest("[data-mail-kind]"); await selectMailEntry(row.dataset.mailKind, row.dataset.mailId); return; }
     if (action === "open-blacklist") { await switchView("blacklist"); return; }
     if (action === "open-request") { const id = Number(event.target.closest("[data-request-id]").dataset.requestId); if (id === 1043) await switchView("search", id); else await switchView("request", id); return; }
     if (action === "start-search") { const id = Number(event.target.closest("[data-request-id]").dataset.requestId); const result = await mailApi(`/api/requests/${id}/search`, { method: "POST", body: "{}" }); toast(result.status === "completed" ? "Поиск завершён. Откройте поставщиков, чтобы посмотреть результат." : "Поиск запущен в фоне. Можно перейти в другой раздел."); await switchView("requests"); return; }

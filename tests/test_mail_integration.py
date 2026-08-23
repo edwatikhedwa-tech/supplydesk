@@ -146,11 +146,72 @@ class MailIntegrationTests(unittest.TestCase):
         self.assertIn('href="https://oauth.yandex.ru"', rich)
         self.assertIn("noopener", rich)
 
-        # Tracking pixels are withheld until the reader opts in.
+        # Tracking pixels are withheld until the reader opts in. The URL survives
+        # as data-remote-src (already vetted by the scheme allowlist) so a
+        # per-message "show images" click can restore it client-side without a
+        # second server round trip through a second copy of the message.
         pixel = '<p>текст</p><img src="https://track.example/p.gif">'
         self.assertTrue(email_has_remote_images(pixel))
-        self.assertNotIn("<img", sanitize_email_html(pixel))
-        self.assertIn("<img", sanitize_email_html(pixel, allow_remote_images=True))
+        blocked = sanitize_email_html(pixel)
+        # "-src=" is a substring of "data-remote-src=", so the real check is the
+        # attribute name's own boundary: a space (or tag-open) right before it.
+        self.assertNotIn(' src="https://track.example/p.gif"', blocked)
+        self.assertIn('data-remote-src="https://track.example/p.gif"', blocked)
+        allowed = sanitize_email_html(pixel, allow_remote_images=True)
+        self.assertIn(' src="https://track.example/p.gif"', allowed)
+        self.assertNotIn("data-remote-src", allowed)
+
+        # A broken/unusable src (bad scheme, no attribute_filter match) removes
+        # the element entirely rather than leaving a bare <img> with nothing to
+        # show and no data-remote-src to recover from.
+        self.assertNotIn("<img", sanitize_email_html('<img src=x onerror="alert(1)">'))
+        self.assertNotIn("<img", sanitize_email_html('<img src="relative.png">'))
+
+        # More vectors nh3 must still refuse, plus the ones the img/src rules were
+        # rewritten around: inline data: images must survive; a data: *link*
+        # must not, since target="_blank" would open it as a fresh, unsandboxed
+        # document that can carry its own <script>.
+        for payload in (
+            '<meta http-equiv="refresh" content="0;url=https://evil">',
+            '<object data="https://evil"></object>',
+            '<embed src="https://evil">',
+            "<p>ok<svg><script>alert(1)</script></svg></p>",
+        ):
+            cleaned = sanitize_email_html(payload).lower()
+            for forbidden in ("<meta", "<object", "<embed", "<svg", "script"):
+                self.assertNotIn(forbidden, cleaned)
+
+        self.assertIn('src="data:image/png;base64,iVBOR"', sanitize_email_html('<img src="data:image/png;base64,iVBOR">'))
+        attack = sanitize_email_html('<a href="data:text/html,<script>alert(1)</script>">click</a>')
+        self.assertNotIn("data:", attack)
+        self.assertNotIn("<script", attack)
+
+    def test_quoted_history_is_collapsed_behind_a_toggle(self) -> None:
+        from mail.content import collapse_quoted_html, collapse_quoted_text, sanitize_email_html
+
+        reply_html = (
+            "<p>Спасибо, посмотрю.</p>"
+            "<p>22 авг. 2026 г. в 10:37, &lt;buyer@example.com&gt; написал(а):</p>"
+            "<blockquote><p>Первое сообщение, отправленное ранее по этой заявке.</p></blockquote>"
+        )
+        folded = collapse_quoted_html(sanitize_email_html(reply_html))
+        self.assertIn("Спасибо, посмотрю.", folded)
+        self.assertIn('<details class="mail-quote">', folded)
+        self.assertIn("<blockquote>", folded)  # the quoted structure is preserved, just wrapped
+        self.assertLess(folded.index("</summary>"), folded.index("<blockquote>"))
+
+        # A message with nothing quoted must not gain a toggle it doesn't need.
+        plain_reply = sanitize_email_html("<p>Согласны, ждём предложение.</p>")
+        self.assertEqual(collapse_quoted_html(plain_reply), plain_reply)
+
+        reply_text = (
+            "Спасибо, посмотрю.\n\n"
+            "22 авг. 2026 г. в 10:37, buyer@example.com написал(а):\n"
+            "> Первое сообщение\n> отправленное ранее"
+        )
+        visible = collapse_quoted_text(reply_text)
+        self.assertIn("Спасибо, посмотрю.", visible)
+        self.assertNotIn("Первое сообщение", visible)
 
     def test_stored_message_exposes_both_html_and_text_renderings(self) -> None:
         self.service.queue_one(

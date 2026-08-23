@@ -9,16 +9,27 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .auth import hash_password, new_token, token_hash
-from .content import clean_email_text, email_has_remote_images, sanitize_email_html
+from .content import (
+    clean_email_text,
+    collapse_quoted_html,
+    collapse_quoted_text,
+    email_has_remote_images,
+    sanitize_email_html,
+)
 
 
 def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
-    """Attach both renderings of a message: sanitized HTML and a plain-text fallback."""
+    """Attach both renderings of a message: sanitized HTML and a plain-text fallback.
+
+    Quote-folding runs strictly after sanitization — it only ever wraps chunks
+    that already passed the allowlist, never raw sender content.
+    """
     raw_html = row.get("body_html")
+    safe_html = sanitize_email_html(raw_html)
     return {
         **row,
-        "body_text": clean_email_text(row.get("body_text"), raw_html),
-        "body_html": sanitize_email_html(raw_html),
+        "body_text": collapse_quoted_text(clean_email_text(row.get("body_text"), raw_html)),
+        "body_html": collapse_quoted_html(safe_html),
         "has_remote_images": email_has_remote_images(raw_html),
     }
 
