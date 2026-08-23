@@ -1,0 +1,5 @@
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=4.9
+cryptography>=42,<47
+psycopg[binary]>=3.2,<4

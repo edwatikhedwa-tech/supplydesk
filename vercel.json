@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "functions": {
+    "api/**/*.py": {
+      "maxDuration": 60,
+      "includeFiles": "{supplier_finder.html,fonts/**,migrations/**}",
+      "excludeFiles": "{.env*,.git/**,.superdesign/**,artifacts/**,cache/**,tests/**,docs/**,*.png,*.zip,*.db,*.sqlite3,mail-data/**}"
+    }
+  },
+  "routes": [
+    { "src": "/(.*)", "dest": "/api/index.py" }
+  ]
+}

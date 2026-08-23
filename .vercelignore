@@ -1,0 +1,16 @@
+.env
+.env.*
+.env.backup-*
+.git/
+.superdesign/
+artifacts/
+cache/
+tests/
+docs/
+mail-data/
+*.png
+*.zip
+*.db
+*.sqlite3
+__pycache__/
+*.py[cod]

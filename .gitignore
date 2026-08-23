@@ -1,0 +1,25 @@
+# Доступы к XMLRiver — в репозиторий не попадают
+.env*
+.env.backup-*
+!.env.example
+
+# Выгрузки и рабочие данные
+results/
+*.csv
+*.json
+!vercel.json
+!skills-lock.json
+
+# Скриншоты и визуальные QA-артефакты — не источник истины, не коммитим
+artifacts/
+
+__pycache__/
+pycache/
+*.py[cod]
+.venv/
+venv/
+mail-data/
+*.sqlite3
+*.db
+
+.vercel
