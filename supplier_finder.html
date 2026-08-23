@@ -1234,6 +1234,7 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   <div class="support-card"><strong>Нужна помощь?</strong><span>Напишите команде поддержки — ответим в рабочее время.</span></div>
   <div class="user-chip"><span class="user-avatar" id="userAvatar">··</span><span class="user-copy"><strong id="userName">Гость</strong><small id="userEmail">Не авторизован</small></span><span class="user-chevron">›</span></div>
   <button class="nav-item mail-nav-item" type="button" id="openMailSettings"><span class="nav-icon">⚙</span><span>Настройки · Почта</span></button>
+  <button class="nav-item mail-nav-item" type="button" id="logoutBtn"><span class="nav-icon">⎋</span><span>Выйти</span></button>
 </aside>
 
 <div class="main-shell">
@@ -2122,6 +2123,12 @@ $("mobileMenuBtn").onclick = () => {
 
 $("openMailSettings").onclick = openSettings;
 $("mobileMailSettings").onclick = openSettings;
+$("logoutBtn").onclick = async () => {
+  try {
+    await mailApi("/api/auth/logout", { method: "POST", body: "{}" });
+  } catch (_) { /* Session may already be gone server-side; reload regardless. */ }
+  window.location.href = "/supplier_finder.html";
+};
 document.querySelectorAll("[data-close-mail]").forEach(button => button.onclick = closeMailModals);
 document.querySelectorAll(".mail-overlay").forEach(overlay => overlay.addEventListener("click", event => { if (event.target === overlay) overlay.classList.remove("on"); }));
 $("connectYandexBtn").onclick = () => { window.location.href = "/api/mail/yandex/start"; };
