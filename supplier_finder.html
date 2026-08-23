@@ -7,7 +7,7 @@
 <title>Supplydesk — Поиск поставщиков</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 
 <style>
 :root {
@@ -1364,142 +1364,6 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
     .mail-reader { min-height:420px; }
   }
 </style>
-<style id="dark-redesign">
-  /* Dark console direction, reactbits.dev-inspired: near-black surfaces, one
-     confident accent, restraint on data-dense screens. Kept as a final,
-     append-only override layer (same pattern as #polish-layer above) rather
-     than rewriting every earlier block — the safer path in a file where three
-     earlier :root blocks already disagree with each other.
-     Deliberately NOT touched: the mail-reading iframe (.mail-body-frame and
-     the mailBodyDocument() srcdoc template near the end of the script) — an
-     arbitrary sender's email assumes a white page the way it always has in
-     every mail client, and forcing it dark would make plain dark-text emails
-     unreadable. */
-
-  :root {
-    --paper:#0a0b0d; --paper-raised:#131519; --paper-inset:#1a1d22;
-    --graphite:#0a0b0d; --graphite-soft:#131519;
-    --ink:#f2f3f5; --ink-soft:#9aa0a8; --ink-muted:#68707a;
-    --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.14);
-    --cobalt:#4ea8e8; --cobalt-deep:#2f8fd6; --cobalt-wash:#13293a;
-    --green:#57d9b0; --green-wash:#153a30;
-    --amber:#e8b24b; --amber-wash:#3a2f16;
-    --red:#f0645a; --red-wash:#3a1a18;
-    --shadow-card:0 0 0 1px rgba(0,0,0,.4),0 12px 32px rgba(0,0,0,.4);
-    --shadow-float:0 0 0 1px rgba(255,255,255,.08),0 26px 70px rgba(0,0,0,.6);
-    --sidebar-glow:#57d9b0; --sidebar-glow-2:#4ea8e8;
-    --font-display:"Unbounded","Golos Text",system-ui,sans-serif;
-  }
-
-  html { background:var(--paper); }
-  body {
-    background:var(--paper); color:var(--ink);
-    font-family:"Golos Text","IBM Plex Sans",system-ui,sans-serif;
-    position:relative;
-  }
-  /* Several list rows in this file are plain <button> elements that never set
-     their own background/color, relying on the browser's default light
-     buttonface/buttontext — invisible in the old light theme, a glaring grey
-     box in this one (.detail-row was the one that actually showed it). This
-     is the systemic fix rather than chasing each row class one at a time. */
-  button { background:transparent; color:inherit; border:0; }
-  .detail-row { color:var(--ink); }
-  .detail-row:hover { background:var(--paper-inset); }
-  h1,h2,h3,.disp { font-family:var(--font-display); font-weight:700; }
-  ::selection { background:var(--green); color:#06120e; }
-
-  /* ambient glow — fixed, behind everything, ignores scroll.
-     z-index:-1 (not 0) on purpose: it must paint behind ordinary static
-     content without needing to lift .sidebar/.main-shell/.mail-overlay onto
-     their own stacking contexts — that lift previously demoted
-     .mail-overlay's position:fixed to :relative and broke the login modal. */
-  body::before, body::after {
-    content:""; position:fixed; z-index:-1; pointer-events:none; border-radius:50%;
-    width:56vw; height:56vw; filter:blur(100px); opacity:.10;
-    animation:drift 24s ease-in-out infinite alternate;
-  }
-  body::before { top:-22vw; left:-14vw; background:var(--sidebar-glow); }
-  body::after { top:-8vw; right:-20vw; background:var(--sidebar-glow-2); animation-duration:29s; animation-delay:-7s; }
-  @keyframes drift {
-    0%   { transform:translate(0,0) scale(1); }
-    50%  { transform:translate(3vw,2vw) scale(1.06); }
-    100% { transform:translate(-2vw,4vw) scale(.97); }
-  }
-
-  /* topbar / search / inputs — previously hardcoded light literals */
-  .topbar { background:rgba(10,11,13,.86); border-bottom:1px solid var(--line); backdrop-filter:blur(16px); }
-  .topbar .btn.ghost { background:var(--paper-raised); }
-  .global-search { background:var(--paper-inset); color:var(--ink-muted); }
-  .global-search-icon { color:var(--ink-muted); }
-  .global-search input::placeholder { color:var(--ink-muted); }
-  .global-search kbd { border-color:var(--line-strong); color:var(--ink-muted); }
-  .global-search:focus-within { background:var(--paper-raised); border-color:rgba(78,168,232,.35); box-shadow:0 0 0 3px rgba(78,168,232,.14); }
-  .top-icon:hover, .mobile-menu:hover { background:rgba(255,255,255,.06); }
-  select, input[type="search"], .mail-field input, .mail-field textarea,
-  .form-grid input, .form-grid textarea, .request-position-row input,
-  .reason-trigger, .request-position-remove {
-    background:var(--paper-raised); border-color:var(--line-strong); color:var(--ink);
-  }
-  select:focus, input:focus, textarea:focus { border-color:var(--cobalt); box-shadow:0 0 0 3px rgba(78,168,232,.14); }
-  .request-position-row { background:var(--paper-inset); border-color:var(--line-strong); }
-  .btn { background:var(--paper-raised); border-color:var(--line-strong); color:var(--ink); }
-  .btn:hover { background:var(--paper-inset); }
-  .btn.primary {
-    background:var(--green); border-color:var(--green); color:#06120e;
-    animation:btn-glow 2.8s ease-in-out infinite;
-  }
-  .btn.primary:hover { box-shadow:0 8px 28px -6px rgba(87,217,176,.55); }
-  @keyframes btn-glow {
-    0%,100% { box-shadow:0 0 0 0 rgba(87,217,176,.35); }
-    50%     { box-shadow:0 0 0 6px rgba(87,217,176,0); }
-  }
-
-  /* cards, panels, tables — flip hover/selected states that assumed a light ground */
-  .card:hover, .card.picked, .thread-open:hover,
-  .supplier-table tr, .workspace-table tbody tr:hover td { background:var(--paper-inset); }
-  .card.picked { box-shadow:inset 3px 0 0 var(--cobalt); }
-  .workspace-table th { background:var(--paper-inset); }
-  .ptrack, .cov-bars i, .request-progress-track { background:var(--paper-inset); }
-  .tag { background:var(--paper-inset); border-color:var(--line); }
-  /* .side (the contacts column of a supplier card) was a hardcoded near-white
-     #fafbfc — white link/mono text on it was reading as nearly invisible. */
-  .side { background:var(--paper); border-left-color:var(--line); }
-  .reason-trigger { border-color:var(--line-strong); }
-
-  /* KPI cards — Unbounded numerals + ambient hover glow, entrance stagger */
-  .kpi-card strong { font-family:var(--font-display); font-weight:700; letter-spacing:-.01em; }
-  .kpi-card, .workspace-card { position:relative; overflow:hidden; transition:transform .18s,border-color .18s; }
-  .kpi-card::before {
-    content:""; position:absolute; inset:0; opacity:.55; transition:opacity .2s; pointer-events:none;
-    background:radial-gradient(140px 90px at 16% -8%, rgba(87,217,176,.16), transparent 72%);
-  }
-  .kpi-card:hover { transform:translateY(-2px); border-color:var(--line-strong); }
-  .kpi-card:hover::before { opacity:1; }
-  .kpi-card { opacity:0; transform:translateY(8px); animation:kpi-in .45s ease forwards; }
-  .kpi-grid .kpi-card:nth-child(1) { animation-delay:.02s; }
-  .kpi-grid .kpi-card:nth-child(2) { animation-delay:.08s; }
-  .kpi-grid .kpi-card:nth-child(3) { animation-delay:.14s; }
-  .kpi-grid .kpi-card:nth-child(4) { animation-delay:.2s; }
-  @keyframes kpi-in { to { opacity:1; transform:translateY(0); } }
-
-  /* hero heading — a shimmer sweep, once per screen, not a loop that fights scanning */
-  .order-head h1, .workspace-hero h1 {
-    background:linear-gradient(100deg, var(--ink) 34%, var(--green) 47%, var(--cobalt) 53%, var(--ink) 66%);
-    background-size:240% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
-    animation:shine 1.6s ease-out 1;
-  }
-  @keyframes shine { from { background-position:180% 0; } to { background-position:0 0; } }
-
-  /* nav — glowing active indicator, matches the aurora accent */
-  .nav-item.active { box-shadow:0 0 24px -8px rgba(87,217,176,.5); }
-  .nav-item.active .nav-icon { color:var(--green); }
-  .nav-counter { background:var(--green); color:#06120e; }
-
-  @media (prefers-reduced-motion:reduce) {
-    body::before, body::after, .btn.primary, .kpi-card, .order-head h1, .workspace-hero h1 { animation:none; }
-    .kpi-card { opacity:1; transform:none; }
-  }
-</style>
 </head>
 <body>
 
@@ -2582,29 +2446,9 @@ function requestRows(items) {
 async function renderDashboardView() {
   const data = await mailApi("/api/dashboard/summary");
   const kpi = data.kpis || {};
-  $("workspaceView").innerHTML = `<div class="workspace-hero"><div><div class="section-kicker">РАБОЧИЙ СТОЛ</div><h1>Рабочий стол снабженца</h1><p>Заявки, найденные компании и коммуникации в одном месте.</p></div><div class="workspace-actions"><button class="btn primary" data-dashboard-action="new-request">+ Новая заявка</button><button class="btn" data-dashboard-action="open-mail">Настроить почту</button></div></div><div class="kpi-grid"><article class="kpi-card accent"><span class="kpi-label">Активные заявки</span><strong data-count="${kpi.active_requests || 0}">0</strong><small>черновики и текущие поиски</small></article><article class="kpi-card"><span class="kpi-label">В поиске</span><strong data-count="${kpi.searching_requests || 0}">0</strong><small>фоновая обработка</small></article><article class="kpi-card success"><span class="kpi-label">Новые ответы</span><strong data-count="${kpi.new_replies || 0}">0</strong><small>входящие в переписке</small></article><article class="kpi-card warn"><span class="kpi-label">Требуют внимания</span><strong data-count="${kpi.attention || 0}">0</strong><small>ошибки отправки</small></article></div><div class="workspace-two-col"><section class="workspace-card"><div class="workspace-card-head"><div><h2>Мои заявки</h2><p>Рабочий список по требованиям BRD</p></div><button class="btn" data-dashboard-action="open-requests">Все заявки</button></div>${requestRows(data.requests || [])}</section><section class="workspace-card"><div class="workspace-card-head"><div><h2>Быстрые действия</h2><p>Основные операции без лишних переходов</p></div></div><div class="detail-list"><button class="detail-row" data-dashboard-action="new-request"><span><strong>Создать заявку</strong><small>Добавить позиции свободным текстом</small></span><b>＋</b></button><button class="detail-row" data-dashboard-action="open-suppliers"><span><strong>База поставщиков</strong><small>Фильтры, контакты и статусы запросов</small></span><b>›</b></button><button class="detail-row" data-dashboard-action="open-correspondence"><span><strong>Переписка</strong><small>Исходящие письма и история по поставщику</small></span><b>›</b></button><button class="detail-row" data-dashboard-action="open-blacklist"><span><strong>Чёрный список</strong><small>Исключённые компании и восстановление</small></span><b>›</b></button></div></section></div>`;
+  $("workspaceView").innerHTML = `<div class="workspace-hero"><div><div class="section-kicker">РАБОЧИЙ СТОЛ</div><h1>Рабочий стол снабженца</h1><p>Заявки, найденные компании и коммуникации в одном месте.</p></div><div class="workspace-actions"><button class="btn primary" data-dashboard-action="new-request">+ Новая заявка</button><button class="btn" data-dashboard-action="open-mail">Настроить почту</button></div></div><div class="kpi-grid"><article class="kpi-card accent"><span class="kpi-label">Активные заявки</span><strong>${kpi.active_requests || 0}</strong><small>черновики и текущие поиски</small></article><article class="kpi-card"><span class="kpi-label">В поиске</span><strong>${kpi.searching_requests || 0}</strong><small>фоновая обработка</small></article><article class="kpi-card success"><span class="kpi-label">Новые ответы</span><strong>${kpi.new_replies || 0}</strong><small>входящие в переписке</small></article><article class="kpi-card warn"><span class="kpi-label">Требуют внимания</span><strong>${kpi.attention || 0}</strong><small>ошибки отправки</small></article></div><div class="workspace-two-col"><section class="workspace-card"><div class="workspace-card-head"><div><h2>Мои заявки</h2><p>Рабочий список по требованиям BRD</p></div><button class="btn" data-dashboard-action="open-requests">Все заявки</button></div>${requestRows(data.requests || [])}</section><section class="workspace-card"><div class="workspace-card-head"><div><h2>Быстрые действия</h2><p>Основные операции без лишних переходов</p></div></div><div class="detail-list"><button class="detail-row" data-dashboard-action="new-request"><span><strong>Создать заявку</strong><small>Добавить позиции свободным текстом</small></span><b>＋</b></button><button class="detail-row" data-dashboard-action="open-suppliers"><span><strong>База поставщиков</strong><small>Фильтры, контакты и статусы запросов</small></span><b>›</b></button><button class="detail-row" data-dashboard-action="open-correspondence"><span><strong>Переписка</strong><small>Исходящие письма и история по поставщику</small></span><b>›</b></button><button class="detail-row" data-dashboard-action="open-blacklist"><span><strong>Чёрный список</strong><small>Исключённые компании и восстановление</small></span><b>›</b></button></div></section></div>`;
   $("navRepliesCounter").textContent = kpi.new_replies || 0;
   $("navRepliesCounter").hidden = !(kpi.new_replies > 0);
-  animateKpiCounters();
-}
-
-function animateKpiCounters() {
-  const nodes = document.querySelectorAll(".kpi-card strong[data-count]");
-  if (!nodes.length) return;
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    nodes.forEach(el => { el.textContent = el.dataset.count; });
-    return;
-  }
-  const duration = 700;
-  const start = performance.now() + 200;
-  nodes.forEach(el => { el.textContent = "0"; });
-  function tick(now) {
-    const progress = Math.min(1, Math.max(0, (now - start) / duration));
-    const eased = 1 - Math.pow(1 - progress, 3);
-    nodes.forEach(el => { el.textContent = Math.round(eased * Number(el.dataset.count)); });
-    if (progress < 1) requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
 }
 
 async function renderRequestsView() {
