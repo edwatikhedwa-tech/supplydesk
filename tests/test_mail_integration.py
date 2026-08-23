@@ -92,6 +92,79 @@ class MailIntegrationTests(unittest.TestCase):
         self.assertEqual(consumed["code_verifier"], "verifier")
         self.assertIsNone(self.repo.consume_oauth_state("state-1", session))
 
+    def test_incoming_parser_keeps_the_senders_own_html(self) -> None:
+        # Regression: the parser used to discard the text/html part and rebuild
+        # "HTML" from the hard-wrapped plain text, which destroyed every link.
+        message = EmailMessage()
+        message["From"] = "noreply@id.yandex.ru"
+        message["To"] = "buyer@example.com"
+        message["Subject"] = "Настройки изменены"
+        message["Message-ID"] = "<rich@yandex>"
+        message.set_content("Вы обновили настройки приложения «\nB2B Platform Mail Access\n» на сервисе.")
+        message.add_alternative(
+            '<p>Вы обновили настройки приложения '
+            '<a href="https://oauth.yandex.ru/client/1">B2B Platform Mail Access</a> на сервисе.</p>'
+            "<ul><li>посмотреть историю входов</li><li>сменить пароль</li></ul>",
+            subtype="html",
+        )
+        parsed = YandexMailProvider._parse_incoming(
+            message.as_bytes(), email="buyer@example.com", uidvalidity="1", uid=7
+        )
+        self.assertIsNotNone(parsed)
+        self.assertIn('href="https://oauth.yandex.ru/client/1"', parsed.body_html)
+        self.assertIn("<li>", parsed.body_html)
+        # And the sanitized form still keeps that structure for the reader.
+        from mail.content import sanitize_email_html
+
+        cleaned = sanitize_email_html(parsed.body_html)
+        self.assertIn("<li>", cleaned)
+        self.assertIn("oauth.yandex.ru", cleaned)
+
+    def test_email_html_is_allowlisted_and_keeps_readable_structure(self) -> None:
+        from mail.content import email_has_remote_images, sanitize_email_html
+
+        for payload in (
+            "<script>alert(1)</script>",
+            '<img src="x" onerror="alert(1)">',
+            '<iframe src="https://evil"></iframe>',
+            '<form action="https://evil"><input name="pw"></form>',
+            "<svg onload=alert(1)></svg>",
+            '<p style="position:fixed">x</p>',
+        ):
+            cleaned = sanitize_email_html(payload).lower()
+            for forbidden in ("script", "onerror", "onload", "<iframe", "<form", "<svg", "style="):
+                self.assertNotIn(forbidden, cleaned)
+
+        cleaned = sanitize_email_html('<a href="javascript:alert(1)">click</a>')
+        self.assertNotIn("javascript:", cleaned)
+        self.assertIn("click", cleaned)
+
+        # Structure a reader depends on survives, and links are hardened.
+        rich = sanitize_email_html('<p>Настройки <a href="https://oauth.yandex.ru">приложения</a></p><ul><li>первое</li></ul>')
+        self.assertIn("<ul>", rich)
+        self.assertIn("<li>", rich)
+        self.assertIn('href="https://oauth.yandex.ru"', rich)
+        self.assertIn("noopener", rich)
+
+        # Tracking pixels are withheld until the reader opts in.
+        pixel = '<p>текст</p><img src="https://track.example/p.gif">'
+        self.assertTrue(email_has_remote_images(pixel))
+        self.assertNotIn("<img", sanitize_email_html(pixel))
+        self.assertIn("<img", sanitize_email_html(pixel, allow_remote_images=True))
+
+    def test_stored_message_exposes_both_html_and_text_renderings(self) -> None:
+        self.service.queue_one(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"], request_id=1043,
+            supplier={"name": "ООО Тест", "email": "one@example.com", "host": "one.example"},
+            subject="Запрос", body="Здравствуйте!",
+        )
+        supplier = next(item for item in self.repo.list_suppliers(self.user["workspace_id"], None) if item["host"] == "one.example")
+        messages = self.repo.thread_messages(self.user["workspace_id"], 1043, supplier["id"])
+        self.assertTrue(messages)
+        self.assertIn("body_html", messages[0])
+        self.assertIn("has_remote_images", messages[0])
+        self.assertIn("Здравствуйте", messages[0]["body_text"])
+
     def test_oauth_login_state_is_one_time_and_not_bound_to_a_session(self) -> None:
         self.repo.create_oauth_login_state(state="login-state-1", code_verifier="verifier", redirect_uri="http://localhost/callback")
         self.assertIsNone(self.repo.consume_oauth_login_state("wrong-state"))

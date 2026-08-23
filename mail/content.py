@@ -22,6 +22,84 @@ _CSS_SELECTOR_PREFIX_RE = re.compile(
 )
 
 
+# Tags an email may keep. Everything structural and inline that carries meaning
+# or layout; nothing that can execute, embed, or phone home on its own.
+_ALLOWED_TAGS = {
+    "p", "br", "div", "span", "a", "b", "strong", "i", "em", "u", "s", "sub", "sup",
+    "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "pre", "code", "hr",
+    "ul", "ol", "li", "dl", "dt", "dd",
+    "table", "thead", "tbody", "tfoot", "tr", "td", "th", "caption", "colgroup", "col",
+    "img", "figure", "figcaption", "small", "center", "font",
+}
+# Attributes kept per tag. `style` is deliberately excluded: it is the main vector
+# for layout-breaking and de-anonymising tricks, and emails survive without it.
+_ALLOWED_ATTRS = {
+    "a": {"href", "title"},
+    "img": {"src", "alt", "width", "height"},
+    "td": {"colspan", "rowspan", "align", "valign"},
+    "th": {"colspan", "rowspan", "align", "valign"},
+    "table": {"align", "width", "border", "cellpadding", "cellspacing"},
+    "col": {"span", "width"},
+    "colgroup": {"span", "width"},
+    "font": {"color", "size"},
+}
+_SAFE_URL_SCHEMES = ("http://", "https://", "mailto:", "tel:")
+
+
+def sanitize_email_html(value: str | None, *, allow_remote_images: bool = False) -> str:
+    """Return an allowlisted fragment of an untrusted email body.
+
+    This is the inner layer of a two-layer defence: the browser renders the result
+    inside a fully sandboxed iframe, so scripts cannot run even if something slips
+    through here. Remote images stay blocked by default because a message body is
+    the classic place to hide a tracking pixel.
+    """
+
+    if not value:
+        return ""
+    soup = BeautifulSoup(value, "html.parser")
+
+    for node in soup(["script", "style", "head", "title", "meta", "link", "base",
+                      "iframe", "frame", "frameset", "object", "embed", "applet",
+                      "form", "input", "button", "select", "textarea", "svg", "math"]):
+        node.decompose()
+
+    for node in list(soup.find_all(True)):
+        name = node.name.lower()
+        if name not in _ALLOWED_TAGS:
+            node.unwrap()  # keep the words, drop the wrapper
+            continue
+        allowed = _ALLOWED_ATTRS.get(name, set())
+        for attribute in list(node.attrs):
+            if attribute.lower() not in allowed:
+                del node[attribute]
+        href = (node.get("href") or "").strip()
+        if href and not href.lower().startswith(_SAFE_URL_SCHEMES):
+            del node["href"]
+        if name == "a" and node.get("href"):
+            node["rel"] = "noopener noreferrer nofollow"
+            node["target"] = "_blank"
+        if name == "img":
+            source = (node.get("src") or "").strip().lower()
+            inline = source.startswith("data:image/")
+            remote = source.startswith(("http://", "https://"))
+            # Keep only inline images, plus remote ones when the reader opts in.
+            # Anything else (cid:, relative, javascript:) cannot render here anyway.
+            if not (inline or (remote and allow_remote_images)):
+                node.decompose()
+    return str(soup)
+
+
+def email_has_remote_images(value: str | None) -> bool:
+    """Report whether blocking remote images actually hid anything."""
+
+    if not value:
+        return False
+    soup = BeautifulSoup(value, "html.parser")
+    return any((tag.get("src") or "").strip().lower().startswith(("http://", "https://"))
+               for tag in soup.find_all("img"))
+
+
 def html_to_text(value: str | None) -> str:
     """Extract readable text while excluding presentation and executable nodes."""
 

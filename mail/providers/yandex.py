@@ -195,7 +195,8 @@ class YandexMailProvider(MailProvider):
         to_email = (to_email or email).strip().lower()
         if "@" not in from_email:
             return None
-        body_text = cls._extract_text(message)[:100_000]
+        body_text, source_html = cls._extract_bodies(message)
+        body_text = body_text[:100_000]
         subject = str(message.get("Subject", "(без темы)"))[:500]
         received_at = datetime.now(timezone.utc)
         raw_date = message.get("Date")
@@ -210,7 +211,10 @@ class YandexMailProvider(MailProvider):
             message_id = f"<imap-{uidvalidity}-{uid}@yandex>"
         in_reply_to = str(message.get("In-Reply-To", "")).strip()[:500] or None
         references = str(message.get("References", "")).strip()[:2000] or None
-        body_html = f"<p>{escape(body_text).replace(chr(10), '<br>')}</p>"
+        # Keep the sender's own HTML when the message carries one. Rebuilding it from
+        # the hard-wrapped text/plain part destroys links, lists and tables — the
+        # reader then sees prose broken at arbitrary column widths.
+        body_html = source_html[:400_000] if source_html else f"<p>{escape(body_text).replace(chr(10), '<br>')}</p>"
         return IncomingMessage(
             provider_message_id=f"imap:INBOX:{uidvalidity}:{uid}",
             message_id=message_id,
@@ -224,8 +228,13 @@ class YandexMailProvider(MailProvider):
             received_at=received_at,
         )
 
+    @classmethod
+    def _extract_text(cls, message) -> str:
+        return cls._extract_bodies(message)[0]
+
     @staticmethod
-    def _extract_text(message) -> str:
+    def _extract_bodies(message) -> tuple[str, str]:
+        """Return (plain text, original HTML). Either may be empty."""
         plain: list[str] = []
         html: list[str] = []
         parts = message.walk() if message.is_multipart() else [message]
@@ -243,11 +252,12 @@ class YandexMailProvider(MailProvider):
                 plain.append(content)
             else:
                 html.append(content)
+        source_html = html[0] if html else ""
         if plain:
-            return "\n\n".join(plain).strip()
-        if html:
-            return html_to_text(html[0])
-        return ""
+            return "\n\n".join(plain).strip(), source_html
+        if source_html:
+            return html_to_text(source_html), source_html
+        return "", ""
 
     def send_message(self, access_token: str, message: OutgoingMessage) -> SendResult:
         if message.from_email.lower() != message.from_email.strip().lower():

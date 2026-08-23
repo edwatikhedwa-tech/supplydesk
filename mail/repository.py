@@ -9,7 +9,18 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .auth import hash_password, new_token, token_hash
-from .content import clean_email_text
+from .content import clean_email_text, email_has_remote_images, sanitize_email_html
+
+
+def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
+    """Attach both renderings of a message: sanitized HTML and a plain-text fallback."""
+    raw_html = row.get("body_html")
+    return {
+        **row,
+        "body_text": clean_email_text(row.get("body_text"), raw_html),
+        "body_html": sanitize_email_html(raw_html),
+        "has_remote_images": email_has_remote_images(raw_html),
+    }
 
 
 UTC = timezone.utc
@@ -488,10 +499,7 @@ class MailRepository:
                    ORDER BY received_at DESC, id DESC LIMIT ?""",
                 (workspace_id, limit),
             ).fetchall()
-        return [
-            {**dict(row), "body_text": clean_email_text(row["body_text"], row["body_html"])}
-            for row in rows
-        ]
+        return [_readable_message(dict(row)) for row in rows]
 
     @classmethod
     def _find_incoming_thread(cls, connection: sqlite3.Connection, workspace_id: int, account_id: int, incoming: Any) -> dict[str, int] | None:
@@ -969,7 +977,4 @@ class MailRepository:
                 "SELECT id, direction, from_email, to_email, subject, body_text, body_html, status, error, message_id, in_reply_to, references_header, created_at, sent_at FROM mail_messages WHERE workspace_id=? AND request_id=? AND supplier_id=? ORDER BY created_at",
                 (workspace_id, request_id, supplier_id),
             ).fetchall()
-        return [
-            {**dict(row), "body_text": clean_email_text(row["body_text"], row["body_html"])}
-            for row in rows
-        ]
+        return [_readable_message(dict(row)) for row in rows]
