@@ -45,13 +45,37 @@ def load_dotenv(path: Path) -> None:
             os.environ[key] = value
 
 
+_DATA_MARKER = "const DATA = "
+_DATA_END_MARKER = ";\n\nconst $"
+
+# Static files anyone may fetch without a session. Everything else under ROOT
+# (application source, migrations, .env*, etc.) must never be reachable over HTTP.
+PUBLIC_STATIC_FILES = {
+    "/fonts/ProcureSans-Regular.otf",
+    "/fonts/ProcureSans-Semibold.otf",
+}
+
+
+def _data_blob_span(html: str) -> tuple[int, int]:
+    start = html.index(_DATA_MARKER) + len(_DATA_MARKER)
+    end = html.index(_DATA_END_MARKER, start)
+    return start, end
+
+
 def load_fixture_data() -> dict:
     """Read the current result fixture once so dashboard data is backed by SQLite."""
     html = (ROOT / "supplier_finder.html").read_text(encoding="utf-8")
-    marker = "const DATA = "
-    start = html.index(marker) + len(marker)
-    end = html.index(";\n\nconst $", start)
+    start, end = _data_blob_span(html)
     return json.loads(html[start:end])
+
+
+def render_app_shell(*, authenticated: bool) -> str:
+    """Serve the SPA shell. Anonymous requests never receive real supplier data."""
+    html = (ROOT / "supplier_finder.html").read_text(encoding="utf-8")
+    if authenticated:
+        return html
+    start, end = _data_blob_span(html)
+    return html[:start] + '{"positions":[],"suppliers":[]}' + html[end:]
 
 
 @dataclass(frozen=True)
@@ -118,20 +142,23 @@ class SupplierHandler(SimpleHTTPRequestHandler):
         # Do not log query strings: OAuth callbacks and user email data can be present there.
         print(f"[{self.log_date_time_string()}] {self.command} {self.path.split('?', 1)[0]} {args[1] if len(args) > 1 else ''}")
 
-    def end_headers(self) -> None:
-        # The HTML contains the application shell and inline JavaScript. Do not let a browser
-        # keep an older shell after a deployment with changed API/UI behavior.
-        if self.path.split("?", 1)[0] in {"/", "/supplier_finder.html"}:
-            self.send_header("Cache-Control", "no-store, max-age=0")
-        super().end_headers()
-
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path == "/":
             self._redirect("/supplier_finder.html")
             return
+        if parsed.path == "/supplier_finder.html":
+            self._serve_app_shell()
+            return
+        if parsed.path in PUBLIC_STATIC_FILES:
+            self.directory = str(ROOT)
+            super().do_GET()
+            return
         if parsed.path == "/api/auth/me":
             self._auth_me()
+            return
+        if parsed.path == "/api/auth/yandex/start":
+            self._auth_yandex_start()
             return
         if parsed.path == "/api/dashboard/summary":
             session = self._require_session()
@@ -211,8 +238,7 @@ class SupplierHandler(SimpleHTTPRequestHandler):
         if parsed.path == "/oauth/yandex/callback":
             self._oauth_callback(parse_qs(parsed.query))
             return
-        self.directory = str(ROOT)
-        super().do_GET()
+        self._json(404, {"error": "Не найдено."})
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
@@ -317,6 +343,17 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             headers={"Set-Cookie": f"session_id={session_token}; Path=/; Max-Age=28800; HttpOnly; SameSite=Lax" + ("; Secure" if self.app.config.session_cookie_secure else "")},
         )
 
+    def _serve_app_shell(self) -> None:
+        session = self.app.repository.get_session(self._session_token())
+        body = self.app.render_app_shell(authenticated=bool(session)).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        # Do not let a browser keep an older shell, or another user's data, after this response.
+        self.send_header("Cache-Control", "no-store, max-age=0")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def _auth_me(self) -> None:
         session = self.app.repository.get_session(self._session_token())
         if not session:
@@ -324,30 +361,61 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             return
         self._json(200, {"authenticated": True, "csrf_token": self._csrf_token_for_session(session), "user": self._public_user(session)})
 
+    def _pkce_pair(self) -> tuple[str, str]:
+        code_verifier = new_token(48)
+        code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).rstrip(b"=").decode()
+        return code_verifier, code_challenge
+
+    def _auth_yandex_start(self) -> None:
+        """Begin 'Sign in with Yandex'. No existing session is required or possible yet."""
+        try:
+            provider = yandex_provider_factory("yandex")
+            state = new_token(32)
+            code_verifier, code_challenge = self._pkce_pair()
+            self.app.repository.create_oauth_login_state(state=state, code_verifier=code_verifier, redirect_uri=self.app.config.redirect_uri)
+            self.send_response(HTTPStatus.FOUND)
+            self.send_header("Location", provider.authorization_url(redirect_uri=self.app.config.redirect_uri, state=state, code_challenge=code_challenge))
+            self.send_header(
+                "Set-Cookie",
+                f"oauth_login_state={state}; Path=/oauth/yandex/callback; Max-Age=600; HttpOnly; SameSite=Lax"
+                + ("; Secure" if self.app.config.session_cookie_secure else ""),
+            )
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+        except ProviderError:
+            self._redirect("/supplier_finder.html?login_error=not_configured")
+
     def _oauth_start(self) -> None:
         session = self._require_session()
         if not session:
             return
         try:
             provider = yandex_provider_factory("yandex")
+            code_verifier, code_challenge = self._pkce_pair()
             state = new_token(32)
-            code_verifier = new_token(48)
-            code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).rstrip(b"=").decode()
             self.app.repository.create_oauth_state(
                 state=state, session_token=self._session_token(), user_id=session["user_id"], workspace_id=session["workspace_id"],
                 code_verifier=code_verifier, redirect_uri=self.app.config.redirect_uri,
             )
             self._redirect(provider.authorization_url(redirect_uri=self.app.config.redirect_uri, state=state, code_challenge=code_challenge))
-        except ProviderError as exc:
+        except ProviderError:
             self._redirect("/supplier_finder.html?settings=mail&mail_error=not_configured")
 
     def _oauth_callback(self, query: dict[str, list[str]]) -> None:
-        session_token = self._session_token()
         state = (query.get("state") or [""])[0]
-        callback_state = self.app.repository.consume_oauth_state(state, session_token) if state else None
-        if not callback_state:
-            self._redirect("/supplier_finder.html?settings=mail&mail_error=invalid_state")
+        session_token = self._session_token()
+        connect_state = self.app.repository.consume_oauth_state(state, session_token) if state and session_token else None
+        if connect_state:
+            self._finish_mail_connect_callback(connect_state, query)
             return
+        login_cookie_state = self._cookie("oauth_login_state")
+        login_state = self.app.repository.consume_oauth_login_state(state) if state and login_cookie_state and login_cookie_state == state else None
+        if login_state:
+            self._finish_login_callback(login_state, query)
+            return
+        self._redirect("/supplier_finder.html?login_error=invalid_state")
+
+    def _finish_mail_connect_callback(self, callback_state: dict, query: dict[str, list[str]]) -> None:
         if query.get("error"):
             self._redirect("/supplier_finder.html?settings=mail&mail_error=access_denied")
             return
@@ -365,6 +433,39 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             self._redirect("/supplier_finder.html?settings=mail&connected=true")
         except (ProviderError, ValueError, EncryptionConfigError):
             self._redirect("/supplier_finder.html?settings=mail&mail_error=connection_failed")
+
+    def _finish_login_callback(self, login_state: dict, query: dict[str, list[str]]) -> None:
+        clear_cookie = "oauth_login_state=; Path=/oauth/yandex/callback; Max-Age=0; HttpOnly; SameSite=Lax"
+        if query.get("error"):
+            self._redirect_with_cookie("/supplier_finder.html?login_error=access_denied", clear_cookie)
+            return
+        code = (query.get("code") or [""])[0]
+        if not code:
+            self._redirect_with_cookie("/supplier_finder.html?login_error=missing_code", clear_cookie)
+            return
+        try:
+            provider = yandex_provider_factory("yandex")
+            tokens = provider.exchange_code(code, redirect_uri=login_state["redirect_uri"], code_verifier=login_state["code_verifier"])
+            account = provider.get_account(tokens.access_token)
+            user = self.app.repository.get_or_create_oauth_user(account.email, account.display_name)
+            session_token, _csrf_token = self.app.repository.create_session(user["id"], user["workspace_id"])
+            try:
+                # A bonus of logging in with Yandex: the same OAuth grant connects the mailbox.
+                # Login must still succeed even if encryption isn't configured for mail storage.
+                self.app.service.save_oauth_tokens(user_id=user["id"], workspace_id=user["workspace_id"], token_set=tokens, email=account.email)
+            except (ProviderError, ValueError, EncryptionConfigError):
+                pass
+            self.send_response(HTTPStatus.FOUND)
+            self.send_header("Location", "/supplier_finder.html")
+            self.send_header(
+                "Set-Cookie",
+                f"session_id={session_token}; Path=/; Max-Age=28800; HttpOnly; SameSite=Lax" + ("; Secure" if self.app.config.session_cookie_secure else ""),
+            )
+            self.send_header("Set-Cookie", clear_cookie)
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+        except (ProviderError, ValueError, EncryptionConfigError):
+            self._redirect_with_cookie("/supplier_finder.html?login_error=connection_failed", clear_cookie)
 
     def _thread_messages(self, session: dict, query: dict[str, list[str]]) -> None:
         try:
@@ -459,10 +560,13 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             return None
         return data
 
-    def _session_token(self) -> str:
+    def _cookie(self, name: str) -> str:
         cookie = SimpleCookie()
         cookie.load(self.headers.get("Cookie", ""))
-        return cookie.get("session_id").value if cookie.get("session_id") else ""
+        return cookie.get(name).value if cookie.get(name) else ""
+
+    def _session_token(self) -> str:
+        return self._cookie("session_id")
 
     def _csrf_token_for_session(self, session: dict) -> str:
         # The token is derived from the opaque session cookie and is never persisted in plaintext.
@@ -488,8 +592,18 @@ class SupplierHandler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
 
+    def _redirect_with_cookie(self, location: str, cookie: str) -> None:
+        self.send_response(HTTPStatus.FOUND)
+        self.send_header("Location", location)
+        self.send_header("Set-Cookie", cookie)
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+
 
 class SupplierApp:
+    def render_app_shell(self, *, authenticated: bool) -> str:
+        return render_app_shell(authenticated=authenticated)
+
     def __init__(self, config: Config) -> None:
         self.config = config
         self.repository = MailRepository(config.db_path)

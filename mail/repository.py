@@ -659,6 +659,58 @@ class MailRepository:
             connection.commit()
             return dict(row)
 
+    def create_oauth_login_state(self, *, state: str, code_verifier: str, redirect_uri: str) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO oauth_login_states(state_hash, code_verifier, redirect_uri, expires_at, created_at) VALUES (?, ?, ?, ?, ?)",
+                (token_hash(state), code_verifier, redirect_uri, iso_after(600), iso_now()),
+            )
+
+    def consume_oauth_login_state(self, state: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT * FROM oauth_login_states WHERE state_hash = ? AND used_at IS NULL AND expires_at > ?",
+                (token_hash(state), iso_now()),
+            ).fetchone()
+            if row is None:
+                connection.rollback()
+                return None
+            connection.execute("UPDATE oauth_login_states SET used_at = ? WHERE state_hash = ?", (iso_now(), token_hash(state)))
+            connection.commit()
+            return dict(row)
+
+    def get_or_create_oauth_user(self, email: str, display_name: str | None) -> dict[str, Any]:
+        email = email.strip().lower()
+        now = iso_now()
+        with self.connect() as connection:
+            row = connection.execute("SELECT id, email, display_name FROM users WHERE email = ?", (email,)).fetchone()
+            if row is None:
+                # No password login is possible for an OAuth-only account, so store an
+                # unguessable, unused hash rather than relaxing the NOT NULL column.
+                connection.execute(
+                    "INSERT INTO users(email, display_name, password_hash, created_at) VALUES (?, ?, ?, ?)",
+                    (email, (display_name or email.split("@", 1)[0]).strip() or email, hash_password(new_token(32)), now),
+                )
+                row = connection.execute("SELECT id, email, display_name FROM users WHERE email = ?", (email,)).fetchone()
+            workspace = connection.execute(
+                "SELECT w.id FROM workspaces w JOIN workspace_members wm ON wm.workspace_id = w.id WHERE wm.user_id = ? ORDER BY w.id LIMIT 1",
+                (row["id"],),
+            ).fetchone()
+            if workspace is None:
+                connection.execute(
+                    "INSERT INTO workspaces(name, created_at) VALUES (?, ?)",
+                    ("Рабочее пространство снабжения", now),
+                )
+                workspace_id = connection.execute("SELECT last_insert_rowid()").fetchone()[0]
+                connection.execute(
+                    "INSERT INTO workspace_members(workspace_id, user_id, role) VALUES (?, ?, 'owner')",
+                    (workspace_id, row["id"]),
+                )
+            else:
+                workspace_id = workspace["id"]
+            return {"id": row["id"], "email": row["email"], "display_name": row["display_name"], "workspace_id": workspace_id}
+
     def get_mail_account(self, user_id: int, workspace_id: int, provider: str = "yandex") -> dict[str, Any] | None:
         with self.connect() as connection:
             row = connection.execute(

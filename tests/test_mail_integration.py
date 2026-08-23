@@ -92,6 +92,22 @@ class MailIntegrationTests(unittest.TestCase):
         self.assertEqual(consumed["code_verifier"], "verifier")
         self.assertIsNone(self.repo.consume_oauth_state("state-1", session))
 
+    def test_oauth_login_state_is_one_time_and_not_bound_to_a_session(self) -> None:
+        self.repo.create_oauth_login_state(state="login-state-1", code_verifier="verifier", redirect_uri="http://localhost/callback")
+        self.assertIsNone(self.repo.consume_oauth_login_state("wrong-state"))
+        consumed = self.repo.consume_oauth_login_state("login-state-1")
+        self.assertEqual(consumed["code_verifier"], "verifier")
+        self.assertIsNone(self.repo.consume_oauth_login_state("login-state-1"))
+
+    def test_yandex_login_finds_or_creates_a_user_without_a_usable_password(self) -> None:
+        created = self.repo.get_or_create_oauth_user("New.Buyer@Example.com", "Новый снабженец")
+        self.assertIsNone(self.repo.authenticate("new.buyer@example.com", ""))
+        self.assertIsNone(self.repo.authenticate("new.buyer@example.com", "any-guessed-password"))
+        again = self.repo.get_or_create_oauth_user("new.buyer@example.com", "Новый снабженец")
+        self.assertEqual(created["id"], again["id"])
+        self.assertEqual(created["workspace_id"], again["workspace_id"])
+        self.assertNotEqual(created["workspace_id"], self.user["workspace_id"])
+
     def test_queue_creates_separate_thread_and_message_for_each_supplier(self) -> None:
         result = self.service.queue_bulk(
             user_id=self.user["id"], workspace_id=self.user["workspace_id"], request_id=1043,

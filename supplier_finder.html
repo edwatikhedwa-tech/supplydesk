@@ -762,6 +762,10 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .mail-recipient-chip { padding:6px 9px; border-radius:999px; background:var(--accent-bg); color:var(--accent); font-size:12px; }
   .mail-login-copy { max-width:410px; }
   .mail-login-copy h2 { font-size:26px; }
+  .login-yandex-btn { display:flex; align-items:center; justify-content:center; width:100%; text-decoration:none; box-sizing:border-box; }
+  .login-fallback { margin-top:18px; border-top:1px solid var(--line); padding-top:14px; }
+  .login-fallback summary { cursor:pointer; font-size:12.5px; color:var(--muted); }
+  .login-fallback form { margin-top:12px; }
   .mail-inline-muted { color:var(--muted); font-size:12px; }
   #mobileMailSettings { display:none; }
   @media (max-width:640px) {
@@ -1210,8 +1214,8 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
 <aside class="sidebar" aria-label="Навигация Supplydesk">
   <div class="brand brand-sidebar"><span class="brand-mark"><span></span></span><span>Supply<span>desk</span></span></div>
   <div class="workspace-switcher">
-    <span class="workspace-avatar">ТС</span>
-    <span class="workspace-copy"><strong>ТехноСтрой Север</strong><small>Рабочее пространство</small></span>
+    <span class="workspace-avatar" id="workspaceAvatar">··</span>
+    <span class="workspace-copy"><strong id="workspaceName">Рабочее пространство</strong><small>Снабжение</small></span>
     <span class="workspace-chevron">⌄</span>
   </div>
   <div class="nav-label">Работа</div>
@@ -1228,7 +1232,7 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   </nav>
   <div class="sidebar-spacer"></div>
   <div class="support-card"><strong>Нужна помощь?</strong><span>Напишите команде поддержки — ответим в рабочее время.</span></div>
-  <div class="user-chip"><span class="user-avatar">АК</span><span class="user-copy"><strong>Анна Крылова</strong><small>Снабженец</small></span><span class="user-chevron">›</span></div>
+  <div class="user-chip"><span class="user-avatar" id="userAvatar">··</span><span class="user-copy"><strong id="userName">Гость</strong><small id="userEmail">Не авторизован</small></span><span class="user-chevron">›</span></div>
   <button class="nav-item mail-nav-item" type="button" id="openMailSettings"><span class="nav-icon">⚙</span><span>Настройки · Почта</span></button>
 </aside>
 
@@ -1377,13 +1381,19 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
 <div class="mail-overlay" id="mailLoginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
   <section class="mail-dialog mail-login-copy">
     <div class="mail-dialog-head"><div><div class="section-kicker">SUPPLYDESK</div><h2 id="loginTitle">Вход в кабинет снабженца</h2></div></div>
-    <form class="mail-dialog-body" id="loginForm">
-      <p class="mail-dialog-note">В текущем прототипе серверной авторизации ещё не было, поэтому для локального запуска используется учётная запись из <code>.env</code>.</p>
-      <div class="mail-field"><label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="username" required></div>
-      <div class="mail-field"><label for="loginPassword">Пароль</label><input id="loginPassword" type="password" autocomplete="current-password" required></div>
-      <div class="mail-dialog-actions"><button class="btn primary" type="submit">Войти</button></div>
+    <div class="mail-dialog-body">
+      <p class="mail-dialog-note">Войдите через аккаунт Яндекса — тот же вход откроет доступ к данным и позволит подключить рабочую почту.</p>
+      <a class="btn primary login-yandex-btn" id="yandexLoginBtn" href="/api/auth/yandex/start">Войти через Яндекс</a>
       <p class="mail-feedback" id="loginFeedback" aria-live="polite"></p>
-    </form>
+      <details class="login-fallback">
+        <summary>Локальный вход для разработки</summary>
+        <form id="loginForm">
+          <div class="mail-field"><label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="username" required></div>
+          <div class="mail-field"><label for="loginPassword">Пароль</label><input id="loginPassword" type="password" autocomplete="current-password" required></div>
+          <div class="mail-dialog-actions"><button class="btn" type="submit">Войти локально</button></div>
+        </form>
+      </details>
+    </div>
   </section>
 </div>
 
@@ -2154,14 +2164,35 @@ document.addEventListener("click", event => {
   if (supplier && supplier.emails && supplier.emails[0]) openComposer([supplier]);
 });
 
+function applyAccountIdentity(user) {
+  const initials = (name) => (name || "").trim().split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase() || "··";
+  $("workspaceAvatar").textContent = initials(user.workspace_name);
+  $("workspaceName").textContent = user.workspace_name || "Рабочее пространство";
+  $("userAvatar").textContent = initials(user.display_name || user.email);
+  $("userName").textContent = user.display_name || user.email;
+  $("userEmail").textContent = user.email;
+}
+
 (async function initMailIntegration() {
+  const query = new URLSearchParams(window.location.search);
+  const loginError = query.get("login_error");
+  if (loginError) {
+    const loginErrors = {
+      not_configured: "Администратор ещё не добавил Yandex Client ID и Client Secret в ENV.",
+      access_denied: "Вход отменён в Яндексе.",
+      invalid_state: "Сессия входа истекла или уже была использована. Начните вход заново.",
+      missing_code: "Яндекс не вернул код авторизации. Начните вход заново.",
+      connection_failed: "Не удалось завершить вход через Яндекс. Попробуйте ещё раз."
+    };
+    setMailFeedback("loginFeedback", loginErrors[loginError] || "Не удалось завершить вход через Яндекс.");
+  }
   try {
     const response = await mailApi("/api/auth/me");
     if (!response.authenticated) { openMailModal("mailLoginModal"); return; }
     mailClient.authenticated = true;
     mailClient.csrf = response.csrf_token || "";
+    applyAccountIdentity(response.user);
     await loadMailStatus();
-    const query = new URLSearchParams(window.location.search);
     if (query.get("settings") === "mail" || query.get("connected") === "true" || query.get("mail_error")) {
       openSettings();
       if (query.get("connected") === "true") setMailFeedback("mailSettingsFeedback", "Почта успешно подключена.", false);
