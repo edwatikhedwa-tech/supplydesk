@@ -791,8 +791,7 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
 
   /* Login portal: no card, no white — the sign-in action lives inside a glowing orb on the radar. */
   .login-portal { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; text-align:center; max-width:360px; padding:0 20px; }
-  .login-portal-kicker { font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:rgba(229,241,238,.5); }
-  .login-portal-title { margin:8px 0 34px; font-family:"Golos Text",sans-serif; font-size:26px; font-weight:700; letter-spacing:-.02em; color:#F4FAF7; }
+  .login-portal-kicker { margin-bottom:34px; font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:rgba(229,241,238,.5); }
 
   .login-orb { position:relative; display:block; width:216px; height:216px; text-decoration:none; -webkit-tap-highlight-color:transparent; }
   .login-orb-glow {
@@ -1435,11 +1434,10 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   </section>
 </div>
 
-<div class="mail-overlay" id="mailLoginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+<div class="mail-overlay" id="mailLoginModal" role="dialog" aria-modal="true" aria-label="Вход в кабинет снабженца">
   <div class="login-radar" aria-hidden="true"><div class="login-radar-center"></div></div>
   <div class="login-portal">
     <div class="login-portal-kicker">SUPPLYDESK</div>
-    <h2 class="login-portal-title" id="loginTitle">Вход в кабинет снабженца</h2>
     <a class="login-orb" id="yandexLoginBtn" href="/api/auth/yandex/start" aria-label="Войти с помощью Яндекса">
       <span class="login-orb-glow" aria-hidden="true"></span>
       <span class="login-orb-core">
@@ -2071,30 +2069,26 @@ function mailApiQuick(path, options = {}, timeoutMs = 2200) {
 }
 
 async function syncIncomingMail() {
-  return await mailApiQuick("/api/mail/sync", { method: "POST", body: "{}" }, 1200);
+  // A real IMAP round-trip to Yandex, not a local call — give it real time instead of racing a UI timeout.
+  return await mailApiQuick("/api/mail/sync", { method: "POST", body: "{}" }, 15000);
+}
+
+function setMailSyncBanner(text, isError) {
+  const node = $("mailSyncBanner");
+  if (!node) return;
+  node.textContent = text;
+  node.classList.toggle("is-error", !!isError);
+  node.classList.toggle("is-ok", !isError);
 }
 
 async function renderCorrespondenceView({ sync = true } = {}) {
-  let syncNotice = "";
-  let syncError = false;
-  if (sync) {
-    try {
-      const result = await syncIncomingMail();
-      syncNotice = `Проверено входящих: ${result.scanned || 0}, добавлено новых: ${result.imported || 0}${result.unmatched ? `, без привязки к заявке: ${result.unmatched}` : ""}.`;
-    } catch (error) {
-      syncNotice = error.message;
-      syncError = true;
-    }
-  }
   const failures = [];
   let threads = [];
   let inbox = [];
-  try { threads = (await mailApiQuick("/api/correspondence")).items || []; }
+  try { threads = (await mailApi("/api/correspondence")).items || []; }
   catch (error) { failures.push(`История переписки: ${error.message}`); }
-  try { inbox = (await mailApiQuick("/api/mail/inbox")).items || []; }
+  try { inbox = (await mailApi("/api/mail/inbox")).items || []; }
   catch (error) { failures.push(`Входящие: ${error.message}`); }
-  if (failures.length && !syncNotice) syncNotice = failures.join(" ");
-  if (failures.length) syncError = true;
   mailMessageStore.clear();
   const inboxCards = inbox.map(item => `<article class="thread-card inbox-card"><div class="thread-card-head"><div><h3>Неразобранное входящее</h3><p>${escapeHtml(item.from_email)} · ${formatDate(item.received_at)}</p></div>${statusBadge("received")}</div><div class="thread-card-subject">${escapeHtml(item.subject || "Без темы")}</div>${mailMessageMarkup(item, "Входящее письмо")}</article>`);
   const cards = await Promise.all(threads.map(async thread => {
@@ -2103,7 +2097,18 @@ async function renderCorrespondenceView({ sync = true } = {}) {
     return `<article class="thread-card"><div class="thread-card-head"><div><h3>${escapeHtml(thread.supplier_name)}</h3><p>${escapeHtml(thread.supplier_email)} · заявка № ${thread.request_id} · ${thread.messages_count} сообщений</p></div>${statusBadge(last?.status || "sent")}</div><div class="thread-card-subject">${escapeHtml(thread.subject || "Без темы")} · ${formatDate(thread.last_message_at)}</div>${last ? mailMessageMarkup(last, `${last.direction === "inbound" ? "Входящее" : "Исходящее"} · ${last.from_email}`) : ""}</article>`;
   }));
   const allCards = [...inboxCards, ...cards];
-  $("workspaceView").innerHTML = `<div class="workspace-hero"><div><div class="section-kicker">ПЕРЕПИСКА</div><h1>Коммуникации</h1><p>Каждая заявка и компания имеют отдельную историю сообщений.</p></div><div class="workspace-actions"><button class="btn" data-dashboard-action="sync-incoming">Обновить входящие</button><button class="btn" data-dashboard-action="open-suppliers">К поставщикам</button></div></div><section class="workspace-card"><div class="workspace-card-head"><div><h2>Последние треды и входящие</h2><div class="mail-sync-banner ${syncError ? "is-error" : syncNotice ? "is-ok" : ""}" role="status">${escapeHtml(syncNotice || "Показаны сохранённые сообщения.")}</div></div></div>${allCards.length ? `<div class="mail-thread-list">${allCards.join("")}</div>` : `<div class="workspace-empty"><strong>Переписка пока пуста</strong><p>Отправьте первый запрос поставщику из карточки.</p></div>`}</section>`;
+  const initialNotice = failures.length ? failures.join(" ") : (sync ? "Проверяем входящие…" : "Показаны сохранённые сообщения.");
+  $("workspaceView").innerHTML = `<div class="workspace-hero"><div><div class="section-kicker">ПЕРЕПИСКА</div><h1>Коммуникации</h1><p>Каждая заявка и компания имеют отдельную историю сообщений.</p></div><div class="workspace-actions"><button class="btn" data-dashboard-action="sync-incoming">Обновить входящие</button><button class="btn" data-dashboard-action="open-suppliers">К поставщикам</button></div></div><section class="workspace-card"><div class="workspace-card-head"><div><h2>Последние треды и входящие</h2><div class="mail-sync-banner ${failures.length ? "is-error" : ""}" id="mailSyncBanner" role="status">${escapeHtml(initialNotice)}</div></div></div>${allCards.length ? `<div class="mail-thread-list">${allCards.join("")}</div>` : `<div class="workspace-empty"><strong>Переписка пока пуста</strong><p>Отправьте первый запрос поставщику из карточки.</p></div>`}</section>`;
+  if (!sync) return;
+  // Cached data is already on screen; the slow IMAP call runs in the background and only updates the banner
+  // (and re-renders once) if it actually found something new — it never blocks the view from appearing.
+  try {
+    const result = await syncIncomingMail();
+    setMailSyncBanner(`Проверено входящих: ${result.scanned || 0}, добавлено новых: ${result.imported || 0}${result.unmatched ? `, без привязки к заявке: ${result.unmatched}` : ""}.`, false);
+    if (result.imported) await renderCorrespondenceView({ sync: false });
+  } catch (error) {
+    setMailSyncBanner(error.message, true);
+  }
 }
 
 $("workspaceView").addEventListener("click", async event => {
