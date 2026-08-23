@@ -734,6 +734,7 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .mail-write-btn { margin-bottom:2px; }
   .mail-overlay { display:none; position:fixed; inset:0; z-index:50; align-items:center; justify-content:center; padding:18px; background:rgba(20,34,29,.34); backdrop-filter:blur(4px); }
   .mail-overlay.on { display:flex; }
+  html.modal-open, html.modal-open body { overflow:hidden; }
   .mail-dialog { width:min(560px,100%); max-height:min(760px,calc(100vh - 36px)); overflow:auto; border:1px solid var(--line); border-radius:20px; background:var(--paper-raised); box-shadow:0 28px 80px rgba(20,34,29,.22); }
   .mail-composer-dialog { display:flex; flex-direction:column; height:min(760px,calc(100vh - 36px)); overflow:hidden; }
   .mail-composer-dialog .mail-dialog-head { flex:none; }
@@ -760,17 +761,8 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .mail-composer-dialog .mail-field textarea { min-height:180px; }
   .mail-recipient-list { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 15px; }
   .mail-recipient-chip { padding:6px 9px; border-radius:999px; background:var(--accent-bg); color:var(--accent); font-size:12px; }
-  .mail-login-copy { max-width:410px; }
-  .mail-login-copy h2 { font-size:26px; }
-  .login-yandex-btn { display:flex; align-items:center; justify-content:center; width:100%; text-decoration:none; box-sizing:border-box; }
-  .login-fallback { margin-top:18px; border-top:1px solid var(--line); padding-top:14px; }
-  .login-fallback summary { cursor:pointer; font-size:12.5px; color:var(--muted); }
-  .login-fallback form { margin-top:12px; }
-
-  /* Login backdrop: a slow radar sweep on a quiet grid, echoing "search for suppliers".
-     Only behind the sign-in card; app accent/signal tokens stand in for the reference's purple. */
-  #mailLoginModal { background:#0d1613; overflow:hidden; }
-  #mailLoginModal .mail-dialog { position:relative; z-index:1; }
+  /* Login backdrop: a slow radar sweep on a quiet grid, echoing "search for suppliers". */
+  #mailLoginModal { background:#0d1613; overflow:hidden; flex-direction:column; gap:0; }
   .login-radar {
     position:absolute; inset:0; overflow:hidden;
     background-image:
@@ -797,20 +789,39 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
     50% { box-shadow:0 0 32px 8px rgba(225,139,42,.9); }
   }
 
-  /* Yandex mark: small rotating glow ring behind a solid "Я" badge, echoes the app's own accent glow. */
-  .yandex-badge { position:relative; width:24px; height:24px; margin-right:9px; flex:none; }
-  .yandex-badge::before {
-    content:""; position:absolute; inset:0; border-radius:50%;
-    background:conic-gradient(from 0deg, #ff5a3c, #ffb020, #ff5a3c);
-    filter:blur(1.5px);
-    animation: yandexBadgeSpin 3.2s linear infinite;
+  /* Login portal: no card, no white — the sign-in action lives inside a glowing orb on the radar. */
+  .login-portal { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; text-align:center; max-width:360px; padding:0 20px; }
+  .login-portal-kicker { font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:rgba(229,241,238,.5); }
+  .login-portal-title { margin:8px 0 34px; font-family:"Golos Text",sans-serif; font-size:26px; font-weight:700; letter-spacing:-.02em; color:#F4FAF7; }
+
+  .login-orb { position:relative; display:block; width:216px; height:216px; text-decoration:none; -webkit-tap-highlight-color:transparent; }
+  .login-orb-glow {
+    position:absolute; inset:0; border-radius:50%;
+    background:conic-gradient(from 0deg, var(--accent,#0F6B5D), var(--signal,#E18B2A), var(--accent,#0F6B5D));
+    filter:blur(7px);
+    animation: loginOrbSpin 6s linear infinite;
   }
-  .yandex-badge::after {
-    content:"Я"; position:absolute; inset:3px; border-radius:50%;
-    background:#d92c1c; color:#fff; font-family:"Golos Text",sans-serif; font-weight:800; font-size:11.5px;
-    display:flex; align-items:center; justify-content:center; line-height:1;
+  .login-orb-core {
+    position:absolute; inset:6px; border-radius:50%;
+    background:radial-gradient(120% 120% at 30% 22%, #17251f 0%, #0a1310 74%);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.08), 0 24px 60px -20px rgba(0,0,0,.75);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:11px;
+    transition: transform .18s ease;
   }
-  @keyframes yandexBadgeSpin { to { transform:rotate(360deg); } }
+  .login-orb:hover .login-orb-core { transform:scale(1.025); }
+  .login-orb:active .login-orb-core { transform:scale(.975); }
+  .login-orb:focus-visible .login-orb-core { outline:3px solid color-mix(in srgb, var(--signal,#E18B2A) 72%, white); outline-offset:3px; }
+  .login-orb-mark { filter:drop-shadow(0 6px 14px rgba(200,24,8,.5)); }
+  .login-orb-label { font-family:"Golos Text",sans-serif; font-size:14px; font-weight:600; line-height:1.35; color:#F4FAF7; }
+  @keyframes loginOrbSpin { to { transform:rotate(360deg); } }
+
+  .login-portal-note { margin:30px 0 4px; font-size:13px; line-height:1.55; color:rgba(229,241,238,.6); }
+  #mailLoginModal .mail-feedback { color:#E18B7C; }
+  .login-fallback { margin-top:20px; }
+  .login-fallback summary { cursor:pointer; font-size:12px; color:rgba(229,241,238,.48); }
+  .login-fallback form { margin-top:14px; text-align:left; }
+  .login-fallback .mail-field label { color:rgba(229,241,238,.68); }
+  .login-fallback .mail-dialog-actions { justify-content:center; }
   .mail-inline-muted { color:var(--muted); font-size:12px; }
   #mobileMailSettings { display:none; }
   @media (max-width:640px) {
@@ -1426,22 +1437,38 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
 
 <div class="mail-overlay" id="mailLoginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
   <div class="login-radar" aria-hidden="true"><div class="login-radar-center"></div></div>
-  <section class="mail-dialog mail-login-copy">
-    <div class="mail-dialog-head"><div><div class="section-kicker">SUPPLYDESK</div><h2 id="loginTitle">Вход в кабинет снабженца</h2></div></div>
-    <div class="mail-dialog-body">
-      <p class="mail-dialog-note">Войдите через аккаунт Яндекса — тот же вход откроет доступ к данным и позволит подключить рабочую почту.</p>
-      <a class="btn primary login-yandex-btn" id="yandexLoginBtn" href="/api/auth/yandex/start"><span class="yandex-badge" aria-hidden="true"></span>Войти через Яндекс</a>
-      <p class="mail-feedback" id="loginFeedback" aria-live="polite"></p>
-      <details class="login-fallback">
-        <summary>Локальный вход для разработки</summary>
-        <form id="loginForm">
-          <div class="mail-field"><label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="username" required></div>
-          <div class="mail-field"><label for="loginPassword">Пароль</label><input id="loginPassword" type="password" autocomplete="current-password" required></div>
-          <div class="mail-dialog-actions"><button class="btn" type="submit">Войти локально</button></div>
-        </form>
-      </details>
-    </div>
-  </section>
+  <div class="login-portal">
+    <div class="login-portal-kicker">SUPPLYDESK</div>
+    <h2 class="login-portal-title" id="loginTitle">Вход в кабинет снабженца</h2>
+    <a class="login-orb" id="yandexLoginBtn" href="/api/auth/yandex/start" aria-label="Войти с помощью Яндекса">
+      <span class="login-orb-glow" aria-hidden="true"></span>
+      <span class="login-orb-core">
+        <svg class="login-orb-mark" viewBox="0 0 48 48" width="46" height="46" aria-hidden="true">
+          <defs>
+            <radialGradient id="yaGrad" cx="32%" cy="26%" r="85%">
+              <stop offset="0%" stop-color="#ff7a54"/>
+              <stop offset="55%" stop-color="#ef3a1e"/>
+              <stop offset="100%" stop-color="#c81808"/>
+            </radialGradient>
+          </defs>
+          <circle cx="24" cy="24" r="24" fill="url(#yaGrad)"/>
+          <circle cx="24" cy="24" r="23" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1"/>
+          <text x="24.5" y="33.5" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="800" font-size="27" fill="#fff">Я</text>
+        </svg>
+        <span class="login-orb-label">Войти с<br>помощью Яндекса</span>
+      </span>
+    </a>
+    <p class="login-portal-note">Тот же вход откроет доступ к данным и подключит рабочую почту.</p>
+    <p class="mail-feedback" id="loginFeedback" aria-live="polite"></p>
+    <details class="login-fallback">
+      <summary>Локальный вход для разработки</summary>
+      <form id="loginForm">
+        <div class="mail-field"><label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="username" required></div>
+        <div class="mail-field"><label for="loginPassword">Пароль</label><input id="loginPassword" type="password" autocomplete="current-password" required></div>
+        <div class="mail-dialog-actions"><button class="btn" type="submit">Войти локально</button></div>
+      </form>
+    </details>
+  </div>
 </div>
 
 <div class="mail-overlay" id="requestCreateModal" role="dialog" aria-modal="true" aria-labelledby="requestCreateTitle">
@@ -1825,8 +1852,8 @@ function setMailFeedback(id, message, isError = true) {
   node.style.color = isError ? "#b6493e" : "var(--ok)";
 }
 
-function openMailModal(id) { $(id).classList.add("on"); }
-function closeMailModals() { document.querySelectorAll(".mail-overlay.on").forEach(node => node.classList.remove("on")); }
+function openMailModal(id) { $(id).classList.add("on"); document.documentElement.classList.add("modal-open"); }
+function closeMailModals() { document.querySelectorAll(".mail-overlay.on").forEach(node => node.classList.remove("on")); document.documentElement.classList.remove("modal-open"); }
 
 async function loadMailStatus() {
   if (!mailClient.authenticated) return;
