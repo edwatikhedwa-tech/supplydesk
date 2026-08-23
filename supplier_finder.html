@@ -1495,6 +1495,20 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .nav-item.active .nav-icon { color:var(--green); }
   .nav-counter { background:var(--green); color:#06120e; }
 
+  /* .mail-list truncates row text with ellipsis, but never declared
+     overflow-x:hidden — a wider font (Golos Text runs a bit wider than the
+     old Procure Sans) was enough to push a row past 340px and get a
+     horizontal scrollbar instead of the intended ellipsis clip. */
+  .mail-list { overflow-x:hidden; }
+  .mail-row { min-width:0; }
+  .mail-row-top { min-width:0; }
+  .mail-row-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  /* the real culprit: text-overflow:ellipsis silently does nothing on an
+     inline element (the default for a <span>) — these two never had
+     display:block, so a long subject/snippet just kept growing instead of
+     truncating. Always broken, just rarely long enough to show it. */
+  .mail-row-subject, .mail-row-snippet { display:block; min-width:0; }
+
   @media (prefers-reduced-motion:reduce) {
     body::before, body::after, .btn.primary, .kpi-card, .order-head h1, .workspace-hero h1 { animation:none; }
     .kpi-card { opacity:1; transform:none; }
