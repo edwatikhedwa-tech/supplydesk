@@ -1320,10 +1320,16 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   .mail-workspace { display:flex; align-items:stretch; height:calc(100vh - 158px); min-height:520px; border:1px solid var(--line); border-radius:var(--radius-md,14px); background:var(--paper-raised); overflow:hidden; box-shadow:var(--shadow); }
   .mail-list { width:340px; flex:none; overflow-x:hidden; overflow-y:auto; border-right:1px solid var(--line); background:var(--paper); }
   .mail-list-empty { padding:26px 18px; color:var(--ink-muted); font-size:12.5px; line-height:1.6; }
-  .mail-row { display:flex; align-items:flex-start; gap:10px; width:100%; padding:12px 14px; border:0; border-bottom:1px solid var(--line); background:transparent; text-align:left; cursor:pointer; }
+  .mail-row { display:flex; align-items:flex-start; gap:10px; width:100%; padding:12px 14px; border:0; border-bottom:1px solid var(--line); background:transparent; text-align:left; cursor:pointer; box-shadow:inset 3px 0 0 transparent; }
   .mail-row:hover { background:var(--paper-inset); }
   .mail-row.is-active { background:var(--cobalt-wash); }
   .mail-row.is-active .mail-row-name { color:var(--cobalt-deep); }
+  /* Письма по заявке — с цветной полосой слева, чтобы отличать от нейтральных
+     неразобранных входящих без привязки к заявке. */
+  .mail-row[data-mail-kind="thread"] { box-shadow:inset 3px 0 0 var(--cobalt); }
+  .mail-row[data-mail-kind="thread"]:not(.is-active) { background:rgba(49,94,251,.035); }
+  .mail-only-threads { display:flex; align-items:center; gap:7px; margin-right:auto; color:var(--ink-soft); font-size:12px; font-weight:600; cursor:pointer; user-select:none; }
+  .mail-only-threads input { accent-color:var(--cobalt); cursor:pointer; }
   .mail-avatar { flex:none; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--graphite); color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.01em; }
   .mail-avatar.is-unmatched { background:var(--ink-muted); }
   .mail-row-main { min-width:0; flex:1; }
@@ -1393,7 +1399,6 @@ select:focus,input[type="search"]:focus { border-color:var(--cobalt); box-shadow
   <nav class="sidebar-nav">
     <button class="nav-item" type="button" data-view="dashboard" title="Рабочий стол"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dashboard"/></svg><span>Рабочий стол</span></button>
     <button class="nav-item active" type="button" data-view="search" title="Поиск поставщиков"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg><span>Поиск поставщиков</span></button>
-    <button class="nav-item" type="button" data-view="requests" title="Мои заявки"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-requests"/></svg><span>Мои заявки</span></button>
     <button class="nav-item" type="button" data-view="suppliers" title="База поставщиков"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-suppliers"/></svg><span>База поставщиков</span></button>
     <button class="nav-item" type="button" data-view="correspondence" title="Переписка"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mail"/></svg><span>Переписка</span><span class="nav-counter" id="navRepliesCounter" hidden>0</span></button>
   </nav>
@@ -2096,7 +2101,7 @@ function pollMailStatuses(remaining = 8) {
   }, 1500);
 }
 
-const viewState = { current: "search", currentRequestId: 1043 };
+const viewState = { current: "dashboard", currentRequestId: 1043 };
 const viewStatusLabels = { draft: "Черновик", searching: "В поиске", completed: "Завершена", updating: "Обновляется", error: "Ошибка", sent: "Отправлено", failed: "Ошибка отправки", queued: "В очереди", sending: "Отправляется", not_sent: "Не отправлено", replied: "Есть ответ", received: "Получено" };
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>\"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[char]));
@@ -2230,6 +2235,7 @@ function pluralize(count, one, few, many) {
 
 let mailEntries = [];
 let activeMailKey = null;
+let mailOnlyThreads = false;
 
 function mailRowHtml(entry) {
   const key = `${entry.kind}:${entry.id}`;
@@ -2446,7 +2452,7 @@ function requestRows(items) {
 async function renderDashboardView() {
   const data = await mailApi("/api/dashboard/summary");
   const kpi = data.kpis || {};
-  $("workspaceView").innerHTML = `<div class="workspace-hero"><div><div class="section-kicker">РАБОЧИЙ СТОЛ</div><h1>Рабочий стол снабженца</h1><p>Заявки, найденные компании и коммуникации в одном месте.</p></div><div class="workspace-actions"><button class="btn primary" data-dashboard-action="new-request">+ Новая заявка</button><button class="btn" data-dashboard-action="open-mail">Настроить почту</button></div></div><div class="kpi-grid"><article class="kpi-card accent"><span class="kpi-label">Активные заявки</span><strong>${kpi.active_requests || 0}</strong><small>черновики и текущие поиски</small></article><article class="kpi-card"><span class="kpi-label">В поиске</span><strong>${kpi.searching_requests || 0}</strong><small>фоновая обработка</small></article><article class="kpi-card success"><span class="kpi-label">Новые ответы</span><strong>${kpi.new_replies || 0}</strong><small>входящие в переписке</small></article><article class="kpi-card warn"><span class="kpi-label">Требуют внимания</span><strong>${kpi.attention || 0}</strong><small>ошибки отправки</small></article></div><div class="workspace-two-col"><section class="workspace-card"><div class="workspace-card-head"><div><h2>Мои заявки</h2><p>Рабочий список по требованиям BRD</p></div><button class="btn" data-dashboard-action="open-requests">Все заявки</button></div>${requestRows(data.requests || [])}</section><section class="workspace-card"><div class="workspace-card-head"><div><h2>Быстрые действия</h2><p>Основные операции без лишних переходов</p></div></div><div class="detail-list"><button class="detail-row" data-dashboard-action="new-request"><span><strong>Создать заявку</strong><small>Добавить позиции свободным текстом</small></span><b>＋</b></button><button class="detail-row" data-dashboard-action="open-suppliers"><span><strong>База поставщиков</strong><small>Фильтры, контакты и статусы запросов</small></span><b>›</b></button><button class="detail-row" data-dashboard-action="open-correspondence"><span><strong>Переписка</strong><small>Исходящие письма и история по поставщику</small></span><b>›</b></button><button class="detail-row" data-dashboard-action="open-blacklist"><span><strong>Чёрный список</strong><small>Исключённые компании и восстановление</small></span><b>›</b></button></div></section></div>`;
+  $("workspaceView").innerHTML = `<div class="workspace-hero"><div><div class="section-kicker">РАБОЧИЙ СТОЛ</div><h1>Рабочий стол снабженца</h1><p>Заявки, найденные компании и коммуникации в одном месте.</p></div><div class="workspace-actions"><button class="btn primary" data-dashboard-action="new-request">+ Новая заявка</button><button class="btn" data-dashboard-action="open-mail">Настроить почту</button></div></div><div class="kpi-grid"><article class="kpi-card accent"><span class="kpi-label">Активные заявки</span><strong>${kpi.active_requests || 0}</strong><small>черновики и текущие поиски</small></article><article class="kpi-card"><span class="kpi-label">В поиске</span><strong>${kpi.searching_requests || 0}</strong><small>фоновая обработка</small></article><article class="kpi-card success"><span class="kpi-label">Новые ответы</span><strong>${kpi.new_replies || 0}</strong><small>входящие в переписке</small></article><article class="kpi-card warn"><span class="kpi-label">Требуют внимания</span><strong>${kpi.attention || 0}</strong><small>ошибки отправки</small></article></div><section class="workspace-card"><div class="workspace-card-head"><div><h2>Мои заявки</h2><p>Рабочий список по требованиям BRD</p></div><button class="btn" data-dashboard-action="open-requests">Все заявки</button></div>${requestRows(data.requests || [])}</section>`;
   $("navRepliesCounter").textContent = kpi.new_replies || 0;
   $("navRepliesCounter").hidden = !(kpi.new_replies > 0);
 }
@@ -2523,9 +2529,14 @@ async function renderCorrespondenceView({ sync = true } = {}) {
   ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
   const initialNotice = failures.length ? failures.join(" ") : (sync ? "Проверяем входящие…" : "Показаны сохранённые сообщения.");
-  $("workspaceView").innerHTML = `<div class="workspace-hero"><div><div class="section-kicker">ПЕРЕПИСКА</div><h1>Коммуникации</h1><p>Каждая заявка и компания имеют отдельную историю сообщений.</p></div><div class="workspace-actions"><button class="btn" data-dashboard-action="sync-incoming">Обновить входящие</button><button class="btn" data-dashboard-action="open-suppliers">К поставщикам</button></div></div><div class="mail-sync-banner ${failures.length ? "is-error" : ""}" id="mailSyncBanner" role="status">${escapeHtml(initialNotice)}</div><div class="mail-workspace"><nav class="mail-list" id="mailList" aria-label="Список писем">${mailEntries.length ? mailEntries.map(mailRowHtml).join("") : `<div class="mail-list-empty">Переписка пока пуста. Отправьте первый запрос поставщику из карточки.</div>`}</nav><section class="mail-reader" id="mailReader">${mailReaderEmptyHtml()}</section></div>`;
+  const visibleEntries = mailOnlyThreads ? mailEntries.filter(entry => entry.kind === "thread") : mailEntries;
+  const emptyText = mailOnlyThreads
+    ? "Писем по заявкам пока нет. Отключите фильтр «Только по заявкам», чтобы увидеть остальное."
+    : "Переписка пока пуста. Отправьте первый запрос поставщику из карточки.";
+  $("workspaceView").innerHTML = `<div class="workspace-hero"><div><div class="section-kicker">ПЕРЕПИСКА</div><h1>Коммуникации</h1><p>Каждая заявка и компания имеют отдельную историю сообщений.</p></div><div class="workspace-actions"><label class="mail-only-threads"><input type="checkbox" id="mailOnlyThreadsToggle" ${mailOnlyThreads ? "checked" : ""}> Только по заявкам</label><button class="btn" data-dashboard-action="sync-incoming">Обновить входящие</button><button class="btn" data-dashboard-action="open-suppliers">К поставщикам</button></div></div><div class="mail-sync-banner ${failures.length ? "is-error" : ""}" id="mailSyncBanner" role="status">${escapeHtml(initialNotice)}</div><div class="mail-workspace"><nav class="mail-list" id="mailList" aria-label="Список писем">${visibleEntries.length ? visibleEntries.map(mailRowHtml).join("") : `<div class="mail-list-empty">${escapeHtml(emptyText)}</div>`}</nav><section class="mail-reader" id="mailReader">${mailReaderEmptyHtml()}</section></div>`;
+  $("mailOnlyThreadsToggle").onchange = event => { mailOnlyThreads = event.target.checked; renderCorrespondenceView({ sync: false }); };
 
-  const toSelect = mailEntries.find(entry => `${entry.kind}:${entry.id}` === activeMailKey) || mailEntries[0];
+  const toSelect = visibleEntries.find(entry => `${entry.kind}:${entry.id}` === activeMailKey) || visibleEntries[0];
   if (toSelect) await selectMailEntry(toSelect.kind, toSelect.id);
 
   if (!sync) return;
@@ -2664,6 +2675,7 @@ $("loginForm").onsubmit = async (event) => {
     $("mailLoginModal").classList.remove("on");
     toast("Вы вошли в кабинет снабженца.");
     await loadMailStatus();
+    await switchView("dashboard");
   } catch (error) { setMailFeedback("loginFeedback", error.message); }
 };
 
@@ -2704,6 +2716,7 @@ function applyAccountIdentity(user) {
     mailClient.csrf = response.csrf_token || "";
     applyAccountIdentity(response.user);
     await loadMailStatus();
+    await switchView("dashboard");
     if (query.get("settings") === "mail" || query.get("connected") === "true" || query.get("mail_error")) {
       openSettings();
       if (query.get("connected") === "true") setMailFeedback("mailSettingsFeedback", "Почта успешно подключена.", false);
