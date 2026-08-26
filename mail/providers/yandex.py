@@ -6,6 +6,7 @@ import json
 import smtplib
 import socket
 import ssl
+import time
 from datetime import datetime, timezone
 from email import policy
 from email.parser import BytesParser
@@ -363,16 +364,30 @@ class YandexMailProvider(MailProvider):
         request = Request(url, method="GET", headers={**headers, "Accept": "application/json"})
         return self._open_json(request, "Не удалось получить данные аккаунта Яндекса.")
 
-    def _open_json(self, request: Request, default_message: str) -> dict:
-        try:
-            with urlopen(request, timeout=self.timeout) as response:
-                data = json.loads(response.read().decode("utf-8"))
-        except HTTPError as exc:
-            if exc.code in (429, 500, 502, 503, 504):
-                raise ProviderError(default_message, transient=True, provider_code=str(exc.code)) from exc
-            raise ProviderError(default_message, provider_code=str(exc.code)) from exc
-        except (URLError, TimeoutError, socket.timeout, OSError) as exc:
-            raise ProviderError(default_message, transient=True) from exc
+    def _open_json(self, request: Request, default_message: str, *, retries: int = 2) -> dict:
+        # A login/reconnect that fails on one flaky DNS/network blip with no
+        # retry is a real, observed failure mode (not hypothetical — this is
+        # what "Не удалось связаться с Яндексом" showed for a user whose next
+        # attempt, seconds later, worked fine). One quick retry on a transient
+        # condition costs at most ~1s and turns a one-off blip into a
+        # successful login instead of a support message.
+        for attempt in range(retries):
+            try:
+                with urlopen(request, timeout=self.timeout) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                break
+            except HTTPError as exc:
+                if exc.code in (429, 500, 502, 503, 504) and attempt < retries - 1:
+                    time.sleep(0.6 * (attempt + 1))
+                    continue
+                if exc.code in (429, 500, 502, 503, 504):
+                    raise ProviderError(default_message, transient=True, provider_code=str(exc.code)) from exc
+                raise ProviderError(default_message, provider_code=str(exc.code)) from exc
+            except (URLError, TimeoutError, socket.timeout, OSError) as exc:
+                if attempt < retries - 1:
+                    time.sleep(0.6 * (attempt + 1))
+                    continue
+                raise ProviderError(default_message, transient=True) from exc
         if not isinstance(data, dict):
             raise ProviderError(default_message)
         if data.get("error"):

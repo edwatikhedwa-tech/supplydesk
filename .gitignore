@@ -9,6 +9,7 @@ results/
 *.json
 !vercel.json
 !skills-lock.json
+!fixtures/*.json
 
 # Скриншоты и визуальные QA-артефакты — не источник истины, не коммитим
 artifacts/
@@ -23,3 +24,6 @@ mail-data/
 *.db
 
 .vercel
+
+# Единственное место для временных/рабочих файлов сессии — см. корневой CLAUDE.md
+tmp/

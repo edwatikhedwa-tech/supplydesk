@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .auth import hash_password, new_token, token_hash
+from .bounce import classify_bounce
 from .content import (
     clean_email_text,
     collapse_quoted_html,
@@ -16,6 +17,24 @@ from .content import (
     email_has_remote_images,
     sanitize_email_html,
 )
+
+
+_MAIL_STATUS_LABELS = {
+    "not_sent": "not_sent",
+    "queued": "sent",     # in the outbound queue — from the user's view, already "sent"
+    "sending": "sent",
+    "sent": "waiting",    # delivered by us, no reply yet — waiting for the supplier
+    "replied": "answered",
+    "failed": "error",
+}
+
+
+def _normalize_mail_status(raw: str | None) -> str:
+    """request_supplier_states.status is an internal send-pipeline state machine
+    (queued/sending/sent/failed/replied) — not the user-facing vocabulary
+    (not_sent/sent/waiting/answered/error). Every place that surfaces a
+    supplier's mail status to the API/UI must go through this."""
+    return _MAIL_STATUS_LABELS.get(raw or "not_sent", "not_sent")
 
 
 def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
@@ -189,6 +208,17 @@ class MailRepository:
                 "UPDATE request_supplier_states SET status='queued', last_error='Предыдущий процесс остановился во время отправки.', updated_at=? WHERE status='sending'",
                 (iso_now(),),
             )
+            # A заявка's search runs on a background thread with no persistent
+            # queue behind it (see SupplierApp.start_search) — if the process
+            # is killed mid-search (crash, redeploy, `taskkill`), the thread
+            # dies with it and nothing ever calls complete_request_search().
+            # Left alone that заявка shows "Идёт поиск" forever. Recover it the
+            # same way mail_jobs recovers above: surface it as a real error
+            # instead of a silent infinite spinner.
+            connection.execute(
+                "UPDATE request_meta SET status='error', last_error='Поиск прерван перезапуском сервера. Запустите поиск заново.', updated_at=? WHERE status='searching'",
+                (iso_now(),),
+            )
 
     def seed_fixture_catalog(self, workspace_id: int, fixture: dict[str, Any]) -> None:
         """Persist the existing result fixture so dashboard views use real workspace data."""
@@ -231,23 +261,57 @@ class MailRepository:
                     (supplier_id, json.dumps(item.get("covers") or [], ensure_ascii=False), str(item.get("snippet") or "Компания найдена в поисковой выдаче по позициям заявки.")[:500], "xmlriver-fixture", now),
                 )
 
-    def list_requests(self, workspace_id: int) -> list[dict[str, Any]]:
-        with self.connect() as connection:
-            rows = connection.execute(
-                """SELECT r.id, r.name, r.description, r.sender_name, r.company_name, r.created_at,
+    # Shared by list_requests() and get_request() — a bare `SELECT * FROM requests`
+    # (as get_request() used to do) is missing every computed/joined field
+    # RequestListItem expects (status, search_progress, positions_count, ...),
+    # which rendered as blank/undefined on the request detail page (e.g. the
+    # "N позиций" fact and the workflow-step highlight both went silently empty).
+    _REQUEST_SELECT_COLUMNS = """r.id, r.name, r.description, r.sender_name, r.company_name, r.created_at,
+                          COALESCE(d.deadline, '') AS deadline,
                           COALESCE(m.status, 'draft') AS status, COALESCE(m.search_progress, 0) AS search_progress,
                           COALESCE(m.search_total, 0) AS search_total, m.last_error, m.updated_at,
                           (SELECT COUNT(*) FROM request_positions p WHERE p.request_id=r.id) AS positions_count,
                           (SELECT COUNT(*) FROM request_suppliers rs WHERE rs.request_id=r.id AND rs.is_irrelevant=0) AS suppliers_count,
                           (SELECT COUNT(*) FROM mail_messages mm WHERE mm.request_id=r.id AND mm.direction='outbound' AND mm.status='sent') AS sent_count,
-                          (SELECT COUNT(*) FROM mail_messages mm WHERE mm.request_id=r.id AND mm.direction='inbound') AS replies_count
-                   FROM requests r LEFT JOIN request_meta m ON m.request_id=r.id
+                          (SELECT COUNT(*) FROM mail_messages mm WHERE mm.request_id=r.id AND mm.direction='inbound') AS replies_count"""
+    _REQUEST_SELECT_JOIN = "LEFT JOIN request_meta m ON m.request_id=r.id LEFT JOIN request_details d ON d.request_id=r.id"
+
+    def list_requests(self, workspace_id: int) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                f"""SELECT {self._REQUEST_SELECT_COLUMNS}
+                   FROM requests r {self._REQUEST_SELECT_JOIN}
                    WHERE r.workspace_id=? ORDER BY r.created_at DESC, r.id DESC""",
                 (workspace_id,),
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def create_request(self, workspace_id: int, *, name: str, description: str, positions: list[dict[str, Any]], sender_name: str, company_name: str, user_id: int) -> int:
+    def update_request(
+        self, workspace_id: int, request_id: int, user_id: int, *,
+        name: str | None = None, description: str | None = None, deadline: str | None = None,
+    ) -> None:
+        with self.connect() as connection:
+            exists = connection.execute("SELECT id FROM requests WHERE id=? AND workspace_id=?", (request_id, workspace_id)).fetchone()
+            if not exists:
+                raise ValueError("Заявка не найдена в текущем рабочем пространстве.")
+            if name is not None:
+                clean_name = name.strip()[:240]
+                if not clean_name:
+                    raise ValueError("Название заявки обязательно.")
+                connection.execute("UPDATE requests SET name=? WHERE id=?", (clean_name, request_id))
+            if description is not None:
+                connection.execute("UPDATE requests SET description=? WHERE id=?", (description.strip()[:5000], request_id))
+            if deadline is not None:
+                connection.execute(
+                    "INSERT INTO request_details(request_id, deadline) VALUES (?, ?) "
+                    "ON CONFLICT(request_id) DO UPDATE SET deadline=excluded.deadline",
+                    (request_id, deadline.strip()[:32]),
+                )
+            self._audit_connection(connection, workspace_id, user_id, "request.updated", "request", str(request_id), {
+                k: v for k, v in {"name": name, "description": description, "deadline": deadline}.items() if v is not None
+            })
+
+    def create_request(self, workspace_id: int, *, name: str, description: str, positions: list[dict[str, Any]], sender_name: str, company_name: str, user_id: int, deadline: str = "") -> int:
         name = str(name or "").strip()[:240]
         if not name:
             raise ValueError("Название заявки обязательно.")
@@ -266,6 +330,8 @@ class MailRepository:
                 (next_id, workspace_id, name, str(description or "").strip()[:5000], str(sender_name or "").strip()[:120], str(company_name or "").strip()[:240], now),
             )
             connection.execute("INSERT INTO request_meta(request_id, status, search_progress, search_total, updated_at) VALUES (?, 'draft', 0, ?, ?)", (next_id, len(cleaned), now))
+            if deadline:
+                connection.execute("INSERT INTO request_details(request_id, deadline) VALUES (?, ?)", (next_id, deadline.strip()[:32]))
             for key, position_name, quantity in cleaned:
                 connection.execute("INSERT INTO request_positions(request_id, position_key, name, quantity, created_at) VALUES (?, ?, ?, ?, ?)", (next_id, key, position_name, quantity, now))
             self._audit_connection(connection, workspace_id, user_id, "request.created", "request", str(next_id), {"positions": len(cleaned)})
@@ -305,8 +371,19 @@ class MailRepository:
     def dashboard_summary(self, workspace_id: int) -> dict[str, Any]:
         requests = self.list_requests(workspace_id)
         with self.connect() as connection:
-            new_replies = int(connection.execute("SELECT COUNT(*) FROM mail_messages WHERE workspace_id=? AND direction='inbound'", (workspace_id,)).fetchone()[0])
-            new_replies += int(connection.execute("SELECT COUNT(*) FROM mail_inbox_messages WHERE workspace_id=? AND status='unmatched'", (workspace_id,)).fetchone()[0])
+            # Only inbound replies matched to a заявка/поставщик thread that the
+            # buyer hasn't opened yet (see thread_messages(), which marks read
+            # on open). Deliberately excludes mail_inbox_messages: those are
+            # unmatched senders — newsletters, notifications — not supplier
+            # replies, so they never counted as a "new reply" once fixed
+            # (see PROJECT_DOCUMENTATION.md §18, 23 Aug audit finding: this KPI
+            # used to count every inbound message ever, including those, and
+            # never decreased).
+            new_replies = int(connection.execute(
+                "SELECT COUNT(*) FROM mail_messages m WHERE m.workspace_id=? AND m.direction='inbound' "
+                "AND NOT EXISTS (SELECT 1 FROM mail_message_reads r WHERE r.message_id=m.id)",
+                (workspace_id,),
+            ).fetchone()[0])
             attention = int(connection.execute("SELECT COUNT(*) FROM mail_jobs j JOIN mail_messages m ON m.id=j.message_id WHERE m.workspace_id=? AND j.status='failed'", (workspace_id,)).fetchone()[0])
             active = sum(1 for item in requests if item["status"] in {"draft", "searching", "updating"})
             searching = sum(1 for item in requests if item["status"] == "searching")
@@ -349,9 +426,15 @@ class MailRepository:
                           COALESCE(p.source, '') AS source, COALESCE(p.covers_json, '[]') AS covers_json,
                           COALESCE(p.site_unavailable, 0) AS site_unavailable,
                           COALESCE(rs.position_keys_json, '[]') AS position_keys_json,
-                          COALESCE(st.status, 'not_sent') AS mail_status, st.last_error
+                          COALESCE(st.status, 'not_sent') AS mail_status, st.last_error,
+                          gl.global_supplier_id, gr.ogrn AS registry_ogrn, gr.status AS registry_status,
+                          gr.is_active AS registry_is_active, gr.registered_at AS registry_registered_at,
+                          gf.report_year AS finance_report_year, gf.revenue AS finance_revenue, gf.profit AS finance_profit
                    FROM suppliers s LEFT JOIN supplier_profiles p ON p.supplier_id=s.id
                    {join} LEFT JOIN request_supplier_states st ON st.supplier_id=s.id AND st.request_id=COALESCE(rs.request_id, ?)
+                   LEFT JOIN global_supplier_links gl ON gl.supplier_id=s.id
+                   LEFT JOIN global_supplier_registry gr ON gr.global_supplier_id=gl.global_supplier_id
+                   LEFT JOIN global_supplier_finances gf ON gf.global_supplier_id=gl.global_supplier_id
                    WHERE {' AND '.join(clauses)} ORDER BY s.name""",
                 params,
             ).fetchall()
@@ -360,6 +443,27 @@ class MailRepository:
             item = dict(row)
             item["covers"] = json.loads(item.pop("covers_json") or "[]")
             item["position_keys"] = json.loads(item.pop("position_keys_json") or "[]")
+            item["mail_status"] = _normalize_mail_status(item["mail_status"])
+            has_registry = item.pop("global_supplier_id") is not None and (
+                item["registry_ogrn"] or item["registry_status"] or item["registry_registered_at"]
+            )
+            item["registry"] = (
+                {
+                    "ogrn": item["registry_ogrn"],
+                    "status": item["registry_status"],
+                    "is_active": None if item["registry_is_active"] is None else bool(item["registry_is_active"]),
+                    "registered_at": item["registry_registered_at"],
+                }
+                if has_registry else None
+            )
+            for key in ("registry_ogrn", "registry_status", "registry_is_active", "registry_registered_at"):
+                item.pop(key, None)
+            item["finances"] = (
+                {"report_year": item["finance_report_year"], "revenue": item["finance_revenue"], "profit": item["finance_profit"]}
+                if item["finance_report_year"] is not None else None
+            )
+            for key in ("finance_report_year", "finance_revenue", "finance_profit"):
+                item.pop(key, None)
             result.append(item)
         return result
 
@@ -490,13 +594,27 @@ class MailRepository:
                     """UPDATE mail_threads SET last_message_at=CASE WHEN last_message_at IS NULL OR last_message_at < ? THEN ? ELSE last_message_at END WHERE id=?""",
                     (created_at, created_at, thread["thread_id"]),
                 )
-                connection.execute(
-                    """INSERT INTO request_supplier_states(request_id, supplier_id, mail_account_id, status, last_message_id, last_error, updated_at)
-                       VALUES (?, ?, ?, 'replied', ?, NULL, ?)
-                       ON CONFLICT(request_id, supplier_id) DO UPDATE SET mail_account_id=excluded.mail_account_id, status='replied', last_message_id=excluded.last_message_id, last_error=NULL, updated_at=excluded.updated_at""",
-                    (thread["request_id"], thread["supplier_id"], account_id, message_id, created_at),
-                )
-                self._audit_connection(connection, workspace_id, user_id, "mail.incoming_imported", "mail_message", str(message_id), {"thread_id": thread["thread_id"]})
+                # A bounce isn't a reply — see docs/suppliers-screen.md раздел 7. Only a
+                # "hard" bounce (address doesn't exist) is a reliable enough signal to
+                # record automatically; a "soft" one just means "try again later" and
+                # is left as whatever state it already had.
+                bounce = classify_bounce(from_email=incoming.from_email, subject=incoming.subject, body_text=incoming.body_text)
+                if bounce == "hard":
+                    connection.execute(
+                        """INSERT INTO request_supplier_states(request_id, supplier_id, mail_account_id, status, last_message_id, last_error, updated_at)
+                           VALUES (?, ?, ?, 'failed', ?, ?, ?)
+                           ON CONFLICT(request_id, supplier_id) DO UPDATE SET mail_account_id=excluded.mail_account_id, status='failed', last_message_id=excluded.last_message_id, last_error=excluded.last_error, updated_at=excluded.updated_at""",
+                        (thread["request_id"], thread["supplier_id"], account_id, message_id, "Письмо не доставлено (bounce).", created_at),
+                    )
+                    self._record_auto_bounce_issue(connection, thread["supplier_id"], incoming.subject, created_at)
+                else:
+                    connection.execute(
+                        """INSERT INTO request_supplier_states(request_id, supplier_id, mail_account_id, status, last_message_id, last_error, updated_at)
+                           VALUES (?, ?, ?, 'replied', ?, NULL, ?)
+                           ON CONFLICT(request_id, supplier_id) DO UPDATE SET mail_account_id=excluded.mail_account_id, status='replied', last_message_id=excluded.last_message_id, last_error=NULL, updated_at=excluded.updated_at""",
+                        (thread["request_id"], thread["supplier_id"], account_id, message_id, created_at),
+                    )
+                self._audit_connection(connection, workspace_id, user_id, "mail.incoming_imported", "mail_message", str(message_id), {"thread_id": thread["thread_id"], "bounce": bounce})
                 imported += 1
             connection.commit()
         return {"imported": imported, "skipped": skipped, "unmatched": unmatched}
@@ -747,7 +865,10 @@ class MailRepository:
     def get_request(self, workspace_id: int, request_id: int) -> dict[str, Any] | None:
         with self.connect() as connection:
             row = connection.execute(
-                "SELECT * FROM requests WHERE workspace_id = ? AND id = ?", (workspace_id, request_id)
+                f"""SELECT {self._REQUEST_SELECT_COLUMNS}
+                   FROM requests r {self._REQUEST_SELECT_JOIN}
+                   WHERE r.workspace_id=? AND r.id=?""",
+                (workspace_id, request_id),
             ).fetchone()
         return dict(row) if row else None
 
@@ -812,6 +933,49 @@ class MailRepository:
                 (iso_now(), user_id, workspace_id, provider),
             )
 
+    def suppliers_with_email(self, workspace_id: int, hosts: list[str]) -> set[str]:
+        """Hosts in this workspace that already have an email from a past search.
+
+        Used to skip re-crawling/re-paying for a site whose contact we already
+        found in an earlier заявка — see PROJECT_DOCUMENTATION.md §16.
+        """
+        hosts = [h.strip().lower() for h in hosts if h and h.strip()]
+        if not hosts:
+            return set()
+        with self.connect() as connection:
+            placeholders = ",".join("?" for _ in hosts)
+            rows = connection.execute(
+                f"SELECT external_key FROM suppliers WHERE workspace_id=? AND email<>'' AND external_key IN ({placeholders})",
+                (workspace_id, *hosts),
+            ).fetchall()
+        return {row[0] for row in rows}
+
+    def suppliers_missing_registry(self, workspace_id: int, hosts: list[str]) -> list[tuple[str, str]]:
+        """(host, ИНН) pairs that have an ИНН but no ЕГРЮЛ/финансы row yet.
+
+        The crawl skip above (suppliers_with_email) would otherwise strand
+        these forever: a host whose email was found before the registry
+        columns existed — or on a day the Checko quota was already spent —
+        never gets re-crawled, so its реестр/финансы would stay empty on
+        every future заявка. This lets the caller run a Checko-only pass for
+        them without paying for a full re-crawl.
+        """
+        hosts = [h.strip().lower() for h in hosts if h and h.strip()]
+        if not hosts:
+            return []
+        with self.connect() as connection:
+            placeholders = ",".join("?" for _ in hosts)
+            rows = connection.execute(
+                f"""SELECT s.external_key, p.inn FROM suppliers s
+                    JOIN supplier_profiles p ON p.supplier_id = s.id
+                    LEFT JOIN global_supplier_links gl ON gl.supplier_id = s.id
+                    LEFT JOIN global_supplier_registry gr ON gr.global_supplier_id = gl.global_supplier_id
+                    WHERE s.workspace_id=? AND p.inn <> '' AND gr.global_supplier_id IS NULL
+                      AND s.external_key IN ({placeholders})""",
+                (workspace_id, *hosts),
+            ).fetchall()
+        return [(row[0], row[1]) for row in rows]
+
     def upsert_supplier(self, *, workspace_id: int, external_key: str, name: str, email: str, host: str) -> int:
         with self.connect() as connection:
             connection.execute(
@@ -852,6 +1016,536 @@ class MailRepository:
                 (request_id, supplier_id, json.dumps(position_keys, ensure_ascii=False), str(snippet or "Компания найдена в поисковой выдаче.")[:500], source, now),
             )
         return supplier_id
+
+    def apply_supplier_enrichment(
+        self, workspace_id: int, host: str, *,
+        email: str = "", inn: str = "", phone: str = "", region: str = "",
+        role: str = "", company_name: str = "",
+        registry_ogrn: str = "", registry_status: str = "",
+        registry_active: bool | None = None, registry_registered_at: str = "",
+        finance_report_year: int | None = None,
+        finance_revenue: int | None = None, finance_profit: int | None = None,
+    ) -> None:
+        """Fold crawler/LLM/Checko results into an existing supplier + profile row.
+
+        Called strictly after upsert_search_result for the same host in this
+        request, so both rows are guaranteed to already exist — this only fills
+        in blanks (CASE WHEN ...<>'' guards), it never overwrites a real value
+        with an empty one from a source that simply didn't find anything.
+        """
+        host = host.strip().lower()
+        if not host:
+            return
+        now = iso_now()
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT id FROM suppliers WHERE workspace_id=? AND external_key=?", (workspace_id, host)
+            ).fetchone()
+            if not row:
+                return
+            supplier_id = int(row[0])
+            connection.execute(
+                "UPDATE suppliers SET "
+                "email=CASE WHEN ?<>'' THEN ? ELSE email END, "
+                "name=CASE WHEN ?<>'' THEN ? ELSE name END, "
+                "updated_at=? WHERE id=?",
+                (email, email, company_name, company_name, now, supplier_id),
+            )
+            connection.execute(
+                "UPDATE supplier_profiles SET "
+                "inn=CASE WHEN ?<>'' THEN ? ELSE inn END, "
+                "phone=CASE WHEN ?<>'' THEN ? ELSE phone END, "
+                "region=CASE WHEN ?<>'' THEN ? ELSE region END, "
+                "role=CASE WHEN ?<>'' THEN ? ELSE role END, "
+                "updated_at=? WHERE supplier_id=?",
+                (inn, inn, phone, phone, region, region, role, role, now, supplier_id),
+            )
+            if inn:
+                global_id = self._get_or_create_global_supplier(
+                    connection, workspace_id, inn, name=company_name, site=host, email=email, phone=phone,
+                )
+                self._link_supplier_global(connection, supplier_id, global_id)
+                if registry_ogrn or registry_status or registry_registered_at:
+                    self._upsert_registry_facts(
+                        connection, global_id, ogrn=registry_ogrn, status=registry_status,
+                        is_active=registry_active, registered_at=registry_registered_at,
+                    )
+                if finance_report_year is not None:
+                    self._upsert_finance_facts(
+                        connection, global_id, report_year=finance_report_year,
+                        revenue=finance_revenue, profit=finance_profit,
+                    )
+
+    # --------------------------------------------------------- global suppliers
+    #
+    # See docs/suppliers-screen.md. A "global supplier" is a workspace-wide
+    # identity keyed by ИНН — one card even if the company was found under two
+    # different domains. `suppliers` keeps its host-based identity (right for
+    # crawling); `global_supplier_links` maps host-suppliers onto it.
+
+    @staticmethod
+    def _get_or_create_global_supplier(
+        connection: sqlite3.Connection, workspace_id: int, inn: str, *,
+        name: str = "", site: str = "", email: str = "", phone: str = "",
+    ) -> int:
+        now = iso_now()
+        connection.execute(
+            "INSERT INTO global_suppliers(workspace_id, inn, name, site, email, phone, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(workspace_id, inn) DO UPDATE SET "
+            "name=CASE WHEN excluded.name<>'' AND global_suppliers.name='' THEN excluded.name ELSE global_suppliers.name END, "
+            "site=CASE WHEN excluded.site<>'' AND global_suppliers.site='' THEN excluded.site ELSE global_suppliers.site END, "
+            "email=CASE WHEN excluded.email<>'' AND global_suppliers.email='' THEN excluded.email ELSE global_suppliers.email END, "
+            "phone=CASE WHEN excluded.phone<>'' AND global_suppliers.phone='' THEN excluded.phone ELSE global_suppliers.phone END, "
+            "updated_at=excluded.updated_at",
+            (workspace_id, inn, name, site, email, phone, now, now),
+        )
+        return int(connection.execute(
+            "SELECT id FROM global_suppliers WHERE workspace_id=? AND inn=?", (workspace_id, inn)
+        ).fetchone()[0])
+
+    @staticmethod
+    def _link_supplier_global(connection: sqlite3.Connection, supplier_id: int, global_supplier_id: int) -> None:
+        connection.execute(
+            "INSERT INTO global_supplier_links(supplier_id, global_supplier_id) VALUES (?, ?) "
+            "ON CONFLICT(supplier_id) DO UPDATE SET global_supplier_id=excluded.global_supplier_id",
+            (supplier_id, global_supplier_id),
+        )
+
+    @staticmethod
+    def _upsert_registry_facts(
+        connection: sqlite3.Connection, global_supplier_id: int, *,
+        ogrn: str, status: str, is_active: bool | None, registered_at: str,
+    ) -> None:
+        connection.execute(
+            "INSERT INTO global_supplier_registry(global_supplier_id, ogrn, status, is_active, registered_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(global_supplier_id) DO UPDATE SET "
+            "ogrn=CASE WHEN excluded.ogrn<>'' THEN excluded.ogrn ELSE global_supplier_registry.ogrn END, "
+            "status=CASE WHEN excluded.status<>'' THEN excluded.status ELSE global_supplier_registry.status END, "
+            "is_active=COALESCE(excluded.is_active, global_supplier_registry.is_active), "
+            "registered_at=CASE WHEN excluded.registered_at<>'' THEN excluded.registered_at ELSE global_supplier_registry.registered_at END, "
+            "updated_at=excluded.updated_at",
+            (global_supplier_id, ogrn, status, is_active, registered_at, iso_now()),
+        )
+
+    @staticmethod
+    def _upsert_finance_facts(
+        connection: sqlite3.Connection, global_supplier_id: int, *,
+        report_year: int, revenue: int | None, profit: int | None,
+    ) -> None:
+        # Overwrite on a newer report_year (Checko publishes a new year once a
+        # year), keep the existing figures if this call brought an older one.
+        connection.execute(
+            "INSERT INTO global_supplier_finances(global_supplier_id, report_year, revenue, profit, updated_at) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(global_supplier_id) DO UPDATE SET "
+            "report_year=excluded.report_year, revenue=excluded.revenue, profit=excluded.profit, updated_at=excluded.updated_at "
+            "WHERE excluded.report_year >= global_supplier_finances.report_year",
+            (global_supplier_id, report_year, revenue, profit, iso_now()),
+        )
+
+    @staticmethod
+    def _record_auto_bounce_issue(connection: sqlite3.Connection, supplier_id: int, subject: str, reported_at: str) -> None:
+        """Called from within import_incoming_messages's own transaction — no
+        nested self.connect(), reuses the connection already open there."""
+        link = connection.execute(
+            "SELECT global_supplier_id FROM global_supplier_links WHERE supplier_id=?", (supplier_id,)
+        ).fetchone()
+        if not link:
+            return  # no ИНН known for this host yet — nothing to attach the issue to
+        global_supplier_id = int(link["global_supplier_id"])
+        # Avoid piling up a duplicate auto-issue for the same bounce subject on the same day.
+        today_prefix = reported_at[:10]
+        existing = connection.execute(
+            "SELECT id FROM global_supplier_issues WHERE global_supplier_id=? AND source='auto' AND reason='email_invalid' AND reported_at LIKE ?",
+            (global_supplier_id, f"{today_prefix}%"),
+        ).fetchone()
+        if existing:
+            return
+        connection.execute(
+            "INSERT INTO global_supplier_issues(global_supplier_id, reason, comment, source, reported_at) VALUES (?, 'email_invalid', ?, 'auto', ?)",
+            (global_supplier_id, f"Автоматически обнаружено: письмо вернулось с ошибкой доставки ({subject[:200]}).", reported_at),
+        )
+
+    def backfill_global_suppliers(self, workspace_id: int) -> None:
+        """Link any supplier that already has an ИНН but no global card yet.
+
+        Idempotent — safe to call on every startup (ensure_schema does).
+        Covers suppliers that got their ИНН before this feature existed
+        (fixture seed, earlier enrichment runs).
+        """
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT s.id, s.name, s.host, s.email, p.inn, p.phone
+                   FROM suppliers s JOIN supplier_profiles p ON p.supplier_id=s.id
+                   LEFT JOIN global_supplier_links l ON l.supplier_id=s.id
+                   WHERE s.workspace_id=? AND p.inn<>'' AND l.supplier_id IS NULL""",
+                (workspace_id,),
+            ).fetchall()
+            for row in rows:
+                global_id = self._get_or_create_global_supplier(
+                    connection, workspace_id, row["inn"],
+                    name=row["name"] or "", site=row["host"] or "", email=row["email"] or "", phone=row["phone"] or "",
+                )
+                self._link_supplier_global(connection, int(row["id"]), global_id)
+            connection.commit()
+
+    def list_global_suppliers(self, workspace_id: int) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            gs_rows = connection.execute(
+                "SELECT id, inn, name, site, email, phone, note, is_favorite FROM global_suppliers WHERE workspace_id=?",
+                (workspace_id,),
+            ).fetchall()
+            if not gs_rows:
+                return []
+            gs_ids = [int(r["id"]) for r in gs_rows]
+            summaries = self._global_supplier_summaries(connection, workspace_id, gs_ids)
+        return [self._compose_global_supplier(dict(row), summaries.get(int(row["id"]), {})) for row in gs_rows]
+
+    def global_supplier_detail(self, workspace_id: int, global_supplier_id: int) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            gs_row = connection.execute(
+                "SELECT id, inn, name, site, email, phone, note, is_favorite FROM global_suppliers WHERE workspace_id=? AND id=?",
+                (workspace_id, global_supplier_id),
+            ).fetchone()
+            if not gs_row:
+                return None
+            summaries = self._global_supplier_summaries(connection, workspace_id, [global_supplier_id])
+            supplier = self._compose_global_supplier(dict(gs_row), summaries.get(global_supplier_id, {}))
+
+            link_rows = connection.execute(
+                "SELECT supplier_id FROM global_supplier_links WHERE global_supplier_id=?", (global_supplier_id,)
+            ).fetchall()
+            supplier_ids = [int(r["supplier_id"]) for r in link_rows]
+            history: list[dict[str, Any]] = []
+            if supplier_ids:
+                sp_ph = ",".join("?" * len(supplier_ids))
+                rows = connection.execute(
+                    f"""SELECT rs.request_id, rs.supplier_id, r.name AS request_title, r.created_at,
+                               st.status AS raw_status, rr.rating
+                        FROM request_suppliers rs
+                        JOIN requests r ON r.id = rs.request_id
+                        LEFT JOIN request_supplier_states st ON st.request_id=rs.request_id AND st.supplier_id=rs.supplier_id
+                        LEFT JOIN request_supplier_ratings rr ON rr.request_id=rs.request_id AND rr.supplier_id=rs.supplier_id
+                        WHERE rs.supplier_id IN ({sp_ph}) AND rs.request_id IN (SELECT id FROM requests WHERE workspace_id=?)
+                        ORDER BY r.created_at DESC""",
+                    (*supplier_ids, workspace_id),
+                ).fetchall()
+                history = [
+                    {
+                        "request_id": int(row["request_id"]),
+                        "supplier_id": int(row["supplier_id"]),
+                        "request_title": row["request_title"],
+                        "date": row["created_at"],
+                        "outcome": _normalize_mail_status(row["raw_status"]),
+                        "rating": row["rating"],
+                    }
+                    for row in rows
+                ]
+
+            issue_rows = connection.execute(
+                "SELECT reason, comment, correct_inn, source, reported_at FROM global_supplier_issues "
+                "WHERE global_supplier_id=? ORDER BY reported_at DESC",
+                (global_supplier_id,),
+            ).fetchall()
+            registry_row = connection.execute(
+                "SELECT ogrn, status, is_active, registered_at FROM global_supplier_registry WHERE global_supplier_id=?",
+                (global_supplier_id,),
+            ).fetchone()
+            finance_row = connection.execute(
+                "SELECT report_year, revenue, profit FROM global_supplier_finances WHERE global_supplier_id=?",
+                (global_supplier_id,),
+            ).fetchone()
+            supplier["history"] = history
+            supplier["issues"] = [dict(row) for row in issue_rows]
+            supplier["registry"] = (
+                {
+                    "ogrn": registry_row["ogrn"],
+                    "status": registry_row["status"],
+                    "is_active": None if registry_row["is_active"] is None else bool(registry_row["is_active"]),
+                    "registered_at": registry_row["registered_at"],
+                }
+                if registry_row else None
+            )
+            supplier["finances"] = (
+                {
+                    "report_year": finance_row["report_year"],
+                    "revenue": finance_row["revenue"],
+                    "profit": finance_row["profit"],
+                }
+                if finance_row else None
+            )
+        return supplier
+
+    def _global_supplier_summaries(
+        self, connection: sqlite3.Connection, workspace_id: int, gs_ids: list[int],
+    ) -> dict[int, dict[str, Any]]:
+        """One grouped pass over links/requests/messages/ratings for a set of global suppliers.
+
+        Kept as plain Python aggregation rather than one large nested-subquery
+        SQL statement — the dataset here is small (a workspace's supplier
+        list), and this is far easier to verify line by line.
+        """
+        if not gs_ids:
+            return {}
+        gs_ph = ",".join("?" * len(gs_ids))
+        link_rows = connection.execute(
+            f"SELECT supplier_id, global_supplier_id FROM global_supplier_links WHERE global_supplier_id IN ({gs_ph})",
+            gs_ids,
+        ).fetchall()
+        supplier_to_global = {int(r["supplier_id"]): int(r["global_supplier_id"]) for r in link_rows}
+        supplier_ids = list(supplier_to_global.keys())
+        summaries: dict[int, dict[str, Any]] = {gid: {
+            "total_requests": 0, "sent_count": 0, "answered_count": 0,
+            "last_contact_at": None, "avg_deal_rating": None, "is_blacklisted": False,
+            "blacklist_reason": "", "blacklisted_at": None,
+            "registry": None, "finances": None,
+            "categories": set(),
+        } for gid in gs_ids}
+        for row in connection.execute(
+            f"SELECT global_supplier_id, reason, blacklisted_at FROM global_supplier_blacklist WHERE global_supplier_id IN ({gs_ph})",
+            gs_ids,
+        ).fetchall():
+            gid = int(row["global_supplier_id"])
+            summaries[gid]["blacklist_reason"] = row["reason"]
+            summaries[gid]["blacklisted_at"] = row["blacklisted_at"]
+        for row in connection.execute(
+            f"SELECT global_supplier_id, ogrn, status, is_active, registered_at FROM global_supplier_registry WHERE global_supplier_id IN ({gs_ph})",
+            gs_ids,
+        ).fetchall():
+            gid = int(row["global_supplier_id"])
+            if row["ogrn"] or row["status"] or row["registered_at"]:
+                summaries[gid]["registry"] = {
+                    "ogrn": row["ogrn"], "status": row["status"],
+                    "is_active": None if row["is_active"] is None else bool(row["is_active"]),
+                    "registered_at": row["registered_at"],
+                }
+        for row in connection.execute(
+            f"SELECT global_supplier_id, report_year, revenue, profit FROM global_supplier_finances WHERE global_supplier_id IN ({gs_ph})",
+            gs_ids,
+        ).fetchall():
+            gid = int(row["global_supplier_id"])
+            if row["report_year"] is not None:
+                summaries[gid]["finances"] = {"report_year": row["report_year"], "revenue": row["revenue"], "profit": row["profit"]}
+        if not supplier_ids:
+            return summaries
+        sp_ph = ",".join("?" * len(supplier_ids))
+
+        for row in connection.execute(
+            f"SELECT DISTINCT request_id, supplier_id FROM request_suppliers WHERE supplier_id IN ({sp_ph})", supplier_ids
+        ).fetchall():
+            gid = supplier_to_global[int(row["supplier_id"])]
+            summaries[gid]["total_requests"] += 1
+
+        for row in connection.execute(
+            f"SELECT supplier_id, status FROM request_supplier_states WHERE supplier_id IN ({sp_ph})", supplier_ids
+        ).fetchall():
+            gid = supplier_to_global[int(row["supplier_id"])]
+            # Raw pipeline states (see _normalize_mail_status): any state means we
+            # attempted contact; 'replied' is the only one that means an answer came back.
+            if row["status"] in ("queued", "sending", "sent", "replied", "failed"):
+                summaries[gid]["sent_count"] += 1
+            if row["status"] == "replied":
+                summaries[gid]["answered_count"] += 1
+
+        for row in connection.execute(
+            f"SELECT supplier_id, MAX(created_at) AS last FROM mail_messages WHERE supplier_id IN ({sp_ph}) GROUP BY supplier_id", supplier_ids
+        ).fetchall():
+            gid = supplier_to_global[int(row["supplier_id"])]
+            current = summaries[gid]["last_contact_at"]
+            if current is None or row["last"] > current:
+                summaries[gid]["last_contact_at"] = row["last"]
+
+        ratings: dict[int, list[int]] = {}
+        for row in connection.execute(
+            f"SELECT supplier_id, rating FROM request_supplier_ratings WHERE supplier_id IN ({sp_ph})", supplier_ids
+        ).fetchall():
+            gid = supplier_to_global[int(row["supplier_id"])]
+            ratings.setdefault(gid, []).append(int(row["rating"]))
+        for gid, values in ratings.items():
+            summaries[gid]["avg_deal_rating"] = round(sum(values) / len(values), 1)
+
+        for row in connection.execute(
+            f"""SELECT s.id AS supplier_id FROM suppliers s
+                JOIN blacklist_entries b ON b.workspace_id=s.workspace_id AND b.external_key=s.external_key AND b.restored_at IS NULL
+                WHERE s.id IN ({sp_ph})""", supplier_ids
+        ).fetchall():
+            gid = supplier_to_global.get(int(row["supplier_id"]))
+            if gid:
+                summaries[gid]["is_blacklisted"] = True
+
+        position_rows = connection.execute(
+            f"""SELECT rs.supplier_id, rs.position_keys_json, rp.request_id, rp.position_key, rp.name
+                FROM request_suppliers rs
+                JOIN request_positions rp ON rp.request_id = rs.request_id
+                WHERE rs.supplier_id IN ({sp_ph})""", supplier_ids
+        ).fetchall()
+        for row in position_rows:
+            gid = supplier_to_global[int(row["supplier_id"])]
+            try:
+                keys = set(json.loads(row["position_keys_json"] or "[]"))
+            except (TypeError, ValueError):
+                keys = set()
+            if row["position_key"] in keys:
+                summaries[gid]["categories"].add(row["name"])
+
+        # Average reply time: first outbound -> first inbound per (request, supplier).
+        message_rows = connection.execute(
+            f"SELECT request_id, supplier_id, direction, created_at FROM mail_messages WHERE supplier_id IN ({sp_ph}) ORDER BY created_at",
+            supplier_ids,
+        ).fetchall()
+        first_out: dict[tuple[int, int], str] = {}
+        reply_hours: dict[int, list[float]] = {}
+        for row in message_rows:
+            key = (int(row["request_id"]), int(row["supplier_id"]))
+            if row["direction"] == "outbound" and key not in first_out:
+                first_out[key] = row["created_at"]
+            elif row["direction"] == "inbound" and key in first_out:
+                gid = supplier_to_global[key[1]]
+                try:
+                    sent = datetime.fromisoformat(first_out.pop(key))
+                    received = datetime.fromisoformat(row["created_at"])
+                    hours = max((received - sent).total_seconds() / 3600.0, 0.0)
+                    reply_hours.setdefault(gid, []).append(hours)
+                except (TypeError, ValueError):
+                    pass
+        for gid, values in reply_hours.items():
+            summaries[gid]["avg_response_hours"] = sum(values) / len(values)
+
+        return summaries
+
+    @staticmethod
+    def _compose_global_supplier(row: dict[str, Any], summary: dict[str, Any]) -> dict[str, Any]:
+        total_requests = summary.get("total_requests", 0)
+        sent_count = summary.get("sent_count", 0)
+        answered_count = summary.get("answered_count", 0)
+        response_rate = round(answered_count / sent_count * 100) if sent_count else 0
+        avg_hours = summary.get("avg_response_hours")
+        relationship = "blacklisted" if summary.get("is_blacklisted") else "favorite" if row.get("is_favorite") else "none"
+        return {
+            "id": row["id"],
+            "inn": row["inn"],
+            "name": row["name"],
+            "site": row["site"],
+            "email": row["email"] or None,
+            "phone": row["phone"] or None,
+            "note": row["note"],
+            "categories": sorted(summary.get("categories", set())),
+            "total_requests": total_requests,
+            "response_rate": response_rate,
+            "avg_response_hours": round(avg_hours, 1) if avg_hours is not None else None,
+            "last_contact_at": summary.get("last_contact_at"),
+            "relationship_status": relationship,
+            "avg_deal_rating": summary.get("avg_deal_rating"),
+            "blacklist_reason": summary.get("blacklist_reason") or None,
+            "blacklisted_at": summary.get("blacklisted_at"),
+            "registry": summary.get("registry"),
+            "finances": summary.get("finances"),
+        }
+
+    def update_global_supplier(self, workspace_id: int, global_supplier_id: int, *, note: str | None = None) -> None:
+        if note is None:
+            return
+        with self.connect() as connection:
+            connection.execute(
+                "UPDATE global_suppliers SET note=?, updated_at=? WHERE workspace_id=? AND id=?",
+                (note, iso_now(), workspace_id, global_supplier_id),
+            )
+
+    def set_global_supplier_relationship(
+        self, workspace_id: int, user_id: int, global_supplier_id: int, status: str, *, reason: str = "",
+    ) -> None:
+        """status: 'none' | 'favorite' | 'blacklisted'. Blacklist reuses the existing
+        workspace blacklist_entries mechanism (applied to every linked host-supplier)
+        rather than a second, parallel flag — one source of truth for "don't contact".
+        A reason is mandatory for 'blacklisted' (see global_supplier_blacklist,
+        migration 010) — the caller decides where that text comes from (a typed
+        reason on manual toggle, or the issue-modal's selected reason)."""
+        if status not in ("none", "favorite", "blacklisted"):
+            raise ValueError("Некорректный статус отношений.")
+        reason = reason.strip()
+        if status == "blacklisted" and not reason:
+            raise ValueError("Укажите причину, чтобы добавить поставщика в чёрный список.")
+        now = iso_now()
+        with self.connect() as connection:
+            gs = connection.execute(
+                "SELECT name FROM global_suppliers WHERE workspace_id=? AND id=?", (workspace_id, global_supplier_id)
+            ).fetchone()
+            if not gs:
+                raise ValueError("Поставщик не найден.")
+            connection.execute(
+                "UPDATE global_suppliers SET is_favorite=?, updated_at=? WHERE workspace_id=? AND id=?",
+                (1 if status == "favorite" else 0, now, workspace_id, global_supplier_id),
+            )
+            if status == "blacklisted":
+                connection.execute(
+                    "INSERT INTO global_supplier_blacklist(global_supplier_id, reason, blacklisted_at) VALUES (?, ?, ?) "
+                    "ON CONFLICT(global_supplier_id) DO UPDATE SET reason=excluded.reason, blacklisted_at=excluded.blacklisted_at",
+                    (global_supplier_id, reason, now),
+                )
+            else:
+                connection.execute("DELETE FROM global_supplier_blacklist WHERE global_supplier_id=?", (global_supplier_id,))
+            linked = connection.execute(
+                "SELECT s.external_key FROM suppliers s JOIN global_supplier_links l ON l.supplier_id=s.id WHERE l.global_supplier_id=?",
+                (global_supplier_id,),
+            ).fetchall()
+            for row in linked:
+                external_key = row["external_key"]
+                if status == "blacklisted":
+                    existing = connection.execute(
+                        "SELECT id FROM blacklist_entries WHERE workspace_id=? AND external_key=? AND restored_at IS NULL",
+                        (workspace_id, external_key),
+                    ).fetchone()
+                    if not existing:
+                        connection.execute(
+                            "INSERT INTO blacklist_entries(workspace_id, external_key, company_name, reason, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                            (workspace_id, external_key, gs["name"], reason, user_id, now),
+                        )
+                else:
+                    connection.execute(
+                        "UPDATE blacklist_entries SET restored_at=? WHERE workspace_id=? AND external_key=? AND restored_at IS NULL",
+                        (now, workspace_id, external_key),
+                    )
+            self._audit_connection(connection, workspace_id, user_id, "global_supplier.relationship_changed", "global_supplier", str(global_supplier_id), {"status": status, "reason": reason})
+
+    def add_global_supplier_issue(
+        self, workspace_id: int, user_id: int, global_supplier_id: int, *,
+        reason: str, comment: str = "", correct_inn: str = "", source: str = "manual",
+    ) -> int:
+        now = iso_now()
+        with self.connect() as connection:
+            exists = connection.execute(
+                "SELECT id FROM global_suppliers WHERE workspace_id=? AND id=?", (workspace_id, global_supplier_id)
+            ).fetchone()
+            if not exists:
+                raise ValueError("Поставщик не найден.")
+            cursor = connection.execute(
+                "INSERT INTO global_supplier_issues(global_supplier_id, reason, comment, correct_inn, source, reported_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (global_supplier_id, reason, comment, correct_inn or None, source, now),
+            )
+            issue_id = int(cursor.lastrowid)
+            self._audit_connection(connection, workspace_id, user_id, "global_supplier.issue_reported", "global_supplier", str(global_supplier_id), {"reason": reason, "source": source})
+        return issue_id
+
+    def set_deal_rating(self, workspace_id: int, user_id: int, request_id: int, supplier_id: int, rating: int) -> None:
+        if not 1 <= rating <= 5:
+            raise ValueError("Оценка должна быть от 1 до 5.")
+        now = iso_now()
+        with self.connect() as connection:
+            owned = connection.execute(
+                "SELECT 1 FROM request_suppliers rs JOIN requests r ON r.id=rs.request_id "
+                "WHERE rs.request_id=? AND rs.supplier_id=? AND r.workspace_id=?",
+                (request_id, supplier_id, workspace_id),
+            ).fetchone()
+            if not owned:
+                raise ValueError("Заявка или поставщик не найдены в этом рабочем пространстве.")
+            connection.execute(
+                "INSERT INTO request_supplier_ratings(request_id, supplier_id, rating, updated_at) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(request_id, supplier_id) DO UPDATE SET rating=excluded.rating, updated_at=excluded.updated_at",
+                (request_id, supplier_id, rating, now),
+            )
+            self._audit_connection(connection, workspace_id, user_id, "request_supplier.rated", "request_supplier", f"{request_id}:{supplier_id}", {"rating": rating})
 
     def create_queued_message(
         self,
@@ -989,6 +1683,13 @@ class MailRepository:
                 "SELECT id, direction, from_email, to_email, subject, body_text, body_html, status, error, message_id, in_reply_to, references_header, created_at, sent_at FROM mail_messages WHERE workspace_id=? AND request_id=? AND supplier_id=? ORDER BY created_at",
                 (workspace_id, request_id, supplier_id),
             ).fetchall()
+            # Opening a thread is how a reply gets acknowledged — feeds the
+            # "Новые ответы" dashboard KPI (see dashboard_summary()).
+            now = iso_now()
+            connection.executemany(
+                "INSERT OR IGNORE INTO mail_message_reads(message_id, read_at) VALUES (?, ?)",
+                [(row["id"], now) for row in rows if row["direction"] == "inbound"],
+            )
         return [_readable_message(dict(row)) for row in rows]
 
     # ------------------------------------------------------ inbox reply threads

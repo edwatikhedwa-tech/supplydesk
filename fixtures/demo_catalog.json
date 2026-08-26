@@ -1,0 +1,1267 @@
+{
+  "positions": [
+    {
+      "id": "p1",
+      "name": "Кирпич облицовочный",
+      "qty": "12 000 шт"
+    },
+    {
+      "id": "p2",
+      "name": "Кирпич рядовой строительный",
+      "qty": "20 000 шт"
+    },
+    {
+      "id": "p3",
+      "name": "Кирпич печной шамотный",
+      "qty": "800 шт"
+    },
+    {
+      "id": "p4",
+      "name": "Блок газобетонный D500",
+      "qty": "40 м³"
+    }
+  ],
+  "suppliers": [
+    {
+      "host": "kirpich.ru",
+      "title": "Купить кирпич в Москве: цена за штуку, виды, каталог...",
+      "snippet": "Купить кирпич оптом и в розницу по доступным ценам за штуку, куб, тонну.",
+      "inn": "9717045058",
+      "kind": "Организация",
+      "region": "Москва",
+      "emails": [
+        {
+          "e": "kirpich@kirpich.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "buh@kirpich.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "marketing@kirpich.ru",
+          "c": "high",
+          "role": false
+        }
+      ],
+      "n_emails": 3,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "reg": {
+        "name": "ООО \"СТРОЙЛАЙНЕР\"",
+        "role": "оптовик",
+        "region": "Москва",
+        "status": "Действует",
+        "phones": [
+          "+74959789344"
+        ],
+        "emails": [
+          "im9789344@yandex.ru",
+          "lm9789344@yandex.ru"
+        ],
+        "headcount": 13,
+        "risks": [],
+        "okved": "Торговля оптовая лесоматериалами, строительными материалами и санитарно-техническим оборудованием",
+        "telegram": "",
+        "confirmed": []
+      }
+    },
+    {
+      "host": "stroylan.ru",
+      "title": "Кирпич строительный пустотелый 2.1 NF двойной ввкз...",
+      "snippet": "Поризованный камень 2,1 NF (кирпич двойной) имеет ряд принципиальных отличий от кирпича стандартного…",
+      "inn": "507902388204",
+      "kind": "ИП",
+      "region": "Москва",
+      "emails": [
+        {
+          "e": "zakaz@stroylan.ru",
+          "c": "high",
+          "role": true
+        }
+      ],
+      "n_emails": 1,
+      "conf": "high",
+      "web": false,
+      "covers": [],
+      "reg": {
+        "name": "Куламкадыров Уланбек Замирбекович",
+        "role": "розница",
+        "region": "Москва",
+        "status": "Действует",
+        "phones": [],
+        "emails": [],
+        "headcount": null,
+        "risks": [],
+        "okved": "Торговля розничная строительными материалами, не включенными в другие группировки, в специализированных магазинах",
+        "telegram": "",
+        "confirmed": []
+      }
+    },
+    {
+      "host": "avito.ru",
+      "title": "кирпич - Купить стройматериалы ‍ во всех регионах",
+      "snippet": "347 529 объявлений о продаже строительных материалов по доступным ценам во всех регионах. На Авито вы можете недорого купить обои...",
+      "inn": "",
+      "kind": "",
+      "region": "",
+      "emails": [
+        {
+          "e": "sales@avito.ru",
+          "c": "medium",
+          "role": true
+        },
+        {
+          "e": "open.hotline@avito.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "pr@avito.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "shop_support@avito.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "hello@avito.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "connect@avito.ru",
+          "c": "low",
+          "role": false
+        }
+      ],
+      "n_emails": 7,
+      "conf": "medium",
+      "web": true,
+      "covers": [],
+      "reg": null
+    },
+    {
+      "host": "rf.petrovich.ru",
+      "title": "Купить кирпич по цене от 16₽ за штуку для строительства...",
+      "snippet": "Кирпич в России — покупайте в интернет-магазине Петрович. Доставка на авто до 1,5 Т в течение нескольких дней...",
+      "inn": "",
+      "kind": "",
+      "region": "",
+      "emails": [
+        {
+          "e": "info@petrovich.ru",
+          "c": "medium",
+          "role": true
+        },
+        {
+          "e": "iu.blagina@petrovich.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "notice.business@stdp.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "s.denishenko@petrovichstd.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "import@stdp.ru",
+          "c": "low",
+          "role": false
+        }
+      ],
+      "n_emails": 5,
+      "conf": "medium",
+      "web": true,
+      "covers": [],
+      "reg": null
+    },
+    {
+      "host": "slavdom.ru",
+      "title": "Кирпич по доступным ценам — более 3000 видов",
+      "snippet": "Купить кирпич от лучших европейских и российских производителей с доставкой — более 3000 видов, в наличии на складах Славдом и на заказ с заводов...",
+      "inn": "7806528328",
+      "kind": "Организация",
+      "region": "Санкт-Петербург",
+      "emails": [
+        {
+          "e": "info@slavdom.ru",
+          "c": "high",
+          "role": true
+        },
+        {
+          "e": "quality@slavdom.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "pr@slavdom.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "ksenia.melnikova@slavdom.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "logistics@slavdom.ru",
+          "c": "high",
+          "role": false
+        }
+      ],
+      "n_emails": 5,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "reg": {
+        "name": "ООО \"СЛАВДОМ\"",
+        "role": "оптовик",
+        "region": "Санкт-Петербург",
+        "status": "Действует",
+        "phones": [
+          "+78123375151",
+          "+74956405151"
+        ],
+        "emails": [
+          "info@slavdom.ru"
+        ],
+        "headcount": 154,
+        "risks": [],
+        "okved": "Торговля оптовая прочими строительными материалами и изделиями",
+        "telegram": "Slavdom_bot",
+        "confirmed": [
+          "info@slavdom.ru"
+        ]
+      }
+    },
+    {
+      "host": "strd.ru",
+      "title": "Кирпич строительный (рядовой) купить в Москве – цены...",
+      "snippet": "Продажа строительного кирпича (рядового) по выгодным ценам в Москве – купить рабочий кирпич в интернет-магазине «Стройкомплект».",
+      "inn": "5009056896",
+      "kind": "Организация",
+      "region": "Московская область",
+      "emails": [
+        {
+          "e": "info@strd.ru",
+          "c": "high",
+          "role": true
+        },
+        {
+          "e": "b@strd.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "vi@strd.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "ob@strd.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "c@strd.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "ks@strd.ru",
+          "c": "high",
+          "role": false
+        }
+      ],
+      "n_emails": 45,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2",
+        "p4"
+      ],
+      "reg": {
+        "name": "ООО \"СТРОЙПОСТАВКА\"",
+        "role": "оптовик",
+        "region": "Московская область",
+        "status": "Действует",
+        "phones": [
+          "+79035218100"
+        ],
+        "emails": [
+          "sk157@strd.ru",
+          "sk86@strd.ru",
+          "sk93@strd.ru"
+        ],
+        "headcount": 155,
+        "risks": [],
+        "okved": "Торговля оптовая древесным сырьем и необработанными лесоматериалами",
+        "telegram": "",
+        "confirmed": [
+          "info@strd.ru"
+        ]
+      }
+    },
+    {
+      "host": "ozon.ru",
+      "title": "Кирпичи строительные полнотелые купить на OZON по...",
+      "snippet": "Кирпичи строительные полнотелые – покупайте на OZON по выгодным ценам, быстрая и бесплатная доставка, оригинальные товары, гарантия...",
+      "inn": "",
+      "kind": "",
+      "region": "",
+      "emails": [
+        {
+          "e": "gr@ozon.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "econsec@ozon.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "sellersup@ozon.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "support@ozon.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "b2b@ozon.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "ekatalekseeva@ozon.ru",
+          "c": "low",
+          "role": false
+        }
+      ],
+      "n_emails": 6,
+      "conf": "low",
+      "web": true,
+      "covers": [
+        "p2"
+      ],
+      "reg": null
+    },
+    {
+      "host": "gkz.ru",
+      "title": "Кирпич — купить по цене от 12,17 руб. за штуку в Москве...",
+      "snippet": "У нас можно купить уникальные изделия, не имеющие аналогов на отечественном рынке — премиальный кирпич с пониженным водопоглощением и...",
+      "inn": "",
+      "kind": "",
+      "region": "",
+      "emails": [
+        {
+          "e": "region@gkz.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "gkz1882@mail.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "info-gkz@mail.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "gkz-msk@list.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "gkz1882eo@mail.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "gkz-buh@bk.ru",
+          "c": "low",
+          "role": false
+        }
+      ],
+      "n_emails": 9,
+      "conf": "low",
+      "web": true,
+      "covers": [],
+      "reg": null
+    },
+    {
+      "host": "russ-kirpich.ru",
+      "title": "Кирпич купить по цене за штуку от 10 руб. в Москве...",
+      "snippet": "Купить кирпич по низкой цене за штуку, м2, м3 в Москве, Коломне и Московской области в интернет-магазине. Продажа кирпича без посредников с...",
+      "inn": "",
+      "kind": "",
+      "region": "",
+      "emails": [
+        {
+          "e": "sale@russ-kirpich.ru",
+          "c": "high",
+          "role": true
+        },
+        {
+          "e": "buh@russ-kirpich.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "hh@russ-kirpich.ru",
+          "c": "high",
+          "role": false
+        }
+      ],
+      "n_emails": 3,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p3",
+        "p4"
+      ],
+      "reg": null
+    },
+    {
+      "host": "all-brick.ru",
+      "title": "Кирпич купить цена за штуку от 29,9 руб. в Москве",
+      "snippet": "Продажа кирпича по цене от 29,9 руб. от лучших производителей.",
+      "inn": "7709988922",
+      "kind": "Организация",
+      "region": "Москва",
+      "emails": [
+        {
+          "e": "sale-bricks@all-brick.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "info@all-brick.ru",
+          "c": "high",
+          "role": true
+        },
+        {
+          "e": "buh@all-brick.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "hr@all-brick.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "marketing@all-brick.ru",
+          "c": "high",
+          "role": false
+        }
+      ],
+      "n_emails": 5,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2",
+        "p4"
+      ],
+      "reg": {
+        "name": "ООО \"ОЛЛБРИК\"",
+        "role": "оптовик",
+        "region": "Москва",
+        "status": "Действует",
+        "phones": [
+          "+74993481089",
+          "+79164825146"
+        ],
+        "emails": [
+          "sale@all-brick.ru",
+          "konsalting.mo@mail.ru"
+        ],
+        "headcount": 1,
+        "risks": [
+          "массовый адрес регистрации (149 компаний)"
+        ],
+        "okved": "Торговля оптовая лесоматериалами, строительными материалами и санитарно-техническим оборудованием",
+        "telegram": "",
+        "confirmed": []
+      }
+    },
+    {
+      "host": "n-dom.com",
+      "title": "Купить кирпич в Воронеже по цене за штуку с доставкой...",
+      "snippet": "Большой выбор строительных кирпичей, изготовленных по ГОСТу: лицевой (облицовочный), силикатный, керамический, полнотелый и др. виды...",
+      "inn": "",
+      "kind": "",
+      "region": "",
+      "emails": [
+        {
+          "e": "9001@n-dom.com",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "info@metalloprokat.com",
+          "c": "low",
+          "role": true
+        }
+      ],
+      "n_emails": 2,
+      "conf": "low",
+      "web": true,
+      "covers": [
+        "p1",
+        "p2"
+      ],
+      "reg": null
+    },
+    {
+      "host": "kirpich-house.ru",
+      "title": "Кирпич недорого – купить кирпич по низким ценам за...",
+      "snippet": "Купить такой кирпич в Екатеринбурге недорого можно в нашем магазине.",
+      "inn": "662004739802",
+      "kind": "ИП",
+      "region": "Свердловская область",
+      "emails": [
+        {
+          "e": "zakaz@kirpich-house.ru",
+          "c": "high",
+          "role": true
+        },
+        {
+          "e": "client@kirpich-house.ru",
+          "c": "high",
+          "role": true
+        }
+      ],
+      "n_emails": 2,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2",
+        "p3"
+      ],
+      "reg": {
+        "name": "Фомичев Денис Александрович",
+        "role": "оптовик",
+        "region": "Свердловская область",
+        "status": "Действует",
+        "phones": [],
+        "emails": [],
+        "headcount": null,
+        "risks": [],
+        "okved": "Торговля оптовая лесоматериалами, строительными материалами и санитарно-техническим оборудованием",
+        "telegram": "",
+        "confirmed": []
+      }
+    },
+    {
+      "host": "braer.ru",
+      "title": "Облицовочный кирпич для фасада - купить по цене от...",
+      "snippet": "Облицовочный керамический кирпич в Москве оптом и в розницу. Каталог и цены на сайте производителя BRAER.",
+      "inn": "7727586920",
+      "kind": "Организация",
+      "region": "Москва",
+      "emails": [
+        {
+          "e": "td@braer.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "zavod@braer.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "news@braer.ru",
+          "c": "high",
+          "role": false
+        }
+      ],
+      "n_emails": 3,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1"
+      ],
+      "reg": {
+        "name": "ООО \"ТД БРАЕР\"",
+        "role": "оптовик",
+        "region": "Москва",
+        "status": "Действует",
+        "phones": [
+          "+74956457120",
+          "+74872252450"
+        ],
+        "emails": [
+          "news@braer.ru",
+          "td@braer.ru",
+          "zavod@braer.ru"
+        ],
+        "headcount": 54,
+        "risks": [],
+        "okved": "Торговля оптовая прочими строительными материалами и изделиями",
+        "telegram": "BRAERru",
+        "confirmed": [
+          "news@braer.ru",
+          "td@braer.ru",
+          "zavod@braer.ru"
+        ]
+      }
+    },
+    {
+      "host": "kirpichnadom.ru",
+      "title": "Купить кирпич - низкая цена за штуку, доставка кирпича...",
+      "snippet": "Продажа кирпича по выгодной цене, купить кирпич в Москве оптом по ценам производителя и в розницу со склада в Москве, широкий ассортимент...",
+      "inn": "",
+      "kind": "",
+      "region": "",
+      "emails": [
+        {
+          "e": "sale@kirpichnadom.ru",
+          "c": "high",
+          "role": true
+        }
+      ],
+      "n_emails": 1,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "reg": null
+    },
+    {
+      "host": "kirpich-gazobeton.ru",
+      "title": "Кирпич в Москве по цене от 10 ₽ купить | Кирпич...",
+      "snippet": "Кирпич купить по низкой цене за штуку в Москве. Кирпич с быстрой доставкой с завода производителя. Большой каталог интернет...",
+      "inn": "502239648366",
+      "kind": "ИП",
+      "region": "Московская область",
+      "emails": [
+        {
+          "e": "zed@kirpich-gazobeton.ru",
+          "c": "high",
+          "role": false
+        }
+      ],
+      "n_emails": 1,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2",
+        "p4"
+      ],
+      "reg": {
+        "name": "Красавин Илья Юрьевич",
+        "role": "прочее",
+        "region": "Московская область",
+        "status": "Действует",
+        "phones": [],
+        "emails": [],
+        "headcount": null,
+        "risks": [],
+        "okved": "Разработка компьютерного программного обеспечения, консультационные услуги в данной области и другие сопутствующие услуги",
+        "telegram": "",
+        "confirmed": []
+      }
+    },
+    {
+      "host": "stroisyst.ru",
+      "title": "Кирпич купить в Краснодаре - Супермаркет кирпича...",
+      "snippet": "Кирпич лицевой (облицовочный), рядовой (забутовочный), клинкерный, ригельный и кирпич ручной формовки.",
+      "inn": "2312200792",
+      "kind": "Организация",
+      "region": "Краснодарский край",
+      "emails": [
+        {
+          "e": "2486824@mail.ru",
+          "c": "medium",
+          "role": false
+        },
+        {
+          "e": "89189454101@mail.ru",
+          "c": "medium",
+          "role": false
+        },
+        {
+          "e": "9890941144@mail.ru",
+          "c": "medium",
+          "role": false
+        },
+        {
+          "e": "9898287700@mail.ru",
+          "c": "medium",
+          "role": false
+        },
+        {
+          "e": "9034010191@mail.ru",
+          "c": "medium",
+          "role": false
+        },
+        {
+          "e": "9882352523@mail.ru",
+          "c": "medium",
+          "role": false
+        }
+      ],
+      "n_emails": 9,
+      "conf": "medium",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2",
+        "p3"
+      ],
+      "reg": {
+        "name": "ООО \"СТРОИТЕЛЬНЫЕ СИСТЕМЫ\"",
+        "role": "оптовик",
+        "region": "Краснодарский край",
+        "status": "Действует",
+        "phones": [
+          "+79034010191",
+          "+79187570808"
+        ],
+        "emails": [
+          "2445040@mail.ru",
+          "2486824@mail.ru",
+          "89189454101@mail.ru"
+        ],
+        "headcount": 11,
+        "risks": [],
+        "okved": "Торговля оптовая прочими строительными материалами и изделиями",
+        "telegram": "",
+        "confirmed": [
+          "2486824@mail.ru",
+          "89189454101@mail.ru",
+          "9034010191@mail.ru"
+        ]
+      }
+    },
+    {
+      "host": "blockstock.ru",
+      "title": "Кирпич в Москве по цене от 14 руб. за штуку купить",
+      "snippet": "Кирпич купить по цене за штуку от 14 руб. Кирпич с доставкой в Москве Огромный каталог кирпича с дешевыми ценами, размерами и...",
+      "inn": "5022052442",
+      "kind": "Организация",
+      "region": "Московская область",
+      "emails": [
+        {
+          "e": "otdel-prodag@blockstock.ru",
+          "c": "high",
+          "role": false
+        }
+      ],
+      "n_emails": 1,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2",
+        "p4"
+      ],
+      "reg": {
+        "name": "ООО \"ЕВРОМИКС СМ \"",
+        "role": "производитель",
+        "region": "Московская область",
+        "status": "Действует",
+        "phones": [
+          "+79164190663"
+        ],
+        "emails": [],
+        "headcount": 21,
+        "risks": [],
+        "okved": "Производство сухих бетонных смесей",
+        "telegram": "",
+        "confirmed": []
+      }
+    },
+    {
+      "host": "moskeram.ru",
+      "title": "Купить кирпич по низкой цене с доставкой в Москве",
+      "snippet": "Успей купить по низкой цене Быстрая доставка на машинах до 18 тонн с манипулятором 8(800)555-44-33.",
+      "inn": "7714931544",
+      "kind": "Организация",
+      "region": "Москва",
+      "emails": [
+        {
+          "e": "info@moskeram.ru",
+          "c": "high",
+          "role": true
+        },
+        {
+          "e": "77@moskeram.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "sgorbachev@moskeram.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "dkovalev@moskeram.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "99@moskeram.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "amenshikov@moskeram.ru",
+          "c": "high",
+          "role": false
+        }
+      ],
+      "n_emails": 14,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "reg": {
+        "name": "ООО \"КОМПАНИЯ МОСКЕРАМ\"",
+        "role": "оптовик",
+        "region": "Москва",
+        "status": "Действует",
+        "phones": [
+          "+74951457339",
+          "+79209733666"
+        ],
+        "emails": [
+          "ecerentaev@moskeram.ru"
+        ],
+        "headcount": 13,
+        "risks": [
+          "массовый адрес регистрации (140 компаний)"
+        ],
+        "okved": "Торговля оптовая прочими строительными материалами и изделиями",
+        "telegram": "",
+        "confirmed": []
+      }
+    },
+    {
+      "host": "kirpich-ko.ru",
+      "title": "Кирпич - купить по выгодной цене в Ростове-на-Дону",
+      "snippet": "КИРПИЧ и КО - ваш надежный поставщик строительных материалов. Выгодные условия покупки, официальная гарантия, рассрочка платежа.",
+      "inn": "616708095412",
+      "kind": "ИП",
+      "region": "Ростовская область",
+      "emails": [
+        {
+          "e": "info@kirpich-ko.ru",
+          "c": "high",
+          "role": true
+        },
+        {
+          "e": "temer@kirpich-ko.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "ln.baza@mail.ru",
+          "c": "medium",
+          "role": false
+        },
+        {
+          "e": "ch.baza@mail.ru",
+          "c": "medium",
+          "role": false
+        },
+        {
+          "e": "bt.baza@mail.ru",
+          "c": "medium",
+          "role": false
+        },
+        {
+          "e": "buh-baza@mail.ru",
+          "c": "medium",
+          "role": false
+        }
+      ],
+      "n_emails": 9,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p3",
+        "p4"
+      ],
+      "reg": {
+        "name": "Карапетян Ольга Александровна",
+        "role": "розница",
+        "region": "Ростовская область",
+        "status": "Действует",
+        "phones": [],
+        "emails": [
+          "i",
+          "n",
+          "n"
+        ],
+        "headcount": null,
+        "risks": [],
+        "okved": "Торговля розничная скобяными изделиями, лакокрасочными материалами и стеклом в специализированных магазинах",
+        "telegram": "",
+        "confirmed": []
+      }
+    },
+    {
+      "host": "kirpi4nik.com",
+      "title": "ТД КИРПИЧНИК - более 1000 видов кирпича!",
+      "snippet": "Торговый Дом \"Кирпичник\" - кирпич более 1000 видов (строительный, облицовочный, клинкерный, печной, силикатный, огнеупорный) на...",
+      "inn": "",
+      "kind": "",
+      "region": "",
+      "emails": [
+        {
+          "e": "812bsk@mail.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "mail@vsebloki.ru",
+          "c": "low",
+          "role": true
+        }
+      ],
+      "n_emails": 2,
+      "conf": "low",
+      "web": true,
+      "covers": [
+        "p1",
+        "p3"
+      ],
+      "reg": null
+    },
+    {
+      "host": "kult-kirpicha.ru",
+      "title": "Купить кирпич в Ростове-на-Дону - Культ Кирпича",
+      "snippet": "Кирпич облицовочный Красная Гвардия «Кедр Премиум» 1NF одинарный, М175-200.",
+      "inn": "6163228203",
+      "kind": "Организация",
+      "region": "Ростовская область",
+      "emails": [
+        {
+          "e": "brickmercury@mail.ru",
+          "c": "medium",
+          "role": false
+        }
+      ],
+      "n_emails": 1,
+      "conf": "medium",
+      "web": false,
+      "covers": [
+        "p1",
+        "p3",
+        "p4"
+      ],
+      "reg": {
+        "name": "ООО \"МЕРКУРИЙ\"",
+        "role": "розница",
+        "region": "Ростовская область",
+        "status": "Действует",
+        "phones": [
+          "+79044409852"
+        ],
+        "emails": [],
+        "headcount": 6,
+        "risks": [
+          "массовый адрес регистрации (1 компаний)"
+        ],
+        "okved": "Торговля розничная кирпичом в специализированных магазинах",
+        "telegram": "",
+        "confirmed": []
+      }
+    },
+    {
+      "host": "wildberries.ru",
+      "title": "Кирпич красный полнотелый - Купить в интернет...",
+      "snippet": "Кирпич красный полнотелый - Большой выбор в интернет-магазине WildBerries.ru. Бесплатная доставка и постоянные скидки!",
+      "inn": "",
+      "kind": "",
+      "region": "",
+      "emails": [
+        {
+          "e": "sales@wildberries.ru",
+          "c": "medium",
+          "role": true
+        },
+        {
+          "e": "mhelp@wildberries.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "marketplace-support@wildberries.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "hotline@wb.ru",
+          "c": "low",
+          "role": false
+        }
+      ],
+      "n_emails": 4,
+      "conf": "medium",
+      "web": true,
+      "covers": [
+        "p2"
+      ],
+      "reg": null
+    },
+    {
+      "host": "market.yandex.ru",
+      "title": "Кирпичи строительные - купить по низкой цене на Яндекс...",
+      "snippet": "Кирпичи строительные — купить на Яндекс Маркете по выгодным ценам. В каталоге с реальными отзывами покупателей. Быстрая доставка по...",
+      "inn": "",
+      "kind": "",
+      "region": "",
+      "emails": [
+        {
+          "e": "help@market.yandex.ru",
+          "c": "low",
+          "role": false
+        },
+        {
+          "e": "market-promo@yandex-team.ru",
+          "c": "low",
+          "role": false
+        }
+      ],
+      "n_emails": 2,
+      "conf": "low",
+      "web": true,
+      "covers": [],
+      "reg": null
+    },
+    {
+      "host": "kcm-stroy.ru",
+      "title": "Облицовочный кирпич - цена в Москве, купить лицевой...",
+      "snippet": "В Торговом доме К.С.М. можно купить керамический кирпич, клинкерный и ручной формовки.",
+      "inn": "7717127839",
+      "kind": "Организация",
+      "region": "Москва",
+      "emails": [
+        {
+          "e": "info@tdkcm.ru",
+          "c": "medium",
+          "role": true
+        }
+      ],
+      "n_emails": 1,
+      "conf": "medium",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2"
+      ],
+      "reg": {
+        "name": "ООО \"ТОРГОВЫЙ ДОМ К.С.М.\"",
+        "role": "оптовик",
+        "region": "Москва",
+        "status": "Действует",
+        "phones": [
+          "+74956029414",
+          "+74959806391"
+        ],
+        "emails": [
+          "hello@tdkcm.ru",
+          "fadeeva@tdksm.ru",
+          "info@tdksm.ru"
+        ],
+        "headcount": 35,
+        "risks": [],
+        "okved": "Торговля оптовая прочими строительными материалами и изделиями",
+        "telegram": "tdkcm",
+        "confirmed": []
+      }
+    },
+    {
+      "host": "rukeram.ru",
+      "title": "Купить кирпич в Москве и области от 1.31 руб. от...",
+      "snippet": "Купить такой кирпич поштучно или оптом – верное решение, он имеет много цветовых решений и различных форм.",
+      "inn": "7730251183",
+      "kind": "Организация",
+      "region": "Москва",
+      "emails": [
+        {
+          "e": "gkz@bk.ru",
+          "c": "medium",
+          "role": false
+        },
+        {
+          "e": "5451092@gmail.com",
+          "c": "medium",
+          "role": false
+        },
+        {
+          "e": "rukeram@yandex.ru",
+          "c": "medium",
+          "role": false
+        }
+      ],
+      "n_emails": 3,
+      "conf": "medium",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2",
+        "p4"
+      ],
+      "reg": {
+        "name": "ООО \"РУКЕРАМИКА\"",
+        "role": "розница",
+        "region": "Москва",
+        "status": "Действует",
+        "phones": [
+          "+79637110601"
+        ],
+        "emails": [],
+        "headcount": 2,
+        "risks": [
+          "массовый адрес регистрации (1026 компаний)"
+        ],
+        "okved": "Торговля розничная строительными материалами, не включенными в другие группировки, в специализированных магазинах",
+        "telegram": "",
+        "confirmed": []
+      }
+    },
+    {
+      "host": "cckomplekt.ru",
+      "title": "Кирпич керамический полнотелый купить в Москве - цена...",
+      "snippet": "Купить кирпич цена за штуку с доставкой.... Удивительно, что стоимость кирпича не кусается и позволить себе приобрести его может любой застройщик.",
+      "inn": "",
+      "kind": "",
+      "region": "",
+      "emails": [
+        {
+          "e": "info@cckomplekt.ru",
+          "c": "high",
+          "role": true
+        },
+        {
+          "e": "cckomplekt@mail.ru",
+          "c": "medium",
+          "role": false
+        }
+      ],
+      "n_emails": 2,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p3",
+        "p4"
+      ],
+      "reg": null
+    },
+    {
+      "host": "klavka.ru",
+      "title": "Рядовой строительный кирпич — купить... | Клавка Групп",
+      "snippet": "Магазин Клавка Групп предлагает купить красный кирпич с курьерской доставкой по СПб и Ленинградской области.",
+      "inn": "7804675214",
+      "kind": "Организация",
+      "region": "Санкт-Петербург",
+      "emails": [
+        {
+          "e": "info@klavka.ru",
+          "c": "high",
+          "role": true
+        },
+        {
+          "e": "kvi@klavka.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "bsn@klavka.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "pan@klavka.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "ipl@klavka.ru",
+          "c": "high",
+          "role": false
+        },
+        {
+          "e": "eam@klavka.ru",
+          "c": "high",
+          "role": false
+        }
+      ],
+      "n_emails": 12,
+      "conf": "high",
+      "web": false,
+      "covers": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "reg": {
+        "name": "ООО \"ТД \"КЛАВКА ГРУПП\"",
+        "role": "оптовик",
+        "region": "Санкт-Петербург",
+        "status": "Действует",
+        "phones": [
+          "+78126004242",
+          "+79112565425"
+        ],
+        "emails": [
+          "info@klavka.ru"
+        ],
+        "headcount": 24,
+        "risks": [],
+        "okved": "Торговля оптовая прочими строительными материалами и изделиями",
+        "telegram": "klavkagroupru",
+        "confirmed": [
+          "info@klavka.ru"
+        ]
+      }
+    }
+  ]
+}

@@ -84,6 +84,15 @@ class SiteResult:
         )[0]
 
 
+def _retry_after_seconds(resp: requests.Response, default: float = 2.0, cap: float = 5.0) -> float:
+    """Уважаем Retry-After на 429, но не даём одному сайту застопорить весь обход."""
+    raw = resp.headers.get("Retry-After", "")
+    try:
+        return min(max(float(raw), 0.0), cap)
+    except (TypeError, ValueError):
+        return default
+
+
 class MxCache:
     """Проверка MX-записи домена. Главный барьер против выдуманных адресов:
     если домен не принимает почту, писать туда бессмысленно."""
@@ -177,30 +186,54 @@ class ContactCrawler:
         })
         return s
 
-    def _fetch(self, session: requests.Session, url: str) -> tuple[str, str] | None:
-        """Вернуть (html, конечный_url) или None."""
-        try:
-            resp = session.get(url, timeout=self.timeout, allow_redirects=True, stream=True)
-        except requests.RequestException as exc:
-            log.debug("не открылось %s: %s", url, exc)
-            return None
+    def _fetch(
+        self, session: requests.Session, url: str, *,
+        status_out: list[int] | None = None, retries: int = 1,
+    ) -> tuple[str, str] | None:
+        """Вернуть (html, конечный_url) или None.
 
-        try:
-            if resp.status_code >= 400:
-                log.debug("%s -> HTTP %s", url, resp.status_code)
-                return None
-            ctype = resp.headers.get("content-type", "").lower()
-            if ctype and not any(t in ctype for t in ("html", "xml", "text/plain")):
+        `status_out`, если передан, получает каждый увиденный HTTP-код — это
+        локальный список на вызов (не атрибут self), поэтому безопасно при
+        параллельном обходе нескольких сайтов одним экземпляром ContactCrawler.
+        Транзиентные сбои (обрыв соединения, таймаут, 429) стоят одной
+        повторной попытки: два реальных прогона одного и того же сайта иногда
+        расходятся именно из-за одиночной сетевой заминки, а не отсутствия
+        адреса на странице.
+        """
+        for attempt in range(retries + 1):
+            try:
+                resp = session.get(url, timeout=self.timeout, allow_redirects=True, stream=True)
+            except requests.RequestException as exc:
+                if attempt < retries:
+                    time.sleep(0.6 * (attempt + 1))
+                    continue
+                log.debug("не открылось %s: %s", url, exc)
                 return None
 
-            body = resp.raw.read(self.max_body, decode_content=True)
-            if not body:
-                return None
-            # UnicodeDammit читает <meta charset> — на рунете полно cp1251.
-            html = UnicodeDammit(body, ["utf-8", "windows-1251", "koi8-r"]).unicode_markup
-            return (html or "", resp.url)
-        finally:
-            resp.close()
+            try:
+                if status_out is not None:
+                    status_out.append(resp.status_code)
+                if resp.status_code == 429 and attempt < retries:
+                    wait = _retry_after_seconds(resp)
+                    resp.close()
+                    time.sleep(wait)
+                    continue
+                if resp.status_code >= 400:
+                    log.debug("%s -> HTTP %s", url, resp.status_code)
+                    return None
+                ctype = resp.headers.get("content-type", "").lower()
+                if ctype and not any(t in ctype for t in ("html", "xml", "text/plain")):
+                    return None
+
+                body = resp.raw.read(self.max_body, decode_content=True)
+                if not body:
+                    return None
+                # UnicodeDammit читает <meta charset> — на рунете полно cp1251.
+                html = UnicodeDammit(body, ["utf-8", "windows-1251", "koi8-r"]).unicode_markup
+                return (html or "", resp.url)
+            finally:
+                resp.close()
+        return None
 
     def _robots_allows(self, session: requests.Session, base: str) -> bool:
         if not self.respect_robots:
@@ -223,10 +256,24 @@ class ContactCrawler:
         result = SiteResult(host=host, root=root_domain(host))
         session = self._session()
 
-        base = self._resolve_base(session, host)
+        base, block_status = self._resolve_base(session, host)
         if not base:
-            result.status = "unreachable"
-            result.error = "сайт не открылся ни по https, ни по http"
+            # 403/401/451 и 429 — не «сайта нет», а активная защита от ботов
+            # (Cloudflare/QRATOR и подобные) или её rate-limit. Смешивать их с
+            # настоящей недоступностью (DNS не резолвится, соединение не
+            # устанавливается) скрывает главную причину потерь в воронке.
+            if block_status in (401, 403, 451):
+                result.status = "blocked"
+                result.error = f"сайт заблокировал обход (HTTP {block_status})"
+            elif block_status == 429:
+                result.status = "rate_limited"
+                result.error = "превышен лимит запросов (HTTP 429)"
+            elif block_status is not None and block_status >= 500:
+                result.status = "unreachable"
+                result.error = f"сайт вернул ошибку сервера (HTTP {block_status})"
+            else:
+                result.status = "unreachable"
+                result.error = "сайт не открылся ни по https, ни по http"
             result.elapsed = time.monotonic() - started
             return result
         result.start_url = base
@@ -338,24 +385,35 @@ class ContactCrawler:
 
     # ---------------------------------------------------------------- частности
 
-    def _resolve_base(self, session: requests.Session, host: str) -> str:
-        """Подобрать рабочую схему: сначала https, потом http."""
+    def _resolve_base(self, session: requests.Session, host: str) -> tuple[str, int | None]:
+        """Подобрать рабочую схему: сначала https, потом http.
+
+        Возвращает (url, None) при успехе или ('', код) при неудаче — код
+        нужен наверху (crawl()), чтобы отличить блокировку от настоящей
+        недоступности. status_out — локальный список на этот вызов, поэтому
+        безопасен при параллельном обходе (crawl_many делит один self между потоками).
+        """
+        last_status: int | None = None
         for scheme in ("https://", "http://"):
             url = f"{scheme}{host}/"
             try:
                 socket.gethostbyname(host)
             except OSError:
-                return ""
+                return "", None  # DNS не резолвится — это точно недоступность, не блокировка
             try:
                 resp = session.head(url, timeout=self.timeout, allow_redirects=True)
                 if resp.status_code < 400:
-                    return resp.url
+                    return resp.url, None
+                last_status = resp.status_code
             except requests.RequestException:
                 pass
             # HEAD часто закрыт — пробуем GET, прежде чем сдаваться.
-            if self._fetch(session, url):
-                return url
-        return ""
+            status_out: list[int] = []
+            if self._fetch(session, url, status_out=status_out):
+                return url, None
+            if status_out:
+                last_status = status_out[-1]
+        return "", last_status
 
     def _extract(self, html: str, url: str, contact: bool) -> list[EmailHit]:
         hits, _rejected = extract_from_html(html, url)

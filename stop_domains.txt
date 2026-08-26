@@ -1,13 +1,22 @@
-# Заготовка White-list агрегаторов и инфо-ресурсов из Test 2.2.
-# Пока используется как стоп-лист: такие домены не попадают в выгрузку.
-# ВАЖНО: для PoC список стоит держать пустым или коротким — сначала нужно
-# измерить, сколько мусора реально приходит, и только потом резать.
+# Стоп-лист доменов, которые не попадают в выборку supplier_app.py._run_search
+# (подключено через exclude_domains у SerpCollector) — см. docs/enrichment-and-cache.md.
+# Причина двойная: это розничные площадки, а не B2B-поставщики, и большинство
+# из них к тому же блокируют автоматический обход (HTTP 403/429 — Cloudflare,
+# QRATOR) — подтверждено вживую 24.08.2026 на заявке №1049.
 tiu.ru
 pulscen.ru
 avito.ru
 ozon.ru
 wildberries.ru
 market.yandex.ru
+citilink.ru
+dns-shop.ru
+megamarket.ru
+vseinstrumenti.ru
+sima-land.ru
+220-volt.ru
+lemanapro.ru
+farpost.ru
 youtube.com
 wikipedia.org
 vk.com

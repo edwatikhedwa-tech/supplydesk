@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import logging
 import os
 import secrets
 import threading
@@ -21,9 +22,21 @@ from mail.queue import MailQueue
 from mail.repository import MailRepository
 from mail.service import DEFAULT_TEMPLATE, MailService
 from mail.types import ProviderError
-from serp_parser import SerpCollector
+from serp_parser import SerpCollector, read_lines
 from xmlriver_client import XmlRiverClient
 
+# Enrichment pipeline (email/INN/company data) — see docs/enrichment-and-cache.md.
+# Reused as-is from the already-tested CLI tools; nothing here is new logic.
+from checko_client import CheckoClient
+from collect_inn import INN_PATHS, INN_URL_HINTS, extract_for_site, page_text
+from contact_crawler import ContactCrawler, SiteResult
+from email_extractor import is_contact_url
+from inn_extractor import InnHit, is_requisites_url, validate_inn_checksum
+from llm_fallback import LlmExtractor, api_key_present
+from verify import registry_owns_site, registry_ownership_unknown, verify_email
+from web_lookup import WebLookup
+
+log = logging.getLogger("supplier_app")
 
 ROOT = Path(__file__).resolve().parent
 
@@ -45,37 +58,27 @@ def load_dotenv(path: Path) -> None:
             os.environ[key] = value
 
 
-_DATA_MARKER = "const DATA = "
-_DATA_END_MARKER = ";\n\nconst $"
+# The built React SPA (frontend/npm run build). Its assets are hashed and public;
+# nothing under ROOT besides this directory and the font files below is servable.
+FRONTEND_DIST = ROOT / "frontend" / "dist"
 
-# Static files anyone may fetch without a session. Everything else under ROOT
-# (application source, migrations, .env*, etc.) must never be reachable over HTTP.
-PUBLIC_STATIC_FILES = {
-    "/fonts/ProcureSans-Regular.otf",
-    "/fonts/ProcureSans-Semibold.otf",
-}
+# Extensions that only ever belong to server-side source or config. A React
+# Router path never ends in one of these, so such a request is either a probe
+# or a typo — both deserve a plain 404 rather than the SPA shell.
+_SOURCE_SUFFIXES = (
+    ".py", ".pyc", ".sql", ".env", ".ini", ".cfg", ".toml", ".yaml", ".yml",
+    ".sqlite3", ".db", ".log", ".sh", ".ps1", ".bak", ".pem", ".key",
+)
 
 
-def _data_blob_span(html: str) -> tuple[int, int]:
-    start = html.index(_DATA_MARKER) + len(_DATA_MARKER)
-    end = html.index(_DATA_END_MARKER, start)
-    return start, end
+def _looks_like_source_path(path: str) -> bool:
+    tail = path.rsplit("/", 1)[-1].lower()
+    return tail.startswith(".env") or tail.endswith(_SOURCE_SUFFIXES)
 
 
 def load_fixture_data() -> dict:
-    """Read the current result fixture once so dashboard data is backed by SQLite."""
-    html = (ROOT / "supplier_finder.html").read_text(encoding="utf-8")
-    start, end = _data_blob_span(html)
-    return json.loads(html[start:end])
-
-
-def render_app_shell(*, authenticated: bool) -> str:
-    """Serve the SPA shell. Anonymous requests never receive real supplier data."""
-    html = (ROOT / "supplier_finder.html").read_text(encoding="utf-8")
-    if authenticated:
-        return html
-    start, end = _data_blob_span(html)
-    return html[:start] + '{"positions":[],"suppliers":[]}' + html[end:]
+    """Read the demo supplier catalog once so a fresh workspace has seed data."""
+    return json.loads((ROOT / "fixtures" / "demo_catalog.json").read_text(encoding="utf-8"))
 
 
 @dataclass(frozen=True)
@@ -144,13 +147,11 @@ class SupplierHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path == "/":
-            self._redirect("/supplier_finder.html")
+        if parsed.path.startswith("/assets/"):
+            self.directory = str(FRONTEND_DIST)
+            super().do_GET()
             return
-        if parsed.path == "/supplier_finder.html":
-            self._serve_app_shell()
-            return
-        if parsed.path in PUBLIC_STATIC_FILES:
+        if parsed.path in {"/fonts/ProcureSans-Regular.otf", "/fonts/ProcureSans-Semibold.otf"}:
             self.directory = str(ROOT)
             super().do_GET()
             return
@@ -197,6 +198,16 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             session = self._require_session()
             if session:
                 self._json(200, {"items": self.app.repository.list_blacklist(session["workspace_id"])})
+            return
+        if parsed.path == "/api/global-suppliers":
+            session = self._require_session()
+            if session:
+                self._json(200, {"items": self.app.repository.list_global_suppliers(session["workspace_id"])})
+            return
+        if parsed.path.startswith("/api/global-suppliers/"):
+            session = self._require_session()
+            if session:
+                self._global_supplier_route(session, parsed.path)
             return
         if parsed.path == "/api/correspondence":
             session = self._require_session()
@@ -252,7 +263,21 @@ class SupplierHandler(SimpleHTTPRequestHandler):
         if parsed.path == "/oauth/yandex/callback":
             self._oauth_callback(parse_qs(parsed.query))
             return
-        self._json(404, {"error": "Не найдено."})
+        if parsed.path.startswith("/api/") or parsed.path.startswith("/oauth/"):
+            self._json(404, {"error": "Не найдено."})
+            return
+        # A path that looks like a source or config file is never a client-side
+        # route. The shell is not sensitive, so answering it with 200 leaks
+        # nothing today — but it makes /.env and /supplier_app.py *look* like
+        # they exist to any scanner, and it would quietly mask a future
+        # whitelist mistake instead of failing loudly. Answer honestly: 404.
+        if _looks_like_source_path(parsed.path):
+            self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
+            return
+        # Anything else is a client-side route (React Router) — serve the SPA shell
+        # and let the browser router resolve it. Auth is decided client-side via
+        # /api/auth/me so this response never needs to vary by session.
+        self._serve_app_shell()
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
@@ -318,6 +343,7 @@ class SupplierHandler(SimpleHTTPRequestHandler):
                     session["workspace_id"], user_id=session["user_id"], name=body.get("name", ""),
                     description=body.get("description", ""), positions=positions,
                     sender_name=body.get("sender_name", session.get("display_name", "")), company_name=body.get("company_name", ""),
+                    deadline=body.get("deadline", ""),
                 )
                 self._json(201, {"ok": True, "request_id": request_id})
             elif parsed.path == "/api/blacklist":
@@ -339,8 +365,10 @@ class SupplierHandler(SimpleHTTPRequestHandler):
                 entry_id = int(parsed.path.split("/")[3])
                 self.app.repository.restore_blacklist(session["workspace_id"], session["user_id"], entry_id)
                 self._json(200, {"ok": True})
+            elif parsed.path.startswith("/api/global-suppliers/"):
+                self._global_supplier_action(session, parsed.path, body)
             elif parsed.path.startswith("/api/requests/"):
-                self._request_action(session, parsed.path)
+                self._request_action(session, parsed.path, body)
             else:
                 self._json(404, {"error": "Маршрут не найден."})
         except (ValueError, TypeError, ProviderError, EncryptionConfigError) as exc:
@@ -365,11 +393,10 @@ class SupplierHandler(SimpleHTTPRequestHandler):
         )
 
     def _serve_app_shell(self) -> None:
-        session = self.app.repository.get_session(self._session_token())
-        body = self.app.render_app_shell(authenticated=bool(session)).encode("utf-8")
+        body = (FRONTEND_DIST / "index.html").read_bytes()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
-        # Do not let a browser keep an older shell, or another user's data, after this response.
+        # Do not let a browser cache the shell across deploys; hashed asset URLs inside it change.
         self.send_header("Cache-Control", "no-store, max-age=0")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -404,7 +431,7 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
         except ProviderError:
-            self._redirect("/supplier_finder.html?login_error=not_configured")
+            self._redirect("/login?error=not_configured")
 
     def _oauth_start(self) -> None:
         session = self._require_session()
@@ -420,7 +447,7 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             )
             self._redirect(provider.authorization_url(redirect_uri=self.app.config.redirect_uri, state=state, code_challenge=code_challenge))
         except ProviderError:
-            self._redirect("/supplier_finder.html?settings=mail&mail_error=not_configured")
+            self._redirect("/settings?mail_error=not_configured")
 
     def _oauth_callback(self, query: dict[str, list[str]]) -> None:
         state = (query.get("state") or [""])[0]
@@ -434,15 +461,15 @@ class SupplierHandler(SimpleHTTPRequestHandler):
         if login_state:
             self._finish_login_callback(login_state, query)
             return
-        self._redirect("/supplier_finder.html?login_error=invalid_state")
+        self._redirect("/login?error=invalid_state")
 
     def _finish_mail_connect_callback(self, callback_state: dict, query: dict[str, list[str]]) -> None:
         if query.get("error"):
-            self._redirect("/supplier_finder.html?settings=mail&mail_error=access_denied")
+            self._redirect("/settings?mail_error=access_denied")
             return
         code = (query.get("code") or [""])[0]
         if not code:
-            self._redirect("/supplier_finder.html?settings=mail&mail_error=missing_code")
+            self._redirect("/settings?mail_error=missing_code")
             return
         try:
             provider = yandex_provider_factory("yandex")
@@ -451,18 +478,18 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             self.app.service.save_oauth_tokens(
                 user_id=callback_state["user_id"], workspace_id=callback_state["workspace_id"], token_set=tokens, email=account.email
             )
-            self._redirect("/supplier_finder.html?settings=mail&connected=true")
+            self._redirect("/settings?connected=true")
         except (ProviderError, ValueError, EncryptionConfigError):
-            self._redirect("/supplier_finder.html?settings=mail&mail_error=connection_failed")
+            self._redirect("/settings?mail_error=connection_failed")
 
     def _finish_login_callback(self, login_state: dict, query: dict[str, list[str]]) -> None:
         clear_cookie = "oauth_login_state=; Path=/oauth/yandex/callback; Max-Age=0; HttpOnly; SameSite=Lax"
         if query.get("error"):
-            self._redirect_with_cookie("/supplier_finder.html?login_error=access_denied", clear_cookie)
+            self._redirect_with_cookie("/login?error=access_denied", clear_cookie)
             return
         code = (query.get("code") or [""])[0]
         if not code:
-            self._redirect_with_cookie("/supplier_finder.html?login_error=missing_code", clear_cookie)
+            self._redirect_with_cookie("/login?error=missing_code", clear_cookie)
             return
         try:
             provider = yandex_provider_factory("yandex")
@@ -477,7 +504,7 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             except (ProviderError, ValueError, EncryptionConfigError):
                 pass
             self.send_response(HTTPStatus.FOUND)
-            self.send_header("Location", "/supplier_finder.html")
+            self.send_header("Location", "/")
             self.send_header(
                 "Set-Cookie",
                 f"session_id={session_token}; Path=/; Max-Age=28800; HttpOnly; SameSite=Lax" + ("; Secure" if self.app.config.session_cookie_secure else ""),
@@ -486,7 +513,7 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
         except (ProviderError, ValueError, EncryptionConfigError):
-            self._redirect_with_cookie("/supplier_finder.html?login_error=connection_failed", clear_cookie)
+            self._redirect_with_cookie("/login?error=connection_failed", clear_cookie)
 
     def _thread_messages(self, session: dict, query: dict[str, list[str]]) -> None:
         try:
@@ -519,12 +546,29 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             return
         self._json(404, {"error": "Маршрут заявки не найден."})
 
-    def _request_action(self, session: dict, path: str) -> None:
+    def _request_action(self, session: dict, path: str, body: dict) -> None:
         parts = [part for part in path.split("/") if part]
         try:
             request_id = int(parts[2])
         except (IndexError, ValueError):
             self._json(400, {"error": "Некорректный идентификатор заявки."})
+            return
+        if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "rating":
+            try:
+                supplier_id = int(parts[4])
+                rating = int(body.get("rating", 0))
+            except (ValueError, TypeError):
+                self._json(400, {"error": "Некорректная оценка."})
+                return
+            self.app.repository.set_deal_rating(session["workspace_id"], session["user_id"], request_id, supplier_id, rating)
+            self._json(200, {"ok": True})
+            return
+        if len(parts) == 3:
+            self.app.repository.update_request(
+                session["workspace_id"], request_id, session["user_id"],
+                name=body.get("name"), description=body.get("description"), deadline=body.get("deadline"),
+            )
+            self._json(200, {"ok": True})
             return
         if len(parts) == 4 and parts[3] == "search":
             result = self.app.repository.start_request_search(session["workspace_id"], request_id, session["user_id"])
@@ -547,6 +591,64 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             self._json(200, {"ok": True})
             return
         self._json(404, {"error": "Действие заявки не найдено."})
+
+    def _global_supplier_route(self, session: dict, path: str) -> None:
+        """GET /api/global-suppliers/<id> — card detail (history + issues)."""
+        parts = [part for part in path.split("/") if part]
+        try:
+            global_supplier_id = int(parts[2])
+        except (IndexError, ValueError):
+            self._json(400, {"error": "Некорректный идентификатор поставщика."})
+            return
+        if len(parts) != 3:
+            self._json(404, {"error": "Маршрут не найден."})
+            return
+        detail = self.app.repository.global_supplier_detail(session["workspace_id"], global_supplier_id)
+        if not detail:
+            self._json(404, {"error": "Поставщик не найден."})
+            return
+        self._json(200, detail)
+
+    def _global_supplier_action(self, session: dict, path: str, body: dict) -> None:
+        parts = [part for part in path.split("/") if part]
+        try:
+            global_supplier_id = int(parts[2])
+        except (IndexError, ValueError):
+            self._json(400, {"error": "Некорректный идентификатор поставщика."})
+            return
+        if len(parts) == 3:
+            note = body.get("note")
+            self.app.repository.update_global_supplier(session["workspace_id"], global_supplier_id, note=str(note) if note is not None else None)
+            self._json(200, {"ok": True})
+            return
+        if len(parts) == 4 and parts[3] == "relationship":
+            try:
+                self.app.repository.set_global_supplier_relationship(
+                    session["workspace_id"], session["user_id"], global_supplier_id,
+                    str(body.get("status", "none")), reason=str(body.get("reason", "")),
+                )
+            except ValueError as exc:
+                self._json(400, {"error": str(exc)})
+                return
+            self._json(200, {"ok": True})
+            return
+        if len(parts) == 4 and parts[3] == "issues":
+            reason = str(body.get("reason", "other"))
+            issue_id = self.app.repository.add_global_supplier_issue(
+                session["workspace_id"], session["user_id"], global_supplier_id,
+                reason=reason, comment=str(body.get("comment", "")),
+                correct_inn=str(body.get("correct_inn", "")), source="manual",
+            )
+            if bool(body.get("blacklist")):
+                # Store the issue's own reason code (not a translated label) — the
+                # frontend already has issueReasonLabels for display, and reusing it
+                # keeps one source of truth for "what does this code mean".
+                self.app.repository.set_global_supplier_relationship(
+                    session["workspace_id"], session["user_id"], global_supplier_id, "blacklisted", reason=reason,
+                )
+            self._json(201, {"ok": True, "issue_id": issue_id})
+            return
+        self._json(404, {"error": "Действие не найдено."})
 
     def _require_session(self) -> dict | None:
         session = self.app.repository.get_session(self._session_token())
@@ -622,9 +724,6 @@ class SupplierHandler(SimpleHTTPRequestHandler):
 
 
 class SupplierApp:
-    def render_app_shell(self, *, authenticated: bool) -> str:
-        return render_app_shell(authenticated=authenticated)
-
     def __init__(self, config: Config) -> None:
         self.config = config
         self.repository = MailRepository(config.db_path)
@@ -635,6 +734,9 @@ class SupplierApp:
             except (ValueError, KeyError, json.JSONDecodeError):
                 # The static page remains usable even if a local fixture was edited incorrectly.
                 pass
+            # Idempotent: links any supplier that already has an ИНН (fixture, earlier
+            # enrichment runs) to its global card. See docs/suppliers-screen.md.
+            self.repository.backfill_global_suppliers(seeded_user["workspace_id"])
         self.service = MailService(
             self.repository,
             yandex_provider_factory,
@@ -651,6 +753,11 @@ class SupplierApp:
         self.rate_events: dict[str, list[float]] = {}
         self.search_lock = threading.Lock()
         self.search_thread: threading.Thread | None = None
+        # LLM fallback is the only paid, uncapped step in enrichment. A process-lifetime,
+        # day-scoped counter is enough because at most one search runs at a time (search_lock).
+        self.llm_budget_rub = float(os.getenv("LLM_DAILY_BUDGET_RUB", "50") or 0)
+        self.llm_spent_rub = 0.0
+        self.llm_spent_day = time.strftime("%Y-%m-%d")
 
     def start_search(self, workspace_id: int, request_id: int) -> None:
         with self.search_lock:
@@ -668,15 +775,253 @@ class SupplierApp:
             client = XmlRiverClient(user, key, engine="yandex", timeout=45, max_retries=3)
             positions = self.repository.request_positions(workspace_id, request_id)
             total = len(positions)
+            # SERP_PAGES is configurable (not hardcoded) so a deeper Yandex pass can be
+            # tried without a code change; default keeps today's behaviour unchanged.
+            serp_pages = max(1, int(os.getenv("SERP_PAGES", "1") or 1))
+            # Rule: everything SERP finds (after host-dedup and the stop-list) gets
+            # processed — no silent truncation of a "long tail" the user never sees.
+            # SERP_RESULTS_PER_POSITION still exists as an explicit opt-in ceiling for
+            # when someone deliberately wants to bound cost/time; empty/unset = no cap.
+            cap_raw = (os.getenv("SERP_RESULTS_PER_POSITION") or "").strip()
+            results_cap = int(cap_raw) if cap_raw else None
+            stop_domains = set(read_lines(ROOT / "stop_domains.txt")) if (ROOT / "stop_domains.txt").exists() else set()
+            hosts: list[str] = []
             for index, position in enumerate(positions, start=1):
-                collector = SerpCollector(client, pages=1, suffix="купить", delay=0, dedup="host")
+                collector = SerpCollector(client, pages=serp_pages, suffix="купить", delay=1.0, dedup="host", exclude_domains=stop_domains)
                 rows = collector.collect_one(position["name"])
-                for row in rows[:30]:
+                selected = rows if results_cap is None else rows[:results_cap]
+                for row in selected:
                     self.repository.upsert_search_result(workspace_id, request_id, position["position_key"], host=row.host, title=row.title, snippet=row.snippet)
+                    hosts.append(row.host)
                 self.repository.update_search_progress(workspace_id, request_id, index)
+            self._enrich_suppliers(workspace_id, sorted(set(hosts)))
             self.repository.complete_request_search(workspace_id, request_id)
         except Exception as exc:
             self.repository.complete_request_search(workspace_id, request_id, error=str(exc)[:500])
+
+    # ------------------------------------------------------- contact/INN enrichment
+    #
+    # SERP gives host/title/snippet only. Everything below turns that into an
+    # actual email/ИНН by crawling each new host once, same pipeline already
+    # proven from the CLI (contact_crawler + email_extractor + inn_extractor),
+    # with the LLM and Checko registry lookup as capped, best-effort extras.
+    # A crawl or extraction failure on one host must never break the batch.
+
+    def _enrich_suppliers(self, workspace_id: int, hosts: list[str]) -> None:
+        if not hosts:
+            return
+        # Skip hosts this workspace already has an email for from an earlier
+        # заявка — no shared cache yet (see PROJECT_DOCUMENTATION.md §16), but at
+        # least the same workspace doesn't re-crawl/re-pay for a site it already
+        # solved. upsert_search_result() (called before this, per host, in
+        # _run_search) already linked this request to that supplier either way.
+        already_known = self.repository.suppliers_with_email(workspace_id, hosts)
+        hosts_to_crawl = [h for h in hosts if h not in already_known]
+        if already_known:
+            log.info(
+                "%d из %d сайтов уже имеют email из прошлых заявок — обход и веб-поиск пропущены: %s",
+                len(already_known), len(hosts), ", ".join(sorted(already_known)),
+            )
+        # ...but a skipped host may still owe us its ЕГРЮЛ/финансы: its ИНН
+        # could have been found before those columns existed, or on a day the
+        # Checko quota was already spent. Without this pass the crawl skip
+        # above would keep that supplier's registry data empty forever.
+        self._enrich_registry_backlog(workspace_id, sorted(already_known))
+        if not hosts_to_crawl:
+            return
+        try:
+            crawler = ContactCrawler(
+                max_pages=6, timeout=8.0, delay=0.3, respect_robots=True,
+                check_mx=True, keep_html=True,
+                extra_url_hints=INN_URL_HINTS, extra_paths=INN_PATHS,
+            )
+            # Lower than crawl_many's own default (8): fewer simultaneous requests
+            # per target site is less likely to itself trigger rate-limiting.
+            sites = crawler.crawl_many(hosts_to_crawl, workers=5)
+        except Exception as exc:
+            log.warning("Обход сайтов для обогащения не выполнен: %s", exc)
+            return
+
+        llm = LlmExtractor() if (self.llm_budget_rub > 0 and api_key_present()) else None
+        checko: CheckoClient | None = None
+        if os.getenv("CHECKO_KEY"):
+            try:
+                checko = CheckoClient()
+            except ValueError:
+                checko = None
+
+        # Last-resort stage for sites the crawler couldn't reach at all (blocked by
+        # an anti-bot system, rate-limited, DNS/connection failure — see
+        # docs/enrichment-and-cache.md). Not a model with browsing bolted on: XMLRiver
+        # search (already paid for, already used for SERP) plus the same cheap model
+        # reading the search snippets — about 2.5 kopecks/query vs. a search-native
+        # model like Perplexity Sonar at ~17 kopecks, and Yandex's index is the more
+        # relevant one for Russian suppliers anyway. See web_lookup.py's own docstring.
+        web_lookup: WebLookup | None = None
+        user, key = os.getenv("XMLRIVER_USER", ""), os.getenv("XMLRIVER_KEY", "")
+        if user and key:
+            try:
+                web_lookup = WebLookup(XmlRiverClient(user, key, engine="yandex", timeout=20, max_retries=2), llm=llm)
+            except Exception as exc:  # noqa: BLE001 — degrade, don't break the batch
+                log.warning("Резервный поиск в интернете не настроен: %s", exc)
+
+        for site in sites:
+            try:
+                self._enrich_one(workspace_id, site, llm, checko, web_lookup)
+            except Exception as exc:  # noqa: BLE001 — one bad site must not stop the rest
+                log.warning("%s: обогащение не выполнено: %s", site.host, exc)
+
+    def _enrich_registry_backlog(self, workspace_id: int, hosts: list[str]) -> None:
+        """Checko-only pass for hosts we skip crawling but whose ЕГРЮЛ data is missing.
+
+        Cheap by design: no crawl, no LLM, no web search — one registry lookup
+        (plus one finances lookup) per ИНН, and only for ИНН we already have.
+        """
+        if not hosts or not os.getenv("CHECKO_KEY"):
+            return
+        pending = self.repository.suppliers_missing_registry(workspace_id, hosts)
+        if not pending:
+            return
+        try:
+            checko = CheckoClient()
+        except ValueError:
+            return
+        log.info("Догружаю данные ЕГРЮЛ для %d ранее найденных поставщиков", len(pending))
+        for host, inn in pending:
+            try:
+                if not validate_inn_checksum(inn):
+                    continue
+                company = checko.lookup(inn)
+                if not company.found:
+                    continue
+                # Same ownership guard as _enrich_one: a checksum-valid ИНН sitting
+                # on a page is not proof the site belongs to that legal entity.
+                owns = registry_owns_site(host, company.site, company.emails)
+                unknown = registry_ownership_unknown(company.site, company.emails)
+                if not owns and not unknown:
+                    log.info("%s: ИНН %s зарегистрирован на другую компанию — данные реестра не применяю", host, inn)
+                    continue
+                finances = checko.finances(inn)
+                self.repository.apply_supplier_enrichment(
+                    workspace_id, host, inn=inn,
+                    company_name=(company.name_full or company.name),
+                    phone=(company.phones[0] if company.phones else ""),
+                    region=company.region, role=company.role,
+                    registry_ogrn=company.ogrn, registry_status=company.status,
+                    registry_active=company.active, registry_registered_at=company.registered,
+                    finance_report_year=(finances.report_year if finances.found else None),
+                    finance_revenue=(finances.revenue if finances.found else None),
+                    finance_profit=(finances.profit if finances.found else None),
+                )
+            except Exception as exc:  # noqa: BLE001 — one bad ИНН must not stop the rest
+                log.warning("%s: догрузка ЕГРЮЛ не выполнена: %s", host, exc)
+
+    def _enrich_one(
+        self, workspace_id: int, site: SiteResult, llm: LlmExtractor | None,
+        checko: CheckoClient | None, web_lookup: WebLookup | None = None,
+    ) -> None:
+        if site.status not in ("ok", "no_email"):
+            if web_lookup is None:
+                return  # nothing to fall back to
+            finding = web_lookup.find_contacts(site.host)
+            email_hits = list(finding.emails)
+            inn_hit = web_lookup.find_inn(site.host)
+            inn_hits = [inn_hit] if inn_hit else []
+            if not email_hits and not inn_hits:
+                return  # search found nothing either — leave the SERP-only record as is
+        else:
+            email_hits = list(site.hits)
+            inn_hits = extract_for_site(site)
+            if llm is not None and (not email_hits or not inn_hits) and site.html_pages:
+                self._llm_fill(site, llm, email_hits, inn_hits)
+
+        best_email = max(email_hits, key=lambda h: h.score) if email_hits else None
+        if best_email is not None:
+            verdict = verify_email(best_email, site.host)
+            if not verdict.verified and best_email.confidence == "high":
+                best_email.confidence = "medium"
+
+        best_inn = max(inn_hits, key=lambda h: h.score) if inn_hits else None
+        checko_company = None
+        if best_inn is not None and validate_inn_checksum(best_inn.inn) and checko is not None:
+            try:
+                checko_company = checko.lookup(best_inn.inn)
+            except Exception as exc:  # noqa: BLE001 — Checko outage degrades, doesn't break search
+                log.info("Checko %s: %s", best_inn.inn, exc)
+            # A checksum-valid number found on the page isn't proof the site belongs to
+            # that legal entity — e.g. a payment processor's or a landlord's ИНН can
+            # appear in a footer. Only trust the registry's name/phone/region for this
+            # supplier if the registry itself points back at this domain (its listed
+            # site or email lives on the same root domain), or ownership genuinely
+            # can't be determined either way (small business on a free-mail address —
+            # verify.py's registry_ownership_unknown exists precisely to not penalise
+            # that case). A confirmed *mismatch* discards the Checko match entirely.
+            if checko_company and checko_company.found:
+                owns = registry_owns_site(site.host, checko_company.site, checko_company.emails)
+                unknown = registry_ownership_unknown(checko_company.site, checko_company.emails)
+                if not owns and not unknown:
+                    log.info("%s: ИНН %s зарегистрирован на %s — сайт не подтверждён, данные реестра не применяю",
+                              site.host, best_inn.inn, checko_company.name or checko_company.name_full)
+                    checko_company = None
+
+        email_value = best_email.email if best_email else ""
+        if not email_value and checko_company and checko_company.found and checko_company.emails:
+            email_value = checko_company.emails[0]
+
+        finances = None
+        if checko_company and checko_company.found and checko is not None:
+            try:
+                finances = checko.finances(best_inn.inn)
+            except Exception as exc:  # noqa: BLE001 — finances is a nice-to-have, not core
+                log.info("Checko finances %s: %s", best_inn.inn, exc)
+
+        self.repository.apply_supplier_enrichment(
+            workspace_id, site.host,
+            email=email_value,
+            inn=best_inn.inn if best_inn else "",
+            phone=(checko_company.phones[0] if checko_company and checko_company.phones else ""),
+            region=(checko_company.region if checko_company else ""),
+            role=(checko_company.role if checko_company else ""),
+            company_name=(checko_company.name_full or checko_company.name) if checko_company and checko_company.found else "",
+            registry_ogrn=(checko_company.ogrn if checko_company and checko_company.found else ""),
+            registry_status=(checko_company.status if checko_company and checko_company.found else ""),
+            registry_active=(checko_company.active if checko_company and checko_company.found else None),
+            registry_registered_at=(checko_company.registered if checko_company and checko_company.found else ""),
+            finance_report_year=(finances.report_year if finances and finances.found else None),
+            finance_revenue=(finances.revenue if finances and finances.found else None),
+            finance_profit=(finances.profit if finances and finances.found else None),
+        )
+
+    def _llm_fill(self, site: SiteResult, llm: LlmExtractor, email_hits: list, inn_hits: list[InnHit]) -> None:
+        today = time.strftime("%Y-%m-%d")
+        if today != self.llm_spent_day:
+            self.llm_spent_day = today
+            self.llm_spent_rub = 0.0
+        # At most 2 pages per site — page choice matters far more than model choice
+        # (docs/enrichment-and-cache.md), so we prefer requisites/contact-shaped URLs.
+        candidates = sorted(
+            site.html_pages.items(),
+            key=lambda kv: (is_requisites_url(kv[0]) or is_contact_url(kv[0]), len(kv[1])),
+            reverse=True,
+        )[:2]
+        for url, html in candidates:
+            if self.llm_spent_rub >= self.llm_budget_rub:
+                return
+            text = page_text(html)
+            if not inn_hits:
+                before = llm.cost_rub()
+                hit = llm.extract_inn(site.host, text, url)
+                self.llm_spent_rub += llm.cost_rub() - before
+                if hit:
+                    inn_hits.append(hit)
+            if self.llm_spent_rub >= self.llm_budget_rub:
+                return
+            if not email_hits:
+                before = llm.cost_rub()
+                hit = llm.extract_email(site.host, text, url)
+                self.llm_spent_rub += llm.cost_rub() - before
+                if hit:
+                    email_hits.append(hit)
 
     def allow_api_request(self, session_token: str, *, limit: int = 30, window_seconds: int = 60) -> bool:
         now = time.monotonic()
@@ -692,7 +1037,7 @@ class SupplierApp:
         self.queue.start()
         server = ThreadingHTTPServer((self.config.host, self.config.port), SupplierHandler)
         server.app = self  # type: ignore[attr-defined]
-        print(f"Supplydesk server: http://{self.config.host}:{self.config.port}/supplier_finder.html")
+        print(f"Supplydesk server: http://{self.config.host}:{self.config.port}/")
         try:
             server.serve_forever()
         except KeyboardInterrupt:

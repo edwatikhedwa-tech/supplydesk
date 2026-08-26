@@ -4,8 +4,8 @@ and something a human can actually read.
 Two independent jobs live here:
 
 - sanitize_email_html() / email_has_remote_images() — the allowlist layer.
-  The outer layer is a fully sandboxed <iframe> in supplier_finder.html; this
-  is the inner one. Built on nh3 (Rust's Ammonia via PyO3) instead of a
+  The outer layer is the fully sandboxed <iframe> in frontend/src/components/mail/EmailRenderer.tsx;
+  this is the inner one. Built on nh3 (Rust's Ammonia via PyO3) instead of a
   hand-rolled tag walker, so the allowlist is enforced by a real HTML parser
   with no regex edge cases to rediscover later.
 - collapse_quoted_html() / collapse_quoted_text() — the quotequail layer.
