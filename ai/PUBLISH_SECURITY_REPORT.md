@@ -1,6 +1,6 @@
 # Publish security report — TASK-REMOTE-SETUP-SIMPLIFIED
 
-Status: `PASS — staged tree validated; commit and push pending`
+Status: `PASS — commit and push completed`
 
 This report supersedes the prior `TASK-PUBLISH-SAFETY-001` gate for the
 current exclusion-first task. The prior findings remain below as historical
@@ -30,6 +30,12 @@ a blocker under the requested policy. A match in the publish set or history,
 an unsafe commit, or unavailable GitHub authentication is a blocker.
 
 Current result: `PASS — 218-file explicit staged tree, 3,053,727 index bytes`
+
+Publication result: commit `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e` was created
+with the required subject and pushed successfully to private repository
+`https://github.com/edwatikhedwa-tech/supplydesk` on branch
+`codex/TASK-STATE-CONTROL-20260830`. The local `origin` now points to that
+repository. State documents were updated after the push.
 
 Staged diff: `184` entries (`91` added, `71` modified, `22` removed from the
 current Git snapshot). The 22 removals are explicit index-only exclusions; the

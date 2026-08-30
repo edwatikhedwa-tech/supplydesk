@@ -1,5 +1,31 @@
 # Current State
 
+## Publication result — current
+
+- Timestamp UTC: `2026-08-30T18:06:50Z`.
+- Task: `TASK-REMOTE-SETUP-SIMPLIFIED`; status `COMPLETE`.
+- Project root: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
+- Branch: `codex/TASK-STATE-CONTROL-20260830`.
+- Publication commit: `85fb7a2` — `TASK-REMOTE-SETUP: publish sanitized shared project snapshot`.
+- Full publication commit: `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e`.
+- GitHub repository: `https://github.com/edwatikhedwa-tech/supplydesk`.
+- Repository visibility: `private` (confirmed by `gh repo view`).
+- Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`.
+- Publish branch: `codex/TASK-STATE-CONTROL-20260830`; upstream configured and
+  push succeeded.
+- Publish set: `218` files / `3,053,727` bytes; exact tree was explicitly
+  staged and scanned before commit.
+- Excluded local env files remain on disk and were not published. The new Git
+  snapshot contains no `.env*`, runtime/temp/data/export/archive/backup or
+  unknown paths from the explicit manifest.
+- Security: no high-confidence credential match in the publish set or the 28
+  reachable pre-publication commits scanned. This is pattern-based evidence,
+  not a guarantee against arbitrary undiscovered secrets.
+- Application code changed by this task: `NO`; pre-existing working-tree code
+  was included only when its path was explicitly admitted.
+
+## Historical pre-publication state
+
 ## Last update
 
 - Timestamp UTC: `2026-08-30T17:43:27Z` (publish-safety audit; status is BLOCKED).

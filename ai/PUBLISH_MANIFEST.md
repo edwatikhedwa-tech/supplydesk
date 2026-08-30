@@ -6,6 +6,9 @@ Generated: `2026-08-30T17:55:25Z`
 Project root: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`
 Branch: `codex/TASK-STATE-CONTROL-20260830`
 Source HEAD before this task's publish commit: `34b064bddeec5b2598f7f9f251d5ec374deadbab`
+Publication commit: `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e`
+Repository: `https://github.com/edwatikhedwa-tech/supplydesk` (`private`)
+Push: `PASS` — `codex/TASK-STATE-CONTROL-20260830` → `origin`.
 
 ## Inclusion rule
 

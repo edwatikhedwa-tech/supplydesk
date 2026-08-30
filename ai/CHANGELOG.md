@@ -172,3 +172,22 @@ rewritten.
 - Result: validator `PASS`; `681` unique working-tree paths,
   `0` staged; `origin` absent; env credential-risk overlay remains present.
 - Status: `BLOCKED`; no commit, repository creation, remote change or push.
+
+## 2026-08-30T18:06:50Z — PUBLISH — TASK-REMOTE-SETUP-SIMPLIFIED
+
+- Agent: `Codex`
+- Task ID: `TASK-REMOTE-SETUP-SIMPLIFIED`
+- Mode: `EXCLUSION-FIRST → SECURITY SCAN → COMMIT → PRIVATE REMOTE`
+- Action: formed an explicit 218-file publish set, removed excluded paths from
+  the new Git snapshot with index-only operations, scanned the staged tree and
+  reachable history, created the required commit, created the private GitHub
+  repository and pushed the current branch.
+- Evidence: staged tree `218` files / `3,053,727` bytes; staged security scan
+  `NONE FOUND`; history scan `NONE FOUND` across `28` commits; AI validator
+  `PASS`; `git diff --cached --check` `PASS`.
+- Commit: `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e`.
+- Repository: `https://github.com/edwatikhedwa-tech/supplydesk` (`private`).
+- Branch: `codex/TASK-STATE-CONTROL-20260830`; push `PASS`.
+- Application code changed by this task: `NO`; pre-existing source changes
+  were included only through explicit paths.
+- Status: `PASS`

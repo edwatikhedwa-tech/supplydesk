@@ -1,5 +1,22 @@
 # Last Handoff
 
+## Current handoff — after successful publication
+
+Task ID: `TASK-REMOTE-SETUP-SIMPLIFIED`
+Дата и время UTC: `2026-08-30T18:06:50Z`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+Publication commit: `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e`
+Repository: `https://github.com/edwatikhedwa-tech/supplydesk` (`private`)
+Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`
+Push status: `PASS` — current branch is tracking `origin/codex/TASK-STATE-CONTROL-20260830`.
+Publish set: `218` files / `3,053,727` bytes.
+Staged security scan: `PASS`; history scan: `PASS` for the documented
+high-confidence patterns; AI validator: `PASS`.
+Status: `COMPLETE`
+
+## Historical pre-publication handoff
+
 Task ID: `TASK-PUBLISH-SAFETY-001`
 Дата и время UTC: `2026-08-30T17:43:27Z`
 Агент: `Codex`
