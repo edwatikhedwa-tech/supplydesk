@@ -74,3 +74,48 @@ rewritten.
 - Evidence: `git rev-parse HEAD`, `git diff-tree --no-commit-id --name-only -r HEAD`, validator PASS.
 - Commit: `HEAD` — exact hash reported after this final chronology update.
 - Status: `PASS`
+
+## 2026-08-30T17:13:31Z — RECONCILIATION — TASK-STATE-RECONCILIATION
+
+- Agent: `Codex`
+- Task ID: `TASK-STATE-RECONCILIATION`
+- Mode: `AUDIT → DOCUMENTATION`
+- Action: reconciled the prior state-control report with Git history, current
+  worktree, the later `docs/**` snapshot, runtime/SQLite observations and
+  repeatable verification commands.
+- Files: `ai/CURRENT_STATE.md`, `ai/LAST_HANDOFF.md`,
+  `ai/DEFERRED_FINDINGS.md`, this chronology and the new reconciliation report.
+- Result: documentation corrected; no product task created; no application,
+  database, migration or production file changed by this task.
+- Evidence: commit chain `7658b115 → 8a8bc36a → 9ca82f891 → d949bc6a`;
+  current worktree snapshot `72` tracked modified/deleted, `598` untracked,
+  `0` staged; targeted tests `27/16/12 OK`; full suite currently `FAIL`.
+- Status: `PARTIAL` — state reconciliation complete, but the current full
+  backend suite is not green and historical pre-existing attribution is not
+  provable.
+
+## 2026-08-30T17:13:31Z — ACCEPTANCE — TASK-STATE-RECONCILIATION
+
+- Agent: `Codex`
+- Task ID: `TASK-STATE-RECONCILIATION`
+- Mode: `ACCEPTANCE`
+- Action: recorded validator, Python compile, targeted tests, full-suite
+  failures, frontend checks, HTTP smoke and read-only database evidence.
+- Result: validator/compile/targeted/frontend/HTTP checks `PASS`; full backend
+  suite `FAIL` because the outgoing safety gate blocked mail tests. No real
+  SMTP/IMAP send, migration or database write was performed.
+- Historical green backend result `344 OK / 1 skipped` is retained as
+  `REPORTED, NOT VERIFIED`, not promoted to current fact.
+- Status: `PARTIAL`
+
+## 2026-08-30T17:20:49Z — CLOSE/COMMIT — TASK-STATE-RECONCILIATION
+
+- Agent: `Codex`
+- Task ID: `TASK-STATE-RECONCILIATION`
+- Action: committed the reconciled state documents and report with subject
+  `TASK-STATE-RECONCILIATION: verify shared project state`.
+- Files: `ai/**` only; no application path was staged.
+- Result: local documentation commit created; `origin` remains absent and no
+  push was attempted.
+- Status: `PASS` for scope control; current backend full-suite `FAIL` remains
+  explicitly recorded as an unresolved finding.
