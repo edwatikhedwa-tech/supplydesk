@@ -1,237 +1,111 @@
 # Current State
 
-## Publication result — current
-
-- Timestamp UTC: `2026-08-30T18:06:50Z`.
-- Task: `TASK-REMOTE-SETUP-SIMPLIFIED`; status `COMPLETE`.
-- Project root: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
-- Branch: `codex/TASK-STATE-CONTROL-20260830`.
-- Publication commit: `85fb7a2` — `TASK-REMOTE-SETUP: publish sanitized shared project snapshot`.
-- Full publication commit: `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e`.
-- GitHub repository: `https://github.com/edwatikhedwa-tech/supplydesk`.
-- Repository visibility: `private` (confirmed by `gh repo view`).
-- Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`.
-- Publish branch: `codex/TASK-STATE-CONTROL-20260830`; upstream configured and
-  push succeeded.
-- Publish set: `218` files / `3,053,727` bytes; exact tree was explicitly
-  staged and scanned before commit.
-- Excluded local env files remain on disk and were not published. The new Git
-  snapshot contains no `.env*`, runtime/temp/data/export/archive/backup or
-  unknown paths from the explicit manifest.
-- Security: no high-confidence credential match in the publish set or the 28
-  reachable pre-publication commits scanned. This is pattern-based evidence,
-  not a guarantee against arbitrary undiscovered secrets.
-- Application code changed by this task: `NO`; pre-existing working-tree code
-  was included only when its path was explicitly admitted.
-
-## Historical pre-publication state
-
 ## Last update
 
-- Timestamp UTC: `2026-08-30T17:43:27Z` (publish-safety audit; status is BLOCKED).
-- Agent: `Codex`.
-- Task ID: `TASK-PUBLISH-SAFETY-001`.
-- Current HEAD: `34b064bddeec5b2598f7f9f251d5ec374deadbab`.
+- Timestamp UTC: `2026-08-30T18:31:32Z` (state closeout audit).
+- Project root: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
+- Repository: `edwatikhedwa-tech/supplydesk`.
 - Branch: `codex/TASK-STATE-CONTROL-20260830`.
-- Remote: `origin` is not configured; `git remote -v` returned no entries.
-- Working tree: `DIRTY`.
-- Publish-safety baseline counts: `78` tracked modified/deleted paths,
-  `599` untracked paths, `0` staged paths, `677` unique uncommitted paths.
-  After the four new safety documents, the handoff snapshot is `78` tracked,
-  `603` untracked, `0` staged, `681` unique. These counts include application,
-  documentation and generated/review artifacts; the historical claim of `170`
-  is not reproducible.
-- `PRE-EXISTING STATUS: REPORTED, NOT VERIFIED`: provenance and timing of the
-  uncommitted paths cannot be proved from the available Git baseline/history.
-  They were preserved and were not staged or committed.
-
-## Scope and source reconciliation
-
-- The prior state-control commits are confirmed locally and ordered as:
-  `7658b115` baseline → `8a8bc36a` unified AI state → `9ca82f891` final
-  verification chronology → `d949bc6a` separate project-state snapshot.
-- `8a8bc36a` contains only `AGENTS.md`, `CLAUDE.md` and `ai/**`.
-- `9ca82f891` contains only `ai/CHANGELOG.md` and `ai/INTERACTION_LOG.md`.
-- `d949bc6a` adds `docs/CURRENT_STATE.md`, `docs/DECISIONS.md`,
-  `docs/ENGINEERING_CONTRACT.md` and `docs/WORK_LOG.md`; it does not change
-  application code.
-- The repository now has two state-document systems: the existing `ai/**`
-  control-plane and the later `docs/**` project snapshot. They are not unified
-  by a machine-checked link or shared version marker. This is recorded as a
-  reconciliation finding; `docs/**` was not changed because the task permits
-  only `ai/**` documentation changes.
-- The current worktree also contains uncommitted changes to `docs/**` and
-  `api/index.py`. Their author and exact historical start point are unknown;
-  they remain outside this task's scope.
+- HEAD before this closeout: `7aa4fad0ce21f056592aa68c73c9ac7ad715c5fa`.
+- Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`.
+- Upstream: `origin/codex/TASK-STATE-CONTROL-20260830`.
+- GitHub branch HEAD: `7aa4fad0ce21f056592aa68c73c9ac7ad715c5fa`.
+- Repository visibility: `private`.
+- Working tree at audit: `DIRTY`; `56` untracked porcelain entries, no staged
+  entries and no tracked modifications. These paths remain outside this
+  closeout.
+- HEAD after closeout: the Task-ID commit containing this snapshot; its exact
+  hash is reported by the final `git rev-parse HEAD` check.
 
 ## Project
 
-- Project name: `SupplyDesk` — confirmed by repository layout and project
-  documentation.
-- Product purpose: procurement workspace for requests, supplier discovery and
-  enrichment, and mail workflows — reported by `Documents/28-8/PROJECT_STATUS.md`.
-- No active product task exists in `ai/inbox/`; only `.gitkeep` is present.
-- This reconciliation does not create or implement a product task.
+- Project name: `SupplyDesk`.
+- Product purpose: procurement workspace with supplier and mail workflows;
+  this description is reported by project documentation.
+- `ai/inbox/` contains only `.gitkeep`; no product task was created here.
+
+## Current task
+
+- `NONE / IDLE`.
+- `ai/ACTIVE_TASK.md` contains the explicit idle sentinel.
+
+## Last completed task
+
+- `TASK-REMOTE-SETUP-SIMPLIFIED` — `COMPLETE`.
+- Its publication result is preserved in `ai/CHANGELOG.md`,
+  `ai/INTERACTION_LOG.md`, `ai/LAST_HANDOFF.md` and
+  `ai/reports/TASK-REMOTE-SETUP-SIMPLIFIED-report.md`.
+
+## Publication status
+
+- `COMPLETE` — the private GitHub repository and expected branch were
+  independently confirmed with `gh repo view`, `gh api`, `git ls-remote` and
+  local Git metadata.
+- Publication commit: `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e`.
+- Latest state-record commit before this closeout: `7aa4fad0ce21f056592aa68c73c9ac7ad715c5fa`.
+- No new publication action is part of this state closeout.
 
 ## Implemented
 
-- This reconciliation updated only the `ai/**` state documents and added the
-  reconciliation report; no product implementation was started.
+- This task changes only repository-local AI state documents under `ai/**`.
+- No product implementation or corrective product task was started.
 
-## Runtime and database checks
+## Runtime
 
-- Loopback listener `127.0.0.1:8000` was observed under PID `23324` with a
-  Python process. Process ownership beyond that observation is not verified.
-- `GET http://127.0.0.1:8000/` returned `200`.
-- `GET http://127.0.0.1:8000/api/auth/me` returned `200`.
-- `GET http://127.0.0.1:8000/api/requests/1059` returned `401` without an
-  authenticated session; this is the negative-path smoke result.
-- The canonical SQLite file `mail-data/supplier.sqlite3` exists and was opened
-  read-only. No migration or database write was performed.
-- Read-only database observations: `PRAGMA integrity_check=ok`, `67` tables,
-  `493` suppliers, `171` request-1059 supplier rows, `2` mail accounts,
-  `165` mail messages, `42` inbox messages, `1` runtime-control row and
-  `149` mail jobs.
-- Message statuses observed: `sent=62`, `queued=84`, `failed=2`,
-  `delivery_unknown=1`, `received=16`. Providers observed: one `mailru` and
-  one `yandex` account row. A row is not proof of live provider acceptance.
-- The local `.env` contains the outgoing-mail safety switch reported as
-  `MAIL_OUTGOING_DISABLED=1`; no real SMTP/IMAP send was attempted.
-
-## Verification status
-
-- `python ai/tools/validate_state.py`: `PASS` before and after the document
-  reconciliation.
-- `python -m py_compile ai/tools/validate_state.py`: `PASS`.
-- Targeted `test_supplier_identity.py`: `27 tests, OK`.
-- Targeted `test_mail_status_semantics.py`: `16 tests, OK`.
-- Targeted `test_mailru_mvp.py`: `12 tests, OK`; this uses patched/dummy
-  transports and is not live Mail.ru acceptance.
-- Current full backend run with the local safety configuration:
-  `344 tests`, `41 failures`, `7 errors`, `1 skipped` — `FAIL`.
-- A process-only `MAIL_OUTGOING_DISABLED=0` override was also attempted:
-  `350 tests`, `41 failures`, `7 errors`, `1 skipped` — `FAIL`. The durable or
-  loaded outgoing safety gate still blocked the affected mail tests. No claim
-  of a green full suite is valid for this current audit.
-- The previous report's `344 tests OK, 1 skipped` is historical
-  `REPORTED, NOT VERIFIED` because no persistent execution log was supplied
-  and the current rerun failed.
-- Frontend `npm --prefix frontend run typecheck`: `PASS`.
-- Frontend `npm --prefix frontend run lint`: `PASS` with `8` warnings and no
-  errors (dependency/fast-refresh warnings).
-- Frontend `npm --prefix frontend run build`: `PASS` with a Vite chunk-size
-  warning. Visual screenshot review and full responsive matrix were not run.
-- `tests/run-tests.ps1` and `scripts/doctor.ps1` are absent.
-- PostgreSQL acceptance, production deployment status and real Mail.ru
-  acceptance are `NOT VERIFIED`.
+- No runtime, database, migration, SMTP, IMAP or product-suite check is
+  required for this documentation-only closeout.
+- Existing product/runtime findings remain recorded as reported or not
+  verified; they are not promoted to current acceptance facts here.
 
 ## Verified
 
-- The validator, targeted tests, frontend checks, HTTP smoke and read-only
-  SQLite observations listed in this file were actually executed or observed.
+- Repository, branch, HEAD, origin, upstream and worktree status were checked
+  in the current checkout.
+- GitHub repository privacy, name, default branch and branch commit were
+  checked through `gh`; the remote branch matches the local HEAD before this
+  closeout.
+- Baseline `python ai/tools/validate_state.py` returned `PASS`.
+- The files changed by this task are limited to `ai/**`.
 
 ## Not verified
 
-- Historical authorship of uncommitted paths, PostgreSQL, production,
-  real-provider acceptance and visual/responsive acceptance remain unverified.
-
-## Open directions and priorities
-
-- `P0`: none confirmed by this reconciliation.
-- `P1`: outbound rich-text behavior is explicitly reported as unresolved in
-  `Documents/28-8/PROJECT_STATUS.md`: editor HTML is escaped as text and rich
-  formatting should not be promised until fixed. It was not implemented or
-  independently accepted here. Current full-suite failure under the outgoing
-  safety gate is also a release-readiness blocker.
-- `P2`: real Mail.ru live acceptance is not verified; PostgreSQL acceptance is
-  not verified; no central test database-path abort guard was found; the two
-  parallel state systems need an owner decision; broad worktree attribution is
-  unresolved.
-- `P3`: date/time work is reported as already implemented in the historical
-  documentation, but no current visual acceptance was run; no active date/time
-  blocker is confirmed. No `origin` is configured. Explicit multi-email
-  picker and migration-prefix cleanup remain lower-priority reported findings.
+- The following items remain explicitly `NOT VERIFIED` in this closeout:
+  production deployment, PostgreSQL acceptance, real Mail.ru acceptance,
+  visual/responsive acceptance and collaborator access for other agents.
+- Current full product test-suite status; this task intentionally does not
+  rerun product tests.
+- Arbitrary secrets outside the documented publication scan patterns.
+- Historical authorship/provenance of untracked working-tree paths.
 
 ## Blockers
 
-- `P0`: none confirmed.
-- `P1`: reported outbound rich-text issue and current full-suite failure under
-  the outgoing safety gate.
-- `P2`: real Mail.ru/PostgreSQL acceptance, test DB guard, parallel state
-  systems and worktree provenance remain open.
-- `P3`: no configured origin and no current confirmed date/time blocker.
-
-## Recommended next blocker
-
-Choose one bounded product block: **HTML/plain-text outbound mail contract**.
-
-- Why: it is the clearest user-visible P1 reported issue, can be tested offline
-  with mocked transport, and does not require credentials, migrations or live
-  sending. Mail.ru live acceptance is a separate operational gate requiring
-  owner-approved provider access.
-- Minimal scope: inspect and, in a separate future task, fix the representation
-  of plain text and supported rich HTML for bulk compose and inbox reply;
-  add isolated MIME/rendering regression tests and document the exact contract.
-- Non-goals: Mail.ru provider integration, PostgreSQL work, migrations, schema
-  changes, production deployment, real sends, supplier identity cleanup and
-  date/time redesign.
-- Definition of Done: plain text is not double-escaped; supported rich HTML is
-  sanitized and preserved in the intended MIME part; unsafe markup is removed;
-  bulk and reply flows share the documented contract; isolated tests pass with
-  transport mocked; no live send occurs; state docs record evidence.
-- Acceptance scenarios: literal `<` and `&` in plain text remain literal;
-  allowed formatting/link markup survives when rich HTML is supported; unsafe
-  tags, event handlers and unsafe URL schemes are removed; inbox reply follows
-  the same rule; no external send or database mutation is required for the
-  test.
-- No implementation was started by this reconciliation.
+- `NONE CONFIRMED` for this state closeout.
+- Reported product directions remain open and are not silently declared fixed:
+  outbound rich-text behavior, full-suite readiness, provider/database
+  acceptance, test isolation and the parallel `docs/**` state system.
 
 ## Active constraints
 
-- Only `ai/**` documentation and the reconciliation report may be changed by
-  this task. Application files, `docs/**`, database, migrations and production
-  settings are outside scope.
-- Do not run migrations, send mail, publish, configure `origin`, delete,
-  reset, clean, checkout or force-push.
-- Do not describe unverified history, production state or provider acceptance
-  as fact.
+- This task is documentation/state-only: only `ai/**` may change.
+- Do not change application code, frontend, API, mail, migrations, tests,
+  database, production configuration or `docs/**` for this task.
+- Do not send email, run migrations, rewrite history, force-push, merge to
+  `main`/`master` or start a new product task.
 
 ## Current next step
 
-The publish-safety task is `BLOCKED`: quarantine/rotate potential credentials,
-approve the exact allowlist, repository name and shared branch, then rerun a
-staged-tree security scan. Do not create a remote, change `origin`, stage,
-commit or push before those decisions.
+- One bounded candidate, not an active task: review and, if separately
+  authorized, choose the offline **HTML/plain-text outbound mail contract**
+  block described in the previous state/report. Do not implement it as part of
+  this closeout.
 
-## Publish safety status
+## Historical / superseded state
 
-- `ai/PUBLISH_ALLOWLIST.md` contains only conditional AI-state candidates;
-  application/source/test/config paths are `REVIEW REQUIRED`.
-- `ai/PUBLISH_DENYLIST.md` excludes env files, local databases, temporary and
-  runtime files, screenshots, archives, backups, personal/unknown documents and
-  all unresolved working-tree paths.
-- `ai/PUBLISH_SECURITY_REPORT.md` records path-only security findings without
-  secret values.
-- Potential credential-bearing files present: `.env`, `.env.local`,
-  `.env.p0-backup-20260830`, `.env.production.local`,
-  `.vercel/.env.preview.local`.
-- GitHub CLI auth is `PASS` as `edwatikhedwa-tech`; expected private repository
-  `edwatikhedwa-tech/supplydesk` is not found; `origin` is absent.
-- No staging, commit, repository creation or push was performed.
-
-## Remote repository preparation
-
-- GitHub CLI is installed and authenticated as `edwatikhedwa-tech`.
-- Read-only lookup found no `edwatikhedwa-tech/supplydesk` repository.
-- `origin` is absent; it was not configured or replaced.
-- Potential secret-bearing local files present and ignored by Git:
-  `.env`, `.env.local`, `.env.p0-backup-20260830`,
-  `.env.production.local`, `.vercel/.env.preview.local`.
-- A high-confidence credential/database-URL pattern was detected in
-  `.env.production.local`; no secret value is recorded here.
-- Because potential secrets exist and the publish set/branch are unresolved,
-  status is `BLOCKED`; no commit or push is authorized by this task.
-- Current `.gitignore` covers `.env*`, `mail-data/`, runtime JSON, temp,
-  artifacts, cache, virtualenvs and database files. Generic `secrets/`,
-  `credentials/`, browser-profile and log patterns are not all explicit; the
-  uncommitted `.gitignore` was not changed during this blocked preparation.
+- The earlier `TASK-PUBLISH-SAFETY-001` state with absent `origin`, missing
+  repository and a blocked publication gate was true at its recorded time and
+  is superseded by the successful `TASK-REMOTE-SETUP-SIMPLIFIED` publication.
+- Historical blocked sections, product findings and their evidence remain in
+  the append-only logs, `ai/DEFERRED_FINDINGS.md` and prior reports. They must
+  not be read as the current repository/publication status.
+- The separate `docs/**` state snapshot and untracked-worktree provenance
+  finding remain recorded; `docs/**` was intentionally not changed.

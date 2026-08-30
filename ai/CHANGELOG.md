@@ -191,3 +191,20 @@ rewritten.
 - Application code changed by this task: `NO`; pre-existing source changes
   were included only through explicit paths.
 - Status: `PASS`
+
+## 2026-08-30T18:31:32Z — STATE RECONCILIATION / CLOSE — TASK-STATE-CLOSEOUT-20260830
+
+- Agent: `Codex`
+- Task ID: `TASK-STATE-CLOSEOUT-20260830`
+- Mode: `STATE RECONCILIATION / CLOSE`
+- Action: closed the stale active task state after independently confirming the
+  private GitHub repository, branch and publication HEAD.
+- Result: stale `ACTIVE_TASK` was replaced with the explicit `NONE / IDLE`
+  sentinel; `CURRENT_STATE` now has an unambiguous current snapshot and marks
+  historical publish BLOCKED material as superseded.
+- Application code unchanged; no database action; no email action.
+- Files: `ai/ACTIVE_TASK.md`, `ai/CURRENT_STATE.md`, `ai/LAST_HANDOFF.md`,
+  this chronology, `ai/INTERACTION_LOG.md` and the closeout report.
+- Evidence: repository/GitHub audit, state validator, scoped diff check and
+  staged-path review.
+- Status: `PASS`

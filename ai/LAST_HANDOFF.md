@@ -1,100 +1,74 @@
 # Last Handoff
 
-## Current handoff — after successful publication
+## Current handoff — state closeout complete
 
-Task ID: `TASK-REMOTE-SETUP-SIMPLIFIED`
-Дата и время UTC: `2026-08-30T18:06:50Z`
+Task ID: `TASK-STATE-CLOSEOUT-20260830`
+Дата и время UTC: `2026-08-30T18:31:32Z`
 Агент: `Codex`
 Ветка: `codex/TASK-STATE-CONTROL-20260830`
-Publication commit: `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e`
 Repository: `https://github.com/edwatikhedwa-tech/supplydesk` (`private`)
 Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`
-Push status: `PASS` — current branch is tracking `origin/codex/TASK-STATE-CONTROL-20260830`.
-Publish set: `218` files / `3,053,727` bytes.
-Staged security scan: `PASS`; history scan: `PASS` for the documented
-high-confidence patterns; AI validator: `PASS`.
-Status: `COMPLETE`
-
-## Historical pre-publication handoff
-
-Task ID: `TASK-PUBLISH-SAFETY-001`
-Дата и время UTC: `2026-08-30T17:43:27Z`
-Агент: `Codex`
-Ветка: `codex/TASK-STATE-CONTROL-20260830`
-HEAD: `34b064bddeec5b2598f7f9f251d5ec374deadbab`
-Remote: `origin` отсутствует.
-Staging: `0` файлов.
-Commit: `NOT RUN`
-Push status: `NOT RUN`
-Статус: `BLOCKED`
+HEAD before: `7aa4fad0ce21f056592aa68c73c9ac7ad715c5fa`
+HEAD after: the Task-ID closeout commit; exact hash is reported after the
+commit by `git rev-parse HEAD`.
+Active task: `NONE`
+Last completed task: `TASK-REMOTE-SETUP-SIMPLIFIED` — `COMPLETE`.
+Status: `PASS`
 
 ## Цель
 
-Подготовить безопасный allowlist для будущей публикации проекта в приватный
-GitHub, исключив секреты, временные/личные файлы и пути с неизвестным
-происхождением.
+Закрыть stale active state после подтверждённой публикации в приватный
+GitHub, отделить исторические blocked-состояния и оставить один idle sentinel.
 
 ## Что изменено
 
-- Созданы только документы `ai/PUBLISH_ALLOWLIST.md`,
-  `ai/PUBLISH_DENYLIST.md`, `ai/PUBLISH_SECURITY_REPORT.md` и отчёт задачи.
-- Обновлены `ai/CURRENT_STATE.md`, `ai/ACTIVE_TASK.md`, `ai/CHANGELOG.md` и
-  `ai/INTERACTION_LOG.md`.
-- Application code, `.gitignore`, remote, staging и GitHub repository не
-  изменялись.
+- `ai/ACTIVE_TASK.md` переведён в `NONE / IDLE`.
+- `ai/CURRENT_STATE.md` начинается с текущего подтверждённого snapshot;
+  старый publication BLOCKED state помечен как historical/superseded.
+- Этот handoff, `ai/CHANGELOG.md`, `ai/INTERACTION_LOG.md` и новый отчёт
+  описывают closeout.
+- Application code, frontend, API, mail, migrations, tests, `docs/**` и
+  database не изменялись.
 
 ## Текущее состояние runtime
 
-Текущий HEAD: `34b064bddeec5b2598f7f9f251d5ec374deadbab`; ветка
-`codex/TASK-STATE-CONTROL-20260830`. GitHub CLI авторизован как
-`edwatikhedwa-tech`, но `edwatikhedwa-tech/supplydesk` не найден. `origin`
-отсутствует. Локальные runtime/database действия не выполнялись.
+Runtime/product acceptance в этом документационном closeout не запускался.
+Database, migration, SMTP и IMAP actions не выполнялись.
 
 ## Что проверено
 
-- `git status --short`, `git ls-files`, tracked modified/deleted, untracked,
-  `git diff --stat`, `git check-ignore -v`, branch, HEAD и remote.
-- Inventory до создания safety-документов: `66 M`, `6 D`, `599 ??`, `0 staged`,
-  `677` unique paths; diff `+17125/-3588`.
-- Classification: A=190 application, B=51 tests, C=15 config, D=7 AI,
-  E=89 ordinary docs, F=58 temp/runtime, G=253 screenshots/archives/backups,
-  H=14 personal/unknown, I=0 status-listed secret paths.
-- `gh auth status`: `PASS`; user `edwatikhedwa-tech`; repository lookup: not
-  found.
-- Path-only/content scan без вывода значений секретов.
-- Existing AI state files and `ai/inbox/` checked; inbox contains only
-  `.gitkeep`.
-- `python ai/tools/validate_state.py`: `PASS` после обновления документов.
+- Repository, branch, local HEAD, origin, upstream and worktree status.
+- GitHub repository name/privacy/default branch and target branch commit via
+  `gh repo view`, `gh api` and `git ls-remote`.
+- Baseline and final `python ai/tools/validate_state.py`.
+- Scoped `git diff --check` and staged-path review before commit.
 
 ## Что не прошло
 
-- Task is blocked by `.env`, `.env.local`, `.env.p0-backup-20260830`,
-  `.env.production.local` and `.vercel/.env.preview.local`.
-- In `.env.production.local` detected a high-confidence
-  credential/database-URL-like pattern. Values were not displayed.
-- No files were approved for immediate push; app/test/config/docs paths remain
-  `REVIEW REQUIRED`.
+`NONE` for the state closeout. No product acceptance claim is made by this
+handoff.
 
 ## Что не проверено
 
-- Очистка/ротация credentials, provenance всех uncommitted paths, точный
-  owner/repository name, shared branch и final publish approval:
-  `NOT VERIFIED`.
-- Repository creation, `origin`, staging, commit and push: `NOT RUN`.
-- Safety of binary archives/screenshots beyond path exclusion is not verified.
+- These items remain `NOT VERIFIED`.
+- Current full product suite, production, PostgreSQL, real Mail.ru,
+  visual/responsive acceptance and collaborator access.
+- Arbitrary secrets outside the documented high-confidence scan patterns.
+- Authorship/provenance of unrelated untracked worktree paths.
 
 ## Следующий рациональный шаг
 
-Владелец должен кварантировать/очистить env-файлы и при необходимости ротировать
-credentials, утвердить allowlist, owner/repository и shared branch. Затем нужен
-повторный scan именно staged tree.
-
-## Рекомендуемый следующий blocker
-
-`BLOCKED — secret hygiene and publish-set approval`.
+After owner authorization, select one bounded offline product block, currently
+the reported HTML/plain-text outbound mail contract. It is not an active task.
 
 ## Не повторять
 
-Не читать или отправлять значения env-файлов в чат, не использовать `git add .`,
-не удалять/перемещать пользовательские файлы, не создавать репозиторий и не
-добавлять `origin` до завершения security gate.
+Do not treat the historical absent-origin/repository-not-found publication
+blocker as current. Do not modify product code, database or `docs/**` in this
+closeout; do not send mail, run migrations or force-push.
+
+## Historical records
+
+The completed publication and earlier blocked preparation remain available in
+the append-only logs and their existing reports. They were not rewritten as if
+this closeout performed publication again.
