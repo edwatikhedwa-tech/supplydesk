@@ -29,11 +29,18 @@ _ALLOWED_TAGS = {
     "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "pre", "code", "hr",
     "ul", "ol", "li", "dl", "dt", "dd",
     "table", "thead", "tbody", "tfoot", "tr", "td", "th", "caption", "colgroup", "col",
-    "img", "figure", "figcaption", "small", "center", "font",
+    "img", "figure", "figcaption", "small", "center", "font", "style", "button",
 }
-# Attributes kept per tag. `style` is deliberately excluded: it is the main vector
-# for layout-breaking and de-anonymising tricks, and emails survive without it.
+# Email templates commonly use classes plus a style block to express their
+# composition. Keep those hooks, but run every declaration through the narrow
+# property/value filter below before it reaches the browser.
+_COMMON_ATTRS = {
+    "align", "valign", "width", "height", "bgcolor", "border", "cellpadding", "cellspacing",
+    "background", "class", "id", "dir", "lang", "role", "style", "data-remote-background",
+    "data-remote-body-background",
+}
 _ALLOWED_ATTRS = {
+    "*": _COMMON_ATTRS,
     "a": {"href", "title"},
     "img": {"src", "alt", "width", "height"},
     "td": {"colspan", "rowspan", "align", "valign"},
@@ -50,18 +57,227 @@ _ALLOWED_ATTRS = {
 # so attribute_filter below strips data: specifically on <a href>.
 _URL_SCHEMES = {"http", "https", "mailto", "tel", "data"}
 
+# These properties cover the visual language used by normal HTML mail
+# (tables, cards, buttons, typography and responsive rules). Properties that
+# can move content over the application, paint outside the document, load a
+# resource or execute code are deliberately absent.
+_SAFE_STYLE_PROPERTIES = {
+    "background", "background-color", "background-position", "background-repeat", "background-size",
+    "border", "border-bottom", "border-bottom-color", "border-bottom-left-radius",
+    "border-bottom-right-radius", "border-bottom-style", "border-bottom-width", "border-collapse",
+    "border-color", "border-left", "border-left-color", "border-left-style", "border-left-width",
+    "border-radius", "border-right", "border-right-color", "border-right-style", "border-right-width",
+    "border-spacing", "border-style", "border-top", "border-top-color", "border-top-left-radius",
+    "border-top-right-radius", "border-top-style", "border-top-width", "border-width", "box-shadow",
+    "box-sizing", "color", "display", "font-family", "font-size", "font-style", "font-variant",
+    "font-weight", "height", "letter-spacing", "line-height", "margin", "margin-bottom", "margin-left",
+    "margin-right", "margin-top", "max-height", "max-width", "min-height", "min-width", "opacity",
+    "padding", "padding-bottom", "padding-left", "padding-right", "padding-top", "text-align",
+    "text-decoration", "text-indent", "text-transform", "vertical-align", "visibility", "white-space",
+    "width", "word-break", "word-spacing", "overflow-wrap", "hyphens", "table-layout",
+}
+_UNSAFE_STYLE_VALUE = re.compile(
+    r"(?i)(?:url\s*\(|expression\s*\(|javascript\s*:|vbscript\s*:|behavior\s*:|-moz-binding|@import)"
+)
+_REMOTE_BACKGROUND_URL = re.compile(r"(?i)url\(\s*['\"]?(https?://[^'\")\s]+)['\"]?\s*\)")
+_UNSAFE_CSS_MARKUP = re.compile(r"[{}<>]")
+_UNSAFE_CSS_ESCAPE = re.compile(r"[\\\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+_CSS_CLEAN_CONTENT_TAGS = {
+    "script", "noscript", "template", "object", "embed", "iframe", "frame", "frameset",
+    "form", "input", "select", "textarea", "option", "meta", "base", "link",
+    "svg", "math", "canvas", "video", "audio",
+}
+
 
 def _attribute_filter(tag: str, attribute: str, value: str) -> str | None:
+    if attribute == "style":
+        return _sanitize_css_declarations(value) or None
+    if attribute == "data-remote-background":
+        return value if value.strip().lower().startswith(("http://", "https://")) else None
+    if attribute == "data-remote-body-background":
+        return value if value.strip().lower().startswith(("http://", "https://")) else None
+    if attribute == "background":
+        source = value.strip().lower()
+        if source.startswith(("http://", "https://")):
+            return None
+        if any(source.startswith(f"data:{mime};") for mime in ("image/gif", "image/jpeg", "image/png", "image/webp", "image/avif", "image/bmp", "image/x-icon")):
+            return value
+        return None
     if tag == "a" and attribute == "href" and value.strip().lower().startswith("data:"):
         return None
     if tag == "img" and attribute == "src":
         source = value.strip().lower()
-        if source.startswith(("data:image/", "http://", "https://")):
+        if source.startswith(("http://", "https://")):
             return value
-        # cid:, relative paths, anything else: cannot render outside the
-        # original mailbox anyway, and a bare src="" would just show a broken-image icon.
+        if any(source.startswith(f"data:{mime};") for mime in ("image/gif", "image/jpeg", "image/png", "image/webp", "image/avif", "image/bmp", "image/x-icon")):
+            return value
+        # CID images are resolved to data: URLs while parsing the MIME message.
+        # Relative paths and other schemes have no trusted mailbox base URL.
         return None
     return value
+
+
+def _split_css_declarations(value: str) -> list[str]:
+    """Split declarations without treating semicolons in quoted values as separators."""
+
+    chunks: list[str] = []
+    start = 0
+    quote: str | None = None
+    escaped = False
+    depth = 0
+    for index, char in enumerate(value):
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in {"'", '"'}:
+            quote = char
+        elif char == "(":
+            depth += 1
+        elif char == ")" and depth:
+            depth -= 1
+        elif char == ";" and depth == 0:
+            chunks.append(value[start:index])
+            start = index + 1
+    chunks.append(value[start:])
+    return chunks
+
+
+def _sanitize_css_declarations(value: str) -> str:
+    """Keep visual declarations while rejecting resource loads and CSS code."""
+
+    result: list[str] = []
+    for declaration in _split_css_declarations(_strip_css_comments(value)):
+        if ":" not in declaration:
+            continue
+        property_name, raw_value = declaration.split(":", 1)
+        property_name = property_name.strip().lower()
+        if property_name not in _SAFE_STYLE_PROPERTIES:
+            continue
+        normalized_value = " ".join(raw_value.strip().split())
+        if (
+            not normalized_value
+            or _UNSAFE_STYLE_VALUE.search(normalized_value)
+            or _UNSAFE_CSS_MARKUP.search(normalized_value)
+            or _UNSAFE_CSS_ESCAPE.search(normalized_value)
+        ):
+            continue
+        result.append(f"{property_name}:{normalized_value}")
+    return ";".join(result)
+
+
+def _strip_css_comments(value: str) -> str:
+    return re.sub(r"/\*.*?\*/", " ", value, flags=re.DOTALL)
+
+
+def _matching_css_brace(value: str, opening: int) -> int | None:
+    depth = 0
+    quote: str | None = None
+    escaped = False
+    for index in range(opening, len(value)):
+        char = value[index]
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in {"'", '"'}:
+            quote = char
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def _sanitize_css_stylesheet(value: str, *, depth: int = 0) -> str:
+    """Sanitize ordinary rules and bounded @media rules in a style element."""
+
+    if depth > 2:
+        return ""
+    stylesheet = _strip_css_comments(value)[:200_000]
+    output: list[str] = []
+    cursor = 0
+    while cursor < len(stylesheet):
+        opening = stylesheet.find("{", cursor)
+        if opening < 0:
+            break
+        prelude = " ".join(stylesheet[cursor:opening].split())
+        closing = _matching_css_brace(stylesheet, opening)
+        if closing is None:
+            break
+        body = stylesheet[opening + 1:closing]
+        cursor = closing + 1
+        if (
+            not prelude
+            or ";" in prelude
+            or _UNSAFE_STYLE_VALUE.search(prelude)
+            or _UNSAFE_CSS_MARKUP.search(prelude)
+            or _UNSAFE_CSS_ESCAPE.search(prelude)
+        ):
+            continue
+        if prelude.lower().startswith("@media"):
+            query = prelude[6:].strip()
+            nested = _sanitize_css_stylesheet(body, depth=depth + 1)
+            if query and nested:
+                output.append(f"@media {query}{{{nested}}}")
+            continue
+        if prelude.startswith("@"):
+            continue
+        declarations = _sanitize_css_declarations(body)
+        if declarations:
+            output.append(f"{prelude}{{{declarations}}}")
+    return "".join(output)
+
+
+def _extract_remote_background_url(style_value: str) -> str | None:
+    for declaration in _split_css_declarations(style_value):
+        if ":" not in declaration:
+            continue
+        property_name, raw_value = declaration.split(":", 1)
+        if property_name.strip().lower() not in {"background", "background-image"}:
+            continue
+        match = _REMOTE_BACKGROUND_URL.search(raw_value)
+        if match:
+            return match.group(1)
+    return None
+
+
+def _mark_remote_backgrounds(value: str) -> str:
+    """Remember blocked remote backgrounds without passing a loadable URL to CSS."""
+
+    soup = BeautifulSoup(value, "html.parser")
+    body_background_url: str | None = None
+    if soup.body:
+        body_background_url = _extract_remote_background_url(str(soup.body.get("style") or ""))
+    for element in soup.find_all(style=True):
+        url = _extract_remote_background_url(str(element.get("style") or ""))
+        if url:
+            element["data-remote-background"] = url
+    for element in soup.find_all(attrs={"background": True}):
+        source = str(element.get("background") or "").strip()
+        if source.lower().startswith(("http://", "https://")):
+            element["data-remote-background"] = source
+    if body_background_url and soup.body:
+        # nh3 unwraps the document's <body> because the stored value is an
+        # allowlisted fragment. Put the body-surface marker on its first real
+        # child so the reader can still choose a readable fallback surface.
+        first_child = next(
+            (child for child in soup.body.children if getattr(child, "name", None) not in {None, "style"}),
+            None,
+        )
+        if first_child is not None:
+            first_child["data-remote-body-background"] = body_background_url
+    return str(soup)
 
 
 def sanitize_email_html(value: str | None, *, allow_remote_images: bool = False) -> str:
@@ -79,20 +295,24 @@ def sanitize_email_html(value: str | None, *, allow_remote_images: bool = False)
     if not value:
         return ""
     cleaned = nh3.clean(
-        value,
+        _mark_remote_backgrounds(value),
         tags=_ALLOWED_TAGS,
+        clean_content_tags=_CSS_CLEAN_CONTENT_TAGS,
         attributes=_ALLOWED_ATTRS,
         url_schemes=_URL_SCHEMES,
         link_rel="noopener noreferrer nofollow",
         attribute_filter=_attribute_filter,
         set_tag_attribute_values={"a": {"target": "_blank"}},
+        filter_style_properties=_SAFE_STYLE_PROPERTIES,
     )
-    # nh3 stamps target="_blank" on every <a>, including ones whose href it just
-    # stripped (bad scheme, disallowed). A target with no href does nothing, so
-    # this is cosmetic-only, not a second gap in the scheme allowlist above.
-    if "<img" not in cleaned:
-        return cleaned
     soup = BeautifulSoup(cleaned, "html.parser")
+    for style in soup.find_all("style"):
+        safe_css = _sanitize_css_stylesheet(style.get_text())
+        if safe_css:
+            style.clear()
+            style.append(safe_css)
+        else:
+            style.decompose()
     for img in soup.find_all("img"):
         source = (img.get("src") or "").strip()
         if not source:
@@ -101,6 +321,12 @@ def sanitize_email_html(value: str | None, *, allow_remote_images: bool = False)
         if source.lower().startswith(("http://", "https://")) and not allow_remote_images:
             del img["src"]
             img["data-remote-src"] = source
+    for element in soup.find_all(style=True):
+        safe_style = _sanitize_css_declarations(str(element.get("style") or ""))
+        if safe_style:
+            element["style"] = safe_style
+        else:
+            del element["style"]
     return str(soup)
 
 

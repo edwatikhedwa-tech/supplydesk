@@ -119,3 +119,56 @@ rewritten.
   push was attempted.
 - Status: `PASS` for scope control; current backend full-suite `FAIL` remains
   explicitly recorded as an unresolved finding.
+
+## 2026-08-30T17:28:49Z — AUDIT/SECURITY GATE — TASK-REMOTE-REPOSITORY-PREPARATION
+
+- Agent: `Codex`
+- Task ID: `TASK-REMOTE-REPOSITORY-PREPARATION`
+- Mode: `AUDIT → SECURITY GATE`
+- Action: inspected Git/GitHub CLI state, looked up the expected repository,
+  classified the current working tree and scanned for potential secrets without
+  printing secret values.
+- Evidence: `66 M`, `6 D`, `598 ??`, `0 staged`; `670` unique uncommitted paths;
+  GitHub auth `PASS` as `edwatikhedwa-tech`; expected `supplydesk` repository
+  not found; five ignored env/credential-risk files present.
+- Files: updated `ai/CURRENT_STATE.md`, `ai/LAST_HANDOFF.md`,
+  `ai/ACTIVE_TASK.md`, this chronology and the preparation report only.
+- Result: `BLOCKED`; no application code, `.gitignore`, remote, commit or push
+  changed. Potential credentials and unresolved publish set require owner
+  action first.
+
+## 2026-08-30T17:31:44Z — ACCEPTANCE — TASK-REMOTE-REPOSITORY-PREPARATION
+
+- Agent: `Codex`
+- Task ID: `TASK-REMOTE-REPOSITORY-PREPARATION`
+- Action: ran the AI state validator, Python compilation and scoped whitespace
+  check after documenting the security gate.
+- Result: validator `PASS`, compile `PASS`, `git diff --check -- ai` clean.
+- Status: `BLOCKED` remains correct because potential credential files and the
+  unresolved publish set were not cleared or approved.
+
+## 2026-08-30T17:38:06Z — AUDIT/ALLOWLIST — TASK-PUBLISH-SAFETY-001
+
+- Agent: `Codex`
+- Task ID: `TASK-PUBLISH-SAFETY-001`
+- Mode: `AUDIT → SECURITY SCAN → ALLOWLIST`
+- Action: inventoried the current worktree, classified 677 paths, checked
+  ignored sensitive paths and created a conditional AI-only publish allowlist,
+  denylist and security report.
+- Evidence: `66 M`, `6 D`, `599 ??`, `0 staged`; A=190, B=51, C=15, D=7,
+  E=89, F=58, G=253, H=14, I=0 status-listed secret paths; five ignored env
+  files remain a security overlay.
+- Result: `BLOCKED`; no file was staged, committed, pushed, moved or deleted;
+  no repository or origin was created.
+- Files: `ai/PUBLISH_ALLOWLIST.md`, `ai/PUBLISH_DENYLIST.md`,
+  `ai/PUBLISH_SECURITY_REPORT.md`, task report and current state chronology.
+
+## 2026-08-30T17:43:27Z — ACCEPTANCE — TASK-PUBLISH-SAFETY-001
+
+- Agent: `Codex`
+- Task ID: `TASK-PUBLISH-SAFETY-001`
+- Action: rechecked allowlist exclusions, AI validator, Python compilation,
+  scoped diff formatting, status counts, staging and high-confidence patterns.
+- Result: validator `PASS`; `681` unique working-tree paths,
+  `0` staged; `origin` absent; env credential-risk overlay remains present.
+- Status: `BLOCKED`; no commit, repository creation, remote change or push.

@@ -1,51 +1,155 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp, ExternalLink, Loader2, Reply } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Loader2, RefreshCw, Reply, Send, ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn, formatFullDate, getAvatarColor, getInitials } from '@/lib/utils';
 import { EmailRenderer } from '@/components/mail/EmailRenderer';
-import type { MailMessage, ThreadSummary } from '@/lib/types';
+import type { InboxConversation, MailMessage, ThreadSummary } from '@/lib/types';
 
 const OUTBOUND_STATUS_LABELS: Record<string, string> = {
   queued: 'в очереди',
   sending: 'отправляется',
   sent: 'отправлено',
   failed: 'ошибка отправки',
+  delivery_unknown: 'отправка не подтверждена',
 };
 
 interface ThreadDetailProps {
   thread: ThreadSummary;
   onBack: () => void;
-  onReply: (thread: ThreadSummary, lastMessage: MailMessage | null) => void;
+  onReply?: (thread: ThreadSummary, lastMessage: MailMessage | null) => void;
   onOpenRequest?: (requestId: number) => void;
+  /** Вызывается после загрузки писем: сервер к этому моменту уже пометил
+   *  входящие прочитанными, и список тредов надо перезапросить. */
+  onRead?: () => void;
 }
 
-export function ThreadDetail({ thread, onBack, onReply, onOpenRequest }: ThreadDetailProps) {
+function mapInboxConversation(conversation: InboxConversation): MailMessage[] {
+  const original: MailMessage = {
+    id: conversation.id,
+    direction: 'inbound',
+    from_email: conversation.from_email,
+    to_email: conversation.to_email,
+    subject: conversation.subject,
+    body_text: conversation.body_text,
+    body_html: conversation.body_html,
+    status: 'received',
+    error: null,
+    message_id: conversation.message_id ?? null,
+    in_reply_to: null,
+    references_header: conversation.references_header ?? null,
+    created_at: conversation.received_at,
+    sent_at: conversation.received_at,
+    has_remote_images: conversation.has_remote_images,
+  };
+  const replies: MailMessage[] = conversation.replies.map((reply) => ({
+    id: -reply.id,
+    direction: 'outbound',
+    from_email: reply.from_email,
+    to_email: reply.to_email,
+    subject: reply.subject,
+    body_text: reply.body_text,
+    body_html: reply.body_html,
+    status: reply.status,
+    error: reply.error,
+    message_id: reply.message_id,
+    in_reply_to: reply.in_reply_to,
+    references_header: reply.references_header,
+    created_at: reply.created_at,
+    sent_at: reply.sent_at,
+    has_remote_images: reply.has_remote_images,
+  }));
+  return [original, ...replies];
+}
+
+export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onRead }: ThreadDetailProps) {
   const [messages, setMessages] = useState<MailMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const [actionMessage, setActionMessage] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [actionBusy, setActionBusy] = useState<number | null>(null);
+  const [confirmResend, setConfirmResend] = useState<number | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadMessages = useCallback(async () => {
     setLoading(true);
     setError(false);
-    api
-      .threadMessages(thread.request_id, thread.supplier_id)
-      .then((res) => {
-        if (cancelled) return;
-        setMessages(res.items);
-        if (res.items.length > 1) setCollapsed(new Set(res.items.slice(0, -1).map((m) => m.id)));
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [thread.request_id, thread.supplier_id]);
+    try {
+      if (thread.manual_inbox_id != null) {
+        const conversation = await api.inboxConversation(thread.manual_inbox_id);
+        setMessages(mapInboxConversation(conversation));
+        setCollapsed(new Set());
+        return;
+      }
+      const res = await api.threadMessages(thread.request_id, thread.supplier_id);
+      setMessages(res.items);
+      if (res.items.length > 1) setCollapsed(new Set(res.items.slice(0, -1).map((m) => m.id)));
+      if (res.items.some((m) => m.direction === 'inbound')) onRead?.();
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [thread.manual_inbox_id, thread.request_id, thread.supplier_id, onRead]);
+
+  useEffect(() => {
+    void loadMessages();
+  }, [loadMessages]);
+
+  const verify = async (messageId: number) => {
+    setActionBusy(messageId);
+    setActionError('');
+    setActionMessage('');
+    try {
+      const result = await api.verifyDelivery(messageId);
+      setActionMessage(result.outcome === 'found' ? 'Письмо найдено в «Отправленных». Факт отправки подтверждён.' : 'Подтверждение пока не получено. Письмо не возвращено в очередь.');
+      await loadMessages();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Не удалось проверить отправку.');
+    } finally {
+      setActionBusy(null);
+    }
+  };
+
+  const resend = async (messageId: number, confirmed: boolean) => {
+    setActionBusy(messageId);
+    setActionError('');
+    setActionMessage('');
+    try {
+      const result = await api.resendDelivery(messageId, confirmed);
+      if (result.requires_confirmation) {
+        setConfirmResend(messageId);
+        setActionMessage(result.warning || 'Оригинал не подтверждён. Повтор может создать дубликат.');
+      } else if (result.resent) {
+        setConfirmResend(null);
+        setActionMessage('Создано новое письмо с новым идентификатором.');
+        await loadMessages();
+      } else if (result.outcome === 'found') {
+        setConfirmResend(null);
+        setActionMessage('Оригинал найден в «Отправленных». Повтор не создан.');
+        await loadMessages();
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Не удалось подготовить повторную отправку.');
+    } finally {
+      setActionBusy(null);
+    }
+  };
+
+  const resolve = async (messageId: number) => {
+    setActionBusy(messageId);
+    setActionError('');
+    setActionMessage('');
+    try {
+      await api.resolveDelivery(messageId);
+      setActionMessage('Вопрос закрыт. Факт доставки по-прежнему отображается как «не подтверждён».');
+      await loadMessages();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Не удалось закрыть вопрос.');
+    } finally {
+      setActionBusy(null);
+    }
+  };
 
   const toggleCollapse = (id: number) => {
     setCollapsed((prev) => {
@@ -75,36 +179,39 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest }: ThreadD
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
 
   return (
-    <div className="flex-1 flex flex-col bg-white overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-ink-100 shrink-0">
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-ink-50/50">
+      <div className="shrink-0 border-b border-ink-200 bg-white px-4 py-3.5 sm:px-5">
         <div className="flex items-center gap-3 mb-2">
-          <button onClick={onBack} className="p-1.5 -ml-1.5 text-ink-500 hover:text-ink-900 hover:bg-ink-100 rounded-lg transition-colors">
+          <button aria-label="Вернуться к списку переписок" onClick={onBack} className="-ml-1.5 flex min-h-10 min-w-10 items-center justify-center rounded-lg p-1.5 text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900">
             <ArrowLeft size={18} />
           </button>
-          <h2 className="text-base font-semibold text-ink-900 truncate flex-1">{thread.subject}</h2>
-          <button
-            onClick={() => onReply(thread, lastMessage)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-ink-700 bg-ink-50 hover:bg-ink-100 rounded-lg transition-colors"
-          >
-            <Reply size={15} />
-            Ответить
-          </button>
+          <h2 className="min-w-0 flex-1 truncate text-base font-semibold text-ink-900">{thread.subject}</h2>
+          {onReply && (
+            <button
+              onClick={() => onReply(thread, lastMessage)}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-ink-50 px-3 py-1.5 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-100"
+            >
+              <Reply size={15} />
+              Ответить
+            </button>
+          )}
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-5 py-4 space-y-3">
+        <div className="mx-auto w-full max-w-[1180px] space-y-4 px-4 py-5 sm:px-6 lg:px-10 xl:px-12">
           <div className="bg-gradient-to-b from-ink-50 to-white border border-ink-200 rounded-xl p-3.5 mb-2">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-1">Заявка</p>
+                <p className="text-2xs font-semibold text-ink-600 uppercase tracking-wider mb-1">Заявка</p>
                 <p className="text-sm font-medium text-ink-900">{thread.request_name}</p>
-                <p className="text-sm text-ink-500 mt-0.5">{thread.supplier_name}</p>
+                <p className="text-sm text-ink-500 mt-0.5">{thread.supplier_name || 'Поставщик не определён'}</p>
+                {thread.manual_inbox_id != null && <p className="mt-1 text-xs font-medium text-accent-600">Письмо привязано вручную</p>}
               </div>
               {onOpenRequest && (
                 <button
                   onClick={() => onOpenRequest(thread.request_id)}
-                  className="inline-flex items-center gap-1 text-sm text-accent-600 hover:text-accent-700 font-medium shrink-0"
+                  className="inline-flex min-h-10 items-center gap-1 text-sm font-medium text-accent-600 hover:text-accent-700 shrink-0"
                 >
                   Открыть заявку
                   <ExternalLink size={13} />
@@ -118,12 +225,12 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest }: ThreadD
           {messages.map((msg, idx) => {
             const isCollapsed = collapsed.has(msg.id);
             const isLast = idx === messages.length - 1;
-            const fromName = msg.direction === 'outbound' ? 'Вы' : thread.supplier_name;
+            const fromName = msg.direction === 'outbound' ? 'Вы' : (thread.supplier_name || msg.from_email);
             const avatarColor = getAvatarColor(fromName);
             const initials = getInitials(fromName);
 
             return (
-              <div key={msg.id} className={cn('border border-ink-200 rounded-xl overflow-hidden transition-all duration-200', isLast && 'shadow-sm')}>
+              <div key={msg.id} className={cn('overflow-hidden rounded-2xl border border-ink-200 bg-white transition-all duration-200', isLast && 'shadow-sm')}>
                 <button onClick={() => toggleCollapse(msg.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-ink-50 transition-colors">
                   <div
                     className={cn(
@@ -137,26 +244,87 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest }: ThreadD
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-ink-900 truncate">{fromName}</span>
                       {msg.direction === 'outbound' && (
-                        <span className={cn('text-xs', msg.status === 'failed' ? 'text-rose-500' : 'text-ink-400')}>
+                        <span className={cn('text-xs', msg.status === 'failed' ? 'text-rose-600' : msg.status === 'delivery_unknown' ? 'text-orange-800' : 'text-ink-600')}>
                           · {OUTBOUND_STATUS_LABELS[msg.status] ?? msg.status}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-ink-400 truncate">
+                    <p className="text-xs text-ink-600 truncate">
                       {isCollapsed
                         ? (msg.body_text || '').replace(/\s+/g, ' ').trim().slice(0, 80) || (msg.direction === 'outbound' ? msg.to_email : msg.from_email)
                         : (msg.direction === 'outbound' ? msg.to_email : msg.from_email)}
                     </p>
                   </div>
-                  <span className="text-xs text-ink-400 shrink-0">{formatFullDate(msg.sent_at || msg.created_at)}</span>
+                  <span className="text-xs text-ink-600 shrink-0">{formatFullDate(msg.sent_at || msg.created_at)}</span>
                   {messages.length > 1 && <div className="shrink-0 text-ink-400">{isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}</div>}
                 </button>
 
                 {!isCollapsed && (
-                  <div className="px-4 pb-4">
-                    <div className="border-t border-ink-100 pt-3">
-                      <EmailRenderer html={msg.body_html} text={msg.body_text} />
+                  <div className="px-4 pb-5 sm:px-6">
+                    <div className="border-t border-ink-100 pt-4">
+                      <EmailRenderer html={msg.body_html} text={msg.body_text} hasRemoteImages={msg.has_remote_images} />
                       {msg.error && <p className="mt-2 text-xs text-rose-600">Ошибка отправки: {msg.error}</p>}
+                      {msg.direction === 'outbound' && msg.status === 'delivery_unknown' && (
+                        <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50/80 p-3.5" role="alert">
+                          <div className="flex items-start gap-2.5">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-700" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-orange-950">Отправка не подтверждена</p>
+                              <p className="mt-1 text-xs leading-relaxed text-orange-900/80">Система не знает, принял ли сервер это письмо. Оно не будет отправлено повторно автоматически.</p>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => verify(msg.id)}
+                                  disabled={actionBusy === msg.id}
+                                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-orange-900 ring-1 ring-orange-300 transition-colors hover:bg-orange-100 disabled:opacity-60"
+                                >
+                                  {actionBusy === msg.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                                  Проверить ещё раз
+                                </button>
+                                {!msg.delivery_resolved && confirmResend !== msg.id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => resend(msg.id, false)}
+                                    disabled={actionBusy === msg.id}
+                                    className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-orange-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-orange-800 disabled:opacity-60"
+                                  >
+                                    <Send className="h-3.5 w-3.5" />
+                                    Отправить повторно
+                                  </button>
+                                )}
+                                {!msg.delivery_resolved && confirmResend === msg.id && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => resend(msg.id, true)}
+                                      disabled={actionBusy === msg.id}
+                                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-orange-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-orange-800 disabled:opacity-60"
+                                    >
+                                      <Send className="h-3.5 w-3.5" />
+                                      Подтвердить повтор
+                                    </button>
+                                    <button type="button" onClick={() => setConfirmResend(null)} className="min-h-9 rounded-lg px-3 py-1.5 text-xs font-semibold text-orange-900 hover:bg-orange-100">Отмена</button>
+                                  </>
+                                )}
+                                {!msg.delivery_resolved && (
+                                  <button
+                                    type="button"
+                                    onClick={() => resolve(msg.id)}
+                                    disabled={actionBusy === msg.id}
+                                    className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-orange-900 hover:bg-orange-100 disabled:opacity-60"
+                                  >
+                                    <ShieldCheck className="h-3.5 w-3.5" />
+                                    Я разобрался, вопрос закрыт
+                                  </button>
+                                )}
+                              </div>
+                              {msg.delivery_resolved && <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-orange-900"><CheckCircle2 className="h-3.5 w-3.5" />Вопрос закрыт вручную; факт доставки не изменён.</p>}
+                              {actionMessage && <p className="mt-2 text-xs font-medium text-orange-900">{actionMessage}</p>}
+                              {actionError && <p className="mt-2 text-xs font-medium text-rose-700">{actionError}</p>}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -164,7 +332,7 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest }: ThreadD
             );
           })}
 
-          {messages.length > 0 && (
+          {messages.length > 0 && onReply && (
             <button
               onClick={() => onReply(thread, lastMessage)}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 rounded-xl transition-colors"

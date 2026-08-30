@@ -34,6 +34,131 @@ function gridTemplate(view: GlobalSupplierTableView): string {
   ).join(' ');
 }
 
+function MobileSupplierCard({
+  supplier: s,
+  view,
+  selected,
+  onToggleSelect,
+  onOpenSupplier,
+  onRestore,
+}: {
+  supplier: GlobalSupplierSummary;
+  view: GlobalSupplierTableView;
+  selected: boolean;
+  onToggleSelect: (id: number) => void;
+  onOpenSupplier: (id: number) => void;
+  onRestore?: (id: number) => void;
+}) {
+  return (
+    <article className={`border-b border-ink-100 p-4 last:border-b-0 ${selected ? 'bg-accent-50' : 'bg-white'}`}>
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          onClick={() => onToggleSelect(s.id)}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+          aria-label={`${selected ? 'Снять выбор' : 'Выбрать'} поставщика`}
+        >
+          <span className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${selected ? 'border-accent-600 bg-accent-600' : 'border-ink-300 hover:border-accent-400'}`}>
+            {selected && <Check className="h-3 w-3 text-white" />}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onOpenSupplier(s.id)}
+          className="flex min-h-10 min-w-0 flex-1 items-center text-left"
+        >
+          <div title={s.name || undefined} className="truncate text-sm font-semibold text-ink-900">{s.name ? displaySupplierName(s.name, s.inn) : s.site}</div>
+          <div className="mt-1 truncate text-xs text-ink-500">ИНН {s.inn}</div>
+        </button>
+
+        <div className="min-w-0 shrink-0"><RegistryStatusCell registry={s.registry} risks={s.risks} /></div>
+      </div>
+
+      {s.site && (
+        <a
+          href={`https://${s.site}`}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          title={`Открыть ${s.site} в новой вкладке`}
+          className="mt-2 inline-flex min-h-10 max-w-full items-center gap-1 truncate text-xs text-accent-700 hover:underline"
+        >
+          <ExternalLink className="h-3 w-3 shrink-0" />{s.site}
+        </a>
+      )}
+
+      <div className="mt-3 flex min-w-0 flex-wrap gap-1.5">
+        {s.categories.slice(0, 3).map((cat) => (
+          <span key={cat} className="max-w-full truncate rounded-md bg-ink-100 px-2 py-1 text-xs font-medium text-ink-600">{cat}</span>
+        ))}
+        {s.categories.length > 3 && <span className="px-1.5 py-1 text-xs text-ink-400">+{s.categories.length - 3}</span>}
+        {s.categories.length === 0 && <span className="text-xs text-ink-300">Специализация не указана</span>}
+      </div>
+
+      <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+        <div>
+          <dt className="text-ink-400">Возраст</dt>
+          <dd className="mt-1 text-ink-700"><AgeCell registry={s.registry} /></dd>
+        </div>
+        <div>
+          <dt className="text-ink-400">Выручка</dt>
+          <dd className="mt-1 text-ink-700"><RevenueCell finances={s.finances} /></dd>
+        </div>
+        <div>
+          <dt className="text-ink-400">Прибыль</dt>
+          <dd className="mt-1 text-ink-700"><ProfitCell finances={s.finances} /></dd>
+        </div>
+        <div>
+          <dt className="text-ink-400">Checko</dt>
+          <dd className="mt-1"><CheckoLinkCell registry={s.registry} /></dd>
+        </div>
+        {view === 'all' ? (
+          <>
+            <div>
+              <dt className="text-ink-400">Заявок</dt>
+              <dd className="mt-1 tabular-nums text-ink-700">{s.total_requests}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-400">Отклик</dt>
+              <dd className="mt-1 tabular-nums text-ink-700">{s.total_requests === 0 ? '—' : `${s.response_rate}%`}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-400">Последний контакт</dt>
+              <dd className="mt-1 truncate text-ink-600">{formatRelativeDate(s.last_contact_at)}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-400">Статус</dt>
+              <dd className="mt-1"><RelationshipBadge status={s.relationship_status} /></dd>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <dt className="text-ink-400">Причина</dt>
+              <dd className="mt-1 truncate text-ink-600" title={s.blacklist_reason || undefined}>{s.blacklist_reason ? issueReasonLabels[s.blacklist_reason] || s.blacklist_reason : '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-400">В списке с</dt>
+              <dd className="mt-1 truncate text-ink-600">{s.blacklisted_at ? formatFullDate(s.blacklisted_at) : '—'}</dd>
+            </div>
+          </>
+        )}
+      </dl>
+
+      {view === 'blacklist' && (
+        <button
+          type="button"
+          onClick={() => onRestore?.(s.id)}
+          className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-ink-200 px-3 py-2 text-xs font-semibold text-ink-700 hover:border-ink-300 hover:text-ink-900"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />Вернуть из чёрного списка
+        </button>
+      )}
+    </article>
+  );
+}
+
 export function GlobalSupplierTable({
   view, suppliers, loading, emptyMessage, selected,
   onToggleSelect, onToggleSelectAll, onOpenSupplier, onRestore,
@@ -52,10 +177,10 @@ export function GlobalSupplierTable({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-soft">
-      <div className="overflow-x-auto">
+      <div className="hidden overflow-x-auto 2xl:block">
         <div style={{ minWidth }}>
           <div
-            className="grid items-center gap-3 border-b border-ink-200 bg-ink-50 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-600"
+            className="grid items-center gap-3 border-b border-ink-200 bg-ink-50 px-5 py-3 text-2xs font-semibold uppercase tracking-wider text-ink-600"
             style={{ gridTemplateColumns: template }}
           >
             <div className="flex items-center justify-center">
@@ -140,16 +265,16 @@ export function GlobalSupplierTable({
 
                     <div className="flex min-w-0 flex-wrap gap-1">
                       {s.categories.slice(0, 2).map((cat) => (
-                        <span key={cat} className="truncate rounded-md bg-ink-100 px-2 py-0.5 text-[11px] font-medium text-ink-600">{cat}</span>
+                        <span key={cat} className="truncate rounded-md bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-600">{cat}</span>
                       ))}
-                      {s.categories.length > 2 && <span className="px-1.5 py-0.5 text-[11px] text-ink-400">+{s.categories.length - 2}</span>}
+                      {s.categories.length > 2 && <span className="px-1.5 py-0.5 text-xs text-ink-400">+{s.categories.length - 2}</span>}
                       {s.categories.length === 0 && <span className="text-xs text-ink-300">—</span>}
                     </div>
 
                     <div><AgeCell registry={s.registry} /></div>
                     <div><RevenueCell finances={s.finances} /></div>
                     <div><ProfitCell finances={s.finances} /></div>
-                    <div className="min-w-0"><RegistryStatusCell registry={s.registry} /></div>
+                    <div className="min-w-0"><RegistryStatusCell registry={s.registry} risks={s.risks} /></div>
                     <div className="flex justify-center" onClick={(e) => e.stopPropagation()}><CheckoLinkCell registry={s.registry} /></div>
 
                     {view === 'all' ? (
@@ -161,7 +286,7 @@ export function GlobalSupplierTable({
                           ) : (
                             <>
                               <div className="whitespace-nowrap text-sm font-medium tabular-nums text-ink-700">{s.response_rate}%</div>
-                              {s.response_rate === 0 && <div className="whitespace-nowrap text-[10px] text-ink-400">ждём</div>}
+                              {s.response_rate === 0 && <div className="whitespace-nowrap text-2xs text-ink-400">ждём</div>}
                             </>
                           )}
                         </div>
@@ -177,7 +302,7 @@ export function GlobalSupplierTable({
                         <div className="text-right" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => onRestore?.(s.id)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-2.5 py-1.5 text-xs font-semibold text-ink-600 hover:border-ink-300 hover:text-ink-900"
+                            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-ink-200 px-2.5 py-1.5 text-xs font-semibold text-ink-600 hover:border-ink-300 hover:text-ink-900"
                           >
                             <RotateCcw className="h-3.5 w-3.5" />Вернуть
                           </button>
@@ -194,13 +319,65 @@ export function GlobalSupplierTable({
             <div className="flex justify-center border-t border-ink-100 py-3">
               <button
                 onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
-                className="rounded-lg px-4 py-2 text-xs font-semibold text-accent-600 hover:bg-accent-50"
+                className="min-h-10 rounded-lg px-4 py-2 text-xs font-semibold text-accent-600 hover:bg-accent-50"
               >
                 Показать ещё ({suppliers.length - visibleCount})
               </button>
             </div>
           )}
         </div>
+      </div>
+
+      <div className="2xl:hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-ink-200 bg-ink-50 px-4 py-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-600">Поставщики</p>
+            <p className="mt-0.5 text-xs text-ink-500">{suppliers.length} в списке</p>
+          </div>
+          <button
+            type="button"
+            onClick={onToggleSelectAll}
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-xs font-semibold text-accent-700 hover:bg-accent-50"
+          >
+            <span className={`flex h-5 w-5 items-center justify-center rounded border-2 ${allSelected ? 'border-accent-600 bg-accent-600' : someSelected ? 'border-accent-400 bg-accent-400' : 'border-ink-300'}`}>
+              {(allSelected || someSelected) && <Check className="h-3 w-3 text-white" />}
+            </span>
+            Выбрать всех
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="px-5 py-12 text-center text-sm text-ink-400">Загрузка…</div>
+        ) : suppliers.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 px-5 py-16 text-center">
+            <PackageSearch className="h-8 w-8 text-ink-300" />
+            <p className="text-sm text-ink-400">{emptyMessage}</p>
+          </div>
+        ) : (
+          visibleSuppliers.map((s) => (
+            <MobileSupplierCard
+              key={s.id}
+              supplier={s}
+              view={view}
+              selected={selected.has(s.id)}
+              onToggleSelect={onToggleSelect}
+              onOpenSupplier={onOpenSupplier}
+              onRestore={onRestore}
+            />
+          ))
+        )}
+
+        {visibleCount < suppliers.length && (
+          <div className="flex justify-center border-t border-ink-100 py-3">
+            <button
+              type="button"
+              onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
+              className="min-h-10 rounded-lg px-4 py-2 text-xs font-semibold text-accent-700 hover:bg-accent-50"
+            >
+              Показать ещё ({suppliers.length - visibleCount})
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

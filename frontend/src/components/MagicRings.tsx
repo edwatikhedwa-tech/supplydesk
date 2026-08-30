@@ -114,6 +114,7 @@ export default function MagicRings({
   onUnsupported,
 }: MagicRingsProps) {
   const mountRef = useRef<HTMLDivElement>(null);
+  const onUnsupportedRef = useRef(onUnsupported);
   const propsRef = useRef<Required<Omit<MagicRingsProps, 'onUnsupported'>> | null>(null);
   const mouseRef = useRef<[number, number]>([0, 0]);
   const smoothMouseRef = useRef<[number, number]>([0, 0]);
@@ -121,6 +122,7 @@ export default function MagicRings({
   const isHoveredRef = useRef(false);
   const burstRef = useRef(0);
 
+  onUnsupportedRef.current = onUnsupported;
   propsRef.current = {
     color, colorTwo, speed, ringCount, attenuation, lineThickness,
     baseRadius, radiusStep, scaleRate, opacity, blur, noiseAmount,
@@ -136,13 +138,13 @@ export default function MagicRings({
     try {
       renderer = new THREE.WebGLRenderer({ alpha: true });
     } catch {
-      onUnsupported?.();
+      onUnsupportedRef.current?.();
       return;
     }
 
     if (!renderer.capabilities.isWebGL2) {
       renderer.dispose();
-      onUnsupported?.();
+      onUnsupportedRef.current?.();
       return;
     }
 
@@ -275,7 +277,8 @@ export default function MagicRings({
     const io = new IntersectionObserver(
       ([entry]) => {
         isVisible = entry.isIntersecting;
-        isVisible ? tryStart() : tryStop();
+        if (isVisible) tryStart();
+        else tryStop();
       },
       { threshold: 0 }
     );
@@ -283,7 +286,8 @@ export default function MagicRings({
 
     const onVisibility = () => {
       isPageVisible = !document.hidden;
-      isPageVisible ? tryStart() : tryStop();
+      if (isPageVisible) tryStart();
+      else tryStop();
     };
     document.addEventListener('visibilitychange', onVisibility);
 

@@ -61,3 +61,77 @@ NEXT RECOMMENDED STEP
 Design and implement the supplier-identity relation inventory/gate as one
 isolated task. It must classify the two live FK relations and the immutable
 reconciled evidence table before any future merge apply decision.
+
+## 2026-08-30 20:22 +03:00
+
+TASK
+
+Implement and adversarially accept `SAFETY-001`: outgoing mail must remain
+disabled unless an explicit trusted action enables it.
+
+ROOT CAUSE
+
+- `migrations/022_outgoing_mail_integrity.sql` created the singleton durable
+  control with default/insert value `1`.
+- `migrations/026_mail_account_profiles.sql` and account query fallbacks also
+  treated missing account configuration as enabled.
+- `api/index.py` called `_APP.queue.start()` during module import.
+- `RuntimeSession` cached the durable flag, so an in-process explicit change
+  would not be observed until restart.
+
+WHAT CHANGED
+
+- Changed clean-schema durable defaults to `0` and made account-profile
+  fallbacks fail-closed.
+- Made repository control reads strict: missing, invalid, and DB-error states
+  return disabled and emit a diagnostic log.
+- Added owner-only, CSRF-protected explicit control API:
+  `POST /api/mail/runtime/outgoing` with strict boolean `enabled` and
+  `confirmation=true`; added a read-only GET status endpoint.
+- Removed API-module queue startup; local process startup remains explicit via
+  `SupplierApp.run()`.
+- Runtime refreshes the durable flag before worker/provider gates.
+- Added `tests/test_outgoing_safety.py` and updated positive-path temporary
+  fixtures to explicitly enable their fake transport.
+- `docs/CURRENT_STATE.md` and `docs/DECISIONS.md` updated. The engineering
+  contract was unchanged because its existing no-real-send rule already covers
+  this invariant.
+
+TESTS
+
+- `python -m unittest -v tests.test_outgoing_safety`: 11 OK.
+- `python -m unittest tests.test_mail_integrity tests.test_mail_pacing tests.test_canonical_runtime tests.test_mail_integration`: 159 OK, 1 PostgreSQL skip.
+- `python -m unittest discover -s tests -p 'test_*.py'`: 355 OK, 1 PostgreSQL skip.
+- The prescribed `powershell -ExecutionPolicy Bypass -File .\tests\run-tests.ps1`
+  and `.\scripts\doctor.ps1` entry points are absent from this repository;
+  both commands were attempted and reported missing files.
+- After restarting the local process with the changed source: `GET /` = 200,
+  `/api/auth/me` = 200, unauthenticated `/api/requests/1059` = 401, and
+  unauthenticated `/api/mail/runtime/outgoing` = 401.
+- Read-only `scripts/runtime_status.py`: canonical runtime count `1`, SQLite
+  integrity `ok`, durable outgoing `False`, kill switch `True`,
+  `live_smtp_allowed=NO`.
+- Read-only live queue snapshot: `queued=84`, `sent=62`, `failed=2`,
+  `delivery_unknown=1`; no real SMTP call was made.
+
+DATABASE / SMTP IMPACT
+
+- All new safety tests use temporary SQLite databases and fake providers.
+- No `supplier_identity_audit.py --apply` command was run.
+- No real SMTP call was made. The canonical live database was inspected only
+  read-only; its durable outgoing control remained `0`.
+
+DEFERRED FINDINGS
+
+- PostgreSQL safety acceptance still requires an isolated configured test
+  database.
+- Vercel needs a dedicated durable worker before background delivery can be
+  enabled; import-time queue startup is intentionally removed.
+- No unrelated supplier identity, resend, provider, retry, status UI, or
+  campaign behavior was changed.
+
+NEXT RECOMMENDED STEP
+
+Run the PostgreSQL-specific safety acceptance in an isolated database, then
+review whether the database-wide owner-controlled switch should eventually be
+split into workspace-scoped controls.

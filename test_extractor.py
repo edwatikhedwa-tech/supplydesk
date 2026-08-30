@@ -11,11 +11,14 @@
 from __future__ import annotations
 
 import sys
+from types import SimpleNamespace
 
 from email_extractor import (
     EmailHit, decode_cfemail, deobfuscate, extract_from_html, merge_hits,
-    normalize_email, score_hit, validate_email, is_contact_url,
+    normalize_email, repair_email_candidate, score_hit, split_mailto_addresses,
+    validate_email, is_contact_url,
 )
+from web_lookup import WebLookup
 
 failures: list[str] = []
 
@@ -84,6 +87,8 @@ def test_normalize() -> None:
     check("регистр приведён", normalize_email("Info@Zavod.RU"), "info@zavod.ru")
     check("скобка убрана", normalize_email("(info@zavod.ru)"), "info@zavod.ru")
     check("url-кодирование снято", normalize_email("info%40zavod.ru"), "info@zavod.ru")
+    check("полноширинные символы исправлены", normalize_email("info＠zavod。ru"), "info@zavod.ru")
+    check("пробелы вокруг собаки убраны", normalize_email("info @ zavod.ru"), "info@zavod.ru")
 
 
 def test_decoders() -> None:
@@ -228,11 +233,68 @@ def test_contact_urls() -> None:
     check("каталог не контакты", is_contact_url("https://zavod.ru/catalog/kirpich/"), False)
 
 
+def test_repaired_emails() -> None:
+    """Проверяем типографическую опечатку из footer dongradus.ru."""
+    print("Восстановление опубликованных адресов:")
+    check(
+        "запятая перед зоной исправляется",
+        repair_email_candidate("zakaz@dongradus,ru"),
+        "zakaz@dongradus.ru",
+    )
+    check(
+        "mailto с несколькими адресами не ломает домен",
+        split_mailto_addresses("zakaz@dongradus,ru;info@dongradus.ru"),
+        ["zakaz@dongradus,ru", "info@dongradus.ru"],
+    )
+    page = """
+      <a href="mailto:zakaz@dongradus,ru">zakaz@dongradus,ru</a>
+      <span itemprop="email" content="sales@dongradus,ru"></span>
+      <script>window.contact = {"email":"office@dongradus,ru"};</script>
+      <a href="mailto:info@dongradus.ru">info@dongradus.ru</a>
+    """
+    hits, _ = extract_from_html(page, "https://donetsk.dongradus.ru/")
+    by_email = {hit.email: hit for hit in hits}
+    check("битый mailto восстановлен", "zakaz@dongradus.ru" in by_email, True)
+    check("JSON/атрибут восстановлен", "sales@dongradus.ru" in by_email, True)
+    check("битый JS email восстановлен", "office@dongradus.ru" in by_email, True)
+    check("обычный mailto не помечен восстановленным", by_email["info@dongradus.ru"].method, "mailto")
+    check(
+        "восстановление видно в доказательстве",
+        "исправлено" in by_email["zakaz@dongradus.ru"].evidence,
+        True,
+    )
+    repaired = by_email["zakaz@dongradus.ru"]
+    repaired.mx_ok = True
+    score_hit(repaired, site_root="dongradus.ru", on_contact_page=True)
+    check("восстановленный адрес требует проверки", repaired.confidence, "medium")
+
+
+def test_web_lookup_reuses_extractor() -> None:
+    """Регрессия: web fallback не должен иметь отдельную слабую регулярку."""
+    print("Web fallback использует общий extractor:")
+
+    class FakeSerp:
+        first_page = 0
+
+        @staticmethod
+        def search(_query: str, _page: int):
+            return SimpleNamespace(docs=[SimpleNamespace(
+                url="https://donetsk.dongradus.ru/contacts/",
+                title="Контакты",
+                snippet="Почта: zakaz@dongradus,ru",
+            )])
+
+    finding = WebLookup(FakeSerp(), pages=1, max_queries=1).find_contacts("donetsk.dongradus.ru")
+    check("web fallback восстановил email", [h.email for h in finding.emails], ["zakaz@dongradus.ru"])
+    check("web fallback сохранил отметку восстановления", finding.emails[0].method, "web_repaired")
+
+
 def main() -> int:
     for test in (
         test_validation, test_normalize, test_decoders,
         test_extraction_recall, test_json_fields, test_extraction_precision,
         test_href_text_mismatch, test_scoring, test_merge, test_contact_urls,
+        test_repaired_emails, test_web_lookup_reuses_extractor,
     ):
         test()
     print()

@@ -92,3 +92,24 @@ behavior, even though local SQLite acceptance is available.
 
 Do not reinterpret as: PostgreSQL has already passed the current acceptance
 suite.
+
+## MAIL-SAFETY
+
+Status: Confirmed by source inspection, isolated SQLite tests, mail/runtime
+acceptance tests, and read-only live-state verification.
+
+Decision: Outgoing mail is fail-closed. Default, missing, or invalid durable
+state is disabled; enabling requires an explicit authenticated owner action with
+CSRF protection and confirmation.
+
+Reason: Application startup, imports, migrations, restarts, and malformed
+configuration must never become implicit permission to contact suppliers.
+
+User impact: Existing queued messages remain queued while outgoing is off. An
+owner can deliberately change the global switch through
+`POST /api/mail/runtime/outgoing`; the provider boundary still checks the
+runtime and environment kill switch before transport.
+
+Do not reinterpret as: Enabling the durable switch bypasses the production
+runtime lock, the environment kill switch, account eligibility, or provider
+delivery safeguards.

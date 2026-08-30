@@ -3,22 +3,27 @@ from __future__ import annotations
 import base64
 import imaplib
 import json
+import logging
+import re
 import smtplib
 import socket
 import ssl
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from email import policy
 from email.parser import BytesParser
 from email.message import EmailMessage
-from email.utils import formataddr, formatdate, make_msgid, parseaddr, parsedate_to_datetime
+from email.utils import formataddr, formatdate, getaddresses, make_msgid, parseaddr, parsedate_to_datetime
 from html import escape
+from bs4 import BeautifulSoup
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import unquote, urlencode
 from urllib.request import Request, urlopen
 
 from ..content import html_to_text
 from ..types import (
+    DeliveryCheck,
     OutgoingMessage,
     ProviderAccount,
     ProviderError,
@@ -27,11 +32,51 @@ from ..types import (
     IncomingBatch,
     IncomingMessage,
 )
+from typing import Callable
 from .base import MailProvider
+
+log = logging.getLogger("mail.yandex")
+
+_MAX_INLINE_IMAGE_BYTES = 512 * 1024
+_MAX_INLINE_IMAGE_TOTAL_BYTES = 2 * 1024 * 1024
+
+
+_SMTP_STAGES = frozenset({"connect", "ehlo", "auth", "mail_from", "rcpt_to", "data_command", "data_body", "post_data", "unknown"})
+
+
+def _safe_smtp_response(response: bytes | str | None) -> str | None:
+    """Return bounded SMTP evidence without credentials or control payloads."""
+
+    if response is None:
+        return None
+    if isinstance(response, bytes):
+        text = response.decode("utf-8", "replace")
+    else:
+        text = str(response)
+    text = re.sub(r"(?i)(?:bearer|oauth|xoauth2)\s+[^\s\x00-\x1f]+", "[redacted]", text)
+    text = re.sub(r"(?i)(?:auth|authorization)\s*[:=]\s*[^\s\x00-\x1f]+", "[redacted]", text)
+    text = " ".join("".join(char if char >= " " else " " for char in text).split())
+    return text[:500] or None
+
+
+def _smtp_enhanced_status(response: bytes | str | None) -> str | None:
+    safe = _safe_smtp_response(response)
+    match = re.search(r"\b([245]\.\d\.\d)\b", safe or "")
+    return match.group(1) if match else None
+
+
+@dataclass(slots=True)
+class _SmtpSendOutcome:
+    refused: dict[str, tuple[int, bytes]]
+    smtp_stage: str
+    smtp_code: int | None
+    smtp_enhanced_status: str | None
+    provider_response_safe: str | None
 
 
 class YandexMailProvider(MailProvider):
     name = "yandex"
+    message_id_domain = "yandex"
     authorize_url = "https://oauth.yandex.ru/authorize"
     token_url = "https://oauth.yandex.ru/token"
     user_info_url = "https://login.yandex.ru/info?format=json"
@@ -209,7 +254,7 @@ class YandexMailProvider(MailProvider):
                 pass
         message_id = str(message.get("Message-ID", "")).strip()[:500]
         if not message_id:
-            message_id = f"<imap-{uidvalidity}-{uid}@yandex>"
+            message_id = f"<imap-{uidvalidity}-{uid}@{cls.message_id_domain}>"
         in_reply_to = str(message.get("In-Reply-To", "")).strip()[:500] or None
         references = str(message.get("References", "")).strip()[:2000] or None
         # Keep the sender's own HTML when the message carries one. Rebuilding it from
@@ -233,14 +278,33 @@ class YandexMailProvider(MailProvider):
     def _extract_text(cls, message) -> str:
         return cls._extract_bodies(message)[0]
 
-    @staticmethod
-    def _extract_bodies(message) -> tuple[str, str]:
+    @classmethod
+    def _extract_bodies(cls, message) -> tuple[str, str]:
         """Return (plain text, original HTML). Either may be empty."""
         plain: list[str] = []
         html: list[str] = []
+        inline_images: dict[str, str] = {}
+        inline_image_bytes = 0
         parts = message.walk() if message.is_multipart() else [message]
         for part in parts:
             if part.is_multipart() or part.get_content_disposition() == "attachment":
+                # A few mail clients mark CID images as attachments as well as
+                # inline content. They are safe to use only when the HTML
+                # references their Content-ID and the payload remains bounded.
+                if not part.get("Content-ID") or not part.get_content_type().lower().startswith("image/"):
+                    continue
+            content_id = str(part.get("Content-ID") or "").strip().strip("<>")
+            if content_id and part.get_content_type().lower().startswith("image/"):
+                payload = part.get_payload(decode=True) or b""
+                mime_type = part.get_content_type().lower()
+                if (
+                    payload
+                    and len(payload) <= _MAX_INLINE_IMAGE_BYTES
+                    and inline_image_bytes + len(payload) <= _MAX_INLINE_IMAGE_TOTAL_BYTES
+                    and mime_type in {"image/gif", "image/jpeg", "image/png", "image/webp", "image/avif", "image/bmp", "image/x-icon"}
+                ):
+                    inline_images[content_id.casefold()] = f"data:{mime_type};base64,{base64.b64encode(payload).decode('ascii')}"
+                    inline_image_bytes += len(payload)
                 continue
             if part.get_content_type() not in {"text/plain", "text/html"}:
                 continue
@@ -254,22 +318,50 @@ class YandexMailProvider(MailProvider):
             else:
                 html.append(content)
         source_html = html[0] if html else ""
+        if source_html and inline_images:
+            source_html = cls._embed_inline_images(source_html, inline_images)
         if plain:
             return "\n\n".join(plain).strip(), source_html
         if source_html:
             return html_to_text(source_html), source_html
         return "", ""
 
-    def send_message(self, access_token: str, message: OutgoingMessage) -> SendResult:
+    @staticmethod
+    def _embed_inline_images(source_html: str, inline_images: dict[str, str]) -> str:
+        """Resolve referenced CID images to bounded data URLs before persistence."""
+
+        soup = BeautifulSoup(source_html, "html.parser")
+        for image in soup.find_all("img"):
+            source = str(image.get("src") or "").strip()
+            if not source.lower().startswith("cid:"):
+                continue
+            content_id = unquote(source[4:]).strip().strip("<>").casefold()
+            replacement = inline_images.get(content_id)
+            if replacement:
+                image["src"] = replacement
+            else:
+                image.decompose()
+        return str(soup)
+
+    def send_message(
+        self,
+        access_token: str,
+        message: OutgoingMessage,
+        *,
+        before_irreversible: Callable[[], None] | None = None,
+    ) -> SendResult:
         if message.from_email.lower() != message.from_email.strip().lower():
             raise ProviderError("Адрес отправителя задан некорректно.")
-        message_id = message.message_id or make_msgid(domain=message.from_email.split("@", 1)[-1])
+        if not message.message_id:
+            raise ProviderError("Не удалось зафиксировать идентификатор письма до отправки.", provider_code="integrity-message-id")
+        message_id = message.message_id
         email_message = self._build_email(message, message_id)
+        smtp = None
+        data_accepted = False
         try:
-            with self._smtp_connection(message.from_email, access_token) as smtp:
-                refused = smtp.send_message(email_message)
-                if refused:
-                    raise ProviderError("Почтовый сервер отклонил адрес получателя.")
+            smtp = self._smtp_connection(message.from_email, access_token)
+            outcome = self._smtp_send_message(smtp, email_message, before_irreversible=before_irreversible)
+            data_accepted = outcome.smtp_stage == "post_data" and outcome.smtp_code == 250
         except ProviderError:
             raise
         except smtplib.SMTPAuthenticationError as exc:
@@ -278,33 +370,341 @@ class YandexMailProvider(MailProvider):
                     "Яндекс отклонил авторизацию. Проверьте подключение почты или подключите её заново.",
                     revoked=True,
                     provider_code="535",
+                    smtp_stage="auth",
+                    smtp_code=int(exc.smtp_code),
+                    smtp_enhanced_status=_smtp_enhanced_status(exc.smtp_error),
+                    provider_response_safe=_safe_smtp_response(exc.smtp_error),
+                    exception_class=type(exc).__name__,
                 ) from exc
-            raise ProviderError("Яндекс не принял авторизацию почтового ящика.", revoked=True) from exc
+            raise ProviderError(
+                "Яндекс не принял авторизацию почтового ящика.", revoked=True,
+                smtp_stage="auth", smtp_code=int(exc.smtp_code),
+                smtp_enhanced_status=_smtp_enhanced_status(exc.smtp_error),
+                provider_response_safe=_safe_smtp_response(exc.smtp_error),
+                exception_class=type(exc).__name__,
+            ) from exc
         except smtplib.SMTPRecipientsRefused as exc:
-            raise ProviderError("Почтовый сервер отклонил адрес получателя.") from exc
+            code, response = next(iter(exc.recipients.values()), (None, None))
+            raise ProviderError(
+                "Почтовый сервер отклонил адрес получателя.",
+                provider_code="recipient-invalid", smtp_stage="rcpt_to",
+                smtp_code=int(code) if code is not None else None,
+                smtp_enhanced_status=_smtp_enhanced_status(response),
+                provider_response_safe=_safe_smtp_response(response),
+                exception_class=type(exc).__name__,
+            ) from exc
         except smtplib.SMTPDataError as exc:
-            self._raise_smtp_response(exc.smtp_code, "Яндекс отклонил письмо")
+            self._raise_smtp_response(
+                exc.smtp_code, "Яндекс отклонил письмо", exc.smtp_error,
+                stage="post_data", exception_class=type(exc).__name__,
+            )
         except smtplib.SMTPResponseException as exc:
-            self._raise_smtp_response(exc.smtp_code, "Яндекс вернул ошибку SMTP")
+            self._raise_smtp_response(
+                exc.smtp_code, "Яндекс вернул ошибку SMTP", exc.smtp_error,
+                stage="unknown", exception_class=type(exc).__name__,
+            )
         except (socket.timeout, TimeoutError, URLError, OSError) as exc:
             raise ProviderError(
-                "Почтовый сервер временно недоступен. Письмо оставлено в очереди.", transient=True
+                "Почтовый сервер временно недоступен. Письмо оставлено в очереди.", transient=True,
+                smtp_stage="unknown", exception_class=type(exc).__name__,
             ) from exc
+        finally:
+            if smtp is not None:
+                try:
+                    smtp.quit()
+                except Exception as exc:  # noqa: BLE001 — cleanup cannot rewrite a positive DATA response
+                    if data_accepted:
+                        log.warning("SMTP accepted the message; connection cleanup failed: %s", type(exc).__name__)
+                    else:
+                        log.debug("SMTP connection cleanup failed before DATA: %s", type(exc).__name__)
         return SendResult(
             message_id=message_id,
             provider_message_id=None,
             sent_at=datetime.now(timezone.utc),
+            smtp_stage=outcome.smtp_stage,
+            smtp_code=outcome.smtp_code,
+            smtp_enhanced_status=outcome.smtp_enhanced_status,
+            provider_response_safe=outcome.provider_response_safe,
         )
 
+    @classmethod
+    def _smtp_send_message(
+        cls,
+        smtp: smtplib.SMTP_SSL,
+        email_message: EmailMessage,
+        *,
+        before_irreversible: Callable[[], None] | None = None,
+    ) -> _SmtpSendOutcome:
+        """Send the envelope in explicit phases so DATA transport errors are unknown.
+
+        `smtplib.SMTP.send_message()` hides the boundary between RCPT and DATA.
+        The small equivalent below keeps the same SMTP semantics while giving
+        the integrity gate one neutral callback immediately before DATA.
+        """
+
+        sender = parseaddr(str(email_message.get("From", "")))[1]
+        recipients = [address for _name, address in getaddresses(email_message.get_all("To", [])) if address]
+        if not sender or not recipients:
+            raise ProviderError("Почтовый сервер отклонил адрес получателя.")
+        # `policy.SMTP` gives smtplib-compatible CRLF serialization.  The
+        # Message API has no `linesep` keyword; passing one raises after the
+        # durable irreversible gate and is therefore classified as unknown.
+        encoded = email_message.as_bytes(policy=policy.SMTP)
+        code, response = smtp.mail(sender)
+        if code != 250:
+            cls._raise_smtp_response(
+                code, "Яндекс не принял адрес отправителя", response,
+                stage="mail_from", exception_class="SMTPSenderRefused",
+            )
+        refused: dict[str, tuple[int, bytes]] = {}
+        accepted = 0
+        last_code: int | None = code
+        last_response: bytes | str | None = response
+        for recipient in recipients:
+            code, response = smtp.rcpt(recipient)
+            last_code, last_response = code, response
+            if code not in (250, 251):
+                refused[recipient] = (code, response)
+            else:
+                accepted += 1
+        if accepted == 0:
+            code, response = next(iter(refused.values()), (last_code or 550, last_response or b""))
+            cls._raise_smtp_response(
+                code, "Почтовый сервер отклонил адрес получателя", response,
+                stage="rcpt_to", exception_class="SMTPRecipientsRefused",
+            )
+        if before_irreversible is not None:
+            before_irreversible()
+
+        # A few provider doubles in the legacy integration suite expose only
+        # smtplib's public ``data`` method.  Keep that test seam compatible;
+        # real SMTP connections always take the explicit phase-aware path
+        # below.
+        if not hasattr(smtp, "putcmd"):
+            try:
+                code, response = smtp.data(encoded)
+            except (smtplib.SMTPServerDisconnected, socket.timeout, TimeoutError, OSError) as exc:
+                raise ProviderError(
+                    "Соединение оборвалось после начала передачи письма. Отправка не подтверждена.",
+                    uncertain=True, provider_code="smtp-transport-after-data",
+                    smtp_stage="post_data", exception_class=type(exc).__name__,
+                ) from exc
+            if code != 250:
+                cls._raise_smtp_response(
+                    code, "Яндекс отклонил письмо", response,
+                    stage="post_data", exception_class="SMTPDataError",
+                )
+            return _SmtpSendOutcome(
+                refused=refused,
+                smtp_stage="post_data",
+                smtp_code=int(code),
+                smtp_enhanced_status=_smtp_enhanced_status(response),
+                provider_response_safe=_safe_smtp_response(response),
+            )
+
+        # Keep the DATA command and the body/final reply separate.  smtplib's
+        # high-level SMTP.data() combines them, which loses the exact phase
+        # when a provider disconnects after bytes have started flowing.
+        try:
+            smtp.putcmd("DATA")
+            code, response = smtp.getreply()
+        except (smtplib.SMTPServerDisconnected, socket.timeout, TimeoutError, OSError) as exc:
+            raise ProviderError(
+                "Соединение оборвалось после начала передачи письма. Отправка не подтверждена.",
+                uncertain=True, provider_code="smtp-transport-after-data",
+                smtp_stage="data_command", exception_class=type(exc).__name__,
+            ) from exc
+        if code != 354:
+            cls._raise_smtp_response(
+                code, "Яндекс не принял команду DATA", response,
+                stage="data_command", exception_class="SMTPDataError",
+            )
+
+        # ``EmailMessage.as_bytes(policy=SMTP)`` already serializes with CRLF;
+        # smtplib's private helpers intentionally accept bytes here (the
+        # string-only EOL fixer is used only by SMTP.data(str)).
+        encoded = smtplib._quote_periods(encoded)
+        if not encoded.endswith(b"\r\n"):
+            encoded += b"\r\n"
+        encoded += b".\r\n"
+        try:
+            smtp.send(encoded)
+        except (smtplib.SMTPServerDisconnected, socket.timeout, TimeoutError, OSError) as exc:
+            raise ProviderError(
+                "Соединение оборвалось после начала передачи письма. Отправка не подтверждена.",
+                uncertain=True, provider_code="smtp-transport-after-data",
+                smtp_stage="data_body", exception_class=type(exc).__name__,
+            ) from exc
+        try:
+            code, response = smtp.getreply()
+        except (smtplib.SMTPServerDisconnected, socket.timeout, TimeoutError, OSError) as exc:
+            raise ProviderError(
+                "Соединение оборвалось после начала передачи письма. Отправка не подтверждена.",
+                uncertain=True,
+                provider_code="smtp-transport-after-data",
+                smtp_stage="post_data", exception_class=type(exc).__name__,
+            ) from exc
+        if code != 250:
+            cls._raise_smtp_response(
+                code, "Яндекс отклонил письмо", response,
+                stage="post_data", exception_class="SMTPDataError",
+            )
+        return _SmtpSendOutcome(
+            refused=refused,
+            smtp_stage="post_data",
+            smtp_code=int(code),
+            smtp_enhanced_status=_smtp_enhanced_status(response),
+            provider_response_safe=_safe_smtp_response(response),
+        )
+
+    def save_sent_copy(self, access_token: str, message: OutgoingMessage, result: SendResult) -> None:
+        email_message = self._build_email(message, result.message_id)
+        self._append_to_sent(message.from_email, access_token, email_message)
+
+    def verify_sent_message(self, access_token: str, email: str, message_id: str | None) -> DeliveryCheck:
+        if not message_id:
+            return DeliveryCheck("unavailable", None, "У письма нет сохранённого идентификатора.")
+        connection = None
+        try:
+            connection = self._imap_connection(email, access_token)
+            folder, authoritative = self._find_sent_folder_details(connection)
+            if not authoritative or not folder:
+                return DeliveryCheck("unavailable", message_id, "Папка «Отправленные» не определена по служебному признаку.")
+            status, select_data = connection.select(folder, readonly=True)
+            if status != "OK":
+                return DeliveryCheck("unavailable", message_id, "Не удалось открыть папку «Отправленные».")
+            status, data = connection.search(None, "HEADER", "Message-ID", message_id)
+            if status == "OK":
+                found = bool(data and data[0] and data[0].split())
+                return DeliveryCheck("found" if found else "not_found", message_id)
+            return self._fetch_sent_message_headers(connection, select_data, message_id)
+        except (imaplib.IMAP4.error, socket.timeout, TimeoutError, OSError) as exc:
+            return DeliveryCheck("unavailable", message_id, "Не удалось проверить папку «Отправленные».")
+        finally:
+            if connection is not None:
+                try:
+                    connection.logout()
+                except (imaplib.IMAP4.error, OSError):
+                    pass
+
+    # Запасные имена папки на случай, если сервер не отдал \Sent в LIST.
+    _SENT_FOLDER_FALLBACKS = ('"Отправленные"', '"Sent"', "Sent")
+
+    def _append_to_sent(self, email: str, access_token: str, email_message) -> None:
+        """Положить копию отправленного письма в папку «Отправленные»."""
+        connection = self._imap_connection(email, access_token)
+        try:
+            folder = self._find_sent_folder(connection)
+            if folder is None:
+                return
+            connection.append(
+                folder,
+                r"\Seen",
+                imaplib.Time2Internaldate(time.time()),
+                email_message.as_bytes(),
+            )
+        finally:
+            try:
+                connection.logout()
+            except (imaplib.IMAP4.error, OSError):
+                pass
+
+    def _fetch_sent_message_headers(
+        self,
+        connection: imaplib.IMAP4_SSL,
+        select_data,
+        message_id: str,
+        max_messages: int = 50,
+    ) -> DeliveryCheck:
+        """Use a bounded header-only FETCH when Yandex SEARCH is unavailable.
+
+        SEARCH responses are deliberately not interpreted as UIDs here: Yandex
+        may return a diagnostic payload with status NO. The fallback is limited
+        to the last ``max_messages`` sequence numbers in the authoritative Sent
+        folder and compares only the exact RFC Message-ID header.
+        """
+        exists = None
+        for raw in select_data or []:
+            value = raw.decode("ascii", "ignore") if isinstance(raw, bytes) else str(raw)
+            match = re.match(r"^\s*(\d+)", value)
+            if match:
+                exists = int(match.group(1))
+                break
+        if exists is None:
+            return DeliveryCheck("unavailable", message_id, "Не удалось определить размер папки «Отправленные» для fallback-поиска.")
+
+        window = min(max_messages, 50)
+        start = max(1, exists - window + 1)
+        try:
+            status, data = connection.fetch(
+                f"{start}:*",
+                "(BODY.PEEK[HEADER.FIELDS (MESSAGE-ID SUBJECT DATE FROM TO)])",
+            )
+        except (imaplib.IMAP4.error, socket.timeout, TimeoutError, OSError):
+            return DeliveryCheck("unavailable", message_id, "Не удалось выполнить bounded FETCH заголовков «Отправленных».")
+        if status != "OK":
+            return DeliveryCheck("unavailable", message_id, "Не удалось выполнить bounded FETCH заголовков «Отправленных».")
+
+        for item in data or []:
+            if not isinstance(item, tuple) or len(item) < 2 or not isinstance(item[1], bytes):
+                continue
+            parsed = BytesParser(policy=policy.default).parsebytes(item[1])
+            if parsed.get("Message-ID") == message_id:
+                return DeliveryCheck(
+                    "found",
+                    message_id,
+                    "Yandex SEARCH недоступен; точный Message-ID найден bounded FETCH fallback.",
+                )
+        return DeliveryCheck(
+            "unavailable",
+            message_id,
+            "Yandex SEARCH недоступен; точный Message-ID не найден в последнем bounded FETCH окне.",
+        )
+
+    def _find_sent_folder(self, connection: imaplib.IMAP4_SSL) -> str | None:
+        """Имя папки «Отправленные» в том виде, в каком его ждёт сервер.
+
+        Правильный путь — атрибут `\\Sent` в ответе LIST (RFC 6154): у Яндекса
+        папка называется по-русски, а её имя в протоколе закодировано
+        modified UTF-7. Поэтому имя берём из ответа сервера как есть и не
+        пытаемся собрать его сами.
+        """
+        return self._find_sent_folder_details(connection)[0]
+
+    def _find_sent_folder_details(self, connection: imaplib.IMAP4_SSL) -> tuple[str | None, bool]:
+        try:
+            status, rows = connection.list()
+        except (imaplib.IMAP4.error, OSError):
+            return self._SENT_FOLDER_FALLBACKS[0], False
+        if status == "OK":
+            for raw in rows or []:
+                line = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else str(raw)
+                if "\\Sent" not in line:
+                    continue
+                match = re.match(r'^\([^)]*\)\s+(?:"[^"]*"|NIL)\s+(.+?)\s*$', line)
+                if not match:
+                    continue
+                name = match.group(1).strip()
+                return (name if name.startswith('"') else f'"{name}"'), True
+        return self._SENT_FOLDER_FALLBACKS[0], False
+
     def _smtp_connection(self, email: str, access_token: str) -> smtplib.SMTP_SSL:
+        stage = "connect"
         try:
             smtp = smtplib.SMTP_SSL(self.smtp_host, self.smtp_port, timeout=self.timeout)
-            smtp.ehlo()
+            stage = "ehlo"
+            ehlo_code, ehlo_response = smtp.ehlo()
+            if ehlo_code >= 400:
+                self._raise_smtp_response(
+                    ehlo_code, "Яндекс не принял приветствие SMTP", ehlo_response,
+                    stage="ehlo", exception_class="SMTPResponseException",
+                )
 
             def auth_object(_challenge: bytes | None = None) -> str:
                 # smtplib performs the base64 encoding; the auth callback must return text.
                 return f"user={email}\x01auth=Bearer {access_token}\x01\x01"
 
+            stage = "auth"
             smtp.auth("XOAUTH2", auth_object, initial_response_ok=True)
             return smtp
         except smtplib.SMTPAuthenticationError as exc:
@@ -313,13 +713,28 @@ class YandexMailProvider(MailProvider):
                     "Яндекс отклонил авторизацию. Проверьте подключение почты или подключите её заново.",
                     revoked=True,
                     provider_code="535",
+                    smtp_stage="auth",
+                    smtp_code=int(exc.smtp_code),
+                    smtp_enhanced_status=_smtp_enhanced_status(exc.smtp_error),
+                    provider_response_safe=_safe_smtp_response(exc.smtp_error),
+                    exception_class=type(exc).__name__,
                 ) from exc
-            raise ProviderError("Яндекс не принял авторизацию почтового ящика.", revoked=True) from exc
+            raise ProviderError(
+                "Яндекс не принял авторизацию почтового ящика.", revoked=True,
+                smtp_stage="auth", smtp_code=int(exc.smtp_code),
+                smtp_enhanced_status=_smtp_enhanced_status(exc.smtp_error),
+                provider_response_safe=_safe_smtp_response(exc.smtp_error),
+                exception_class=type(exc).__name__,
+            ) from exc
         except smtplib.SMTPResponseException as exc:
-            self._raise_smtp_response(exc.smtp_code, "Яндекс вернул ошибку SMTP")
+            self._raise_smtp_response(
+                exc.smtp_code, "Яндекс вернул ошибку SMTP", exc.smtp_error,
+                stage=stage, exception_class=type(exc).__name__,
+            )
         except (socket.timeout, TimeoutError, OSError) as exc:
             raise ProviderError(
-                "Почтовый сервер временно недоступен. Попробуйте ещё раз.", transient=True
+                "Почтовый сервер временно недоступен. Попробуйте ещё раз.", transient=True,
+                smtp_stage=stage, exception_class=type(exc).__name__,
             ) from exc
 
     @staticmethod
@@ -406,12 +821,46 @@ class YandexMailProvider(MailProvider):
         return TokenSet(access_token=access_token, refresh_token=refresh_token, expires_in=expires_in)
 
     @staticmethod
-    def _raise_smtp_response(code: int, prefix: str) -> None:
+    def _raise_smtp_response(
+        code: int,
+        prefix: str,
+        response: bytes | str | None = None,
+        *,
+        stage: str = "unknown",
+        exception_class: str | None = None,
+    ) -> None:
+        # Inspect only a bounded, lower-cased response for explicit provider
+        # policy evidence. The response itself never leaves this adapter.
+        safe_response = _safe_smtp_response(response)
+        text = (safe_response or "").lower()
+        evidence = {
+            "smtp_stage": stage if stage in _SMTP_STAGES else "unknown",
+            "smtp_code": int(code) if code is not None else None,
+            "smtp_enhanced_status": _smtp_enhanced_status(response),
+            "provider_response_safe": safe_response,
+            "exception_class": exception_class,
+        }
+        if any(token in text for token in ("spam", "policy", "политик", "спам")):
+            raise ProviderError(
+                "Провайдер отклонил письмо по политике отправки. Оставшиеся письма остановлены.",
+                provider_code="spam-policy",
+                **evidence,
+            )
+        if code in {550, 551, 553} and any(token in text for token in ("user unknown", "recipient", "mailbox", "адрес")):
+            raise ProviderError(
+                "Почтовый сервер отклонил адрес получателя.",
+                provider_code="recipient-invalid",
+                **evidence,
+            )
         if 400 <= code < 500:
             raise ProviderError(
                 "Яндекс временно ограничил отправку. Оставшиеся письма сохранены в очереди.",
                 transient=True,
                 rate_limited=code in {421, 450, 451, 452},
                 provider_code=str(code),
+                **evidence,
             )
-        raise ProviderError(f"{prefix}. Проверьте настройки почты и попробуйте ещё раз.", provider_code=str(code))
+        raise ProviderError(
+            f"{prefix}. Проверьте настройки почты и попробуйте ещё раз.",
+            provider_code=str(code), **evidence,
+        )

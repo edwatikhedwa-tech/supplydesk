@@ -66,7 +66,7 @@ export function Composer({ context, onClose, onSent }: ComposerProps) {
         </div>
 
         <div className="mx-5 mt-4 bg-accent-50/50 border border-accent-100 rounded-lg p-3">
-          <p className="text-[10px] font-semibold text-accent-600 uppercase tracking-wider mb-0.5">Заявка</p>
+          <p className="text-2xs font-semibold text-accent-600 uppercase tracking-wider mb-0.5">Заявка</p>
           <p className="text-sm font-medium text-ink-900">{context.requestName}</p>
           <p className="text-xs text-ink-500 mt-0.5">{context.supplierName}</p>
         </div>

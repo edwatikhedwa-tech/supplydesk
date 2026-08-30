@@ -2,11 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
   "functions": {
     "api/**/*.py": {
       "maxDuration": 60,
       "includeFiles": "{frontend/dist/**,fonts/**,migrations/**,fixtures/**}",
-      "excludeFiles": "{.env*,.git/**,_archive/**,frontend/node_modules/**,frontend/src/**,artifacts/**,cache/**,tests/**,docs/**,*.png,*.zip,*.rar,*.db,*.sqlite3,mail-data/**}"
+      "excludeFiles": "{.env*,.git/**,_archive/**,frontend/node_modules/**,frontend/src/**,artifacts/**,cache/**,tests/**,Documents/**,*.png,*.zip,*.rar,*.db,*.sqlite3,mail-data/**}"
     }
   },
   "routes": [

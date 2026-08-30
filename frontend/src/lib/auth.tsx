@@ -30,7 +30,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refresh().catch(() => setStatus('anonymous'));
+    let cancelled = false;
+    const keepSession = () => {
+      refresh().catch(() => {
+        if (!cancelled) setStatus('anonymous');
+      });
+    };
+
+    keepSession();
+    // The server renews the persistent session when this heartbeat arrives.
+    // It also keeps an open monitoring page authenticated during long campaigns.
+    const timer = window.setInterval(keepSession, 15 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [refresh]);
 
   const login = useCallback(async (email: string, password: string) => {

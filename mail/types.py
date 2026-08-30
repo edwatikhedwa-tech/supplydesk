@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable, Literal
 
 
 class ProviderError(Exception):
@@ -16,6 +16,12 @@ class ProviderError(Exception):
         rate_limited: bool = False,
         revoked: bool = False,
         provider_code: str | None = None,
+        uncertain: bool = False,
+        smtp_stage: str | None = None,
+        smtp_code: int | None = None,
+        smtp_enhanced_status: str | None = None,
+        provider_response_safe: str | None = None,
+        exception_class: str | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
@@ -23,6 +29,18 @@ class ProviderError(Exception):
         self.rate_limited = rate_limited
         self.revoked = revoked
         self.provider_code = provider_code
+        # True means the provider may have accepted the message, but the
+        # application has no positive confirmation. Such an error is never
+        # eligible for the ordinary retry path.
+        self.uncertain = uncertain
+        # Bounded, credential-free transport evidence.  These fields are
+        # deliberately optional because not every provider or failure phase
+        # exposes an SMTP response.
+        self.smtp_stage = smtp_stage
+        self.smtp_code = smtp_code
+        self.smtp_enhanced_status = smtp_enhanced_status
+        self.provider_response_safe = provider_response_safe
+        self.exception_class = exception_class
 
 
 @dataclass(slots=True)
@@ -63,6 +81,50 @@ class SendResult:
     message_id: str
     provider_message_id: str | None
     sent_at: datetime
+    smtp_stage: str | None = None
+    smtp_code: int | None = None
+    smtp_enhanced_status: str | None = None
+    provider_response_safe: str | None = None
+    exception_class: str | None = None
+
+
+@dataclass(slots=True)
+class SendAttempt:
+    """The in-memory context needed to save a Sent copy after SMTP success.
+
+    The access token never leaves process memory and is not persisted or
+    included in logs. Keeping it with the attempt also lets the queue try the
+    IMAP copy when the database write of the delivery result fails.
+    """
+
+    result: SendResult
+    message: OutgoingMessage
+    access_token: str
+    provider: Any
+
+    @property
+    def message_id(self) -> str:
+        return self.result.message_id
+
+    @property
+    def provider_message_id(self) -> str | None:
+        return self.result.provider_message_id
+
+    @property
+    def sent_at(self) -> datetime:
+        return self.result.sent_at
+
+
+DeliveryCheckOutcome = Literal["found", "not_found", "unavailable"]
+
+
+@dataclass(slots=True)
+class DeliveryCheck:
+    """Provider-neutral result of a lookup by the immutable Message-ID."""
+
+    outcome: DeliveryCheckOutcome
+    message_id: str | None = None
+    reason: str | None = None
 
 
 @dataclass(slots=True)

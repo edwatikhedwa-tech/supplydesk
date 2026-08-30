@@ -20,9 +20,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 
-from email_extractor import (
-    EMAIL_RE, EmailHit, normalize_email, root_domain, validate_email,
-)
+from email_extractor import EmailHit, extract_from_html, root_domain
 from inn_extractor import InnHit, inn_kind, normalize_inn, validate_inn_checksum
 from serp_parser import host_of
 
@@ -108,20 +106,49 @@ class WebLookup:
         return finding
 
     def find_inn(self, host: str, company_name: str = "") -> InnHit | None:
-        """ИНН по выдаче: в сниппетах каталогов он стоит прямо в заголовке."""
+        """ИНН по выдаче: в сниппетах каталогов он стоит прямо в заголовке.
+
+        Совпадение по названию компании — слабая улика: справочники вроде
+        Rusprofile хранят множество разных юрлиц с похожими или совпадающими
+        названиями (частая история для типовых имён вроде «Мастер Ватер»,
+        «Технопром» и т.п.). Поэтому здесь не берём первый попавшийся ИНН из
+        карточки каталога — ищем среди совпадений то, где сам домен реально
+        упомянут (в URL найденной страницы или в тексте сниппета). Если такого
+        совпадения нет, возвращаем самый правдоподобный кандидат, но помечаем
+        domain_confirmed=False — вызывающий код обязан требовать более строгое
+        подтверждение (например, факт, что сам ИНН зарегистрирован на этот
+        домен по данным Checko), а не просто «не опровергнуто».
+        """
+        root = root_domain(host)
         query = f"{company_name} ИНН" if company_name else f"{host} ИНН ОГРН реквизиты"
         docs = self._search(query)
+        fallback: InnHit | None = None
         for doc in docs:
             blob = f"{doc.title} {doc.snippet}"
+            source_host = host_of(doc.url)
+            # Домен упомянут в самой странице каталога, либо страница найдена
+            # прямо на сайте компании — это и есть первичное подтверждение.
+            confirmed = (
+                root in blob.lower()
+                or host.lower() in blob.lower()
+                or source_host == root
+                or root_domain(source_host) == root
+            )
             for m in re.finditer(r"ИНН[\s:№-]*(\d{10}|\d{12})(?!\d)", blob, re.IGNORECASE):
                 inn = normalize_inn(m.group(1))
-                if validate_inn_checksum(inn):
-                    return InnHit(
-                        inn=inn, source_url=doc.url, method="web",
-                        evidence=" ".join(blob.split())[:300],
-                        checksum_ok=True, kind=inn_kind(inn),
-                    )
-        return None
+                if not validate_inn_checksum(inn):
+                    continue
+                hit = InnHit(
+                    inn=inn, source_url=doc.url, method="web",
+                    evidence=" ".join(blob.split())[:300],
+                    checksum_ok=True, kind=inn_kind(inn),
+                    domain_confirmed=confirmed,
+                )
+                if confirmed:
+                    return hit
+                if fallback is None:
+                    fallback = hit
+        return fallback
 
     # ------------------------------------------------------------------ частности
 
@@ -137,15 +164,18 @@ class WebLookup:
         return docs
 
     def _emails_from_text(self, text: str, source_url: str, root: str) -> list[EmailHit]:
-        hits = []
-        for m in EMAIL_RE.finditer(text):
-            email = normalize_email(m.group(1))
-            if validate_email(email):
-                continue
-            hit = EmailHit(
-                email=email, source_url=source_url, method="web",
-                evidence=" ".join(text.split())[:300],
-            )
+        # Поисковый сниппет — это тот же внешний текстовый источник, поэтому
+        # он должен проходить через общий extractor. Иначе fallback видел лишь
+        # строгий `name@domain.tld`, но пропускал адреса с типографической
+        # опечаткой (`name@domain,ru`) и безопасной обфускацией.
+        extracted, _rejected = extract_from_html(text, source_url)
+        evidence = " ".join(text.split())[:300]
+        hits: list[EmailHit] = []
+        for hit in extracted:
+            repaired = hit.method.endswith("_repaired")
+            hit.method = "web_repaired" if repaired else "web"
+            hit.source_url = source_url
+            hit.evidence = evidence
             hits.append(self._mark(hit, root))
         return hits
 

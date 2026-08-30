@@ -1,129 +1,83 @@
 # Last Handoff
 
-Task ID: `TASK-STATE-RECONCILIATION`
-Дата и время UTC: `2026-08-30T17:13:31Z`
+Task ID: `TASK-PUBLISH-SAFETY-001`
+Дата и время UTC: `2026-08-30T17:43:27Z`
 Агент: `Codex`
 Ветка: `codex/TASK-STATE-CONTROL-20260830`
-Commit: `HEAD` — exact hash must be read with `git rev-parse HEAD`; the audit
-parent was `d949bc6afe0c97135a98662d3a7725f4b46d6c1e`.
-Push status: `NO` — no remote `origin` is configured.
-Статус: `CLOSED`
+HEAD: `34b064bddeec5b2598f7f9f251d5ec374deadbab`
+Remote: `origin` отсутствует.
+Staging: `0` файлов.
+Commit: `NOT RUN`
+Push status: `NOT RUN`
+Статус: `BLOCKED`
 
 ## Цель
 
-Проверить достоверность предыдущего отчёта о системе состояния, сопоставить
-его с Git и текущими проверками, явно отделить подтверждённые сведения от
-заявленных и неподтверждённых, а затем обновить только `ai/**` и создать
-отчёт сверки. Product-задача не создавалась и не реализовывалась.
+Подготовить безопасный allowlist для будущей публикации проекта в приватный
+GitHub, исключив секреты, временные/личные файлы и пути с неизвестным
+происхождением.
 
 ## Что изменено
 
-- Цепочка подтверждена: `7658b115` → `8a8bc36a` → `9ca82f891` →
-  `d949bc6a`.
-- `8a8bc36a` содержит только `AGENTS.md`, `CLAUDE.md` и `ai/**`;
-  `9ca82f891` — только два chronology-файла `ai/**`.
-- `d949bc6a` добавляет отдельный `docs/**`-контур из четырёх документов.
-  Он не является частью предыдущего `ai/**`-контура и не был изменён в этой
-  задаче.
-- На снимке аудита было `72` tracked modified/deleted, `598` untracked и
-  `0` staged paths (`670` unique). Историческое число `170` не доказано:
-  `PRE-EXISTING STATUS: REPORTED, NOT VERIFIED`.
-- Незакоммиченные application/docs/artifact paths сохранены нетронутыми и не
-  добавлены в commit.
+- Созданы только документы `ai/PUBLISH_ALLOWLIST.md`,
+  `ai/PUBLISH_DENYLIST.md`, `ai/PUBLISH_SECURITY_REPORT.md` и отчёт задачи.
+- Обновлены `ai/CURRENT_STATE.md`, `ai/ACTIVE_TASK.md`, `ai/CHANGELOG.md` и
+  `ai/INTERACTION_LOG.md`.
+- Application code, `.gitignore`, remote, staging и GitHub repository не
+  изменялись.
 
 ## Текущее состояние runtime
 
-Loopback runtime `127.0.0.1:8000` наблюдался; `/` и `/api/auth/me` вернули
-`200`, а unauthenticated `/api/requests/1059` вернул `401`. Canonical SQLite
-открыт read-only, integrity `ok`; записи, миграции и реальные отправки не
-выполнялись.
+Текущий HEAD: `34b064bddeec5b2598f7f9f251d5ec374deadbab`; ветка
+`codex/TASK-STATE-CONTROL-20260830`. GitHub CLI авторизован как
+`edwatikhedwa-tech`, но `edwatikhedwa-tech/supplydesk` не найден. `origin`
+отсутствует. Локальные runtime/database действия не выполнялись.
 
 ## Что проверено
 
-- `python ai/tools/validate_state.py`: `PASS`.
-- `python -m py_compile ai/tools/validate_state.py`: `PASS`.
-- `test_supplier_identity.py`: `27 OK`.
-- `test_mail_status_semantics.py`: `16 OK`.
-- `test_mailru_mvp.py`: `12 OK` на dummy/patched transports.
-- Полный backend suite в текущей конфигурации: `344` запусков,
-  `41 failures`, `7 errors`, `1 skipped` — `FAIL`.
-- Process-only override `MAIL_OUTGOING_DISABLED=0`: `350` запусков,
-  `41 failures`, `7 errors`, `1 skipped` — `FAIL`; safety gate продолжил
-  блокировать mail-тесты.
-- Frontend: typecheck `PASS`, lint `PASS` с `8` warnings и `0` errors,
-  build `PASS` с chunk-size warning. Visual/responsive screenshot review не
-  выполнялся.
-- HTTP smoke: `/` → `200`, `/api/auth/me` → `200`, unauthenticated
-  `/api/requests/1059` → `401`; процесс оставлен запущенным.
-- Read-only SQLite: integrity `ok`, `493` suppliers, `171` request-1059
-  rows, `2` accounts, `165` mail messages, `42` inbox messages, `149` jobs.
-  Миграции и записи не выполнялись.
+- `git status --short`, `git ls-files`, tracked modified/deleted, untracked,
+  `git diff --stat`, `git check-ignore -v`, branch, HEAD и remote.
+- Inventory до создания safety-документов: `66 M`, `6 D`, `599 ??`, `0 staged`,
+  `677` unique paths; diff `+17125/-3588`.
+- Classification: A=190 application, B=51 tests, C=15 config, D=7 AI,
+  E=89 ordinary docs, F=58 temp/runtime, G=253 screenshots/archives/backups,
+  H=14 personal/unknown, I=0 status-listed secret paths.
+- `gh auth status`: `PASS`; user `edwatikhedwa-tech`; repository lookup: not
+  found.
+- Path-only/content scan без вывода значений секретов.
+- Existing AI state files and `ai/inbox/` checked; inbox contains only
+  `.gitkeep`.
+- `python ai/tools/validate_state.py`: `PASS` после обновления документов.
 
 ## Что не прошло
 
-- Предыдущий зелёный результат `344 OK / 1 skipped` — только
-  `REPORTED, NOT VERIFIED`; текущий полный повтор завершился `FAIL`.
-- Реальный Mail.ru SMTP/IMAP acceptance, PostgreSQL, production deployment,
-  visual matrix и удалённый репозиторий не проверены.
-- `tests/run-tests.ps1` и `scripts/doctor.ps1` отсутствуют.
-- В текущем worktree наблюдается отдельная правка `api/index.py`, которая
-  убирает запуск queue при import. Автор и момент появления неизвестны;
-  она не относится к этому commit и не изменялась.
+- Task is blocked by `.env`, `.env.local`, `.env.p0-backup-20260830`,
+  `.env.production.local` and `.vercel/.env.preview.local`.
+- In `.env.production.local` detected a high-confidence
+  credential/database-URL-like pattern. Values were not displayed.
+- No files were approved for immediate push; app/test/config/docs paths remain
+  `REVIEW REQUIRED`.
 
 ## Что не проверено
 
-PostgreSQL, production deployment, real Mail.ru SMTP/IMAP acceptance, visual
-responsive matrix, provenance uncommitted paths and remote repository
-availability remain `NOT VERIFIED`. Helper scripts `tests/run-tests.ps1` and
-`scripts/doctor.ps1` are absent.
+- Очистка/ротация credentials, provenance всех uncommitted paths, точный
+  owner/repository name, shared branch и final publish approval:
+  `NOT VERIFIED`.
+- Repository creation, `origin`, staging, commit and push: `NOT RUN`.
+- Safety of binary archives/screenshots beyond path exclusion is not verified.
 
 ## Следующий рациональный шаг
 
-После закрытия этого документационного аудита — отдельное owner-approved
-решение, запускать ли offline HTML/plain-text contract investigation.
+Владелец должен кварантировать/очистить env-файлы и при необходимости ротировать
+credentials, утвердить allowlist, owner/repository и shared branch. Затем нужен
+повторный scan именно staged tree.
 
 ## Рекомендуемый следующий blocker
 
-`P1 — HTML/plain-text outbound mail contract`.
-
-Исторический `Documents/28-8/PROJECT_STATUS.md` прямо сообщает, что HTML из
-редактора экранируется как текст. Это наиболее узкий пользовательский дефект,
-который можно проверить офлайн с mock transport. Mail.ru live acceptance
-остаётся отдельным операционным gate и требует одобрения владельца.
-
-Минимальный scope будущей задачи: определить и исправить представление
-plain-text и поддерживаемого rich HTML для bulk compose и inbox reply,
-добавить изолированные MIME/rendering regression tests и зафиксировать
-контракт.
-
-Non-goals: Mail.ru, PostgreSQL, миграции, схема, production, реальные отправки,
-supplier identity cleanup и redesign дат/времени.
-
-Definition of Done: plain text не экранируется повторно; разрешённый HTML
-санитизируется и попадает в ожидаемую MIME-часть; опасная разметка удаляется;
-bulk/reply используют один документированный контракт; изолированные тесты
-проходят на mock transport; live send отсутствует.
-
-Acceptance-сценарии: literal `<`/`&` в plain text остаются текстом;
-поддерживаемое форматирование сохраняется; опасные tags, event handlers и
-unsafe URL schemes удаляются; reply следует тому же контракту; тест не меняет
-боевую БД и не отправляет письмо.
-
-## Files changed by this task
-
-- `ai/CURRENT_STATE.md`
-- `ai/LAST_HANDOFF.md`
-- `ai/CHANGELOG.md`
-- `ai/INTERACTION_LOG.md`
-- `ai/DEFERRED_FINDINGS.md`
-- `ai/ACTIVE_TASK.md` (в работе был активирован, перед close возвращён в idle)
-- `ai/reports/TASK-STATE-RECONCILIATION-report.md`
-
-Application code, UI, API, backend, frontend, database, migrations,
-`docs/**`, `AGENTS.md` and `CLAUDE.md` не изменялись этой задачей.
+`BLOCKED — secret hygiene and publish-set approval`.
 
 ## Не повторять
 
-Не считать `170 pre-existing` доказанным, не смешивать Mail.ru live acceptance
-с rich-text работой и не менять незакоммиченные application/docs paths без
-отдельного scope и владельческого решения.
+Не читать или отправлять значения env-файлов в чат, не использовать `git add .`,
+не удалять/перемещать пользовательские файлы, не создавать репозиторий и не
+добавлять `origin` до завершения security gate.

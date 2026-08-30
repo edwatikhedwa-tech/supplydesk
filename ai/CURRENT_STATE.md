@@ -2,21 +2,22 @@
 
 ## Last update
 
-- Timestamp UTC: `2026-08-30T17:13:31Z` (audit snapshot; close evidence is in the reconciliation report).
+- Timestamp UTC: `2026-08-30T17:43:27Z` (publish-safety audit; status is BLOCKED).
 - Agent: `Codex`.
-- Task ID: `TASK-STATE-RECONCILIATION`.
-- Current HEAD: `HEAD` (resolve the exact hash with `git rev-parse HEAD`).
-- Parent HEAD at audit start: `d949bc6afe0c97135a98662d3a7725f4b46d6c1e`.
+- Task ID: `TASK-PUBLISH-SAFETY-001`.
+- Current HEAD: `34b064bddeec5b2598f7f9f251d5ec374deadbab`.
 - Branch: `codex/TASK-STATE-CONTROL-20260830`.
 - Remote: `origin` is not configured; `git remote -v` returned no entries.
 - Working tree: `DIRTY`.
-- Audit snapshot counts: `72` tracked modified/deleted paths, `598` untracked paths,
-  `0` staged paths, `670` unique uncommitted paths. These counts include
-  application, documentation and generated/review artifacts outside `ai/`.
-- `PRE-EXISTING STATUS: REPORTED, NOT VERIFIED`: the historical claim of `170`
-  pre-existing positions cannot be proved from the available baseline/history.
-  Current uncommitted paths were preserved and were not treated as authored by
-  this reconciliation task.
+- Publish-safety baseline counts: `78` tracked modified/deleted paths,
+  `599` untracked paths, `0` staged paths, `677` unique uncommitted paths.
+  After the four new safety documents, the handoff snapshot is `78` tracked,
+  `603` untracked, `0` staged, `681` unique. These counts include application,
+  documentation and generated/review artifacts; the historical claim of `170`
+  is not reproducible.
+- `PRE-EXISTING STATUS: REPORTED, NOT VERIFIED`: provenance and timing of the
+  uncommitted paths cannot be proved from the available Git baseline/history.
+  They were preserved and were not staged or committed.
 
 ## Scope and source reconciliation
 
@@ -171,6 +172,40 @@ Choose one bounded product block: **HTML/plain-text outbound mail contract**.
 
 ## Current next step
 
-The state-control task is ready to close after validator, scoped diff/staging
-review and the documentation-only commit. The next product decision is whether
-to authorize the separately scoped HTML/plain-text investigation above.
+The publish-safety task is `BLOCKED`: quarantine/rotate potential credentials,
+approve the exact allowlist, repository name and shared branch, then rerun a
+staged-tree security scan. Do not create a remote, change `origin`, stage,
+commit or push before those decisions.
+
+## Publish safety status
+
+- `ai/PUBLISH_ALLOWLIST.md` contains only conditional AI-state candidates;
+  application/source/test/config paths are `REVIEW REQUIRED`.
+- `ai/PUBLISH_DENYLIST.md` excludes env files, local databases, temporary and
+  runtime files, screenshots, archives, backups, personal/unknown documents and
+  all unresolved working-tree paths.
+- `ai/PUBLISH_SECURITY_REPORT.md` records path-only security findings without
+  secret values.
+- Potential credential-bearing files present: `.env`, `.env.local`,
+  `.env.p0-backup-20260830`, `.env.production.local`,
+  `.vercel/.env.preview.local`.
+- GitHub CLI auth is `PASS` as `edwatikhedwa-tech`; expected private repository
+  `edwatikhedwa-tech/supplydesk` is not found; `origin` is absent.
+- No staging, commit, repository creation or push was performed.
+
+## Remote repository preparation
+
+- GitHub CLI is installed and authenticated as `edwatikhedwa-tech`.
+- Read-only lookup found no `edwatikhedwa-tech/supplydesk` repository.
+- `origin` is absent; it was not configured or replaced.
+- Potential secret-bearing local files present and ignored by Git:
+  `.env`, `.env.local`, `.env.p0-backup-20260830`,
+  `.env.production.local`, `.vercel/.env.preview.local`.
+- A high-confidence credential/database-URL pattern was detected in
+  `.env.production.local`; no secret value is recorded here.
+- Because potential secrets exist and the publish set/branch are unresolved,
+  status is `BLOCKED`; no commit or push is authorized by this task.
+- Current `.gitignore` covers `.env*`, `mail-data/`, runtime JSON, temp,
+  artifacts, cache, virtualenvs and database files. Generic `secrets/`,
+  `credentials/`, browser-profile and log patterns are not all explicit; the
+  uncommitted `.gitignore` was not changed during this blocked preparation.

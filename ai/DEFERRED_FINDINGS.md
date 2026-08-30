@@ -109,3 +109,37 @@ Agents must not automatically fix these findings while doing another task.
 - Possible next step: owner-led review of the diff and its runtime/worker
   implications.
 - Status: `OPEN`
+
+## FINDING-009 — Potential credential-bearing env files block remote preparation
+
+- ID: `FINDING-009`
+- Date: `2026-08-30`
+- Source: filename/path inspection, `git check-ignore`, and path-only secret
+  scan; values intentionally not recorded.
+- Description: `.env`, `.env.local`, `.env.p0-backup-20260830`,
+  `.env.production.local` and `.vercel/.env.preview.local` are present and
+  ignored. A high-confidence credential/database-URL pattern was detected in
+  `.env.production.local`.
+- Severity: `P0`
+- Why outside current scope: removing, editing, rotating or publishing
+  credentials requires owner action; this task must stop before external GitHub
+  changes.
+- Possible next step: owner-led quarantine/rotation, then repeat scan on the
+  approved publish set without sending secrets to chat.
+- Status: `BLOCKED`
+
+## FINDING-010 — Publish set and shared branch are not approved
+
+- ID: `FINDING-010`
+- Date: `2026-08-30`
+- Source: current Git status and repository lookup.
+- Description: the current snapshot contains `670` uncommitted paths (`66 M`,
+  `6 D`, `598 ??`), while the expected `edwatikhedwa-tech/supplydesk`
+  repository does not exist and no `origin` is configured. The historical
+  `170` count is not reproducible.
+- Severity: `P1`
+- Why outside current scope: automatically selecting files or a shared branch
+  could publish user work or alter external repository state.
+- Possible next step: approve an explicit allowlist, repository owner/name and
+  shared branch; then run a fresh staged-tree security review.
+- Status: `BLOCKED`

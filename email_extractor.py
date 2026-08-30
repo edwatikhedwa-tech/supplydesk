@@ -101,6 +101,18 @@ EMAIL_RE = re.compile(
     rf"(?<![A-Za-z0-9._%+-])({_LOCAL}@{_DOMAIN})(?![A-Za-z0-9-])"
 )
 
+# Реальный сайт может опубликовать адрес с одной типографической опечаткой в
+# домене: `zakaz@company,ru`. Это отдельный осторожный fallback — результат
+# помечается как восстановленный и не получает автоматическое подтверждение.
+REPAIRED_EMAIL_RE = re.compile(
+    rf"(?<![A-Za-z0-9._%+-])({_LOCAL})\s*@\s*"
+    rf"[A-Za-z0-9](?:[A-Za-z0-9-]{{0,61}}[A-Za-z0-9])?"
+    rf"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{{0,61}}[A-Za-z0-9])?)*"
+    rf"\s*[,;]\s*[A-Za-z]{{2,24}}"
+    r"(?![A-Za-z0-9-])",
+    re.IGNORECASE,
+)
+
 # Замаскированные адреса: info (at) domain.ru, info [собака] domain точка ru.
 _BRACKET_OPEN = r"(?:\(|\[|\{|<)"
 _BRACKET_CLOSE = r"(?:\)|\]|\}|>)"
@@ -123,7 +135,7 @@ OBFUSCATED_RE = re.compile(
 # Данные тут структурные, а не выдранные из текста, поэтому доверие к ним высокое.
 # Учитываем и экранированный вид: \"email\":\"info@site.ru\".
 JSON_EMAIL_FIELD_RE = re.compile(
-    r"""["']([a-z_]*e-?mail[a-z_]*)["']\s*:\s*["']([^"'\s,}]{5,120})["']""",
+    r"""["']([a-z_]*e-?mail[a-z_]*)["']\s*:\s*["']([^"'\s}]{5,120})["']""",
     re.IGNORECASE,
 )
 
@@ -152,7 +164,7 @@ class EmailHit:
 
     email: str
     source_url: str = ""
-    method: str = "text"          # mailto | jsonld | microdata | cfemail | jsonfield | text | script | obfuscated
+    method: str = "text"          # mailto | jsonld | microdata | cfemail | jsonfield | text | script | obfuscated | *_repaired
     evidence: str = ""            # окружающий текст — «причина попадания» из требований
     score: int = 0
     confidence: str = "low"       # high | medium | low
@@ -182,10 +194,38 @@ class Rejected:
 def normalize_email(raw: str) -> str:
     """Привести кандидата к каноническому виду до всех проверок."""
     email = unquote(raw).strip().strip("​ ")
+    email = email.translate(str.maketrans({"＠": "@", "。": ".", "．": "."}))
+    email = re.sub(r"\s*@\s*", "@", email)
     email = email.replace("а@", "a@")  # кириллическая «а» перед собакой
     # Хвостовая пунктуация из текста: «пишите на info@site.ru.»
     email = email.strip(".,;:!?)»\"'<>(«[]{}")
     return email.lower()
+
+
+def repair_email_candidate(raw: str) -> str:
+    """Восстановить только запятую/точку с запятой перед TLD.
+
+    В отличие от общего «угадывания» домена, результат обязан полностью
+    пройти ту же строгую проверку `_DOMAIN`. Поэтому фраза с запятой не станет
+    адресом случайно, а явный вариант вроде `info@site,ru` попадёт в кандидаты.
+    """
+    candidate = normalize_email(raw)
+    local, separator, domain = candidate.partition("@")
+    if not separator or domain.count(",") + domain.count(";") != 1:
+        return candidate
+    repaired_domain = re.sub(r"\s+", "", domain).replace(",", ".").replace(";", ".")
+    if not re.fullmatch(_DOMAIN, repaired_domain, re.IGNORECASE):
+        return candidate
+    return f"{local}@{repaired_domain}"
+
+
+def split_mailto_addresses(raw: str) -> list[str]:
+    """Разделить несколько mailto-адресов, не ломая `domain,ru`."""
+    return [
+        part.strip()
+        for part in re.split(r";|,\s*(?=[A-Za-z0-9._%+-]{1,64}@)", raw)
+        if part.strip()
+    ]
 
 
 def validate_email(email: str) -> str | None:
@@ -278,7 +318,13 @@ def extract_from_html(html: str, page_url: str = "") -> tuple[list[EmailHit], li
     rejected: list[Rejected] = []
 
     def add(raw: str, method: str, evidence: str = "") -> EmailHit | None:
-        email = normalize_email(raw)
+        normalized = normalize_email(raw)
+        email = repair_email_candidate(normalized)
+        was_repaired = email != normalized
+        stored_method = f"{method}_repaired" if was_repaired else method
+        stored_evidence = evidence or normalized
+        if was_repaired:
+            stored_evidence = f"{stored_evidence} (исправлено: {normalized} → {email})"
         if not email or "@" not in email:
             return None
         reason = validate_email(email)
@@ -288,16 +334,16 @@ def extract_from_html(html: str, page_url: str = "") -> tuple[list[EmailHit], li
         existing = hits.get(email)
         if existing is None:
             hits[email] = EmailHit(
-                email=email, source_url=page_url, method=method,
-                evidence=evidence or email,
+                email=email, source_url=page_url, method=stored_method,
+                evidence=stored_evidence,
             )
             return hits[email]
-        if _method_rank(method) > _method_rank(existing.method):
+        if _method_rank(stored_method) > _method_rank(existing.method):
             # Тот же адрес, но найден более надёжным способом — повышаем.
-            existing.method = method
+            existing.method = stored_method
             existing.source_url = page_url
             if evidence:
-                existing.evidence = evidence
+                existing.evidence = stored_evidence
         return existing
 
     # 1. mailto: — самый надёжный источник, адрес указан явно и машиночитаемо.
@@ -308,9 +354,7 @@ def extract_from_html(html: str, page_url: str = "") -> tuple[list[EmailHit], li
         # Что написано в ссылке глазами: встречается, когда показан один адрес,
         # а mailto ведёт на другой — письмо тогда уходит не туда.
         shown = {normalize_email(m.group(1)) for m in EMAIL_RE.finditer(anchor_text)}
-        for part in re.split(r"[,;]", address):
-            if not part.strip():
-                continue
+        for part in split_mailto_addresses(address):
             hit = add(part, "mailto", anchor_text or part.strip())
             if hit and shown and hit.email not in shown:
                 hit.text_mismatch = True
@@ -374,6 +418,9 @@ def extract_from_html(html: str, page_url: str = "") -> tuple[list[EmailHit], li
     for m in EMAIL_RE.finditer(text):
         add(m.group(1), "text", _evidence(text, m.start(), m.end()))
 
+    for m in REPAIRED_EMAIL_RE.finditer(text):
+        add(m.group(0), "text", _evidence(text, m.start(), m.end()))
+
     for m in OBFUSCATED_RE.finditer(text):
         candidate = deobfuscate(m.group(1), m.group(2))
         add(candidate, "obfuscated", _evidence(text, m.start(), m.end()))
@@ -401,10 +448,12 @@ def _walk_jsonld(raw: str) -> Iterable[str]:
 
 
 def _method_rank(method: str) -> int:
-    return {
+    base_method = method.removesuffix("_repaired")
+    rank = {
         "mailto": 5, "jsonld": 4, "microdata": 4, "cfemail": 4,
         "jsonfield": 3, "text": 2, "script": 2, "llm": 2, "web": 2, "web_llm": 1, "obfuscated": 1,
-    }.get(method, 0)
+    }.get(base_method, 0)
+    return max(0, rank - 1) if method.endswith("_repaired") else rank
 
 
 # ----------------------------------------------------------------- достоверность
@@ -438,7 +487,10 @@ def score_hit(hit: EmailHit, site_root: str, on_contact_page: bool = False) -> E
     hit.is_technical = local in TECHNICAL_LOCALS
     hit.domain_matches_site = bool(site_root) and email_root == root_domain(site_root)
 
-    score = METHOD_SCORE.get(hit.method, 0)
+    base_method = hit.method.removesuffix("_repaired")
+    score = METHOD_SCORE.get(base_method, 0)
+    if hit.method.endswith("_repaired"):
+        score -= 10
     reasons = [f"источник: {hit.method}"]
 
     if on_contact_page:
@@ -489,7 +541,7 @@ def score_hit(hit: EmailHit, site_root: str, on_contact_page: bool = False) -> E
         if hit.is_technical:
             hit.confidence = "medium"
             reasons.append("потолок: технический адрес нельзя подтвердить")
-        elif hit.method in CAPPED_METHODS:
+        elif base_method in CAPPED_METHODS or hit.method.endswith("_repaired"):
             hit.confidence = "medium"
             reasons.append("потолок: адрес восстановлен, нужна проверка")
         elif hit.text_mismatch:

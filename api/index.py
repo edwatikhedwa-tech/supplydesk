@@ -42,10 +42,10 @@ if not os.getenv("YANDEX_REDIRECT_URI") and os.getenv("APP_BASE_URL"):
 
 
 _APP = SupplierApp(Config.from_env())
-# Keep the existing bounded queue behavior for warm function instances. Vercel
-# may recycle instances at any time, so durable sending requires an external
-# queue/worker in a later production hardening step.
-_APP.queue.start()
+# Importing the adapter must be side-effect free for outgoing transport. The
+# local process entry point calls SupplierApp.run(), which starts workers
+# explicitly; Vercel requires a dedicated durable worker before background
+# delivery can be enabled there.
 
 
 class handler(SupplierHandler):

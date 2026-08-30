@@ -6,9 +6,10 @@
 artifacts/
 cache/
 tests/
-docs/
+Documents/
 mail-data/
 *.png
+!frontend/src/assets/checko-icon.png
 *.zip
 *.db
 *.sqlite3

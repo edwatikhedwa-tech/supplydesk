@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 from email.message import EmailMessage
+from email.parser import BytesParser
+from email import policy
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 from unittest.mock import patch
@@ -16,7 +18,7 @@ from mail.providers.yandex import YandexMailProvider
 from mail.queue import MailQueue
 from mail.repository import MailRepository
 from mail.service import MailService
-from mail.types import IncomingMessage, OutgoingMessage, ProviderAccount, ProviderError, SendResult, TokenSet
+from mail.types import IncomingBatch, IncomingMessage, OutgoingMessage, ProviderAccount, ProviderError, SendResult, TokenSet
 
 
 class FakeProvider:
@@ -27,6 +29,7 @@ class FakeProvider:
         self.refresh_calls = 0
         self.connection_tokens: list[str] = []
         self.fail_with: ProviderError | None = None
+        self.incoming_batch = IncomingBatch("77", 7, [], 0)
 
     def exchange_code(self, code: str, *, redirect_uri: str, code_verifier: str) -> TokenSet:
         return TokenSet("access", "refresh", 3600)
@@ -42,11 +45,61 @@ class FakeProvider:
         self.connection_tokens.append(access_token)
         return None
 
-    def send_message(self, access_token: str, message: OutgoingMessage) -> SendResult:
+    def fetch_incoming(self, email: str, access_token: str, *, uidvalidity: str | None, last_uid: int, max_messages: int) -> IncomingBatch:
+        return self.incoming_batch
+
+    def send_message(self, access_token: str, message: OutgoingMessage, *, before_irreversible=None) -> SendResult:
         if self.fail_with:
             raise self.fail_with
+        if before_irreversible is not None:
+            before_irreversible()
         self.sent.append(message)
         return SendResult(message.message_id or "<generated@example.com>", None, datetime.now(timezone.utc))
+
+    def save_sent_copy(self, access_token: str, message: OutgoingMessage, result: SendResult) -> None:
+        return None
+
+
+class FakeSentIMAP:
+    """Read-only/test double for authoritative Sent verification."""
+
+    def __init__(
+        self,
+        search_status: str = "OK",
+        search_data: list[bytes] | None = None,
+        select_data: list[bytes] | None = None,
+        fetch_status: str = "NO",
+        fetch_data: list[object] | None = None,
+    ) -> None:
+        self.search_status = search_status
+        self.search_data = search_data if search_data is not None else [b""]
+        self.select_data = select_data if select_data is not None else [b"1"]
+        self.fetch_status = fetch_status
+        self.fetch_data = fetch_data if fetch_data is not None else [b"[UNAVAILABLE] FETCH not configured"]
+        self.search_args = None
+        self.fetch_args = None
+        self.append_args = None
+
+    def list(self):
+        return "OK", [b'(\\HasNoChildren \\Sent) "/" "Sent"']
+
+    def select(self, mailbox, readonly=True):
+        return "OK", self.select_data
+
+    def search(self, *args):
+        self.search_args = args
+        return self.search_status, self.search_data
+
+    def fetch(self, *args):
+        self.fetch_args = args
+        return self.fetch_status, self.fetch_data
+
+    def append(self, *args):
+        self.append_args = args
+        return "OK", [b"APPEND completed"]
+
+    def logout(self):
+        return "BYE", [b"logged out"]
 
 
 class MailIntegrationTests(unittest.TestCase):
@@ -54,6 +107,9 @@ class MailIntegrationTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.repo = MailRepository(Path(self.temp.name) / "test.sqlite3")
         self.user = self.repo.seed_user("buyer@example.com", "correct-horse")
+        # The production default is fail-closed; this fixture explicitly
+        # enables its temporary fake transport for positive-path tests.
+        self.repo.set_outgoing_enabled(True)
         self.provider = FakeProvider()
         self.service = MailService(self.repo, lambda _: self.provider, generate_key())
         self.account_id = self.service.save_oauth_tokens(
@@ -120,6 +176,24 @@ class MailIntegrationTests(unittest.TestCase):
         self.assertIn("<li>", cleaned)
         self.assertIn("oauth.yandex.ru", cleaned)
 
+    def test_incoming_parser_resolves_cid_images_without_external_fetches(self) -> None:
+        message = EmailMessage()
+        message["From"] = "supplier@example.com"
+        message["To"] = "buyer@example.com"
+        message["Subject"] = "Логотип поставщика"
+        message["Message-ID"] = "<cid@example.com>"
+        message.set_content("Логотип поставщика")
+        message.add_alternative('<p>Здравствуйте</p><img src="cid:logo@example.com" width="32">', subtype="html")
+        html_part = message.get_payload()[1]
+        html_part.add_related(b"\x89PNG\r\n\x1a\n", maintype="image", subtype="png", cid="<logo@example.com>")
+
+        parsed = YandexMailProvider._parse_incoming(
+            message.as_bytes(), email="buyer@example.com", uidvalidity="1", uid=8
+        )
+        self.assertIsNotNone(parsed)
+        self.assertIn("data:image/png;base64", parsed.body_html)
+        self.assertNotIn("cid:logo@example.com", parsed.body_html)
+
     def test_email_html_is_allowlisted_and_keeps_readable_structure(self) -> None:
         from mail.content import email_has_remote_images, sanitize_email_html
 
@@ -129,11 +203,49 @@ class MailIntegrationTests(unittest.TestCase):
             '<iframe src="https://evil"></iframe>',
             '<form action="https://evil"><input name="pw"></form>',
             "<svg onload=alert(1)></svg>",
-            '<p style="position:fixed">x</p>',
+            '<p style="position:fixed;color:red">x</p>',
         ):
             cleaned = sanitize_email_html(payload).lower()
-            for forbidden in ("script", "onerror", "onload", "<iframe", "<form", "<svg", "style="):
+            for forbidden in ("script", "onerror", "onload", "<iframe", "<form", "<svg", "position:fixed"):
                 self.assertNotIn(forbidden, cleaned)
+
+        styled = sanitize_email_html(
+            '<style>.card { background: #06f; color: white; } @import url(https://evil.example/x.css); .bad { position: fixed; background-image: url(https://evil.example/pixel); }</style>'
+            '<table class="card" role="presentation" width="640" style="border-radius:12px;background:#f6f8fb;padding:24px"><tr><td>Карточка</td></tr></table>'
+            '<button class="cta" style="background:#06f;color:white;border-radius:8px;padding:12px 20px">Открыть</button>'
+        )
+        self.assertIn("<style>", styled)
+        self.assertIn(".card{background:#06f;color:white}", styled)
+        self.assertIn('class="card"', styled)
+        self.assertIn("background:#f6f8fb", styled)
+        self.assertIn('<button class="cta"', styled)
+        self.assertIn("padding:12px 20px", styled)
+        self.assertNotIn("@import", styled)
+        self.assertNotIn("position:fixed", styled)
+        self.assertNotIn("url(", styled)
+
+        blocked_background = sanitize_email_html(
+            '<table style="background-image:url(https://cdn.example/card.png);border-radius:16px;color:white"><tr><td>Карточка</td></tr></table>'
+        )
+        self.assertIn('data-remote-background="https://cdn.example/card.png"', blocked_background)
+        self.assertNotIn("background-image", blocked_background)
+        self.assertNotIn("url(", blocked_background)
+
+        blocked_body_background = sanitize_email_html(
+            '<html><body style="background-image:url(https://cdn.example/page.png)"><table><tr><td>Заголовок</td></tr></table></body></html>'
+        )
+        self.assertIn('data-remote-body-background="https://cdn.example/page.png"', blocked_body_background)
+        self.assertNotIn("background-image", blocked_body_background)
+        self.assertNotIn("url(", blocked_body_background)
+
+        responsive = sanitize_email_html(
+            '<style>@media screen and (max-width: 600px) { .card { padding: 4px; } }</style><div class="card">Адаптивная карточка</div>'
+        )
+        self.assertIn("@media screen and (max-width: 600px)", responsive)
+        self.assertIn(".card{padding:4px}", responsive)
+
+        escaped_resource = sanitize_email_html(r'<div style="background:u\\72l(https://evil.example/pixel)">Без загрузки</div><style>.x{background:u\\72l(https://evil.example/pixel)}</style>')
+        self.assertNotIn("url", escaped_resource.lower())
 
         cleaned = sanitize_email_html('<a href="javascript:alert(1)">click</a>')
         self.assertNotIn("javascript:", cleaned)
@@ -250,6 +362,7 @@ class MailIntegrationTests(unittest.TestCase):
                 {"name": "ООО Второй", "email": "two@example.com", "host": "two.example"},
             ],
             subject="Запрос КП", body="Здравствуйте, {{supplier_name}}!\n{{request_name}}",
+            idempotency_key="integration-bulk-1",
         )
         self.assertEqual(len(result), 2)
         first = self.repo.claim_job()
@@ -279,6 +392,49 @@ class MailIntegrationTests(unittest.TestCase):
                 attachments=[{"filename": "secret.exe", "mime_type": "application/octet-stream", "content_base64": base64.b64encode(b"x").decode()}],
             )
 
+    def test_workspace_mail_template_is_saved_replaced_and_personalized(self) -> None:
+        encoded = base64.b64encode(b"%PDF-1.4 test requisites").decode("ascii")
+        saved = self.service.save_template(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+            subject="КП — {{request_name}}",
+            body="Здравствуйте, {{supplier_name}}!\nПишет {{company_name}}.",
+            attachments=[{
+                "filename": "Реквизиты.pdf", "mime_type": "application/pdf",
+                "size": len(b"%PDF-1.4 test requisites"), "content_base64": encoded,
+            }],
+        )
+        self.assertEqual(saved["subject"], "КП — {{request_name}}")
+        self.assertEqual(saved["attachments"][0]["content_base64"], encoded)
+
+        queued = self.service.queue_one(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"], request_id=1043,
+            supplier={"name": "ООО Кабель", "email": "cable@example.com", "host": "cable.example"},
+            subject=saved["subject"], body=saved["body"], attachments=saved["attachments"],
+        )
+        self.assertIn("job_id", queued)
+        job = self.repo.claim_job()
+        request = self.repo.get_request(self.user["workspace_id"], 1043)
+        self.assertEqual(job["subject"], f"КП — {request['name']}")
+        self.assertIn("ООО Кабель", job["body_text"])
+        self.assertIn(request["company_name"], job["body_text"])
+
+        replaced = self.service.save_template(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+            subject="Новая тема", body="Новый текст", attachments=[],
+        )
+        self.assertEqual(replaced["attachments"], [])
+        self.assertEqual(self.repo.get_mail_template(self.user["workspace_id"])["attachments"], [])
+
+        with self.assertRaisesRegex(ValueError, "Тип вложения не разрешён"):
+            self.service.save_template(
+                user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+                subject="Тема", body="Текст",
+                attachments=[{
+                    "filename": "script.exe", "mime_type": "application/octet-stream",
+                    "size": 1, "content_base64": base64.b64encode(b"x").decode("ascii"),
+                }],
+            )
+
     def test_expired_access_token_is_refreshed_before_connection_test(self) -> None:
         with self.repo.connect() as connection:
             connection.execute("UPDATE mail_accounts SET token_expires_at='2000-01-01T00:00:00+00:00' WHERE id=?", (self.account_id,))
@@ -287,6 +443,24 @@ class MailIntegrationTests(unittest.TestCase):
         self.assertEqual(self.provider.connection_tokens, ["access-refreshed"])
         refreshed = self.repo.get_mail_account_by_id(self.account_id)
         self.assertNotIn("refresh-new", refreshed["refresh_token_encrypted"])
+
+    def test_successful_incoming_sync_clears_current_error_and_exposes_health(self) -> None:
+        self.repo.mark_mail_sync_error(self.account_id, "Старое IMAP-соединение не удалось.")
+        self.repo.mark_mail_error(self.account_id, "Старое IMAP-соединение не удалось.", status="connected")
+
+        result = self.service.sync_incoming(self.user["id"], self.user["workspace_id"], mail_account_id=self.account_id)
+
+        self.assertTrue(result["ok"])
+        account = self.repo.get_mail_account_by_id(self.account_id)
+        state = self.repo.get_mail_sync_state(self.account_id)
+        public = self.service.accounts(self.user["id"], self.user["workspace_id"])[0]
+        self.assertIsNone(account["last_error_at"])
+        self.assertIsNone(account["last_error_message"])
+        self.assertIsNone(state["last_error_at"])
+        self.assertIsNone(state["last_error_message"])
+        self.assertEqual(public["incoming_health"], "healthy")
+        self.assertIsNotNone(public["incoming_last_success_at"])
+        self.assertIsNone(public["incoming_last_error"])
 
     def test_disconnected_account_cannot_queue_message(self) -> None:
         self.service.disconnect(self.user["id"], self.user["workspace_id"])
@@ -302,7 +476,7 @@ class MailIntegrationTests(unittest.TestCase):
             supplier={"name": "Good", "email": "good@example.com", "host": "good"}, subject="Запрос", body="Повтор",
         )
         first = self.service.queue_one(**kwargs)
-        second = self.service.queue_one(**kwargs)
+        second = self.service.queue_one(**kwargs, allow_repeat=True)
         self.assertEqual(first["thread_id"], second["thread_id"])
         self.assertNotEqual(first["message_id"], second["message_id"])
 
@@ -447,6 +621,160 @@ class MailIntegrationTests(unittest.TestCase):
             provider = supplier_app.yandex_provider_factory("yandex")
         self.assertEqual(provider.client_id, "client-id")
         self.assertEqual(provider.client_secret, "client-secret")
+
+    def test_imap_1_search_no_with_diagnostic_payload_is_unavailable(self) -> None:
+        provider = YandexMailProvider("client-id", "client-secret")
+        imap = FakeSentIMAP("NO", [b"[UNAVAILABLE] SEARCH Backend error. sc=test"])
+        message_id = "<imap-no@example.com>"
+        with patch.object(provider, "_imap_connection", return_value=imap):
+            result = provider.verify_sent_message("access-token", "user@example.com", message_id)
+        self.assertEqual(result.outcome, "unavailable")
+
+    def test_imap_2_search_ok_empty_is_not_found(self) -> None:
+        provider = YandexMailProvider("client-id", "client-secret")
+        imap = FakeSentIMAP("OK", [b""])
+        message_id = "<imap-empty@example.com>"
+        with patch.object(provider, "_imap_connection", return_value=imap):
+            result = provider.verify_sent_message("access-token", "user@example.com", message_id)
+        self.assertEqual(result.outcome, "not_found")
+
+    def test_imap_3_search_ok_exact_result_is_found(self) -> None:
+        provider = YandexMailProvider("client-id", "client-secret")
+        imap = FakeSentIMAP("OK", [b"41"])
+        message_id = "<imap-found@example.com>"
+        with patch.object(provider, "_imap_connection", return_value=imap):
+            result = provider.verify_sent_message("access-token", "user@example.com", message_id)
+        self.assertEqual(result.outcome, "found")
+
+    def test_imap_4_message_id_is_passed_as_one_search_criterion(self) -> None:
+        provider = YandexMailProvider("client-id", "client-secret")
+        imap = FakeSentIMAP("OK", [b"41"])
+        message_id = "<imap-quoted@example.com>"
+        with patch.object(provider, "_imap_connection", return_value=imap):
+            result = provider.verify_sent_message("access-token", "user@example.com", message_id)
+        self.assertEqual(result.outcome, "found")
+        self.assertEqual(imap.search_args, (None, "HEADER", "Message-ID", message_id))
+        self.assertEqual(imap.search_args[-1], "<imap-quoted@example.com>")
+
+    def test_imap_5_sent_copy_mime_keeps_database_message_id(self) -> None:
+        provider = YandexMailProvider("client-id", "client-secret")
+        imap = FakeSentIMAP()
+        message_id = "<imap-mime@example.com>"
+        outgoing = OutgoingMessage(
+            from_email="user@yandex.ru", to_email="recipient@example.com",
+            subject="Sent copy", body_text="Body", body_html="<p>Body</p>",
+            message_id=message_id,
+        )
+        result = SendResult(message_id, None, datetime.now(timezone.utc))
+        with patch.object(provider, "_imap_connection", return_value=imap):
+            provider.save_sent_copy("access-token", outgoing, result)
+        self.assertIsNotNone(imap.append_args)
+        self.assertEqual(imap.append_args[0], '"Sent"')
+        parsed = BytesParser(policy=policy.default).parsebytes(imap.append_args[3])
+        self.assertEqual(parsed["Message-ID"], message_id)
+
+    @staticmethod
+    def _header_bytes(message_id: str, subject: str = "Subject", to: str = "recipient@example.com") -> bytes:
+        message = EmailMessage()
+        message["Message-ID"] = message_id
+        message["Subject"] = subject
+        message["To"] = to
+        message["Date"] = "Fri, 28 Aug 2026 17:46:16 +0300"
+        message["From"] = "user@yandex.ru"
+        return message.as_bytes()
+
+    def test_imap_6_search_no_fetch_exact_message_id_is_found(self) -> None:
+        provider = YandexMailProvider("client-id", "client-secret")
+        message_id = "<imap-fetch-found@example.com>"
+        imap = FakeSentIMAP(
+            "NO",
+            [b"[UNAVAILABLE] SEARCH Backend error"],
+            select_data=[b"41"],
+            fetch_status="OK",
+            fetch_data=[(b"41 (BODY[HEADER.FIELDS (MESSAGE-ID SUBJECT DATE FROM TO)] {123})", self._header_bytes(message_id)), b")"],
+        )
+        with patch.object(provider, "_imap_connection", return_value=imap):
+            result = provider.verify_sent_message("access-token", "user@example.com", message_id)
+        self.assertEqual(result.outcome, "found")
+        self.assertIn("FETCH fallback", result.reason)
+        self.assertEqual(imap.fetch_args[0], "1:*")
+        self.assertIn("BODY.PEEK[HEADER.FIELDS", imap.fetch_args[1])
+
+    def test_imap_7_search_no_fetch_without_exact_message_id_is_unavailable(self) -> None:
+        provider = YandexMailProvider("client-id", "client-secret")
+        message_id = "<imap-fetch-missing@example.com>"
+        imap = FakeSentIMAP(
+            "NO",
+            [b"[UNAVAILABLE] SEARCH Backend error"],
+            select_data=[b"41"],
+            fetch_status="OK",
+            fetch_data=[(b"41 (BODY[HEADER.FIELDS (MESSAGE-ID SUBJECT DATE FROM TO)] {123})", self._header_bytes("<other@example.com>")), b")"],
+        )
+        with patch.object(provider, "_imap_connection", return_value=imap):
+            result = provider.verify_sent_message("access-token", "user@example.com", message_id)
+        self.assertEqual(result.outcome, "unavailable")
+        self.assertIn("не найден", result.reason)
+
+    def test_imap_8_search_no_fetch_error_is_unavailable(self) -> None:
+        provider = YandexMailProvider("client-id", "client-secret")
+        imap = FakeSentIMAP(
+            "NO",
+            [b"[UNAVAILABLE] SEARCH Backend error"],
+            select_data=[b"41"],
+            fetch_status="NO",
+            fetch_data=[b"[UNAVAILABLE] FETCH Backend error"],
+        )
+        with patch.object(provider, "_imap_connection", return_value=imap):
+            result = provider.verify_sent_message("access-token", "user@example.com", "<imap-fetch-error@example.com>")
+        self.assertEqual(result.outcome, "unavailable")
+
+    def test_imap_9_search_ok_empty_is_not_found_without_fetch_fallback(self) -> None:
+        provider = YandexMailProvider("client-id", "client-secret")
+        imap = FakeSentIMAP("OK", [b""], fetch_status="OK", fetch_data=[])
+        with patch.object(provider, "_imap_connection", return_value=imap):
+            result = provider.verify_sent_message("access-token", "user@example.com", "<imap-no-fallback@example.com>")
+        self.assertEqual(result.outcome, "not_found")
+        self.assertIsNone(imap.fetch_args)
+
+    def test_imap_10_search_ok_exact_result_is_found_without_fetch_fallback(self) -> None:
+        provider = YandexMailProvider("client-id", "client-secret")
+        imap = FakeSentIMAP("OK", [b"41"], fetch_status="NO")
+        with patch.object(provider, "_imap_connection", return_value=imap):
+            result = provider.verify_sent_message("access-token", "user@example.com", "<imap-search-found@example.com>")
+        self.assertEqual(result.outcome, "found")
+        self.assertIsNone(imap.fetch_args)
+
+    def test_imap_11_similar_subject_and_recipient_without_exact_message_id_is_not_found(self) -> None:
+        provider = YandexMailProvider("client-id", "client-secret")
+        message_id = "<imap-exact-only@example.com>"
+        imap = FakeSentIMAP(
+            "NO",
+            [b"[UNAVAILABLE] SEARCH Backend error"],
+            select_data=[b"41"],
+            fetch_status="OK",
+            fetch_data=[
+                (b"41 (BODY[HEADER.FIELDS (MESSAGE-ID SUBJECT DATE FROM TO)] {123})", self._header_bytes("<different@example.com>", "Same subject", "same@example.com")),
+                b")",
+            ],
+        )
+        with patch.object(provider, "_imap_connection", return_value=imap):
+            result = provider.verify_sent_message("access-token", "user@example.com", message_id)
+        self.assertEqual(result.outcome, "unavailable")
+
+    def test_imap_12_fetch_fallback_is_bounded_to_last_50_messages(self) -> None:
+        provider = YandexMailProvider("client-id", "client-secret")
+        message_id = "<imap-fetch-window@example.com>"
+        imap = FakeSentIMAP(
+            "NO",
+            [b"[UNAVAILABLE] SEARCH Backend error"],
+            select_data=[b"75"],
+            fetch_status="OK",
+            fetch_data=[(b"75 (BODY[HEADER.FIELDS (MESSAGE-ID SUBJECT DATE FROM TO)] {123})", self._header_bytes(message_id)), b")"],
+        )
+        with patch.object(provider, "_imap_connection", return_value=imap):
+            result = provider.verify_sent_message("access-token", "user@example.com", message_id)
+        self.assertEqual(result.outcome, "found")
+        self.assertEqual(imap.fetch_args[0], "26:*")
 
     def _seed_unmatched_inbox_message(self) -> int:
         incoming = IncomingMessage(

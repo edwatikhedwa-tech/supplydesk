@@ -4,7 +4,7 @@ import { api } from '@/lib/api';
 import { pluralize } from '@/lib/utils';
 import { GlobalSupplierTable } from '@/components/suppliers/GlobalSupplierTable';
 import { SupplierPanel } from '@/components/suppliers/SupplierPanel';
-import type { GlobalSupplierSummary } from '@/lib/types';
+import type { BlacklistEntry, GlobalSupplierSummary } from '@/lib/types';
 
 export function Blacklist() {
   const [suppliers, setSuppliers] = useState<GlobalSupplierSummary[]>([]);
@@ -12,18 +12,38 @@ export function Blacklist() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [openId, setOpenId] = useState<number | null>(null);
+  // Домены (маркетплейсы вроде Ozon по умолчанию — см. MailRepository._seed_default_blacklist)
+  // блокируются ДО того, как для них вообще появляется карточка компании: у
+  // домена может не быть ни ИНН, ни истории обхода. Это другая таблица
+  // (blacklist_entries, а не global_supplier_blacklist), поэтому и список
+  // отдельный — но восстановить их снабженец должен видеть здесь же, а не
+  // только в исходном коде.
+  const [domains, setDomains] = useState<BlacklistEntry[]>([]);
 
   const load = useCallback(() => {
     setLoading(true);
-    return api
-      .listGlobalSuppliers()
-      .then((res) => setSuppliers(res.items))
+    return Promise.all([api.listGlobalSuppliers(), api.listBlacklist()])
+      .then(([suppliersRes, domainsRes]) => {
+        setSuppliers(suppliersRes.items);
+        setDomains(domainsRes.items);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const visibleDomains = useMemo(() => {
+    if (!search.trim()) return domains;
+    const q = search.trim().toLowerCase();
+    return domains.filter((d) => d.company_name.toLowerCase().includes(q) || d.external_key.toLowerCase().includes(q));
+  }, [domains, search]);
+
+  const restoreDomain = async (entryId: number) => {
+    await api.restoreBlacklist(entryId);
+    await load();
+  };
 
   const blacklisted = useMemo(() => {
     let result = suppliers.filter((s) => s.relationship_status === 'blacklisted');
@@ -72,8 +92,11 @@ export function Blacklist() {
         <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink-400">
           <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />Чёрный список
         </div>
-        <h1 className="text-[28px] font-bold tracking-tight">Чёрный список</h1>
-        <p className="mt-1 text-sm text-ink-500">{blacklisted.length} {pluralize(blacklisted.length, 'поставщик', 'поставщика', 'поставщиков')}</p>
+        <h1 className="text-page-title font-bold">Чёрный список</h1>
+        <p className="mt-1 text-sm text-ink-500">
+          {blacklisted.length} {pluralize(blacklisted.length, 'поставщик', 'поставщика', 'поставщиков')}
+          {domains.length > 0 && <> · {domains.length} {pluralize(domains.length, 'домен', 'домена', 'доменов')}</>}
+        </p>
       </div>
 
       <div className="mb-5 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
@@ -105,16 +128,43 @@ export function Blacklist() {
         onRestore={restoreOne}
       />
 
+      {visibleDomains.length > 0 && (
+        <div className="mt-8">
+          <h2 className="mb-1 text-sm font-semibold text-ink-800">Домены</h2>
+          <p className="mb-3 text-xs text-ink-500">
+            Блокируются до появления карточки компании — обычно маркетплейсы и агрегаторы, у которых ИНН на странице товара принадлежит площадке, а не продавцу.
+          </p>
+          <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-soft">
+            <div className="divide-y divide-ink-100">
+              {visibleDomains.map((d) => (
+                <div key={d.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium text-ink-800">{d.company_name}</div>
+                    <div className="truncate text-xs text-ink-500">{d.external_key}{d.reason ? ` · ${d.reason}` : ''}</div>
+                  </div>
+                  <button
+                    onClick={() => restoreDomain(d.id)}
+                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-600 hover:border-accent-300 hover:text-accent-700"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />Вернуть
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {selected.size > 0 && (
         <div className="fixed bottom-0 left-0 lg:left-[248px] right-0 bg-white border-t border-ink-200 shadow-panel px-8 py-4 flex items-center justify-between z-30">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-accent-600 flex items-center justify-center text-white text-sm font-bold">{selected.size}</div>
             <span className="text-sm text-ink-700">Выбрано <span className="font-semibold text-ink-900">{selected.size}</span> поставщиков</span>
-            <button onClick={() => setSelected(new Set())} className="text-xs text-ink-400 hover:text-ink-800 transition-colors ml-2">Снять выбор</button>
+            <button onClick={() => setSelected(new Set())} className="min-h-10 px-2 text-xs text-ink-400 transition-colors hover:text-ink-800">Снять выбор</button>
           </div>
           <button
             onClick={restoreSelected}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-600 text-white text-sm font-medium hover:bg-accent-700 transition-colors shadow-soft"
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-accent-600 px-5 py-2.5 text-sm font-medium text-white shadow-soft transition-colors hover:bg-accent-700"
           >
             <RotateCcw className="w-4 h-4" />Вернуть выбранных
           </button>

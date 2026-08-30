@@ -37,7 +37,13 @@ export function Suppliers() {
   // host-based supplier panel) can deep-link straight to a company's CRM card.
   const [search, setSearch] = useState(() => searchParams.get('search') || '');
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [openId, setOpenId] = useState<number | null>(null);
+  // ?open=<global_supplier_id> — открывает карточку сразу при заходе на
+  // страницу. Так на неё можно сослаться прямой ссылкой (например, из окна
+  // отправки письма — «Открыть карточку компании» в новой вкладке).
+  const [openId, setOpenId] = useState<number | null>(() => {
+    const raw = searchParams.get('open');
+    return raw ? Number(raw) : null;
+  });
 
   const load = useCallback(() => {
     setLoading(true);
@@ -118,7 +124,7 @@ export function Suppliers() {
         <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink-400">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Поставщики
         </div>
-        <h1 className="text-[28px] font-bold tracking-tight">Поставщики</h1>
+        <h1 className="text-page-title font-bold">Поставщики</h1>
         <p className="mt-1 text-sm text-ink-500">{suppliers.length} {pluralize(suppliers.length, 'поставщик', 'поставщика', 'поставщиков')} в базе</p>
       </div>
 
@@ -128,7 +134,7 @@ export function Suppliers() {
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`min-h-10 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 filter === f.key ? 'bg-accent-600 text-white' : 'text-ink-500 hover:text-ink-800 hover:bg-ink-50'
               }`}
             >
@@ -165,7 +171,7 @@ export function Suppliers() {
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-accent-600 flex items-center justify-center text-white text-sm font-bold">{selected.size}</div>
             <span className="text-sm text-ink-700">Выбрано <span className="font-semibold text-ink-900">{selected.size}</span> поставщиков</span>
-            <button onClick={() => setSelected(new Set())} className="text-xs text-ink-400 hover:text-ink-800 transition-colors ml-2">Снять выбор</button>
+            <button onClick={() => setSelected(new Set())} className="ml-2 min-h-10 px-2 text-xs text-ink-400 transition-colors hover:text-ink-800">Снять выбор</button>
           </div>
           <button
             onClick={createRequestWithSelected}

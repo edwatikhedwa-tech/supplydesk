@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, ArrowUpRight, ChevronDown, ClipboardList, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronDown, ClipboardList, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
-import { api } from '@/lib/api';
-import { formatRelativeDate } from '@/lib/utils';
+import { ApiError, api } from '@/lib/api';
+import { formatRelativeDate, pluralize } from '@/lib/utils';
 import type { RequestListItem, RequestStatus } from '@/lib/types';
 
 const REQUEST_STATUS_META: Record<RequestStatus, { label: string; className: string }> = {
@@ -18,6 +18,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'all', label: 'Все' },
   { key: 'draft', label: 'Черновики' },
   { key: 'searching', label: 'В поиске' },
+  { key: 'updating', label: 'Обновляется' },
   { key: 'completed', label: 'Завершённые' },
   { key: 'error', label: 'Ошибки' },
 ];
@@ -29,6 +30,17 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: 'title', label: 'По названию' },
 ];
 
+const STATUS_SORT_ORDER: Record<RequestStatus, number> = {
+  error: 0,
+  updating: 1,
+  searching: 2,
+  draft: 3,
+  completed: 4,
+};
+
+const FILTER_KEYS = new Set<FilterKey>(FILTERS.map(({ key }) => key));
+const SORT_KEYS = new Set<SortKey>(SORTS.map(({ key }) => key));
+
 /** A deadline within a week (or already past) is worth colouring — that's the
  * point of having entered one. Anything further out stays neutral. */
 function isDeadlineSoon(deadline: string): boolean {
@@ -37,127 +49,266 @@ function isDeadlineSoon(deadline: string): boolean {
   return due - Date.now() < 7 * 86400000;
 }
 
+function getFilter(value: string | null): FilterKey {
+  return value && FILTER_KEYS.has(value as FilterKey) ? value as FilterKey : 'all';
+}
+
+function getSort(value: string | null): SortKey {
+  return value && SORT_KEYS.has(value as SortKey) ? value as SortKey : 'date';
+}
+
+function RequestErrorNote({ request, className = '', compact = false }: { request: RequestListItem; className?: string; compact?: boolean }) {
+  if (request.status !== 'error') return null;
+  const message = request.last_error || 'Поиск завершился с ошибкой. Откройте заявку, чтобы проверить детали.';
+  return (
+    <div
+      role="alert"
+      className={`flex min-w-0 items-center gap-2 rounded-lg border border-rose-100 bg-rose-50 text-rose-700 ${compact ? 'px-2.5 py-1.5 text-[11px] leading-4' : 'px-3 py-2 text-xs leading-4'} ${className}`}
+    >
+      <AlertTriangle size={15} className="shrink-0" />
+      <span className="min-w-0 break-words" title={compact ? `Нужна проверка. ${message}` : undefined}>
+        <span className="font-bold">Нужна проверка.</span>{' '}
+        {message}
+      </span>
+    </div>
+  );
+}
+
+function RequestStatus({ request }: { request: RequestListItem }) {
+  const meta = REQUEST_STATUS_META[request.status];
+  return <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${meta.className}`}>{meta.label}</span>;
+}
+
+function RequestCard({ request }: { request: RequestListItem }) {
+  return (
+    <Link
+      to={`/requests/${request.id}`}
+      className="block px-5 py-5 transition hover:bg-accent-50/40 focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-500 sm:px-6"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="break-words text-sm font-bold text-ink-800">{request.name}</div>
+          <div className="mt-1 text-xs text-ink-500">
+            #{request.id} · {formatRelativeDate(request.created_at)} · {request.positions_count} {pluralize(request.positions_count, 'позиция', 'позиции', 'позиций')}
+          </div>
+        </div>
+        <RequestStatus request={request} />
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 text-xs sm:grid-cols-4">
+        <div>
+          <div className="text-ink-600">Поставщики</div>
+          <div className="mt-1 font-bold tabular-nums text-ink-700">{request.suppliers_count}</div>
+        </div>
+        <div>
+          <div className="text-ink-600">Ответы</div>
+          <div className="mt-1 font-bold tabular-nums text-ink-700">{request.replies_count}</div>
+        </div>
+        <div>
+          <div className="text-ink-600">Дедлайн</div>
+          <div className={`mt-1 font-semibold ${request.deadline && isDeadlineSoon(request.deadline) ? 'text-rose-600' : 'text-ink-600'}`}>
+            {request.deadline ? new Date(request.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : '—'}
+          </div>
+        </div>
+        <div className="flex items-end justify-end">
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-accent-700">
+            Открыть <ArrowUpRight size={14} />
+          </span>
+        </div>
+      </div>
+      <RequestErrorNote request={request} className="mt-4" />
+    </Link>
+  );
+}
+
+function RequestsLoading() {
+  return (
+    <div role="status" className="min-h-screen px-6 py-7 lg:px-10 lg:py-10" aria-busy="true" aria-label="Загрузка заявок">
+      <div className="mx-auto max-w-[1600px] space-y-6">
+        <div className="space-y-3">
+          <div className="skeleton h-8 w-48 rounded-lg" />
+          <div className="skeleton h-4 w-96 max-w-full rounded" />
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-ink-200/80 bg-white shadow-soft">
+          <div className="skeleton h-24 border-b border-ink-100" />
+          <div className="space-y-3 p-5 sm:p-6">
+            {[1, 2, 3, 4].map((item) => <div key={item} className="skeleton h-16 rounded-xl" />)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RequestsError({ message, onRetry, retrying }: { message: string; onRetry: () => void; retrying: boolean }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center px-6 py-10 lg:px-10">
+      <div role="alert" className="w-full max-w-md rounded-2xl border border-rose-200 bg-white p-7 text-center shadow-panel">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+          <AlertTriangle size={22} />
+        </div>
+        <h1 className="mt-5 text-lg font-bold text-ink-900">Не удалось загрузить заявки</h1>
+        <p className="mt-2 text-sm leading-6 text-ink-500">{message}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={retrying}
+          className="mt-6 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent-600 px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-accent-700 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
+        >
+          {retrying ? 'Загружаем…' : 'Повторить загрузку'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function RequestsList() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [requests, setRequests] = useState<RequestListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const filter = (searchParams.get('filter') as FilterKey) || 'all';
-  const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<SortKey>('date');
-  const [sortOpen, setSortOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const filter = getFilter(searchParams.get('filter'));
+  const search = searchParams.get('q') || '';
+  const sort = getSort(searchParams.get('sort'));
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      const res = await api.listRequests();
+      setRequests(res.items);
+    } catch (error) {
+      setErrorMessage(error instanceof ApiError ? error.message : 'Проверьте соединение и попробуйте ещё раз.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    api
-      .listRequests()
-      .then((res) => setRequests(res.items))
-      .finally(() => setLoading(false));
-  }, []);
+    void load();
+  }, [load]);
+
+  const setToolbarParam = (key: 'filter' | 'q' | 'sort', value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    setSearchParams(next, { replace: true });
+  };
 
   const counts = useMemo(() => {
     const byStatus: Record<FilterKey, number> = { all: requests.length, draft: 0, searching: 0, updating: 0, completed: 0, error: 0 };
-    requests.forEach((r) => { byStatus[r.status] += 1; });
+    requests.forEach((request) => { byStatus[request.status] += 1; });
     return byStatus;
   }, [requests]);
 
   const visibleRequests = useMemo(() => {
     let list = requests;
-    if (filter !== 'all') list = list.filter((r) => r.status === filter);
+    if (filter !== 'all') list = list.filter((request) => request.status === filter);
     if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((r) => r.name.toLowerCase().includes(q) || String(r.id).includes(q));
+      const query = search.trim().toLowerCase();
+      list = list.filter((request) => request.name.toLowerCase().includes(query) || String(request.id).includes(query));
     }
     const sorted = [...list];
-    if (sort === 'date') sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    else if (sort === 'title') sorted.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-    else if (sort === 'status') sorted.sort((a, b) => a.status.localeCompare(b.status));
+    if (sort === 'date') {
+      sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    } else if (sort === 'title') {
+      sorted.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+    } else {
+      sorted.sort((a, b) => STATUS_SORT_ORDER[a.status] - STATUS_SORT_ORDER[b.status] || new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
     return sorted;
   }, [requests, filter, search, sort]);
 
-  const currentSort = SORTS.find((s) => s.key === sort)!;
   const hasAnyRequests = requests.length > 0;
+  const hasActiveView = filter !== 'all' || Boolean(search.trim());
 
-  if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-ink-400">Загрузка…</div>;
+  if (loading) return <RequestsLoading />;
+  if (errorMessage) {
+    return <RequestsError message={errorMessage} onRetry={() => { void load(); }} retrying={loading} />;
   }
 
   return (
-    <div className="min-h-screen px-6 py-7 lg:px-10 lg:py-10 animate-fade-in">
+    <div className="dashboard-shell min-h-screen px-6 py-7 lg:px-10 lg:py-10 animate-fade-in">
       <div className="mx-auto max-w-[1600px] space-y-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <h1 className="text-[28px] font-bold tracking-tight">Мои заявки</h1>
-            <p className="mt-1 text-sm text-ink-500">Все запросы на поставщиков — в одном списке.</p>
+            <h1 className="text-page-title font-bold">Мои заявки</h1>
+            <p className="mt-1 text-sm text-ink-500">
+              {requests.length} {pluralize(requests.length, 'заявка', 'заявки', 'заявок')} · {counts.error} {pluralize(counts.error, 'ошибка', 'ошибки', 'ошибок')}
+            </p>
           </div>
           <button
             onClick={() => navigate('/requests/new')}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent-600 px-5 py-3 text-sm font-bold text-white shadow-panel transition hover:-translate-y-0.5 hover:bg-accent-700 hover:shadow-float"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent-600 px-5 py-3 text-sm font-bold text-white shadow-panel transition hover:-translate-y-0.5 hover:bg-accent-700 hover:shadow-float focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
           >
             <Plus size={18} />Новая заявка
           </button>
         </div>
 
-        <section className="overflow-hidden rounded-2xl border border-ink-200/80 bg-white shadow-soft">
-          <div className="flex flex-col gap-3 border-b border-ink-100 px-6 py-4">
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {FILTERS.map((f) => {
-                  const active = f.key === filter;
-                  return (
-                    <button
-                      key={f.key}
-                      onClick={() => setSearchParams(f.key === 'all' ? {} : { filter: f.key })}
-                      className={[
-                        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all',
-                        active ? 'bg-ink-800 text-white shadow-sm' : 'bg-ink-100/70 text-ink-600 hover:bg-ink-200/70 hover:text-ink-800',
-                      ].join(' ')}
-                    >
-                      {f.label}
-                      <span className={['rounded-full px-1.5 py-px text-2xs font-semibold tabular-nums', active ? 'bg-white/20 text-white' : 'bg-white text-ink-500'].join(' ')}>
-                        {counts[f.key]}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Поиск по названию…"
-                    className="h-8 w-56 rounded-lg border border-ink-200 bg-ink-50/60 pl-8 pr-7 text-xs text-ink-700 placeholder:text-ink-400 transition-all focus:border-accent-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-100"
-                  />
-                  {search && (
-                    <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-600">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
+        <section className="overflow-hidden rounded-2xl border border-ink-200/80 bg-white shadow-soft" aria-label="Список заявок">
+            <div className="flex flex-col gap-4 border-b border-ink-100 px-5 py-4 sm:px-6 xl:flex-row xl:items-center xl:justify-between xl:gap-6">
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Фильтр заявок">
+              {FILTERS.map((item) => {
+                const active = item.key === filter;
+                return (
                   <button
-                    onClick={() => setSortOpen((v) => !v)}
-                    onBlur={() => setTimeout(() => setSortOpen(false), 120)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 text-xs font-medium text-ink-600 transition-all hover:border-ink-300 hover:text-ink-800"
+                    key={item.key}
+                    type="button"
+                    onClick={() => setToolbarParam('filter', item.key === 'all' ? '' : item.key)}
+                    aria-pressed={active}
+                    className={[
+                      'inline-flex min-h-8 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-1',
+                      active ? 'bg-ink-800 text-white shadow-sm' : 'bg-ink-100/70 text-ink-600 hover:bg-ink-200/70 hover:text-ink-800',
+                    ].join(' ')}
                   >
-                    <SlidersHorizontal className="h-3.5 w-3.5 text-ink-400" />{currentSort.label}<ChevronDown className="h-3 w-3 text-ink-400" />
+                    {item.label}
+                    <span className={['rounded-full px-1.5 py-px text-2xs font-semibold tabular-nums', active ? 'bg-white/20 text-white' : 'bg-white text-ink-500'].join(' ')}>
+                      {counts[item.key]}
+                    </span>
                   </button>
-                  {sortOpen && (
-                    <div className="absolute right-0 top-9 z-20 w-40 animate-scale-in rounded-lg border border-ink-200 bg-white py-1 shadow-panel">
-                      {SORTS.map((s) => (
-                        <button
-                          key={s.key}
-                          onMouseDown={() => { setSort(s.key); setSortOpen(false); }}
-                          className={`block w-full px-3 py-1.5 text-left text-xs transition-colors hover:bg-ink-50 ${s.key === sort ? 'font-medium text-accent-600' : 'text-ink-600'}`}
-                        >
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:items-center sm:justify-end">
+              <div className="relative min-w-0 sm:w-64">
+                <label htmlFor="request-search" className="sr-only">Поиск заявок по названию или номеру</label>
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
+                <input
+                  id="request-search"
+                  value={search}
+                  onChange={(event) => setToolbarParam('q', event.target.value)}
+                  placeholder="Поиск по названию или №…"
+                  className="h-10 w-full rounded-lg border border-ink-200 bg-ink-50/60 pl-8 pr-8 text-xs text-ink-700 placeholder:text-ink-500 transition-all focus:border-accent-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-100"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    aria-label="Очистить поиск"
+                    onClick={() => setToolbarParam('q', '')}
+                    className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-ink-400 hover:bg-ink-100 hover:text-ink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
+
+              <label className="relative inline-flex h-10 min-w-[132px] items-center gap-1.5 rounded-lg border border-ink-200 bg-white pl-2.5 pr-7 text-xs font-medium text-ink-600 transition hover:border-ink-300 hover:text-ink-800 focus-within:border-accent-400 focus-within:ring-2 focus-within:ring-accent-100">
+                <SlidersHorizontal className="h-3.5 w-3.5 shrink-0 text-ink-400" />
+                <span className="sr-only">Сортировка заявок</span>
+                <select
+                  aria-label="Сортировка заявок"
+                  value={sort}
+                  onChange={(event) => setToolbarParam('sort', event.target.value)}
+                  className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent pl-8 pr-7 text-xs font-medium text-ink-600 outline-none"
+                >
+                  {SORTS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+                </select>
+                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
+                  <ChevronDown className="h-3 w-3 text-ink-400" />
+                </span>
+              </label>
             </div>
           </div>
 
@@ -166,18 +317,26 @@ export function RequestsList() {
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-50 text-accent-600">
                 <ClipboardList size={22} />
               </div>
-              {hasAnyRequests ? (
+              {hasAnyRequests && hasActiveView ? (
                 <>
                   <h3 className="text-base font-bold text-ink-900">Ничего не найдено</h3>
                   <p className="max-w-sm text-sm text-ink-500">Попробуйте изменить фильтр или поисковый запрос.</p>
+                  <button
+                    type="button"
+                    onClick={() => setSearchParams({}, { replace: true })}
+                    className="mt-2 inline-flex min-h-10 items-center rounded-lg border border-ink-200 px-4 py-2.5 text-xs font-bold text-ink-700 transition hover:border-ink-300 hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
+                  >
+                    Сбросить фильтры
+                  </button>
                 </>
               ) : (
                 <>
                   <h3 className="text-base font-bold text-ink-900">Заявок пока нет</h3>
                   <p className="max-w-sm text-sm text-ink-500">Создайте первую заявку, чтобы начать поиск поставщиков.</p>
                   <button
+                    type="button"
                     onClick={() => navigate('/requests/new')}
-                    className="mt-2 inline-flex items-center gap-2 rounded-xl bg-accent-600 px-4 py-2.5 text-xs font-bold text-white shadow-soft transition hover:bg-accent-700"
+                    className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-xl bg-accent-600 px-4 py-2.5 text-xs font-bold text-white shadow-soft transition hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
                   >
                     <Plus size={16} />Новая заявка
                   </button>
@@ -185,61 +344,66 @@ export function RequestsList() {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[860px] text-left">
-                {/* Widths are explicit so the short columns pack tight and only
-                    the name column absorbs slack — otherwise the browser spreads
-                    the leftover width across every column and opens a gap
-                    between the name and the status badge. */}
-                <thead>
-                  <tr className="border-b border-ink-200 bg-ink-50 text-[11px] font-semibold uppercase tracking-wider text-ink-600">
-                    <th className="w-full px-6 py-3.5">Название</th>
-                    <th className="w-32 px-4 py-3.5">Статус</th>
-                    <th className="w-28 px-4 py-3.5">Создана</th>
-                    <th className="w-28 px-4 py-3.5">Дедлайн</th>
-                    <th className="w-20 px-4 py-3.5 text-right">Позиций</th>
-                    <th className="w-24 px-4 py-3.5 text-right">Поставщиков</th>
-                    <th className="w-20 px-4 py-3.5 text-right">Ответов</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-ink-100">
-                  {visibleRequests.map((request) => (
-                    <tr
-                      key={request.id}
-                      onClick={() => navigate(`/requests/${request.id}`)}
-                      className="group cursor-pointer transition hover:bg-accent-50/40"
-                    >
-                      <td className="px-6 py-4">
-                        <Link to={`/requests/${request.id}`} onClick={(e) => e.stopPropagation()} className="block">
-                          <div className="text-[13px] font-bold text-ink-800 group-hover:text-accent-700">{request.name}</div>
-                          <div className="mt-1 text-[11px] text-ink-500">#{request.id}</div>
-                        </Link>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${REQUEST_STATUS_META[request.status].className}`}>
-                          {REQUEST_STATUS_META[request.status].label}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-xs text-ink-500" title={new Date(request.created_at).toLocaleString('ru-RU')}>
-                        {formatRelativeDate(request.created_at)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-xs">
-                        {request.deadline ? (
-                          <span className={isDeadlineSoon(request.deadline) ? 'font-semibold text-rose-600' : 'text-ink-600'}>
-                            {new Date(request.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-                          </span>
-                        ) : (
-                          <span className="text-ink-300">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-ink-700">{request.positions_count}</td>
-                      <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-ink-700">{request.suppliers_count}</td>
-                      <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-ink-700">{request.replies_count}</td>
+            <>
+              <div className="divide-y divide-ink-100 min-[1536px]:hidden">
+                {visibleRequests.map((request) => <RequestCard key={request.id} request={request} />)}
+              </div>
+              <div className="hidden overflow-x-auto min-[1536px]:block">
+                <table className="w-full min-w-[1040px] table-fixed text-left">
+                  <colgroup>
+                    <col />
+                    <col className="w-28" />
+                    <col className="w-24" />
+                    <col className="w-24" />
+                    <col className="w-20" />
+                    <col className="w-28" />
+                    <col className="w-24" />
+                  </colgroup>
+                  <thead>
+                    <tr className="border-b border-ink-200 bg-ink-50 text-2xs font-semibold uppercase tracking-wider text-ink-600">
+                      <th scope="col" className="w-full px-6 py-3.5">Название</th>
+                      <th scope="col" className="w-28 px-4 py-3.5">Статус</th>
+                      <th scope="col" className="w-24 px-4 py-3.5">Создана</th>
+                      <th scope="col" className="w-24 px-4 py-3.5">Дедлайн</th>
+                      <th scope="col" className="w-20 px-4 py-3.5 text-center">Позиций</th>
+                      <th scope="col" className="w-24 px-4 py-3.5 text-center">Поставщиков</th>
+                      <th scope="col" className="w-24 px-4 py-3.5 pr-8 text-center">Ответов</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-ink-100">
+                    {visibleRequests.map((request) => (
+                      <tr key={request.id} className="group transition hover:bg-accent-50/40">
+                        <td className="px-6 py-4 align-middle">
+                          <div className={request.status === 'error' ? 'grid min-w-0 grid-cols-[150px_minmax(0,1fr)] items-center gap-5' : ''}>
+                            <Link to={`/requests/${request.id}`} className="block min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2">
+                              <div className="break-words text-sm font-bold text-ink-800 group-hover:text-accent-700">{request.name}</div>
+                              <div className="mt-1 text-xs text-ink-500">#{request.id}</div>
+                            </Link>
+                            <RequestErrorNote request={request} compact className="w-full max-w-[620px] justify-start" />
+                          </div>
+                        </td>
+                        <td className="px-4 py-4"><RequestStatus request={request} /></td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs text-ink-500" title={new Date(request.created_at).toLocaleString('ru-RU')}>
+                          {formatRelativeDate(request.created_at)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs">
+                          {request.deadline ? (
+                            <span className={isDeadlineSoon(request.deadline) ? 'font-semibold text-rose-600' : 'text-ink-600'}>
+                              {new Date(request.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                            </span>
+                          ) : (
+                            <span className="text-ink-300">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-semibold tabular-nums text-ink-700">{request.positions_count}</td>
+                        <td className="px-4 py-4 text-center text-sm font-semibold tabular-nums text-ink-700">{request.suppliers_count}</td>
+                        <td className="w-24 px-4 py-4 pr-8 text-center text-sm font-semibold tabular-nums text-ink-700">{request.replies_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </section>
       </div>

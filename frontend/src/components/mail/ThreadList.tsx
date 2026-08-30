@@ -1,8 +1,58 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Mail, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Mail, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { cn, formatRelativeDate, pluralize } from '@/lib/utils';
 import type { ThreadSummary } from '@/lib/types';
+
+/** Переписка сгруппирована по заявке, а не сплошным списком.
+ *
+ *  Закупщик работает заявкой: «что мне ответили по насосам» — вопрос про
+ *  заявку, а не про отдельного поставщика. Плоский список заставлял держать
+ *  в голове, какая строка к какой закупке относится, и при десятке заявок
+ *  читался как общий почтовый ящик, ради ухода от которого продукт и делается.
+ *
+ *  Заявки отсортированы по свежести последнего письма, внутри — поставщики
+ *  так же. Группа с непрочитанными ответами раскрыта, остальные свёрнуты:
+ *  список остаётся коротким, а то, что требует внимания, видно сразу. */
+interface RequestGroup {
+  requestId: number;
+  requestName: string;
+  threads: ThreadSummary[];
+  lastMessageAt: string | null;
+  repliesCount: number;
+  unreadCount: number;
+}
+
+function groupByRequest(threads: ThreadSummary[]): RequestGroup[] {
+  const groups = new Map<number, RequestGroup>();
+  for (const thread of threads) {
+    let group = groups.get(thread.request_id);
+    if (!group) {
+      group = {
+        requestId: thread.request_id,
+        requestName: thread.request_name,
+        threads: [],
+        lastMessageAt: null,
+        repliesCount: 0,
+        unreadCount: 0,
+      };
+      groups.set(thread.request_id, group);
+    }
+    group.threads.push(thread);
+    group.repliesCount += thread.replies_count;
+    group.unreadCount += thread.unread_count;
+    if (!group.lastMessageAt || (thread.last_message_at ?? '') > group.lastMessageAt) {
+      group.lastMessageAt = thread.last_message_at;
+    }
+  }
+  const list = [...groups.values()];
+  for (const group of list) {
+    group.threads.sort((a, b) => (b.last_message_at ?? '').localeCompare(a.last_message_at ?? ''));
+  }
+  list.sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? ''));
+  return list;
+}
 
 interface ThreadListProps {
   selectedThreadKey: string | null;
@@ -56,8 +106,29 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
     );
   }, [threads, search]);
 
+  const groups = useMemo(() => groupByRequest(visibleThreads), [visibleThreads]);
+
+  // Свёрнутость хранится как множество ЗАКРЫТЫХ заявок, а не открытых: тогда
+  // новая заявка, появившаяся после синхронизации, по умолчанию раскрыта и не
+  // прячет свежий ответ.
+  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const toggle = (requestId: number) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(requestId)) next.delete(requestId);
+      else next.add(requestId);
+      return next;
+    });
+
+  // При поиске показываем всё раскрытым: иначе совпадение может оказаться
+  // внутри свёрнутой группы и будет выглядеть как «ничего не найдено».
+  const searching = Boolean(search.trim());
+
   return (
-    <div className="w-[360px] shrink-0 border-r border-ink-200 bg-white flex flex-col">
+    <div className={cn(
+      'w-full shrink-0 border-r border-ink-200 bg-white flex-col xl:w-[360px] xl:flex',
+      selectedThreadKey ? 'hidden' : 'flex',
+    )}>
       <div className="px-3 pt-3 pb-2.5 border-b border-ink-100 shrink-0">
         <div className="relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
@@ -93,40 +164,87 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
           </div>
         ) : (
           <div className="py-1">
-            {visibleThreads.map((thread) => {
-              const key = `${thread.request_id}:${thread.supplier_id}`;
-              const isSelected = selectedThreadKey === key;
-              const hasReplies = thread.replies_count > 0;
+            {groups.map((group) => {
+              const isCollapsed = !searching && collapsed.has(group.requestId);
               return (
-                <button
-                  key={key}
-                  onClick={() => onSelectThread(thread)}
-                  className={cn(
-                    'w-full px-3 py-2.5 text-left transition-colors border-l-2',
-                    isSelected ? 'bg-accent-50/50 border-accent-500' : 'border-transparent hover:bg-ink-50'
-                  )}
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className="pt-1 shrink-0">
-                      <span
-                        title={hasReplies ? 'Есть ответ от поставщика' : undefined}
-                        className={cn('block w-2 h-2 rounded-full', hasReplies ? 'bg-emerald-500' : 'bg-transparent')}
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2 mb-0.5">
-                        <span className="text-sm truncate font-medium text-ink-700">{thread.supplier_name}</span>
-                        <span className="text-[11px] text-ink-400 shrink-0">{formatRelativeDate(thread.last_message_at)}</span>
-                      </div>
-                      <p className="text-[13px] truncate mb-0.5 text-ink-600">{thread.subject}</p>
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className="text-[11px] text-ink-500 bg-ink-100 px-1.5 py-0.5 rounded font-medium truncate">
-                          {thread.request_name} · {thread.messages_count} {pluralize(thread.messages_count, 'письмо', 'письма', 'писем')}
+                <div key={group.requestId} className="mb-0.5">
+                  <div className="flex items-center gap-1 px-2 py-1.5 sticky top-0 z-10 bg-white/95 backdrop-blur-sm">
+                    <button
+                      onClick={() => toggle(group.requestId)}
+                      aria-expanded={!isCollapsed}
+                      className="flex min-h-10 min-w-0 flex-1 items-center gap-1.5 rounded px-1 py-0.5 text-left hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+                    >
+                      {isCollapsed
+                        ? <ChevronRight size={14} className="shrink-0 text-ink-400" />
+                        : <ChevronDown size={14} className="shrink-0 text-ink-400" />}
+                      <span className="truncate text-sm font-semibold text-ink-800" title={group.requestName}>
+                        {group.requestName}
+                      </span>
+                      <span className="shrink-0 text-xs text-ink-600">
+                        {group.threads.length}
+                      </span>
+                      {group.unreadCount > 0 && (
+                        <span
+                          title={`${group.unreadCount} ${pluralize(group.unreadCount, 'непрочитанный ответ', 'непрочитанных ответа', 'непрочитанных ответов')}`}
+                          className="shrink-0 rounded-full bg-emerald-50 px-1.5 py-px text-2xs font-semibold text-emerald-700 ring-1 ring-emerald-200/70"
+                        >
+                          {group.unreadCount}
                         </span>
-                      </div>
-                    </div>
+                      )}
+                    </button>
+                    <Link
+                      to={`/requests/${group.requestId}`}
+                      title="Открыть заявку"
+                      className="inline-flex min-h-10 shrink-0 items-center rounded px-1.5 py-0.5 text-xs font-medium text-accent-600 hover:bg-accent-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+                    >
+                      Заявка
+                    </Link>
                   </div>
-                </button>
+
+                  {!isCollapsed && group.threads.map((thread) => {
+                    const key = thread.manual_inbox_id != null
+                      ? `manual:${thread.manual_inbox_id}`
+                      : `${thread.request_id}:${thread.supplier_id}`;
+                    const isSelected = selectedThreadKey === key;
+                    const hasReplies = thread.replies_count > 0;
+                    // Подсвечиваем непрочитанное, а не «когда-либо отвечал»:
+                    // иначе отметка не гаснет после открытия письма.
+                    const isUnread = thread.unread_count > 0;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => onSelectThread(thread)}
+                        className={cn(
+                          'w-full py-2 pl-7 pr-3 text-left transition-colors border-l-2',
+                          isSelected ? 'bg-accent-50/50 border-accent-500' : 'border-transparent hover:bg-ink-50'
+                        )}
+                      >
+                        <div className="flex items-start gap-2">
+                          <span
+                            title={isUnread ? 'Непрочитанный ответ поставщика' : undefined}
+                            className={cn('mt-1.5 block h-2 w-2 shrink-0 rounded-full', isUnread ? 'bg-emerald-500' : 'bg-transparent')}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-0.5 flex items-center justify-between gap-2">
+                              <span className={cn('truncate text-sm', isUnread ? 'font-semibold text-ink-800' : 'font-medium text-ink-700')}>
+                                {thread.supplier_name || 'Поставщик не определён'}
+                              </span>
+                              <span className="shrink-0 text-xs text-ink-600">{formatRelativeDate(thread.last_message_at)}</span>
+                            </div>
+                            <p className="truncate text-xs text-ink-500">
+                              {thread.subject}
+                              {thread.manual_inbox_id != null && <span className="ml-1.5 text-accent-600">· вручную</span>}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-ink-600">
+                              {thread.messages_count} {pluralize(thread.messages_count, 'письмо', 'письма', 'писем')}
+                              {hasReplies && <> · {thread.replies_count} {pluralize(thread.replies_count, 'ответ', 'ответа', 'ответов')}</>}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               );
             })}
           </div>

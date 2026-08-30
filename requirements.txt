@@ -7,3 +7,4 @@ nh3>=0.3,<0.4
 quotequail>=0.5,<0.6
 openai>=1.0
 dnspython>=2.4
+pypdf>=6.0,<7

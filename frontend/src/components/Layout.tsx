@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, Ban, ClipboardList, LogOut, Menu, MessageSquare, PackageSearch, Settings as SettingsIcon, X } from 'lucide-react';
+import { BarChart3, Ban, ChevronLeft, ChevronRight, ClipboardList, LogOut, Menu, MessageSquare, PackageSearch, Settings as SettingsIcon, X } from 'lucide-react';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { getInitials } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 
 const items = [
   { label: 'Дашборд', to: '/', icon: BarChart3, enabled: true },
@@ -13,61 +14,194 @@ const items = [
   { label: 'Настройки', to: '/settings', icon: SettingsIcon, enabled: true },
 ];
 
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'supplydesk.sidebar.collapsed';
+
+function readSidebarCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/** Графитовая навигационная панель — единый язык для всего приложения
+ *  (Documents/28-8/DESIGN.md: «graphite navigation rail»), не только для дашборда.
+ *
+ *  До этой правки цвет панели переключался по `location.pathname === '/'`:
+ *  тёмная на дашборде, белая на всех остальных экранах. Находка независимого
+ *  аудита (Documents/28-8/messages-and-mail-audit.md): «дашборд и остальные экраны
+ *  используют разные варианты навигационной темы» — не отдельное продуктовое
+ *  решение, а незавершённый переезд. Панель теперь одна и та же на каждом
+ *  маршруте, а рабочая область (`<main>`) остаётся светлой, как и предписано. */
 export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const wasMobileOpen = useRef(false);
+  // Счётчик писем без привязки к заявке. Такое письмо — это ответ, который
+  // система не смогла отнести к закупке; без пометки в навигации оно тихо
+  // лежало во вкладке «Без привязки», и его легко было не заметить.
+  const [unmatchedMail, setUnmatchedMail] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.dashboardSummary()
+      .then((data) => { if (!cancelled) setUnmatchedMail(data.kpis.unmatched_mail ?? 0); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleUnmatchedCountChange = (event: Event) => {
+      const delta = Number((event as CustomEvent<{ delta?: number }>).detail?.delta ?? 0);
+      if (Number.isFinite(delta) && delta !== 0) setUnmatchedMail((value) => Math.max(0, value + delta));
+    };
+    window.addEventListener('supplydesk:unmatched-mail-changed', handleUnmatchedCountChange);
+    return () => window.removeEventListener('supplydesk:unmatched-mail-changed', handleUnmatchedCountChange);
+  }, []);
+
+  // Durable enrichment jobs are deliberately separate from a request search:
+  // a request can finish while Checko is rate-limited. Any authenticated page
+  // advances at most one due stage, so this also works in a serverless process
+  // without relying on a daemon thread that Vercel may freeze.
+  useEffect(() => {
+    let cancelled = false;
+    let busy = false;
+    const tick = async () => {
+      if (cancelled || busy) return;
+      busy = true;
+      try {
+        await api.stepEnrichment();
+      } catch {
+        // The job keeps its lease/state in the database; a later tick retries.
+      } finally {
+        busy = false;
+      }
+    };
+    void tick();
+    const timer = window.setInterval(() => void tick(), 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      if (wasMobileOpen.current) mobileMenuButtonRef.current?.focus();
+      wasMobileOpen.current = false;
+      return;
+    }
+    wasMobileOpen.current = true;
+    mobileCloseButtonRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileOpen]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const sidebarContent = (
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(sidebarCollapsed));
+    } catch {
+      // A restricted storage context should not make navigation unusable.
+    }
+  }, [sidebarCollapsed]);
+
+  const sidebarContent = (compact: boolean, showCollapse = true) => (
     <>
-      <button onClick={() => navigate('/')} className="flex h-[76px] items-center border-b border-ink-100 px-7 text-left">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-600 text-xl font-bold text-white shadow-soft">›</span>
-        <span className="ml-3">
-          <span className="block text-[15px] font-bold tracking-tight">SupplyDesk</span>
-          <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-ink-500">Procurement OS</span>
-        </span>
-      </button>
-      <nav className="flex-1 space-y-1 px-4 py-7">
-        <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-ink-500">Рабочее пространство</div>
+      <div className={cn('flex h-[76px] items-center border-b border-ink-800', compact ? 'relative flex-col justify-end gap-1 px-2 pb-2 pt-8' : 'px-4')}>
+        <button
+          onClick={() => navigate('/')}
+          aria-label="Открыть дашборд"
+          title={compact ? 'Дашборд' : undefined}
+          className={cn('flex h-12 min-w-0 items-center rounded-xl text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500', compact ? 'w-12 justify-center' : 'flex-1 px-3')}
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-600 text-xl font-bold text-white shadow-soft">›</span>
+          <span className={cn('ml-3 min-w-0', compact && 'sr-only')}>
+            <span className="block text-base font-bold tracking-tight text-white">SupplyDesk</span>
+            <span className="block text-2xs font-medium uppercase tracking-[0.16em] text-ink-400">Procurement OS</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setSidebarCollapsed((value) => !value)}
+          aria-label={compact ? 'Развернуть меню' : 'Свернуть меню'}
+          aria-expanded={!compact}
+          aria-controls="desktop-sidebar"
+          title={compact ? 'Развернуть меню' : 'Свернуть меню'}
+          className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500', compact && 'absolute right-2 top-2 h-7 w-7', !showCollapse && 'hidden')}
+        >
+          {compact ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
+        </button>
+      </div>
+      <nav aria-label="Основная навигация" className={cn('flex-1 space-y-1 py-7', compact ? 'px-2' : 'px-4')}>
+        <div className={cn('mb-3 px-3 text-2xs font-bold uppercase tracking-[0.16em] text-ink-400', compact && 'sr-only')}>Рабочее пространство</div>
         {items.map(({ label, to, icon: Icon, enabled }) =>
           enabled ? (
-            <NavLink key={label} to={to} end={to === '/'} className={({ isActive }) => `group flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] font-semibold transition-all ${isActive ? 'bg-accent-50 text-accent-700' : 'text-ink-500 hover:bg-ink-50 hover:text-ink-800'}`}>
+            <NavLink
+              key={label}
+              to={to}
+              end={to === '/'}
+              aria-label={label}
+              title={compact ? label : undefined}
+              className={({ isActive }) => cn(
+                'group relative flex items-center rounded-xl py-3 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2',
+                compact ? 'justify-center px-2' : 'gap-3 px-3',
+                isActive
+                  ? compact ? 'bg-white/10 text-white ring-1 ring-inset ring-accent-400/60' : 'bg-white/10 text-white'
+                  : 'text-ink-300 hover:bg-white/5 hover:text-white',
+              )}
+            >
               <Icon size={18} strokeWidth={1.8} />
-              <span>{label}</span>
+              <span className={cn('flex-1', compact && 'sr-only')}>{label}</span>
+              {to === '/messages' && unmatchedMail > 0 && (
+                <span
+                  title={`${unmatchedMail} писем без привязки к заявке`}
+                  aria-label={`${unmatchedMail} писем без привязки к заявке`}
+                  className={cn('rounded-full bg-amber-500 px-1.5 py-px text-2xs font-bold text-white', compact ? 'absolute right-1 top-1' : 'shrink-0')}
+                >
+                  {unmatchedMail}
+                </span>
+              )}
             </NavLink>
           ) : (
-            <div key={label} className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-3 text-[13px] font-semibold text-ink-300">
+            <div key={label} aria-label={label} title={compact ? label : undefined} className={cn('flex cursor-not-allowed items-center rounded-xl py-3 text-sm font-semibold text-ink-300', compact ? 'justify-center px-2' : 'gap-3 px-3')}>
               <Icon size={18} strokeWidth={1.8} />
-              <span>{label}</span>
-              <span className="ml-auto text-[9px] font-bold uppercase tracking-wider">скоро</span>
+              <span className={cn(compact && 'sr-only')}>{label}</span>
+              <span className={cn('ml-auto text-2xs font-bold uppercase tracking-wider', compact && 'sr-only')}>скоро</span>
             </div>
           )
         )}
       </nav>
-      <div className="border-t border-ink-100 p-4">
-        <div className="flex items-center gap-3 rounded-xl px-3 py-3">
+      <div className="border-t border-ink-800 p-4">
+        <div className={cn('flex items-center rounded-xl py-3', compact ? 'flex-col gap-2 px-0' : 'gap-3 px-3')}>
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-100 text-xs font-bold text-accent-700">
             {getInitials(user?.display_name || user?.email || '?')}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-xs font-bold text-ink-800">{user?.display_name || user?.email}</div>
-            <div className="truncate text-[11px] text-ink-500">{user?.workspace_name}</div>
+          <div className={cn('min-w-0 flex-1', compact && 'sr-only')}>
+            <div className="truncate text-xs font-bold text-white">{user?.display_name || user?.email}</div>
+            <div className="truncate text-xs text-ink-400">{user?.workspace_name}</div>
           </div>
           <button
             onClick={handleLogout}
             title="Выйти"
             aria-label="Выйти"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-400 transition hover:bg-rose-50 hover:text-rose-600"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           >
             <LogOut size={16} />
           </button>
@@ -80,36 +214,49 @@ export function Layout() {
     <div className="min-h-screen bg-ink-50 text-ink-900">
       {/* Mobile top bar — the only way to reach navigation below the lg breakpoint,
           since the real sidebar is hidden there (see S-01 in the defect ledger). */}
-      <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-ink-200/80 bg-white px-4 lg:hidden">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 text-white lg:hidden">
         <button
+          ref={mobileMenuButtonRef}
           onClick={() => setMobileOpen(true)}
           aria-label="Открыть меню"
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-600 hover:bg-ink-100"
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-sidebar"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-300 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
         >
           <Menu size={20} />
         </button>
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-600 text-sm font-bold text-white">›</span>
         <span className="text-sm font-bold tracking-tight">SupplyDesk</span>
-      </div>
+      </header>
 
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-ink-900/30 lg:hidden" onClick={() => setMobileOpen(false)} />
+        <div aria-hidden="true" className="fixed inset-0 z-40 bg-ink-900/30 lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-ink-200/80 bg-white transition-transform duration-200 lg:z-20 lg:translate-x-0 ${
+        id="desktop-sidebar"
+        aria-label="Основная навигация"
+        className={cn('fixed inset-y-0 left-0 z-20 hidden flex-col border-r border-ink-800 bg-ink-900 transition-[width] duration-200 ease-out lg:flex', sidebarCollapsed ? 'w-[76px]' : 'w-[248px]')}
+      >
+        {sidebarContent(sidebarCollapsed)}
+      </aside>
+      <aside
+        id="mobile-sidebar"
+        aria-label="Мобильная навигация"
+        className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-ink-800 bg-ink-900 transition-transform duration-200 lg:hidden ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <button
+          ref={mobileCloseButtonRef}
           onClick={() => setMobileOpen(false)}
           aria-label="Закрыть меню"
-          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 hover:bg-ink-100 lg:hidden"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 lg:hidden"
         >
           <X size={18} />
         </button>
-        {sidebarContent}
+        {sidebarContent(false, false)}
       </aside>
-      <main className="lg:pl-[248px]">
+      <main className={cn('lg:transition-[padding-left] lg:duration-200 lg:ease-out', sidebarCollapsed ? 'lg:pl-[76px]' : 'lg:pl-[248px]')}>
         <Outlet />
       </main>
     </div>

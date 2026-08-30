@@ -46,3 +46,42 @@ This log records agent work interactions. It is append-only.
 - Pre-existing attribution: `REPORTED, NOT VERIFIED`; the historical `170`
   count was not independently reproducible.
 - Report: [`ai/reports/TASK-STATE-RECONCILIATION-report.md`](reports/TASK-STATE-RECONCILIATION-report.md)
+
+## 2026-08-30T17:28:49Z — TASK-REMOTE-REPOSITORY-PREPARATION
+
+- Request: prepare a private GitHub repository for shared agent access without
+  publishing secrets or unresolved changes.
+- Mode: `AUDIT → SECURITY GATE`
+- State change: `YES` — current Git/GitHub status, publish-set classification
+  and blocking secret paths recorded in `ai/**`.
+- Result: `BLOCKED`; `gh` is authenticated, but expected repository is absent,
+  credential-bearing env files are present, and the 670-path publish set is not
+  approved. No remote, commit or push action performed.
+- Report: [`ai/reports/TASK-REMOTE-REPOSITORY-PREPARATION-report.md`](reports/TASK-REMOTE-REPOSITORY-PREPARATION-report.md)
+
+## 2026-08-30T17:31:44Z — TASK-REMOTE-REPOSITORY-PREPARATION
+
+- Mode: `ACCEPTANCE`
+- Documents updated: `YES` — blocked status and validator evidence recorded.
+- Result: validator `PASS`; no commit or push; task remains `BLOCKED` by
+  potential credential files and unresolved publish-set approval.
+
+## 2026-08-30T17:38:06Z — TASK-PUBLISH-SAFETY-001
+
+- Request: prepare a safe file list for future private GitHub publication.
+- Mode: `AUDIT → SECURITY SCAN → ALLOWLIST`
+- State change: `YES` — allowlist, denylist, security report and task report
+  created; current state/handoff/chronology updated.
+- Result: `BLOCKED`; five ignored env/credential-risk paths are present and
+  677 existing paths are not owner-approved for publication. No staging, commit,
+  repository creation, origin change or push performed.
+- Report: [`ai/reports/TASK-PUBLISH-SAFETY-001-report.md`](reports/TASK-PUBLISH-SAFETY-001-report.md)
+
+## 2026-08-30T17:43:27Z — TASK-PUBLISH-SAFETY-001
+
+- Mode: `ACCEPTANCE`
+- Documents updated: `YES` — final allowlist exclusion and blocked handoff
+  state recorded.
+- Result: validator `PASS`; staged paths `0`; final inventory `681`; task
+  remains `BLOCKED` by potential credential files and unresolved owner-approved
+  publish set.

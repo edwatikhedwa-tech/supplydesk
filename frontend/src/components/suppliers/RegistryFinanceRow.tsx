@@ -1,4 +1,4 @@
-import { CalendarClock, CircleCheck, CircleX, TrendingDown, TrendingUp } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CircleCheck, CircleX, TrendingDown, TrendingUp } from 'lucide-react';
 import { formatFullDate, pluralize } from '@/lib/utils';
 import type { GlobalSupplierFinances, GlobalSupplierRegistry } from '@/lib/types';
 import checkoIcon from '@/assets/checko-icon.png';
@@ -32,6 +32,39 @@ function NoValue() {
   return <span className="text-2xs text-ink-300">—</span>;
 }
 
+/**
+ * Dense table cells need a short semantic label. The complete Checko status
+ * remains available in the title, while the visible label cannot push the
+ * Checko and mail columns outside their own grid tracks.
+ */
+function compactRegistryStatus(status: string): string {
+  const normalized = status.trim().toLocaleLowerCase('ru-RU');
+  if (normalized.includes('реорганиза')) return 'Реорганизация';
+  if (normalized.includes('ликвида')) return 'Ликвидация';
+  if (normalized.includes('банкрот')) return 'Банкротство';
+  if (normalized.includes('прекращ')) return 'Прекращена';
+  if (normalized.includes('недейств')) return 'Не действует';
+  return status.trim();
+}
+
+/**
+ * Checko can mark a company active while returning an additional legal
+ * condition, for example an ongoing reorganisation. That is not the same as
+ * a clean active record: keep the main label «Действует», but surface the
+ * condition as an amber warning. Inactive records have their own explicit
+ * red label below.
+ */
+export function registryNeedsAttention(
+  registry: GlobalSupplierRegistry | null | undefined,
+  risks?: string[] | null,
+): boolean {
+  if (!registry || registry.is_active !== true) return false;
+  if (risks?.length) return true;
+  const status = String(registry.status || '').trim().toLocaleLowerCase('ru-RU');
+  if (!status) return false;
+  return !/(^|\s)(действует|активна|активен|зарегистрирован|зарегистрирована)(\s|$|[,.])/u.test(status);
+}
+
 export function AgeCell({ registry }: { registry: GlobalSupplierRegistry | null | undefined }) {
   const age = registry?.registered_at ? companyAgeYears(registry.registered_at) : null;
   if (age === null || !registry) return <NoValue />;
@@ -51,7 +84,7 @@ export function RevenueCell({ finances }: { finances: GlobalSupplierFinances | n
       title={`Выручка за ${finances.report_year} год по данным Росстата и ГИР БО (Checko)`}
     >
       <span className="whitespace-nowrap text-sm font-semibold tabular-nums text-ink-800">{formatRubCompact(finances.revenue)} ₽</span>
-      <span className="text-[10px] text-ink-400">за {finances.report_year}</span>
+      <span className="text-2xs text-ink-400">за {finances.report_year}</span>
     </span>
   );
 }
@@ -72,16 +105,20 @@ export function ProfitCell({ finances }: { finances: GlobalSupplierFinances | nu
   );
 }
 
-export function RegistryStatusCell({ registry }: { registry: GlobalSupplierRegistry | null | undefined }) {
+export function RegistryStatusCell({ registry, risks }: { registry: GlobalSupplierRegistry | null | undefined; risks?: string[] | null }) {
   if (!registry?.status) return <NoValue />;
   const active = registry.is_active;
+  const attention = registryNeedsAttention(registry, risks);
+  const label = active === false ? 'Не действует' : active === true ? 'Действует' : compactRegistryStatus(registry.status);
   return (
     <span
-      className={`inline-flex min-w-0 items-center gap-1 ${active ? 'text-emerald-700' : 'text-rose-600'}`}
+      className={`flex min-w-0 max-w-full items-center gap-1 overflow-hidden ${
+        active === false ? 'text-rose-600' : active === true ? attention ? 'text-amber-700' : 'text-emerald-700' : 'text-ink-500'
+      }`}
       title={`${registry.status} — статус в ЕГРЮЛ по данным Checko`}
     >
-      {active ? <CircleCheck className="h-3.5 w-3.5 shrink-0" /> : <CircleX className="h-3.5 w-3.5 shrink-0" />}
-      <span className="truncate text-2xs font-semibold">{active ? 'Действует' : registry.status}</span>
+      {active === false ? <CircleX className="h-3.5 w-3.5 shrink-0" /> : active === true ? attention ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> : <CircleCheck className="h-3.5 w-3.5 shrink-0" /> : null}
+      <span className="min-w-0 flex-1 truncate text-2xs font-semibold">{label}</span>
     </span>
   );
 }
@@ -117,10 +154,11 @@ export function formatRubCompact(value: number): string {
  * ИНН shows the same facts everywhere it's shown. Renders nothing at all
  * when there's no data — never a zero or a fabricated value. */
 export function RegistryFinanceRow({
-  registry, finances, className = 'px-6 py-2 border-b border-ink-100',
+  registry, finances, risks, className = 'px-6 py-2 border-b border-ink-100',
 }: {
   registry: GlobalSupplierRegistry | null | undefined;
   finances: GlobalSupplierFinances | null | undefined;
+  risks?: string[] | null;
   className?: string;
 }) {
   const age = registry?.registered_at ? companyAgeYears(registry.registered_at) : null;
@@ -129,47 +167,63 @@ export function RegistryFinanceRow({
   if (!hasAnything) return null;
 
   return (
-    <div className={`${className} flex items-center gap-3.5 overflow-x-auto`}>
+    /* Сетка 2×2, а не ряд с горизонтальной прокруткой: в узкой боковой
+       карточке четыре факта в строку не помещались, и появлялся ползунок —
+       часть данных приходилось «доскроллить», хотя места по вертикали в
+       карточке достаточно. Ползунок в карточке на 380px — это скрытая
+       информация, а не компактность. */
+    <div className={`${className} grid grid-cols-2 gap-x-4 gap-y-2`}>
       {age !== null && registry && (
-        <div className="flex items-baseline gap-1 shrink-0" title={`Компания зарегистрирована ${formatFullDate(registry.registered_at)}`}>
+        <div className="flex min-w-0 items-baseline gap-1" title={`Компания зарегистрирована ${formatFullDate(registry.registered_at)}`}>
           <CalendarClock className="w-3.5 h-3.5 text-ink-400 self-center" />
           <span className="text-sm font-bold text-ink-900">{age}</span>
-          <span className="text-[10px] text-ink-500">{pluralYears(age)}</span>
+          <span className="text-2xs text-ink-500">{pluralYears(age)}</span>
         </div>
       )}
       {registry?.status && (
         <div
-          className="flex items-center gap-1 shrink-0"
-          title={registry.is_active ? 'Действующая организация по данным ЕГРЮЛ (Checko)' : 'Статус по данным ЕГРЮЛ (Checko) — не «действует»'}
+          className="min-w-0"
+          title={`${registry.status} — статус в ЕГРЮЛ по данным Checko`}
         >
-          {registry.is_active ? (
-            <CircleCheck className="w-3.5 h-3.5 text-emerald-600" />
-          ) : (
-            <CircleX className="w-3.5 h-3.5 text-red-500" />
+          {(() => {
+            const attention = registryNeedsAttention(registry, risks);
+            const active = registry.is_active;
+            return (
+              <div className={`flex min-w-0 items-center gap-1 ${
+                active === false ? 'text-rose-600' : active === true ? attention ? 'text-amber-700' : 'text-emerald-700' : 'text-ink-500'
+              }`}>
+                {active === false ? <CircleX className="w-3.5 h-3.5 shrink-0" /> : active === true ? attention ? <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> : <CircleCheck className="w-3.5 h-3.5 shrink-0" /> : null}
+                <span className="min-w-0 break-words text-sm font-bold leading-tight">
+                  {active === false ? 'Не действует' : active === true ? 'Действует' : compactRegistryStatus(registry.status)}
+                </span>
+              </div>
+            );
+          })()}
+          {registryNeedsAttention(registry, risks) && (
+            <div className="mt-0.5 break-words pl-5 text-2xs leading-tight text-amber-700">
+              {compactRegistryStatus(registry.status)}
+            </div>
           )}
-          <span className={`text-sm font-bold whitespace-nowrap ${registry.is_active ? 'text-emerald-700' : 'text-red-600'}`}>
-            {registry.status}
-          </span>
         </div>
       )}
       {finances?.revenue != null && (
-        <div className="flex items-baseline gap-1 shrink-0" title={`Выручка за ${finances.report_year} год (данные Росстата через Checko)`}>
+        <div className="flex min-w-0 items-baseline gap-1" title={`Выручка за ${finances.report_year} год (данные Росстата через Checko)`}>
           <TrendingUp className="w-3.5 h-3.5 text-ink-400 self-center" />
-          <span className="text-sm font-bold text-ink-900 whitespace-nowrap">{formatRubCompact(finances.revenue)} ₽</span>
-          <span className="text-[10px] text-ink-500">выр.</span>
+          <span className="truncate text-sm font-bold text-ink-900">{formatRubCompact(finances.revenue)} ₽</span>
+          <span className="text-2xs text-ink-500">выр.</span>
         </div>
       )}
       {finances?.profit != null && (
-        <div className="flex items-baseline gap-1 shrink-0" title={`Чистая прибыль за ${finances.report_year} год (данные Росстата через Checko)`}>
+        <div className="flex min-w-0 items-baseline gap-1" title={`Чистая прибыль за ${finances.report_year} год (данные Росстата через Checko)`}>
           {finances.profit < 0 ? (
             <TrendingDown className="w-3.5 h-3.5 text-red-500 self-center" />
           ) : (
             <TrendingUp className="w-3.5 h-3.5 text-ink-400 self-center" />
           )}
-          <span className={`text-sm font-bold whitespace-nowrap ${finances.profit < 0 ? 'text-red-600' : 'text-ink-900'}`}>
+          <span className={`truncate text-sm font-bold ${finances.profit < 0 ? 'text-red-600' : 'text-ink-900'}`}>
             {formatRubCompact(finances.profit)} ₽
           </span>
-          <span className="text-[10px] text-ink-500">приб.</span>
+          <span className="text-2xs text-ink-500">приб.</span>
         </div>
       )}
       {registry?.ogrn && (
@@ -177,10 +231,11 @@ export function RegistryFinanceRow({
           href={checkoProfileUrl(registry.ogrn)}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center shrink-0 opacity-80 hover:opacity-100 transition-opacity ml-auto pl-1"
+          className="flex min-w-0 items-center gap-1.5 rounded-lg px-1 py-0.5 transition-colors hover:bg-ink-50"
           title="Открыть профиль компании на Checko"
         >
-          <img src={checkoIcon} alt="Checko" className="w-4 h-4 rounded-sm" />
+          <img src={checkoIcon} alt="" className="h-6 w-6 shrink-0 rounded" />
+          <span className="text-[11px] font-medium text-ink-600">Checko</span>
         </a>
       )}
     </div>

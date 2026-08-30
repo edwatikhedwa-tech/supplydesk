@@ -26,10 +26,18 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from bs4 import BeautifulSoup
-
 from contact_crawler import ContactCrawler, SiteResult
-from inn_extractor import InnHit, extract_inn_from_html, is_requisites_url, score_inn
+from inn_extractor import (
+    InnHit,
+    LegalIdHit,
+    extract_inn_from_html,
+    extract_inn_from_text,
+    extract_legal_ids_from_html,
+    extract_legal_ids_from_text,
+    is_requisites_url,
+    score_inn,
+    visible_text_from_html,
+)
 from serp_parser import host_of, load_dotenv, read_lines
 
 log = logging.getLogger("inn-cli")
@@ -54,10 +62,10 @@ FIELDS = [
 
 
 def page_text(html: str) -> str:
-    soup = BeautifulSoup(html, "lxml")
-    for tag in soup(["script", "style", "noscript"]):
-        tag.decompose()
-    return soup.get_text(" ")
+    # LLM получает тот же quorum-текст, что и регулярки. Иначе regex уже
+    # восстановил бы повреждённую страницу через html.parser, а платная
+    # резервная ступень снова увидела бы обрезанный lxml-результат.
+    return visible_text_from_html(html)
 
 
 def extract_for_site(site: SiteResult) -> list[InnHit]:
@@ -68,9 +76,26 @@ def extract_for_site(site: SiteResult) -> list[InnHit]:
             current = found.get(hit.inn)
             if current is None:
                 found[hit.inn] = hit
+    for url, text in site.text_pages.items():
+        for hit in extract_inn_from_text(text, url):
+            current = found.get(hit.inn)
+            if current is None:
+                found[hit.inn] = hit
     for hit in found.values():
         score_inn(hit, on_requisites_page=is_requisites_url(hit.source_url))
     return sorted(found.values(), key=lambda h: h.score, reverse=True)
+
+
+def extract_legal_ids_for_site(site: SiteResult) -> list[LegalIdHit]:
+    """ОГРН/ОГРНИП со всех HTML-страниц и ограниченных PDF сайта."""
+    found: dict[tuple[str, str], LegalIdHit] = {}
+    for url, html in site.html_pages.items():
+        for hit in extract_legal_ids_from_html(html, url):
+            found.setdefault((hit.kind, hit.value), hit)
+    for url, text in site.text_pages.items():
+        for hit in extract_legal_ids_from_text(text, url):
+            found.setdefault((hit.kind, hit.value), hit)
+    return sorted(found.values(), key=lambda hit: hit.score, reverse=True)
 
 
 def write_csv(rows: list[tuple[SiteResult, InnHit | None]], path: Path) -> None:

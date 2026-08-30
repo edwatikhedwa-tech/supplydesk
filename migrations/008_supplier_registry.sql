@@ -6,8 +6,8 @@ PRAGMA foreign_keys = ON;
 -- "ALTER TABLE ADD COLUMN IF NOT EXISTS" and this repo re-runs every
 -- migration on every startup (see MailRepository.ensure_schema) — schema
 -- changes here must stay purely additive (new table) to remain safe to
--- re-run. See PROJECT_DOCUMENTATION.md §2 (migrations) and
--- docs/suppliers-screen.md.
+-- re-run. See Documents/28-8/PROJECT_DOCUMENTATION.md §2 (migrations) and
+-- Documents/28-8/suppliers-screen.md.
 --
 -- Deliberately does NOT include revenue/profit: checko_client.py only calls
 -- Checko's company-registry endpoint, never a financial-statements endpoint —

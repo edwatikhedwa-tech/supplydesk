@@ -1,0 +1,11 @@
+data/*.sqlite3
+data/*.db
+out/*
+!out/.gitkeep
+serp/*.csv
+serp/*.json
+__pycache__/
+tests/__pycache__/
+*.pyc
+*.log
+.env.discovery

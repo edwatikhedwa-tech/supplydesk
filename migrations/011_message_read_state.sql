@@ -2,7 +2,7 @@ PRAGMA foreign_keys = ON;
 
 -- Which inbound thread messages the buyer has actually opened. Without this,
 -- the "Новые ответы" dashboard KPI could only count every inbound message
--- ever received and never go back down (see PROJECT_DOCUMENTATION.md §18,
+-- ever received and never go back down (see Documents/28-8/PROJECT_DOCUMENTATION.md §18,
 -- 23 Aug audit finding). Separate table, not a column on mail_messages —
 -- SQLite has no "ALTER TABLE ADD COLUMN IF NOT EXISTS" and this repo re-runs
 -- every migration on every startup (see MailRepository.ensure_schema), so

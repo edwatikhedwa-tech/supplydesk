@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle, Ban, Building2, ChevronRight, Clock,
@@ -10,6 +10,13 @@ import { StarRating, issueReasonLabels, outcomeLabels } from './StatusBits';
 import { IssueModal, type IssueSubmission } from './IssueModal';
 import { RegistryFinanceRow } from './RegistryFinanceRow';
 import type { GlobalSupplierDetail, RelationshipStatus } from '@/lib/types';
+
+/** График динамики тянет за собой recharts (~880 КБ несжатыми). Он нужен
+ *  только в карточке компании, поэтому грузится отдельным чанком по факту
+ *  открытия карточки, а не в общем бандле при первом заходе на сайт. */
+const FinanceTrend = lazy(() =>
+  import('./FinanceTrend').then((m) => ({ default: m.FinanceTrend })),
+);
 
 export function SupplierPanel({ globalSupplierId, onClose }: { globalSupplierId: number; onClose: () => void }) {
   const navigate = useNavigate();
@@ -127,9 +134,14 @@ export function SupplierPanel({ globalSupplierId, onClose }: { globalSupplierId:
               </button>
             </div>
 
-            <RegistryFinanceRow registry={supplier.registry} finances={supplier.finances} />
+            <RegistryFinanceRow registry={supplier.registry} finances={supplier.finances} risks={supplier.risks} />
 
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+              {supplier.finance_history?.length > 1 && (
+                <Suspense fallback={<div className="h-44 animate-pulse rounded-lg bg-ink-100/70" />}>
+                  <FinanceTrend years={supplier.finance_history} />
+                </Suspense>
+              )}
               <div>
                 <div className="text-xs font-medium text-ink-500 uppercase tracking-wider mb-2">Статус отношений</div>
                 <div className="flex items-center gap-1 bg-ink-100 rounded-xl p-1">
@@ -337,9 +349,9 @@ export function SupplierPanel({ globalSupplierId, onClose }: { globalSupplierId:
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium text-ink-800">{issueReasonLabels[issue.reason] || issue.reason}</span>
                           {issue.source === 'auto' ? (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">авто</span>
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-2xs font-medium bg-blue-100 text-blue-700">авто</span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700">вручную</span>
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-2xs font-medium bg-red-100 text-red-700">вручную</span>
                           )}
                           <span className="text-xs text-ink-400 ml-auto">{formatFullDate(issue.reported_at)}</span>
                         </div>

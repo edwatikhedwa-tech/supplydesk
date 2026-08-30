@@ -1,5 +1,5 @@
-# Стоп-лист доменов, которые не попадают в выборку supplier_app.py._run_search
-# (подключено через exclude_domains у SerpCollector) — см. docs/enrichment-and-cache.md.
+# Стоп-лист доменов, которые не попадают в выборку web-поиска поставщиков
+# (подключено через exclude_domains у SerpCollector) — см. Documents/28-8/enrichment-and-cache.md.
 # Причина двойная: это розничные площадки, а не B2B-поставщики, и большинство
 # из них к тому же блокируют автоматический обход (HTTP 403/429 — Cloudflare,
 # QRATOR) — подтверждено вживую 24.08.2026 на заявке №1049.

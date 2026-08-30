@@ -82,6 +82,13 @@ class Finances:
     revenue: int | None = None
     profit: int | None = None
     error: str = ""
+    # Динамика по годам, (год, выручка, прибыль), по возрастанию года.
+    # Приходит тем же самым запросом, что и последний год: /v2/finances
+    # отдаёт всю доступную историю (у ООО «ЛУНДА» — 15 лет, 2011–2025).
+    # Раньше всё, кроме последнего года, отбрасывалось; между тем «выручка
+    # растёт, а прибыль падает» — ровно тот сигнал, ради которого снабженец
+    # и смотрит на финансы. Данные уже оплачены, хранить их ничего не стоит.
+    history: list[tuple[int, int | None, int | None]] = field(default_factory=list)
 
 
 REVENUE_CODE = "2110"
@@ -165,10 +172,17 @@ class CheckoClient:
         self._cache: dict[str, Company] = {}
         self._finance_cache: dict[str, Finances] = {}
         self.requests_made = 0
+        # Не только лог: вызывающий pipeline должен отличить «не найдено» от
+        # «квота/сеть временно недоступны» и поставить только эту ступень на
+        # durable retry.
+        self.errors: list[tuple[str, str]] = []
 
     @property
     def key(self) -> str:
         return self.keys[self._key_index]
+
+    def _remember_error(self, kind: str, message: str) -> None:
+        self.errors.append((kind, str(message or kind)[:500]))
 
     def _get(self, endpoint: str, params: dict[str, str]) -> tuple[int, dict[str, Any] | None, str]:
         """One HTTP call, rotating to the next key on a same-key quota exhaustion.
@@ -197,13 +211,19 @@ class CheckoClient:
                         self._key_index += 1
                         continue
                     last_error = str((payload or {}).get("meta", {}).get("message") or "дневной лимит исчерпан на всех ключах")
+                    self._remember_error("quota", last_error)
                     return resp.status_code, payload, last_error
                 resp.raise_for_status()
                 return resp.status_code, payload, ""
             except requests.HTTPError as exc:
-                return resp.status_code, payload, f"HTTP {resp.status_code}: {exc}"
+                message = f"HTTP {resp.status_code}: {exc}"
+                kind = "transient" if resp.status_code == 429 or resp.status_code >= 500 else "permanent"
+                self._remember_error(kind, message)
+                return resp.status_code, payload, message
             except requests.RequestException as exc:
-                return 0, None, f"сеть: {exc}"
+                message = f"сеть: {exc}"
+                self._remember_error("network", message)
+                return 0, None, message
         return 0, None, last_error
 
     def lookup(self, inn: str) -> Company:
@@ -240,6 +260,89 @@ class CheckoClient:
             time.sleep(self.delay)
         return company
 
+    def lookup_by_ogrn(self, ogrn: str) -> Company:
+        """Организация/ИП по точному ОГРН или ОГРНИП.
+
+        Официальные `/v2/company` и `/v2/entrepreneur` принимают параметр
+        `ogrn`; это надёжнее и дешевле поиска по ФИО/названию, когда исходный
+        сайт уже опубликовал юридический идентификатор.
+        """
+        ogrn = "".join(ch for ch in str(ogrn or "") if ch.isdigit())
+        if len(ogrn) not in (13, 15):
+            return Company(inn="", error="ОГРН должен содержать 13, ОГРНИП — 15 цифр")
+        cache_key = f"ogrn:{ogrn}"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+
+        endpoint = "entrepreneur" if len(ogrn) == 15 else "company"
+        company = Company(inn="")
+        status_code, payload, error = self._get(endpoint, {"ogrn": ogrn})
+        if error:
+            company.error = error
+            return company
+        if payload is None:
+            company.error = f"ответ не разобрался (HTTP {status_code})"
+            return company
+        meta = payload.get("meta") or {}
+        if meta.get("status") != "ok":
+            company.error = str(meta.get("message") or meta.get("status") or "отказ API")
+            return company
+        data = payload.get("data") or {}
+        if not data:
+            company.error = "в реестре не найден"
+            self._cache[cache_key] = company
+            return company
+
+        self._fill(company, data)
+        self._cache[cache_key] = company
+        if company.inn:
+            self._cache[company.inn] = company
+        if self.delay:
+            time.sleep(self.delay)
+        return company
+
+    def search_by_name(
+        self, name: str, *, individual: bool = False,
+        active_only: bool = True, limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Кандидаты в реестре по наименованию (метод /v2/search, by=name).
+
+        Официальная спецификация (checko.ru/integration/api/search, проверено
+        26.08.2026): обязательные `by`, `obj`, `query`; минимум 4 символа в
+        запросе; `active=true` отсекает ликвидированные.
+
+        Важно: поиск по имени **не даёт однозначного ответа** и не должен
+        использоваться сам по себе. Живая проверка: запрос «ЛУНДА» вернул 9
+        организаций, из них 4 с буквально одинаковым названием ООО «ЛУНДА» и
+        разными ИНН. Различает их только сверка контактов с доменом сайта —
+        поэтому метод отдаёт сырой список, а решение принимает вызывающий код
+        (см. resolve_inn_by_registry в supplier_app.py).
+
+        В ответе /search контактов нет — только реквизиты и руководство, —
+        поэтому на каждого проверяемого кандидата нужен отдельный lookup().
+        """
+        name = (name or "").strip()
+        if len(name) < 4:
+            return []  # ниже минимума, который принимает API
+        status_code, payload, error = self._get("search", {
+            "by": "name",
+            "obj": "ent" if individual else "org",
+            "query": name,
+            **({"active": "true"} if active_only else {}),
+            "limit": str(min(limit, 100)),
+        })
+        if error or payload is None:
+            log.info("Checko search «%s»: %s", name, error or f"HTTP {status_code}")
+            return []
+        if (payload.get("meta") or {}).get("status") != "ok":
+            message = str((payload.get("meta") or {}).get("message") or "ошибка поиска")
+            self._remember_error("permanent", message)
+            return []
+        records = (payload.get("data") or {}).get("Записи") or []
+        if self.delay:
+            time.sleep(self.delay)
+        return [r for r in records if isinstance(r, dict)]
+
     def finances(self, inn: str) -> Finances:
         """Выручка и чистая прибыль за последний отчётный год.
 
@@ -271,13 +374,22 @@ class CheckoClient:
             self._finance_cache[inn] = result
             return result
 
-        latest_year = max((y for y in years_data if y.isdigit()), default=None)
-        if latest_year is not None:
-            year_data = years_data[latest_year] or {}
+        history: list[tuple[int, int | None, int | None]] = []
+        for year in sorted(y for y in years_data if str(y).isdigit()):
+            year_data = years_data[year] or {}
+            if not isinstance(year_data, dict):
+                continue
+            revenue = year_data.get(REVENUE_CODE)
+            profit = year_data.get(NET_PROFIT_CODE)
+            # Год без обеих сумм — пустая запись реестра, не «нулевая выручка».
+            if revenue is None and profit is None:
+                continue
+            history.append((int(year), revenue, profit))
+
+        if history:
+            result.history = history
             result.found = True
-            result.report_year = int(latest_year)
-            result.revenue = year_data.get(REVENUE_CODE)
-            result.profit = year_data.get(NET_PROFIT_CODE)
+            result.report_year, result.revenue, result.profit = history[-1]
         else:
             result.error = "отчётность не найдена"
 
@@ -291,6 +403,9 @@ class CheckoClient:
     @staticmethod
     def _fill(c: Company, d: dict[str, Any]) -> None:
         c.found = True
+        # При lookup по ОГРН исходный объект ещё не знает ИНН — забираем его из
+        # реестрового ответа. При обычном lookup значение совпадёт с запросом.
+        c.inn = str(d.get("ИНН") or c.inn or "")
         # ИП are registered under ОГРНИП (15 digits), organisations under ОГРН
         # (13). Reading only "ОГРН" left every ИП without a registry number, so
         # nothing could link to their Checko profile page.
@@ -341,6 +456,23 @@ class CheckoClient:
             c.risks.append("массовый учредитель")
         if d.get("НелегалФин"):
             c.risks.append("признаки нелегальной финансовой деятельности")
+        # Санкции в отношении учредителя (правило 50%) — отдельный признак от
+        # d.get("Санкции") самой компании: компанию саму не всегда вносят в
+        # список, если под санкциями только её учредитель.
+        if d.get("СанкцУчр"):
+            c.risks.append("санкции в отношении учредителя")
+        недоимка = (d.get("Налоги") or {}).get("СумНедоим")
+        if недоимка:
+            # Документация обещает <FLOAT>, но живой ответ отдаёт число и
+            # строкой с плавающей точкой ("51940.51") — тот же класс
+            # несовпадений формата, что и Емэйл/Тел у ИП (см. _as_list).
+            # int("51940.51") падает, поэтому сначала float(), потом round().
+            try:
+                сумма = round(float(недоимка))
+            except (TypeError, ValueError):
+                сумма = None
+            if сумма:
+                c.risks.append(f"задолженность по налогам {сумма:,} ₽".replace(",", " "))
         mass = addr.get("МассАдрес")
         if mass:
             n = len(mass) if isinstance(mass, list) else "многих"

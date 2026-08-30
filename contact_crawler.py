@@ -11,11 +11,14 @@ sitemap. Дорогие способы включаются только там,
 from __future__ import annotations
 
 import logging
+import multiprocessing
+import os
 import re
 import socket
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from io import BytesIO
 from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
@@ -30,6 +33,63 @@ from email_extractor import (
 log = logging.getLogger("crawler")
 
 USER_AGENT = "SupplierFinderBot/1.0 (+PoC; contact search)"
+
+
+def _pdf_text_worker(body: bytes, max_pages: int, sender) -> None:
+    """Process-isolated pypdf call: malformed PDFs must not hang the crawler."""
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(BytesIO(body), strict=False)
+        if reader.is_encrypted:
+            try:
+                if reader.decrypt("") == 0:
+                    sender.send(("", "PDF зашифрован"))
+                    return
+            except Exception:  # noqa: BLE001
+                sender.send(("", "PDF зашифрован"))
+                return
+        chunks: list[str] = []
+        for page in reader.pages[:max_pages]:
+            try:
+                text = page.extract_text() or ""
+            except Exception:  # noqa: BLE001 — одна страница не теряет остальные
+                continue
+            if text.strip():
+                chunks.append(text)
+        sender.send(("\n".join(chunks).strip(), ""))
+    except Exception as exc:  # noqa: BLE001 — входной PDF не доверенный
+        try:
+            sender.send(("", str(exc)[:300]))
+        except Exception:  # noqa: BLE001
+            pass
+    finally:
+        sender.close()
+
+
+def extract_pdf_text_bounded(body: bytes, max_pages: int, timeout: float = 6.0) -> tuple[str, str]:
+    """Вернуть (text, error), принудительно завершив зависший PDF parser."""
+    method = "spawn" if os.name == "nt" else "fork"
+    context = multiprocessing.get_context(method)
+    receiver, sender = context.Pipe(duplex=False)
+    process = context.Process(target=_pdf_text_worker, args=(body, max_pages, sender), daemon=True)
+    try:
+        process.start()
+        sender.close()
+        if receiver.poll(max(0.5, timeout)):
+            text, error = receiver.recv()
+            process.join(timeout=0.5)
+            return str(text or ""), str(error or "")
+        process.terminate()
+        process.join(timeout=1.0)
+        return "", f"PDF parser timeout ({timeout:.0f} с)"
+    except Exception as exc:  # noqa: BLE001 — serverless may forbid child processes
+        if process.is_alive():
+            process.terminate()
+            process.join(timeout=1.0)
+        return "", f"PDF parser unavailable: {exc}"
+    finally:
+        receiver.close()
 
 # Типовые адреса страниц с контактами — пробуем, если ссылок не нашлось.
 COMMON_CONTACT_PATHS = (
@@ -63,6 +123,12 @@ class SiteResult:
     no_email_reason: str = ""
     elapsed: float = 0.0
     html_pages: dict[str, str] = field(default_factory=dict)  # url -> HTML, если keep_html
+    # Текст документов (сейчас — строго ограниченные same-domain PDF с
+    # реквизитами). Отдельно от HTML, чтобы его не прогонять через DOM parser.
+    text_pages: dict[str, str] = field(default_factory=dict)
+    document_candidates: list[str] = field(default_factory=list)
+    document_errors: dict[str, str] = field(default_factory=dict)
+    timed_out: bool = False
 
     @property
     def confirmed(self) -> list[EmailHit]:
@@ -159,6 +225,11 @@ class ContactCrawler:
         keep_html: bool = False,
         extra_url_hints: tuple[str, ...] = (),
         extra_paths: tuple[str, ...] = (),
+        max_pdfs: int = 2,
+        max_pdf_pages: int = 10,
+        max_pdf_body: int = 5_000_000,
+        pdf_parse_timeout: float = 6.0,
+        max_elapsed: float = 40.0,
     ):
         self.max_pages = max_pages
         self.timeout = timeout
@@ -173,6 +244,11 @@ class ContactCrawler:
         # лежат в оферте и политике конфиденциальности, а не в контактах.
         self.extra_url_hints = extra_url_hints
         self.extra_paths = extra_paths
+        self.max_pdfs = max(0, max_pdfs)
+        self.max_pdf_pages = max(1, max_pdf_pages)
+        self.max_pdf_body = max(100_000, max_pdf_body)
+        self.pdf_parse_timeout = max(0.5, pdf_parse_timeout)
+        self.max_elapsed = max(5.0, max_elapsed)
         self.mx = MxCache(enabled=check_mx)
 
     # ------------------------------------------------------------------ сеть
@@ -189,6 +265,7 @@ class ContactCrawler:
     def _fetch(
         self, session: requests.Session, url: str, *,
         status_out: list[int] | None = None, retries: int = 1,
+        deadline: float | None = None,
     ) -> tuple[str, str] | None:
         """Вернуть (html, конечный_url) или None.
 
@@ -201,8 +278,14 @@ class ContactCrawler:
         адреса на странице.
         """
         for attempt in range(retries + 1):
+            remaining = (deadline - time.monotonic()) if deadline is not None else self.timeout
+            if remaining <= 0:
+                return None
             try:
-                resp = session.get(url, timeout=self.timeout, allow_redirects=True, stream=True)
+                resp = session.get(
+                    url, timeout=min(self.timeout, max(0.5, remaining)),
+                    allow_redirects=True, stream=True,
+                )
             except requests.RequestException as exc:
                 if attempt < retries:
                     time.sleep(0.6 * (attempt + 1))
@@ -235,11 +318,63 @@ class ContactCrawler:
                 resp.close()
         return None
 
-    def _robots_allows(self, session: requests.Session, base: str) -> bool:
+    def _fetch_pdf(
+        self, session: requests.Session, url: str, *, deadline: float | None = None,
+    ) -> tuple[str, str] | None:
+        """Скачать и разобрать небольшой PDF с реквизитами.
+
+        Метод вызывается только для ссылок с сильной подписью и того же
+        корневого домена (см. `_pdf_links`). Ограничения размера, числа файлов
+        и страниц обязательны: PDF — резервная ступень, а не обход архива сайта.
+        """
+        remaining = (deadline - time.monotonic()) if deadline is not None else self.timeout
+        if remaining <= 0:
+            return None
+        try:
+            resp = session.get(
+                url, timeout=min(self.timeout, max(0.5, remaining)),
+                allow_redirects=True, stream=True,
+            )
+        except requests.RequestException as exc:
+            log.debug("PDF не открылся %s: %s", url, exc)
+            return None
+        try:
+            if resp.status_code >= 400:
+                return None
+            final_url = resp.url
+            # Redirect на чужой домен не должен расширять область обхода.
+            if root_domain(urlsplit(final_url).netloc) != root_domain(urlsplit(url).netloc):
+                log.info("PDF %s перенаправил на другой домен — пропускаю", url)
+                return None
+            body = resp.raw.read(self.max_pdf_body + 1, decode_content=True)
+            if len(body) > self.max_pdf_body or not body.startswith(b"%PDF"):
+                return None
+            text, error = extract_pdf_text_bounded(
+                body, self.max_pdf_pages,
+                timeout=min(self.pdf_parse_timeout, max(0.5, (deadline - time.monotonic()) if deadline else self.pdf_parse_timeout)),
+            )
+            if error:
+                log.info("PDF %s пропущен: %s", final_url, error)
+            return (text, final_url) if text else None
+        except Exception as exc:  # noqa: BLE001 — повреждённый PDF является ожидаемым входом
+            log.debug("PDF %s не разобран: %s", url, exc)
+            return None
+        finally:
+            resp.close()
+
+    def _robots_allows(
+        self, session: requests.Session, base: str, *, deadline: float | None = None,
+    ) -> bool:
         if not self.respect_robots:
             return True
         try:
-            resp = session.get(urljoin(base, "/robots.txt"), timeout=self.timeout)
+            remaining = (deadline - time.monotonic()) if deadline is not None else self.timeout
+            if remaining <= 0:
+                # Истёк наш внутренний бюджет времени, а не запрет robots.txt.
+                # Не маркируем сайт ложным blocked_by_robots: вызывающий код
+                # сохранит частичный результат и поставит глубокий проход в очередь.
+                return True
+            resp = session.get(urljoin(base, "/robots.txt"), timeout=min(self.timeout, max(0.5, remaining)))
             if resp.status_code != 200:
                 return True
             parser = RobotFileParser()
@@ -252,11 +387,12 @@ class ContactCrawler:
 
     def crawl(self, host: str) -> SiteResult:
         started = time.monotonic()
+        deadline = started + self.max_elapsed
         host = host.strip().lower().lstrip(".")
         result = SiteResult(host=host, root=root_domain(host))
         session = self._session()
 
-        base, block_status = self._resolve_base(session, host)
+        base, block_status = self._resolve_base(session, host, deadline=deadline)
         if not base:
             # 403/401/451 и 429 — не «сайта нет», а активная защита от ботов
             # (Cloudflare/QRATOR и подобные) или её rate-limit. Смешивать их с
@@ -275,40 +411,45 @@ class ContactCrawler:
                 result.status = "unreachable"
                 result.error = "сайт не открылся ни по https, ни по http"
             result.elapsed = time.monotonic() - started
+            session.close()
             return result
         result.start_url = base
 
-        if not self._robots_allows(session, base):
+        if not self._robots_allows(session, base, deadline=deadline):
             result.status = "blocked_by_robots"
             result.error = "обход запрещён robots.txt"
             result.elapsed = time.monotonic() - started
+            session.close()
             return result
 
         visited: set[str] = set()
         all_hits: list[EmailHit] = []
         contact_pages: set[str] = set()
+        pdf_candidates: list[str] = []
         landing_html = ""
 
         # Уровень 1: главная страница.
-        fetched = self._fetch(session, base)
+        fetched = self._fetch(session, base, deadline=deadline)
         if fetched:
             landing_html, final_url = fetched
             visited.add(self._key(final_url))
             result.pages.append(final_url)
             if self.keep_html:
                 result.html_pages[final_url] = landing_html
+            pdf_candidates.extend(self._pdf_links(landing_html, final_url))
             all_hits.extend(self._extract(landing_html, final_url, contact=False))
 
         # Уровень 2: ссылки на контакты с главной.
         candidates = self._contact_links(landing_html, base) if landing_html else []
 
-        # Уровень 3: типовые адреса, если ссылок не нашлось.
-        if not candidates:
-            paths = self.extra_paths + COMMON_CONTACT_PATHS if self.extra_paths else COMMON_CONTACT_PATHS[:6]
-            candidates = [urljoin(base, p) for p in paths[:8]]
+        # Уровень 3: типовые адреса дополняют, а не только заменяют найденные
+        # ссылки. Иначе наличие одной ссылки «Контакты» навсегда исключало
+        # `/about/` и `/rekvizity/`, даже если лимит страниц ещё оставался.
+        paths = self.extra_paths + COMMON_CONTACT_PATHS if self.extra_paths else COMMON_CONTACT_PATHS[:8]
+        candidates = list(dict.fromkeys(candidates + [urljoin(base, p) for p in paths[:12]]))
 
         for url in candidates:
-            if len(result.pages) >= self.max_pages:
+            if len(result.pages) >= self.max_pages or time.monotonic() >= deadline:
                 break
             key = self._key(url)
             if key in visited:
@@ -316,33 +457,63 @@ class ContactCrawler:
             visited.add(key)
             if self.delay:
                 time.sleep(self.delay)
-            fetched = self._fetch(session, url)
+            fetched = self._fetch(session, url, deadline=deadline)
             if not fetched:
                 continue
             html, final_url = fetched
+            final_key = self._key(final_url)
+            if final_key != key and final_key in visited:
+                continue
+            visited.add(final_key)
             result.pages.append(final_url)
             contact_pages.add(final_url)
             if self.keep_html:
                 result.html_pages[final_url] = html
+            pdf_candidates.extend(self._pdf_links(html, final_url))
             all_hits.extend(self._extract(html, final_url, contact=True))
 
-        # Уровень 4: sitemap — только если до сих пор пусто.
-        if not all_hits and len(result.pages) < self.max_pages:
-            for url in self._sitemap_contacts(session, base):
+        # Уровень 4: sitemap нужен не только для email. Если контакт уже найден,
+        # свободный слот всё равно может привести к реквизитам/ОГРНИП.
+        if len(result.pages) < self.max_pages:
+            for url in self._sitemap_contacts(session, base, deadline=deadline):
                 if len(result.pages) >= self.max_pages:
                     break
-                if self._key(url) in visited:
+                if time.monotonic() >= deadline:
+                    break
+                key = self._key(url)
+                if key in visited:
                     continue
-                visited.add(self._key(url))
-                fetched = self._fetch(session, url)
+                visited.add(key)
+                fetched = self._fetch(session, url, deadline=deadline)
                 if not fetched:
                     continue
                 html, final_url = fetched
+                final_key = self._key(final_url)
+                if final_key != key and final_key in visited:
+                    continue
+                visited.add(final_key)
                 result.pages.append(final_url)
                 contact_pages.add(final_url)
                 if self.keep_html:
                     result.html_pages[final_url] = html
+                pdf_candidates.extend(self._pdf_links(html, final_url))
                 all_hits.extend(self._extract(html, final_url, contact=True))
+
+        # Уровень 5: не более двух PDF, только с сильной подписью и только на
+        # том же домене. Документы не расходуют HTML page budget.
+        result.document_candidates = list(dict.fromkeys(pdf_candidates))
+        for url in result.document_candidates[: self.max_pdfs]:
+            if time.monotonic() >= deadline:
+                result.document_errors[url] = "общий лимит времени сайта исчерпан"
+                break
+            if self.delay:
+                time.sleep(self.delay)
+            fetched_pdf = self._fetch_pdf(session, url, deadline=deadline)
+            if not fetched_pdf:
+                result.document_errors[url] = "PDF не скачан или не содержит извлекаемого текста"
+                continue
+            text, final_url = fetched_pdf
+            result.text_pages[final_url] = text
 
         result.pages_crawled = len(result.pages)
         hits = merge_hits(all_hits)
@@ -357,6 +528,9 @@ class ContactCrawler:
         if not result.hits:
             result.status = "no_email"
             result.no_email_reason = self._diagnose(landing_html)
+        result.timed_out = time.monotonic() >= deadline
+        if result.timed_out and not result.error:
+            result.error = f"достигнут лимит обхода сайта ({self.max_elapsed:.0f} с)"
         result.elapsed = time.monotonic() - started
         session.close()
         return result
@@ -385,7 +559,9 @@ class ContactCrawler:
 
     # ---------------------------------------------------------------- частности
 
-    def _resolve_base(self, session: requests.Session, host: str) -> tuple[str, int | None]:
+    def _resolve_base(
+        self, session: requests.Session, host: str, *, deadline: float | None = None,
+    ) -> tuple[str, int | None]:
         """Подобрать рабочую схему: сначала https, потом http.
 
         Возвращает (url, None) при успехе или ('', код) при неудаче — код
@@ -395,21 +571,27 @@ class ContactCrawler:
         """
         last_status: int | None = None
         for scheme in ("https://", "http://"):
+            remaining = (deadline - time.monotonic()) if deadline is not None else self.timeout
+            if remaining <= 0:
+                break
             url = f"{scheme}{host}/"
             try:
                 socket.gethostbyname(host)
             except OSError:
                 return "", None  # DNS не резолвится — это точно недоступность, не блокировка
             try:
-                resp = session.head(url, timeout=self.timeout, allow_redirects=True)
-                if resp.status_code < 400:
-                    return resp.url, None
-                last_status = resp.status_code
+                resp = session.head(url, timeout=min(self.timeout, max(0.5, remaining)), allow_redirects=True)
+                try:
+                    if resp.status_code < 400:
+                        return resp.url, None
+                    last_status = resp.status_code
+                finally:
+                    resp.close()
             except requests.RequestException:
                 pass
             # HEAD часто закрыт — пробуем GET, прежде чем сдаваться.
             status_out: list[int] = []
-            if self._fetch(session, url, status_out=status_out):
+            if self._fetch(session, url, status_out=status_out, deadline=deadline):
                 return url, None
             if status_out:
                 last_status = status_out[-1]
@@ -456,15 +638,48 @@ class ContactCrawler:
         scored.sort(key=lambda x: (-x[0], len(x[1])))
         return [url for _w, url in scored[: self.max_pages]]
 
-    def _sitemap_contacts(self, session: requests.Session, base: str) -> list[str]:
+    def _pdf_links(self, html: str, base: str) -> list[str]:
+        """Same-domain PDF, явно подписанные как реквизиты/карточка компании."""
+        if not html or self.max_pdfs <= 0:
+            return []
+        soup = BeautifulSoup(html, "html.parser")
+        base_root = root_domain(urlsplit(base).netloc)
+        hints = (
+            "реквизит", "карточка компании", "карточка предприятия",
+            "скачать реквизиты", "company card", "requisite",
+        )
+        found: list[str] = []
+        for anchor in soup.find_all("a", href=True):
+            href = str(anchor.get("href") or "").strip()
+            url = urljoin(base, href).split("#", 1)[0]
+            parts = urlsplit(url)
+            if parts.scheme not in ("http", "https") or not parts.netloc:
+                continue
+            if root_domain(parts.netloc) != base_root:
+                continue
+            label = " ".join((anchor.get_text(" "), str(anchor.get("title") or ""), parts.path)).lower()
+            if not parts.path.lower().endswith(".pdf") or not any(hint in label for hint in hints):
+                continue
+            found.append(url)
+        return list(dict.fromkeys(found))
+
+    def _sitemap_contacts(
+        self, session: requests.Session, base: str, *, deadline: float | None = None,
+    ) -> list[str]:
         try:
-            resp = session.get(urljoin(base, "/sitemap.xml"), timeout=self.timeout)
+            remaining = (deadline - time.monotonic()) if deadline is not None else self.timeout
+            if remaining <= 0:
+                return []
+            resp = session.get(urljoin(base, "/sitemap.xml"), timeout=min(self.timeout, max(0.5, remaining)))
             if resp.status_code != 200 or "<" not in resp.text[:200]:
                 return []
         except requests.RequestException:
             return []
         urls = re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", resp.text)
-        return [u for u in urls if is_contact_url(u)][:4]
+        return [
+            u for u in urls
+            if is_contact_url(u) or any(h in u.lower() for h in self.extra_url_hints)
+        ][:4]
 
     @staticmethod
     def _diagnose(html: str) -> str:

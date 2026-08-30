@@ -1,6 +1,6 @@
 """Recognise delivery-failure notifications (bounces) in incoming mail.
 
-See docs/suppliers-screen.md, раздел 7, для контекста: это единственная
+See Documents/28-8/suppliers-screen.md, раздел 7, для контекста: это единственная
 часть «проблем с поставщиком», которую можно определить автоматически и
 надёжно. Молчание получателя (спам-фильтр, игнорирование) неотличимо от
 успешной доставки — то и не пытаемся здесь распознать.
@@ -40,6 +40,42 @@ _SOFT_MARKERS_RE = re.compile(
     r"421|450|451|452|ящик переполнен|временно недоступен|повторная попытка)",
     re.IGNORECASE,
 )
+
+
+# Кому именно не доставили. Отбойник приходит от mailer-daemon, а не от
+# поставщика, поэтому обычный поиск треда по адресу отправителя его никогда не
+# находит — адрес несостоявшегося получателя лежит только внутри тела.
+#
+# Два формата, оба проверены на живых письмах Яндекса (27.08.2026):
+#   Postfix/Яндекс:  "<edwaitk@yandex.ru>: host ... said: 554 5.1.1 Unknown user"
+#   машинная часть DSN (RFC 3464): "Final-Recipient: rfc822; edwaitk@yandex.ru"
+_FAILED_RECIPIENT_ANGLE_RE = re.compile(r"<([\w.+-]+@[\w.-]+\.\w+)>\s*:", re.IGNORECASE)
+_FAILED_RECIPIENT_DSN_RE = re.compile(
+    r"Final-Recipient:\s*rfc822;\s*<?([\w.+-]+@[\w.-]+\.\w+)>?", re.IGNORECASE
+)
+
+
+def failed_recipients(body_text: str | None, body_html: str | None = None) -> list[str]:
+    """Адреса, которым письмо не доставлено, по телу отбойника.
+
+    Возвращает список в нижнем регистре без дублей. Пустой список означает
+    «не смогли разобрать» — вызывающий код тогда обязан оставить письмо в
+    «Без привязки», а не гадать: пометить не того поставщика недоставленным
+    хуже, чем не пометить никого.
+    """
+    blob = f"{body_text or ''}\n{body_html or ''}"
+    if not blob.strip():
+        return []
+    found = _FAILED_RECIPIENT_DSN_RE.findall(blob) or _FAILED_RECIPIENT_ANGLE_RE.findall(blob)
+    seen: list[str] = []
+    for address in found:
+        low = address.lower()
+        # Служебные адреса самого почтовика в разборе не участвуют.
+        if low.startswith(("mailer-daemon@", "postmaster@")):
+            continue
+        if low not in seen:
+            seen.append(low)
+    return seen
 
 
 def classify_bounce(*, from_email: str, subject: str, body_text: str | None) -> BounceKind:

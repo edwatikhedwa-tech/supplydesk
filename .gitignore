@@ -31,3 +31,8 @@ mail-data/
 
 # Единственное место для временных/рабочих файлов сессии — см. корневой CLAUDE.md
 tmp/
+
+.vercel
+.env*
+runtime/*.json
+*.live-mail.lock

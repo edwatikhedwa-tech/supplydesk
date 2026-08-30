@@ -11,6 +11,7 @@ import { Suppliers } from '@/pages/Suppliers';
 import { Blacklist } from '@/pages/Blacklist';
 import { Settings } from '@/pages/Settings';
 import { NotFound } from '@/pages/NotFound';
+import { CampaignPage } from '@/pages/CampaignPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
@@ -39,6 +40,7 @@ function AppRoutes() {
         <Route path="/requests/new" element={<NewRequest />} />
         <Route path="/requests/:id" element={<RequestPage />} />
         <Route path="/messages" element={<Messages />} />
+        <Route path="/mail/campaigns/:id" element={<CampaignPage />} />
         <Route path="/suppliers" element={<Suppliers />} />
         <Route path="/blacklist" element={<Blacklist />} />
         <Route path="/settings" element={<Settings />} />

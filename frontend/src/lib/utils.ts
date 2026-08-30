@@ -1,38 +1,54 @@
-export function formatRelativeDate(dateStr: string | null): string {
-  if (!dateStr) return '';
+function parseDate(dateStr: string | null): Date | null {
+  if (!dateStr) return null;
   const date = new Date(dateStr);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Compare calendar dates in the browser's local timezone, not elapsed 24-hour
+ * periods. This keeps a message received yesterday at 23:50 from becoming
+ * "Сегодня" after midnight, and keeps the list and detail views consistent.
+ */
+function calendarDayDelta(from: Date, to: Date): number {
+  const fromDay = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
+  const toDay = Date.UTC(to.getFullYear(), to.getMonth(), to.getDate());
+  return Math.round((fromDay - toDay) / 86400000);
+}
+
+function formatClock(date: Date): string {
+  return date.toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
+export function formatRelativeDate(dateStr: string | null): string {
+  const date = parseDate(dateStr);
+  if (!date) return '';
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMin = Math.floor(diffMs / 60000);
-  const diffHrs = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
+  const dayDelta = calendarDayDelta(now, date);
 
-  if (diffMin < 1) return 'только что';
-  if (diffMin < 60) return `${diffMin} мин назад`;
-  if (diffHrs < 24) {
-    const h = date.getHours().toString().padStart(2, '0');
-    const m = date.getMinutes().toString().padStart(2, '0');
-    return `Сегодня ${h}:${m}`;
-  }
-  if (diffDays === 1) {
-    const h = date.getHours().toString().padStart(2, '0');
-    const m = date.getMinutes().toString().padStart(2, '0');
-    return `Вчера ${h}:${m}`;
-  }
-  if (diffDays < 7) return `${diffDays} дн назад`;
+  if (diffMin >= 0 && diffMin < 1) return 'только что';
+  if (diffMin >= 0 && diffMin < 60) return `${diffMin} мин назад`;
+  if (dayDelta === 0) return `Сегодня ${formatClock(date)}`;
+  if (dayDelta === 1) return `Вчера ${formatClock(date)}`;
+  if (dayDelta > 1 && dayDelta < 7) return `${dayDelta} дн назад`;
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
 export function formatFullDate(dateStr: string | null): string {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
+  const date = parseDate(dateStr);
+  if (!date) return '';
   const now = new Date();
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
+  const dayDelta = calendarDayDelta(now, date);
+  const time = formatClock(date);
 
-  const time = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  if (diffDays === 0) return `Сегодня, ${time}`;
-  if (diffDays === 1) return `Вчера, ${time}`;
-  if (diffDays < 365) {
+  if (dayDelta === 0) return `Сегодня, ${time}`;
+  if (dayDelta === 1) return `Вчера, ${time}`;
+  if (dayDelta > 0 && dayDelta < 365) {
     return `${date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}, ${time}`;
   }
   return `${date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}, ${time}`;

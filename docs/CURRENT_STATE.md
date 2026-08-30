@@ -33,6 +33,27 @@ changelog.
 - Hard bounce распознаётся отдельно; soft bounce не превращается автоматически
   в permanent suppression.
 
+## OUTGOING SAFETY
+
+- `SAFETY-001` is closed for the verified SQLite/runtime path. The durable
+  global control is `mail_runtime_controls.outgoing_enabled`; clean schema
+  creation and a missing control row are fail-closed (`0`/`False`). Invalid
+  values and database read failures are also treated as disabled and logged.
+- The default for `mail_account_profiles.outgoing_enabled` and the account
+  query fallback is `0`. A provider connection explicitly creates/refreshes
+  that account's profile, but it never enables the global outgoing switch.
+- The only implemented enable flow is `POST /api/mail/runtime/outgoing` with
+  explicit JSON booleans `enabled` and `confirmation=true`, an authenticated
+  CSRF-protected session, and durable `owner` membership. The global switch is
+  database-wide; it is not a per-workspace switch. A new workspace does not
+  create an enabling row and remains blocked while the global default is off.
+- `api/index.py` no longer starts the mail queue during module import. The
+  local `SupplierApp.run()` entry point starts workers explicitly. A running
+  worker performs the durable gate check before claiming work, and the
+  provider boundary retains the final race-safe check.
+- With outgoing disabled, existing jobs remain `queued` and attempts do not
+  increase. No real SMTP call was made by the safety acceptance.
+
 ## REQUEST / SUPPLIER
 
 - Request 1059: `171` raw `request_suppliers` rows; `170` visible rows после
@@ -102,9 +123,11 @@ changelog.
 
 ## TEST STATUS
 
-- Backend full suite previously verified on this source state: `344 tests`,
-  `OK (skipped=1)`; the skip is the PostgreSQL branch without
-  `DATABASE_URL`/isolated integration fixture.
+- Backend full suite post-change: `355 tests`, `OK (skipped=1)`; the skip is
+  the PostgreSQL branch without `DATABASE_URL`/isolated integration fixture.
+- `tests/test_outgoing_safety.py`: `11 tests, OK`; this covers clean/missing,
+  false/malformed/restart, missing account profile, import, owner control,
+  runtime refresh, 84 queued jobs, and explicit fake-provider enable.
 - Current targeted tests: supplier identity `27 OK`, status semantics `16 OK`,
   Mail.ru MVP `12 OK`.
 - Existing backend tests use temporary SQLite paths in the inspected suites;
@@ -118,14 +141,14 @@ changelog.
   SQLite integrity `ok`, live SMTP allowed `NO`.
 - `MAIL_OUTGOING_DISABLED=1` is set in local environment and durable
   `mail_runtime_controls.outgoing_enabled=0` is present in the current DB.
-- Account-level outgoing flags are `1`, but both global controls block actual
-  outgoing transport. The migration default for a new runtime control row is
-  `1`; this is the likely mechanism by which a fresh/missing control can start
-  enabled. The exact historical cause of the previous unexpected `1` cannot be
-  proven from read-only source inspection.
-- `api/index.py` starts the bounded queue on module import. Vercel instances
-  are recyclable, so this is not a durable production worker; outgoing remains
-  blocked in the current state.
+- Account-level outgoing flags are `1` for the two existing connected accounts,
+  but the global durable control and environment kill switch block transport.
+  New account profiles default to `0`; explicit account connection is the
+  account-level eligibility action, while the global switch remains separate.
+- The source default for a new runtime control row is now `0`, and importing
+  `api/index.py` has no queue-start side effect. Vercel still requires a
+  dedicated durable worker before any production background delivery is
+  enabled there.
 - HTTP smoke passed while leaving the server running: `GET / = 200`,
   `/api/auth/me = 200`, unauthenticated `/api/requests/1059 = 401`.
 
@@ -136,8 +159,8 @@ changelog.
 - Supplier identity cleanup is not apply-ready. The old historical `132`
   candidate number is not a current metric.
 - No explicit central test DB-path safety guard exists.
-- Vercel durable worker behavior is not equivalent to a dedicated background
-  worker; queue startup on a warm function is bounded but recyclable.
+- Vercel durable worker behavior is not verified; the adapter intentionally
+  does not start background delivery during import.
 - The request Composer does not let the user explicitly choose among multiple
   company emails.
 
@@ -150,9 +173,6 @@ changelog.
   live FK/association records.
 - `MAIL-001` (MEDIUM): PostgreSQL acceptance is not verified.
 - `MAIL-002` (MEDIUM): no real Mail.ru live acceptance evidence.
-- `SAFETY-001` (MEDIUM): outgoing durable migration default is enabled and the
-  queue starts during API import; current kill switch is safe, lifecycle needs
-  explicit hardening before enabling outgoing.
 - `TEST-001` (MEDIUM): no centralized live-DB abort guard for backend/Playwright
   test execution.
 - `UX-001` (LOW): explicit multi-email contact picker is absent; backend's
