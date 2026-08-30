@@ -1,4 +1,25 @@
-# Repository architecture rules
+# Claude Code project instructions
+
+This file is the Claude Code adapter. The shared project contract is in
+[`ai/AI_CONTRACT.md`](ai/AI_CONTRACT.md); the lifecycle is in
+[`ai/WORKFLOW.md`](ai/WORKFLOW.md); current evidence is in
+[`ai/CURRENT_STATE.md`](ai/CURRENT_STATE.md) and
+[`ai/LAST_HANDOFF.md`](ai/LAST_HANDOFF.md).
+
+Before implementation, read those files plus
+[`ai/DECISIONS.md`](ai/DECISIONS.md),
+[`ai/DEFERRED_FINDINGS.md`](ai/DEFERRED_FINDINGS.md) and
+[`ai/ACTIVE_TASK.md`](ai/ACTIVE_TASK.md). Use AUDIT, DESIGN DECISION,
+IMPLEMENT, ACCEPTANCE and CLOSE. Do not start implementation before the root
+cause and the allowed scope are understood. Do not trust a self-report from a
+previous agent without checking evidence. Do not expand scope or repair
+unrelated findings.
+
+Update the state files and append-only chronology during the iteration. Create
+a Task-ID commit after a completed iteration when possible. Always disclose
+NOT VERIFIED, FAIL and BLOCKED, and report commit, branch and push status. Do
+not claim that ChatGPT Project or Claude Project has repository access unless
+the relevant files were actually connected or read.
 
 ## Root hygiene
 
@@ -19,7 +40,7 @@ or temporary. Before adding anything to root, ask whether it belongs in one of t
 
 Never dump uploaded `.rar`/`.zip`/`.tar` archives, ad-hoc `check.js`/`test.py` scripts, or
 downloaded reference material directly at root — they land in `tmp/` while being worked on, and
-in `_archive/` or a proper subfolder once their useful content has been extracted.
+in `_archive/` or a proper subfolder once their useful content is extracted.
 
 ## Project layout
 
@@ -37,8 +58,5 @@ in `_archive/` or a proper subfolder once their useful content has been extracte
   modules genuinely imported by the backend — this is deliberate structure, not clutter; don't
   move them without checking what imports them first.
 
-## Before archiving or replacing a frontend/module
-
-Move it, don't delete it — put it under `_archive/` with a clear name. Update whatever served it
-(routing, `vercel.json` `includeFiles`/`excludeFiles`, build scripts) so there's no dangling
-reference to the moved path, and re-run the test suite before considering the change done.
+At the end of every response, include the instruction-check block required by
+[`ai/adapters/CLAUDE_PROJECT_INSTRUCTIONS.md`](ai/adapters/CLAUDE_PROJECT_INSTRUCTIONS.md).
