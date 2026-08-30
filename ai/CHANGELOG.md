@@ -62,3 +62,15 @@ rewritten.
 - Evidence: scoped `git status`, `git diff --check`, validator PASS and final report.
 - Commit: `HEAD` after the scoped commit; exact hash is reported by final `git rev-parse HEAD`.
 - Status: `PASS`
+
+## 2026-08-30T16:34:45Z — COMMIT — TASK-STATE-CONTROL-20260830
+
+- Agent: `Codex`
+- Task ID: `TASK-STATE-CONTROL-20260830`
+- Mode: `CLOSE`
+- Action: verified and recorded the scoped documentation commit; preserved pre-existing staged files outside the Task ID.
+- Files: `AGENTS.md`, `CLAUDE.md`, `ai/**` only.
+- Result: local commit exists; no push attempted because `origin` is absent.
+- Evidence: `git rev-parse HEAD`, `git diff-tree --no-commit-id --name-only -r HEAD`, validator PASS.
+- Commit: `HEAD` — exact hash reported after this final chronology update.
+- Status: `PASS`
