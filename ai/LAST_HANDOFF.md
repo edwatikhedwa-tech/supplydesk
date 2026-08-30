@@ -3,15 +3,15 @@
 ## Current handoff — post-publication reconciliation complete
 
 Task ID: `TASK-STATE-POST-PUBLISH-RECONCILIATION-20260830`
-Дата и время UTC: `2026-08-30T18:36:14Z`
+Дата и время UTC: `2026-08-30T18:42:02Z`
 Агент: `Codex`
 Ветка: `codex/TASK-STATE-CONTROL-20260830`
 Repository: `https://github.com/edwatikhedwa-tech/supplydesk` (`private`)
 Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`
 Upstream: `origin/codex/TASK-STATE-CONTROL-20260830`
-HEAD before: `8e4f76ebd4021b45e8726946215a67ef25d47dea`
-HEAD after: the Task-ID reconciliation commit; exact hash is reported after
-the final `git rev-parse HEAD` check.
+HEAD before final state record: `55db2aa2d8f80cdf69b4970db26cacce669a7e62`
+HEAD after: the final state-record commit; exact hash is reported after the
+final `git rev-parse HEAD` check.
 Active task: `NONE`
 Status: `PASS`
 
@@ -45,11 +45,13 @@ Database, migration, SMTP и IMAP actions не выполнялись.
 - Baseline и final `python ai/tools/validate_state.py`.
 - `git diff --check -- ai`, append-only характер логов и ограничение diff
   только разрешёнными `ai/**` файлами.
+- Post-commit `git ls-remote` and `gh api` both returned the Task-ID commit
+  `55db2aa2d8f80cdf69b4970db26cacce669a7e62` for the target branch.
 
 ## Что не прошло
 
-`NONE` для state reconciliation. Это не является утверждением о прохождении
-продуктовой или live-mail приёмки.
+`NONE` для state reconciliation; normal commit and push both passed. Это не
+является утверждением о прохождении продуктовой или live-mail приёмки.
 
 ## Что не проверено
 

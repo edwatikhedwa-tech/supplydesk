@@ -56,6 +56,16 @@ database action, runtime start, SMTP action or IMAP action was performed.
   collaborator access: `NOT VERIFIED`.
 - Secret values: not read into the report and not recorded.
 
+## Post-commit remote acceptance
+
+- Task-ID commit: `55db2aa2d8f80cdf69b4970db26cacce669a7e62`.
+- Commit subject: `TASK-STATE-POST-PUBLISH-RECONCILIATION: align repository state`.
+- Push: `PASS` — `git push origin codex/TASK-STATE-CONTROL-20260830`.
+- Post-push `git ls-remote` SHA and `gh api` branch SHA matched the Task-ID
+  commit; GitHub still reported `PRIVATE` visibility.
+- Final state-record commit is a separate ai-only closeout; its exact hash is
+  reported by the final repository check.
+
 ## Rollback
 
 The state-only changes are isolated to the Task-ID commit. Revert that commit
