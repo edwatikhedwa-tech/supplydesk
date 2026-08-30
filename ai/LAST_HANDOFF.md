@@ -1,6 +1,83 @@
 # Last Handoff
 
-## Current handoff — state closeout complete
+## Current handoff — post-publication reconciliation complete
+
+Task ID: `TASK-STATE-POST-PUBLISH-RECONCILIATION-20260830`
+Дата и время UTC: `2026-08-30T18:36:14Z`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+Repository: `https://github.com/edwatikhedwa-tech/supplydesk` (`private`)
+Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`
+Upstream: `origin/codex/TASK-STATE-CONTROL-20260830`
+HEAD before: `8e4f76ebd4021b45e8726946215a67ef25d47dea`
+HEAD after: the Task-ID reconciliation commit; exact hash is reported after
+the final `git rev-parse HEAD` check.
+Active task: `NONE`
+Status: `PASS`
+
+## Цель
+
+Сверить `ai/**` с фактически подтверждённой публикацией GitHub, закрыть
+устаревшие publication blockers и оставить продуктовые неизвестные явно
+открытыми.
+
+## Что изменено
+
+- `ai/CURRENT_STATE.md` обновлён фактическими repository/branch/HEAD/remote
+  данными и текущими P0/P1/P2 приоритетами.
+- `ai/ACTIVE_TASK.md` остаётся явным `NONE / IDLE` sentinel.
+- `FINDING-002`, `FINDING-009` и `FINDING-010` помечены
+  `SUPERSEDED` для текущего publication gate с сохранением residual risks.
+- Добавлены append-only chronology records и отдельный отчёт этой задачи.
+- Application code, frontend, API, mail, migrations, tests, `docs/**` и
+  database не изменялись.
+
+## Текущее состояние runtime
+
+Runtime/product acceptance в этой state-only задаче не запускался.
+Database, migration, SMTP и IMAP actions не выполнялись.
+
+## Что проверено
+
+- Текущие branch, HEAD, upstream, `origin`, рабочее дерево и remote branch.
+- GitHub repository name, private visibility, default branch и branch SHA через
+  `gh`, `gh api` и `git ls-remote`.
+- Baseline и final `python ai/tools/validate_state.py`.
+- `git diff --check -- ai`, append-only характер логов и ограничение diff
+  только разрешёнными `ai/**` файлами.
+
+## Что не прошло
+
+`NONE` для state reconciliation. Это не является утверждением о прохождении
+продуктовой или live-mail приёмки.
+
+## Что не проверено
+
+- Production deployment, PostgreSQL acceptance, real Mail.ru acceptance,
+  visual/responsive acceptance и collaborator access.
+- Текущий полный product test suite; его запуск запрещён scope этой задачи.
+- Arbitrary secrets вне документированных pattern-based publication checks.
+- Авторство и provenance 56 untracked working-tree entries.
+
+## Следующий рациональный шаг
+
+После отдельного разрешения владельца выбрать один offline product block:
+проверка HTML/plain-text outbound mail contract. Этот шаг не активирован и не
+реализован в текущей задаче.
+
+## Не повторять
+
+Не трактовать исторические absent-origin/repository-not-found записи как
+текущее состояние. Не изменять product code, database или `docs/**` в рамках
+этой reconciliation; не отправлять почту, не запускать миграции и не делать
+force-push.
+
+## Historical / superseded records
+
+Ниже сохранён предыдущий closeout handoff. Он является исторической записью,
+а текущим считается раздел выше.
+
+## Historical / superseded handoff — state closeout complete
 
 Task ID: `TASK-STATE-CLOSEOUT-20260830`
 Дата и время UTC: `2026-08-30T18:31:32Z`

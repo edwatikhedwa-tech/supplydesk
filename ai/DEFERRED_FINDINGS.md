@@ -12,16 +12,21 @@ Agents must not automatically fix these findings while doing another task.
 - Why outside current scope: reconciling product documentation with application code would expand into a product audit.
 - Possible next step: run a separate read-only documentation/code reconciliation and update the passport with evidence.
 - Status: `OPEN`
-## FINDING-002 — No configured Git remote
+## FINDING-002 — No configured Git remote (historical blocker)
 
 - ID: `FINDING-002`
 - Date: `2026-08-30`
-- Source: `git config --get remote.origin.url` returned no value.
-- Description: this checkout has no verified `origin`, so push cannot be performed.
+- Source: current `git remote -v`, branch tracking metadata and
+  `git ls-remote origin refs/heads/codex/TASK-STATE-CONTROL-20260830`.
+- Description: the former no-remote observation is superseded. Current
+  checkout has `origin`, the expected upstream branch and a matching remote
+  SHA; the repository is private and exists at the confirmed owner/name.
 - Severity: `P3`
-- Why outside current scope: configuring a remote changes external repository state and needs owner direction.
-- Possible next step: configure the intended remote through the normal project process, then authorize a push.
-- Status: `OPEN`
+- Why outside current scope: no further remote mutation is needed for this
+  reconciliation; future remote changes still require owner direction.
+- Possible next step: none for the current publication gate; preserve the
+  evidence in the task report.
+- Status: `SUPERSEDED` (current publication gate resolved)
 
 ## FINDING-003 — Standard verification helper scripts are absent
 
@@ -121,25 +126,28 @@ Agents must not automatically fix these findings while doing another task.
   ignored. A high-confidence credential/database-URL pattern was detected in
   `.env.production.local`.
 - Severity: `P0`
-- Why outside current scope: removing, editing, rotating or publishing
-  credentials requires owner action; this task must stop before external GitHub
-  changes.
-- Possible next step: owner-led quarantine/rotation, then repeat scan on the
-  approved publish set without sending secrets to chat.
-- Status: `BLOCKED`
+- Why outside current scope: removing, editing or rotating local credentials
+  still requires owner action; this reconciliation does not claim that local
+  credential hygiene risk is gone.
+- Possible next step: owner-led quarantine/rotation and a fresh approved-set
+  security review. Local credential-bearing env files remain present and are
+  intentionally not described by value here.
+- Status: `SUPERSEDED` (publication gate resolved; residual local security risk
+  remains `OPEN`)
 
 ## FINDING-010 — Publish set and shared branch are not approved
 
 - ID: `FINDING-010`
 - Date: `2026-08-30`
 - Source: current Git status and repository lookup.
-- Description: the current snapshot contains `670` uncommitted paths (`66 M`,
-  `6 D`, `598 ??`), while the expected `edwatikhedwa-tech/supplydesk`
-  repository does not exist and no `origin` is configured. The historical
-  `170` count is not reproducible.
+- Description: the former unapproved-publish-set/shared-branch blocker is
+  superseded for the completed publication. The explicit sanitized publish
+  set was committed as `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e` and pushed
+  to the confirmed private repository and branch. The current worktree still
+  contains unrelated untracked paths, which remain outside this task.
 - Severity: `P1`
-- Why outside current scope: automatically selecting files or a shared branch
-  could publish user work or alter external repository state.
-- Possible next step: approve an explicit allowlist, repository owner/name and
-  shared branch; then run a fresh staged-tree security review.
-- Status: `BLOCKED`
+- Why outside current scope: no new publish-set selection or branch mutation is
+  authorized by this state reconciliation.
+- Possible next step: owner-led review of any future publish set; no action is
+  required for the already completed publication.
+- Status: `SUPERSEDED` (current publication decision resolved)

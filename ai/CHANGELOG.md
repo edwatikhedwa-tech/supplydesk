@@ -208,3 +208,19 @@ rewritten.
 - Evidence: repository/GitHub audit, state validator, scoped diff check and
   staged-path review.
 - Status: `PASS`
+
+## 2026-08-30T18:36:14Z — AUDIT / DESIGN DECISION — TASK-STATE-POST-PUBLISH-RECONCILIATION-20260830
+
+- Agent: `Codex`
+- Task ID: `TASK-STATE-POST-PUBLISH-RECONCILIATION-20260830`
+- Action: rechecked the current private GitHub repository, branch, upstream,
+  remote SHA and working-tree boundary after publication.
+- Design decision: treat the published private branch as the current authority;
+  mark only publication-specific stale blockers as `SUPERSEDED`, while keeping
+  product acceptance and residual local credential risk explicitly open.
+- Scope: `ai/**` state and chronology only; no application, database, runtime,
+  SMTP, IMAP or production-setting action.
+- Acceptance before commit: `PASS` — AI validator, scoped diff check,
+  append-only log check, explicit staged-path review and secret-like diff scan
+  all passed; normal push remains the final transport step.
+- Status: `PASS`

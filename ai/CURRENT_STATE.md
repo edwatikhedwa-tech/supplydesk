@@ -2,20 +2,24 @@
 
 ## Last update
 
-- Timestamp UTC: `2026-08-30T18:31:32Z` (state closeout audit).
+- Timestamp UTC: `2026-08-30T18:36:14Z` (post-publication reconciliation audit).
 - Project root: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
 - Repository: `edwatikhedwa-tech/supplydesk`.
 - Branch: `codex/TASK-STATE-CONTROL-20260830`.
-- HEAD before this closeout: `7aa4fad0ce21f056592aa68c73c9ac7ad715c5fa`.
+- HEAD: `8e4f76ebd4021b45e8726946215a67ef25d47dea` (verified before this
+  reconciliation; the final Task-ID commit is reported in the handoff).
+- Remote: `origin` → `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Upstream: `origin/codex/TASK-STATE-CONTROL-20260830`.
-- GitHub branch HEAD: `7aa4fad0ce21f056592aa68c73c9ac7ad715c5fa`.
+- GitHub branch HEAD at audit: `8e4f76ebd4021b45e8726946215a67ef25d47dea`.
 - Repository visibility: `private`.
+- Publication: `COMPLETE` — publication commit
+  `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e` is on the confirmed private
+  remote; this task performs state reconciliation only.
 - Working tree at audit: `DIRTY`; `56` untracked porcelain entries, no staged
-  entries and no tracked modifications. These paths remain outside this
-  closeout.
-- HEAD after closeout: the Task-ID commit containing this snapshot; its exact
-  hash is reported by the final `git rev-parse HEAD` check.
+  entries and no tracked modifications. These paths remain outside this task.
+- Latest verified tests: `python ai/tools/validate_state.py` → `PASS` at
+  baseline; product tests are intentionally not run by this task.
 
 ## Project
 
@@ -31,7 +35,9 @@
 
 ## Last completed task
 
-- `TASK-REMOTE-SETUP-SIMPLIFIED` — `COMPLETE`.
+- `TASK-STATE-POST-PUBLISH-RECONCILIATION-20260830` — `COMPLETE` after the
+  current documentation/state reconciliation.
+- Previous publication task: `TASK-REMOTE-SETUP-SIMPLIFIED` — `COMPLETE`.
 - Its publication result is preserved in `ai/CHANGELOG.md`,
   `ai/INTERACTION_LOG.md`, `ai/LAST_HANDOFF.md` and
   `ai/reports/TASK-REMOTE-SETUP-SIMPLIFIED-report.md`.
@@ -42,8 +48,9 @@
   independently confirmed with `gh repo view`, `gh api`, `git ls-remote` and
   local Git metadata.
 - Publication commit: `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e`.
-- Latest state-record commit before this closeout: `7aa4fad0ce21f056592aa68c73c9ac7ad715c5fa`.
-- No new publication action is part of this state closeout.
+- Latest state-record commit before this reconciliation:
+  `8e4f76ebd4021b45e8726946215a67ef25d47dea`.
+- No new publication action is part of this reconciliation.
 
 ## Implemented
 
@@ -64,8 +71,18 @@
 - GitHub repository privacy, name, default branch and branch commit were
   checked through `gh`; the remote branch matches the local HEAD before this
   closeout.
-- Baseline `python ai/tools/validate_state.py` returned `PASS`.
+- Baseline `python ai/tools/validate_state.py` returned `PASS`; the final
+  result is recorded in the task report.
 - The files changed by this task are limited to `ai/**`.
+
+## Current priorities
+
+- Current P0: `NONE CONFIRMED`.
+- Current P1: reported outbound rich-text behavior and full-suite readiness;
+  both remain `REPORTED / NOT VERIFIED` for this task.
+- Current P2: PostgreSQL acceptance, real Mail.ru acceptance, missing helper
+  scripts, parallel `docs/**` state ownership and broad untracked-worktree
+  provenance remain `NOT VERIFIED` or `OPEN` as recorded in deferred findings.
 
 ## Not verified
 
@@ -79,7 +96,7 @@
 
 ## Blockers
 
-- `NONE CONFIRMED` for this state closeout.
+- `NONE CONFIRMED` for this reconciliation.
 - Reported product directions remain open and are not silently declared fixed:
   outbound rich-text behavior, full-suite readiness, provider/database
   acceptance, test isolation and the parallel `docs/**` state system.
@@ -97,7 +114,7 @@
 - One bounded candidate, not an active task: review and, if separately
   authorized, choose the offline **HTML/plain-text outbound mail contract**
   block described in the previous state/report. Do not implement it as part of
-  this closeout.
+  this reconciliation.
 
 ## Historical / superseded state
 
