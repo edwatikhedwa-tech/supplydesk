@@ -130,3 +130,21 @@ This log records agent work interactions. It is append-only.
 - Push: `PASS` — remote SHA matched; repository remains private.
 - Result: `COMPLETE` for `ai/**` reconciliation; product/provider acceptance is
   still explicitly `NOT VERIFIED`.
+
+## 2026-08-30T18:56:25Z — TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830
+
+- Request: independently audit the outbound plain-text/HTML content contract;
+  do not change product code or send real email.
+- Mode: `AUDIT ONLY`.
+- State change: `YES` — report, current state, handoff and deferred finding
+  were updated under `ai/**` only.
+- Result: `COMPLETE — PARTIALLY CONFIRMED` — the existing rich
+  single/thread Composer sends `innerHTML` as generic `body`, while the
+  backend treats it as plain text and escapes it into the HTML alternative.
+  Bulk/new and unmatched-inbox reply are plain-text input flows.
+- Verification: `171` relevant backend tests `OK`, one continuation dry-run
+  `OK`, isolated temporary SQLite/mock SMTP content matrix `OK`, frontend
+  typecheck `PASS`, frontend build `PASS`.
+- Safety: no live database, migration, SMTP/IMAP, email, supplier merge,
+  resend/status UI or product-file change; `Push: NOT RUN`.
+- Report: `ai/reports/TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830-report.md`.

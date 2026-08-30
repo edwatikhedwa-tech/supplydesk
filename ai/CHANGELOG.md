@@ -236,3 +236,23 @@ rewritten.
 - Final repository status: tracked/staged changes `0`; `56` unrelated
   untracked entries preserved.
 - Status: `COMPLETE`
+
+## 2026-08-30T18:56:25Z — AUDIT / MAIL CONTENT CONTRACT — TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830
+
+- Agent: `Codex`
+- Task ID: `TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830`
+- Mode: `AUDIT ONLY`
+- Result: `COMPLETE — PARTIALLY CONFIRMED`.
+- Evidence: traced bulk, single/thread, unmatched-inbox reply and campaign
+  continuation flows; ran `171` relevant backend tests, one continuation
+  dry-run test, an isolated temporary-SQLite fake-provider/fake-SMTP MIME
+  matrix, frontend typecheck and frontend build.
+- Finding: the rich single/thread Composer sends `innerHTML` as generic `body`,
+  while the backend treats it as plain text and escapes it into the HTML
+  alternative. Bulk/new and unmatched-inbox reply remain plain-text input
+  flows. No implementation was made pending a plain-only vs explicit-rich
+  business decision.
+- Scope: only `ai/**` report/state files changed; no product code, migrations,
+  tests, `docs/**`, live database, SMTP, IMAP or supplier identity state.
+- Report: `ai/reports/TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830-report.md`.
+- Push: `NOT RUN`.

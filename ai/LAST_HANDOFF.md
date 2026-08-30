@@ -1,5 +1,64 @@
 # Last Handoff
 
+## Current handoff — mail content contract audit complete
+
+Task ID: `TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830`
+Дата и время UTC: `2026-08-30T18:56:25Z`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+Repository: `https://github.com/edwatikhedwa-tech/supplydesk` (`private`)
+Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`
+Upstream: `origin/codex/TASK-STATE-CONTROL-20260830`
+HEAD at audit: `602d7c42df6269513c9dc112ace90b19d8f9082a`
+Remote branch SHA at audit: `602d7c42df6269513c9dc112ace90b19d8f9082a`
+Active task: `NONE`
+Status: `COMPLETE — PARTIALLY CONFIRMED`
+
+## Цель
+
+Независимо проверить текущий frontend → API → service → MIME content
+contract без изменения product code, базы, миграций, реальной почты или
+supplier identity state.
+
+## Результат
+
+- A bulk/new campaign and C unmatched-inbox reply are plain-text input flows;
+  backend derives an escaped HTML alternative and MIME is multipart/alternative.
+- B existing request-thread/single composer is a rich `contentEditable` that
+  sends `innerHTML` as generic `body`; backend treats it as plain text and
+  escapes it, so rich HTML is sent as literal text. Verdict:
+  `PARTIALLY CONFIRMED`.
+- D campaign continuation copies frozen `body_text`/`body_html` snapshots and
+  performs no live SMTP send; it preserves the source representation.
+- No automatic implementation was chosen because the business contract must
+  decide between plain-only composition and explicit sanitized rich HTML.
+
+## Что проверено
+
+- Full relevant offline backend set: `171` tests, `OK`.
+- Provider-switch continuation dry-run: `1` test, `OK`.
+- Temporary-SQLite/fake-provider and fake-SMTP probe for plain text, rich HTML,
+  links, unsafe markup, Cyrillic and line breaks, plus bulk storage and inbox
+  reply: `OK`.
+- Frontend typecheck and Vite production build: `PASS`.
+- Repository, branch, HEAD, upstream, remote SHA and private visibility.
+
+## Что изменено
+
+- Only the allowed `ai/**` audit report and state chronology are updated.
+- Product code, frontend, backend, migrations, tests, `docs/**`, live
+  database, SMTP and IMAP were not changed or used.
+
+## Ограничения / следующий шаг
+
+`tests/run-tests.ps1` and `scripts/doctor.ps1` are absent, so those exact
+helper checks are `NOT VERIFIED`. Record the content-format business decision
+before opening a separate implementation task. Push is `NOT RUN`.
+
+## Report
+
+`ai/reports/TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830-report.md`
+
 ## Current handoff — post-publication reconciliation complete
 
 Task ID: `TASK-STATE-POST-PUBLISH-RECONCILIATION-20260830`

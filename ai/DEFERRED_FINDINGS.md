@@ -86,20 +86,25 @@ Agents must not automatically fix these findings while doing another task.
   restore an isolated, explicitly controlled full-suite run.
 - Status: `OPEN`
 
-## FINDING-007 — Reported outbound rich-text defect
+## FINDING-007 — Outbound rich-text contract mismatch
 
 - ID: `FINDING-007`
 - Date: `2026-08-30`
 - Source: `Documents/28-8/PROJECT_STATUS.md`, P1 mail section.
-- Description: the project status reports that editor HTML is escaped as text.
-  This was not independently accepted in the current task because the
-  outgoing safety gate blocked the relevant full-suite paths.
+- Description: the project status reported that editor HTML is escaped as
+  text. The offline audit independently reproduced this for the existing
+  single/thread rich Composer through durable fields and mock-SMTP MIME.
 - Severity: `P1`
-- Why outside current scope: implementing or changing MIME/rendering behavior
-  is application work and was explicitly prohibited.
-- Possible next step: authorize one offline, mock-transport HTML/plain-text
-  contract task, keeping Mail.ru and live sending separate.
-- Status: `OPEN`
+- Why outside current scope: this task was audit-only; implementing or changing
+  MIME/rendering behavior remains a separate application task.
+- Audit result: `PARTIALLY CONFIRMED` — the bulk/new and unmatched-inbox reply
+  paths are plain-text inputs, while the request-thread/single rich Composer
+  sends HTML through a plain-text backend field. The system-wide contract is
+  mixed/implicit.
+- Next step: record the business decision between a plain-only composer and an
+  explicit sanitized rich-HTML contract, then authorize a separate fix.
+- Status: `OPEN — PARTIALLY CONFIRMED`
+- Report: `ai/reports/TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830-report.md`
 
 ## FINDING-008 — Unattributed `api/index.py` worktree edit
 

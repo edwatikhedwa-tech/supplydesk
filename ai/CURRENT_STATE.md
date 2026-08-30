@@ -2,24 +2,25 @@
 
 ## Last update
 
-- Timestamp UTC: `2026-08-30T18:42:02Z` (post-push reconciliation close).
+- Timestamp UTC: `2026-08-30T18:56:25Z` (mail content contract audit close).
 - Project root: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
 - Repository: `edwatikhedwa-tech/supplydesk`.
 - Branch: `codex/TASK-STATE-CONTROL-20260830`.
-- HEAD: `55db2aa2d8f80cdf69b4970db26cacce669a7e62` (Task-ID reconciliation
-  commit; verified against the remote before this final state record).
+- HEAD: `602d7c42df6269513c9dc112ace90b19d8f9082a` (audit baseline; verified
+  against the remote branch before the state-report update).
 - Remote: `origin` → `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Upstream: `origin/codex/TASK-STATE-CONTROL-20260830`.
-- GitHub branch HEAD at audit: `55db2aa2d8f80cdf69b4970db26cacce669a7e62`.
+- GitHub branch HEAD at audit: `602d7c42df6269513c9dc112ace90b19d8f9082a`.
 - Repository visibility: `private`.
 - Publication: `COMPLETE` — publication commit
   `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e` is on the confirmed private
   remote; this task performs state reconciliation only.
 - Working tree at audit: `DIRTY`; `56` untracked porcelain entries, no staged
   entries and no tracked modifications. These paths remain outside this task.
-- Latest verified tests: `python ai/tools/validate_state.py` → `PASS` at
-  baseline; product tests are intentionally not run by this task.
+- Latest verified tests: the offline mail-content audit report records `171`
+  backend tests `OK`, one continuation test `OK`, the isolated mock-MIME
+  probe `OK`, frontend typecheck `PASS` and frontend build `PASS`.
 
 ## Project
 
@@ -34,6 +35,10 @@
 - `ai/ACTIVE_TASK.md` contains the explicit idle sentinel.
 
 ## Last completed task
+
+- `TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830` — `COMPLETE`,
+  `PARTIALLY CONFIRMED`; the existing rich single/thread composer sends HTML
+  through a plain-text backend contract. Product code was not changed.
 
 - `TASK-STATE-POST-PUBLISH-RECONCILIATION-20260830` — `COMPLETE` after the
   current documentation/state reconciliation.
@@ -59,27 +64,30 @@
 
 ## Runtime
 
-- No runtime, database, migration, SMTP, IMAP or product-suite check is
-  required for this documentation-only closeout.
-- Existing product/runtime findings remain recorded as reported or not
-  verified; they are not promoted to current acceptance facts here.
+- No live runtime, live database, migration, SMTP or IMAP action was performed.
+  The mail audit used temporary SQLite fixtures and fake providers/SMTP only.
+- Product content behavior is now independently verified as
+  `PARTIALLY CONFIRMED` for the rich single/thread route; the fix remains
+  unimplemented by instruction.
 
 ## Verified
 
 - Repository, branch, HEAD, origin, upstream and worktree status were checked
-  in the current checkout.
+  in the current checkout; the remote branch matched the audit baseline.
 - GitHub repository privacy, name, default branch and branch commit were
   checked through `gh`; the remote branch matches the local HEAD before this
   closeout.
-- Baseline `python ai/tools/validate_state.py` returned `PASS`; the final
-  result is recorded in the task report.
+- The task report records the isolated MIME/storage assertions, test commands,
+  and the exact content-contract verdict.
 - The files changed by this task are limited to `ai/**`.
 
 ## Current priorities
 
 - Current P0: `NONE CONFIRMED`.
-- Current P1: reported outbound rich-text behavior and full-suite readiness;
-  both remain `REPORTED / NOT VERIFIED` for this task.
+- Current P1: outbound rich-text behavior is `PARTIALLY CONFIRMED` for the
+  existing rich single/thread composer and remains unimplemented; full-suite
+  helper readiness remains `NOT VERIFIED` because the documented helper paths
+  are absent.
 - Current P2: PostgreSQL acceptance, real Mail.ru acceptance, missing helper
   scripts, parallel `docs/**` state ownership and broad untracked-worktree
   provenance remain `NOT VERIFIED` or `OPEN` as recorded in deferred findings.
@@ -96,10 +104,10 @@
 
 ## Blockers
 
-- `NONE CONFIRMED` for this reconciliation.
-- Reported product directions remain open and are not silently declared fixed:
-  outbound rich-text behavior, full-suite readiness, provider/database
-  acceptance, test isolation and the parallel `docs/**` state system.
+- The mail-content audit is complete, but a P1 implementation item remains
+  open: choose plain-only or an explicit rich HTML contract before changing
+  product code. Full-suite readiness, provider/database acceptance, test
+  isolation and the parallel `docs/**` state system remain open.
 
 ## Active constraints
 
@@ -111,10 +119,10 @@
 
 ## Current next step
 
-- One bounded candidate, not an active task: review and, if separately
-  authorized, choose the offline **HTML/plain-text outbound mail contract**
-  block described in the previous state/report. Do not implement it as part of
-  this reconciliation.
+- Record the business decision for the outbound content contract, then create
+  a separately authorized implementation task. The current audit report is
+  `ai/reports/TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830-report.md`; do not
+  implement the fix in this state-only record.
 
 ## Historical / superseded state
 
