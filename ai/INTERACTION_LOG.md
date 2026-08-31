@@ -559,3 +559,13 @@ This log records agent work interactions. It is append-only.
   email regression, typecheck, lint, build, doctor DryRun and HTTP smoke.
 - `tests/run-tests.ps1` is absent. No SMTP/IMAP, sending, queue, database,
   request-link or production action was performed.
+
+## 2026-08-31T18:08:46Z — TASK-FRONTEND-MAILRU-CONTINUATION-20260831
+
+- Owner confirmed the exact two-recipient list after the preflight hold.
+- Sent existing Mail.ru jobs `173` and `174` separately through the штатная
+  queue; each produced one accepted SMTP `250` attempt and a saved sent copy.
+- Verified exact-recipient history, unchanged Yandex queue (`64` queued), zero
+  active reservations, SQLite integrity `ok`, and durable outgoing `0` / OFF.
+- No new queue records, duplicate sends, Yandex sends or retry of the uncertain
+  Unicode-domain message occurred.

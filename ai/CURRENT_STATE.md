@@ -1,5 +1,21 @@
 # Current State
 
+## Latest task update — exact Mail.ru continuation sent and closed
+
+- Timestamp UTC: `2026-08-31T18:08:46Z`
+  (`TASK-FRONTEND-MAILRU-CONTINUATION-20260831`).
+- After exact-list confirmation, only existing jobs `173`/`191`
+  (`support@prometall.ru`) and `174`/`192` (`89087178701@mail.ru`) were
+  processed through the штатная queue, one at a time.
+- Both provider attempts were `accepted` with `smtp_stage=post_data`,
+  `smtp_code=250`, one attempt per job, and `copy_status=saved`. Both message
+  and job statuses are `sent`.
+- Exact-recipient history contains one cancelled Yandex record with zero
+  attempts plus one accepted Mail.ru record for each address. No duplicate
+  Mail.ru message was created. Yandex's old queue remains `64` queued jobs.
+- Durable outgoing was returned to `0` / OFF; active reservations are `0`,
+  SQLite integrity check is `ok`, and the send-only local processes are stopped.
+
 ## Latest task update — CID image height fix
 
 - Timestamp UTC: `2026-08-31` (`TASK-MESSAGES-CID-HEIGHT-FIX-20260831`).

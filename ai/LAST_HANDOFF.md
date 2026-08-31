@@ -39,7 +39,7 @@ Task ID: `TASK-FRONTEND-MAILRU-CONTINUATION-20260831`
 Ветка: `codex/TASK-STATE-CONTROL-20260830`
 HEAD: `568391d907c801ce2230051c9caa5a2d9b31ab8c`
 Push: `NOT RUN`
-Status: `READY — implementation verified; external send intentionally held`
+Status: `COMPLETE LOCALLY — exact two-recipient send verified; outgoing OFF`
 
 ### Что сделано
 
@@ -48,18 +48,18 @@ Status: `READY — implementation verified; external send intentionally held`
   no browser console errors or page overflow were found.
 - Started a separate local smoke server on `127.0.0.1:8001` with outgoing
   forced OFF and left it running.
-- Read the canonical SQLite database in `mode=ro`. Only two Mail.ru jobs are
-  untouched and already queued for continuation: `support@prometall.ru` and
-  `89087178701@mail.ru`.
+- Read the canonical SQLite database in `mode=ro`. Only two Mail.ru jobs were
+  untouched and queued for continuation: `support@prometall.ru` and
+  `89087178701@mail.ru`; both are now accepted once.
 
-### Перед фактической отправкой
+### Фактический результат
 
-- Confirm immediately before action that sending exactly these two recipients
-  from Mail.ru account `23` is intended. Do not include the old Yandex queue,
-  any accepted Mail.ru recipient, or the uncertain Unicode-domain message.
-- After confirmation, enable outgoing only for the controlled run, process only
-  jobs `173` and `174` one at a time, verify provider acceptance and durable
-  statuses, then switch outgoing OFF again.
+- Owner confirmed exactly these two recipients. Jobs `173` and `174` were
+  processed separately with a one-job runtime restriction.
+- Job `173` / message `191` and job `174` / message `192` each have exactly one
+  accepted attempt, SMTP `post_data / 250`, and a saved sent copy.
+- Durable outgoing is `0` / OFF; old Yandex jobs, accepted Mail.ru history and
+  the uncertain Unicode-domain message were not retried.
 
 Report: `ai/reports/TASK-FRONTEND-MAILRU-CONTINUATION-20260831-report.md`
 

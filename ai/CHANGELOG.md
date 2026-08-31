@@ -638,3 +638,13 @@ rewritten.
 - No SMTP/IMAP, send, queue, database, request-link or production action was
   performed. Outgoing remains disabled. Report and screenshots are recorded
   in `ai/reports/` and `Temp/task-messages-audit-repair-20260831/`.
+
+## 2026-08-31T18:08:46Z — EXACT MAILRU CONTINUATION SENT — TASK-FRONTEND-MAILRU-CONTINUATION-20260831
+
+- После action-time подтверждения отправлены только существующие jobs `173` и
+  `174` через Mail.ru account `23`, по одной попытке на job.
+- Оба письма приняты провайдером (`post_data`, SMTP `250`), локальные статусы
+  `sent`, sent-copy сохранён; новых jobs/messages и дублей не создано.
+- Yandex queue не трогалась, неопределённый Unicode-домен не повторялся.
+- Durable outgoing switch возвращён в `0`; активных reservations нет, SQLite
+  integrity check `ok`. Send-only процессы остановлены.

@@ -15,12 +15,12 @@ Status: `COMPLETE LOCALLY — targeted browser and regression checks passed`
 
 Task ID: `TASK-FRONTEND-MAILRU-CONTINUATION-20260831`
 Agent: `Codex`
-Mode: `IMPLEMENT → VERIFY → SAFE SEND HOLD`
+Mode: `IMPLEMENT → VERIFY → CONTROLLED SEND → CLOSE`
 Started: `2026-08-31`
 Scope: `apply frontend audit fixes, verify the local runtime, reconcile request 1059 Mail.ru continuation recipients, and send only explicitly confirmed untouched Mail.ru jobs`
 Non-goals: `no Yandex sending, no duplicate recipients, no direct SQL-created jobs, no credential changes, no automatic retry of uncertain delivery`
-Status: `READY FOR OWNER CONFIRMATION — code committed; two queued Mail.ru jobs are prepared but not sent`
-Last update: `2026-08-31T17:52:01Z`
+Status: `COMPLETE LOCALLY — two exact Mail.ru jobs sent once and verified; outgoing OFF`
+Last update: `2026-08-31T18:08:46Z`
 
 ## Current evidence
 
@@ -36,14 +36,16 @@ Last update: `2026-08-31T17:52:01Z`
   discovery remains blocked by the system `lxml` DLL/parser environment and
   one pre-existing `quotequail` folding assertion; no current task file is
   implicated.
-- Canonical read-only preflight: request `1059`, Mail.ru account `23`
-  (`edwatik@mail.ru`) connected; durable outgoing switch `0` (OFF). Existing
-  Mail.ru continuation jobs `173`/`191` for `support@prometall.ru` and
-  `174`/`192` for `89087178701@mail.ru` have zero attempts and no `sent`
-  history. Eighteen other Mail.ru messages were accepted; the Unicode-domain
-  message has an uncertain result and will not be retried.
-- No SMTP/DATA action was performed in this task. The two queued jobs remain
-  unchanged until owner confirmation of this exact recipient list.
+- Canonical preflight identified only jobs `173`/`191` and `174`/`192` as the
+  untouched Mail.ru continuation. The old Yandex jobs for the same addresses
+  were cancelled and had zero attempts; they were not sent.
+- After the owner's exact-list confirmation, job `173` and job `174` were
+  processed one at a time by the штатная queue with a per-job runtime limit.
+  Both ended `sent` with one `accepted` attempt, SMTP `post_data / 250`, and
+  saved sent copies.
+- Durable outgoing was switched OFF immediately after the second acceptance.
+  The old Yandex queue stayed at `64` queued jobs; the uncertain Unicode-domain
+  message was not retried and no new jobs/messages were created.
 
 Task ID: `NONE`
 Agent: `Codex`
