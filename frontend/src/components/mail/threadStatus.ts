@@ -6,6 +6,13 @@ export interface ThreadDisplayStatus {
   className: string;
 }
 
+/** A sent thread with no inbound message yet is the actionable waiting state. */
+export function isAwaitingResponse(thread: ThreadSummary): boolean {
+  return thread.unread_count === 0
+    && thread.last_message_direction !== 'inbound'
+    && thread.last_outbound_status === 'sent';
+}
+
 /** Convert transport/reply facts into one compact, readable list status. */
 export function getThreadDisplayStatus(thread: ThreadSummary): ThreadDisplayStatus {
   if (thread.unread_count > 0) {
@@ -20,7 +27,7 @@ export function getThreadDisplayStatus(thread: ThreadSummary): ThreadDisplayStat
     return {
       label: 'Ответ получен',
       title: 'Ответ поставщика уже прочитан',
-      className: 'bg-sky-50 text-sky-700 ring-sky-200/80',
+      className: 'bg-accent-100 text-accent-800 ring-accent-300 shadow-sm',
     };
   }
 

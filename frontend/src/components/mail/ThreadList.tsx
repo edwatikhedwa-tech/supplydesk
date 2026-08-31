@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight, Mail, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock3, Mail, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { cn, formatRelativeDate, pluralize } from '@/lib/utils';
 import type { ThreadSummary } from '@/lib/types';
-import { getThreadDisplayStatus } from '@/components/mail/threadStatus';
+import { getThreadDisplayStatus, isAwaitingResponse } from '@/components/mail/threadStatus';
 
 /** Переписка сгруппирована по заявке, а не сплошным списком.
  *
@@ -61,6 +61,8 @@ interface ThreadListProps {
   refreshKey: number;
 }
 
+type ThreadFilter = 'all' | 'awaiting-response';
+
 export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: ThreadListProps) {
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +71,7 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
   const [search, setSearch] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchInput, setSearchInput] = useState('');
+  const [filter, setFilter] = useState<ThreadFilter>('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +99,7 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
     debounceRef.current = setTimeout(() => setSearch(value), 200);
   };
 
-  const visibleThreads = useMemo(() => {
+  const searchedThreads = useMemo(() => {
     if (!search.trim()) return threads;
     const q = search.trim().toLowerCase();
     return threads.filter(
@@ -107,6 +110,11 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
         t.supplier_email.toLowerCase().includes(q)
     );
   }, [threads, search]);
+
+  const visibleThreads = useMemo(
+    () => filter === 'awaiting-response' ? searchedThreads.filter(isAwaitingResponse) : searchedThreads,
+    [filter, searchedThreads],
+  );
 
   const groups = useMemo(() => groupByRequest(visibleThreads), [visibleThreads]);
   const defaultCollapsed = useMemo(
@@ -126,9 +134,12 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
       return next;
     });
 
-  // При поиске показываем всё раскрытым: иначе совпадение может оказаться
-  // внутри свёрнутой группы и будет выглядеть как «ничего не найдено».
+  const awaitingCount = searchedThreads.filter(isAwaitingResponse).length;
+  // При поиске или фильтрации показываем всё раскрытым: иначе совпадение
+  // может оказаться внутри свёрнутой группы и будет выглядеть как «ничего
+  // не найдено».
   const searching = Boolean(search.trim());
+  const narrowing = searching || filter !== 'all';
 
   return (
     <div className={cn(
@@ -145,6 +156,37 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
             placeholder="Поиск по поставщику, заявке или письму..."
             className="w-full pl-9 pr-3 py-2 text-sm bg-ink-50 border border-ink-200 rounded-lg focus:outline-none focus:border-ink-300 focus:bg-white transition-colors placeholder:text-ink-400"
           />
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="Фильтр по статусу">
+          <button
+            type="button"
+            aria-pressed={filter === 'all'}
+            onClick={() => setFilter('all')}
+            className={cn(
+              'inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400',
+              filter === 'all' ? 'bg-ink-800 text-white shadow-sm' : 'bg-ink-100 text-ink-600 hover:bg-ink-200 hover:text-ink-800',
+            )}
+          >
+            Все
+            <span className={cn('rounded-full px-1.5 py-px text-2xs tabular-nums', filter === 'all' ? 'bg-white/20 text-white' : 'bg-white text-ink-500')}>
+              {searchedThreads.length}
+            </span>
+          </button>
+          <button
+            type="button"
+            aria-pressed={filter === 'awaiting-response'}
+            onClick={() => setFilter('awaiting-response')}
+            className={cn(
+              'inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400',
+              filter === 'awaiting-response' ? 'bg-accent-700 text-white shadow-sm' : 'bg-accent-50 text-accent-800 ring-1 ring-accent-200 hover:bg-accent-100',
+            )}
+          >
+            <Clock3 size={13} aria-hidden="true" />
+            Ожидает ответа
+            <span className={cn('rounded-full px-1.5 py-px text-2xs tabular-nums', filter === 'awaiting-response' ? 'bg-white/20 text-white' : 'bg-white text-accent-700')}>
+              {awaitingCount}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -170,12 +212,14 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
         ) : visibleThreads.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
             <Mail size={32} className="text-ink-300 mb-3" />
-            <p className="text-sm text-ink-400">Переписки по заявкам пока нет</p>
+            <p className="text-sm text-ink-400">
+              {filter === 'awaiting-response' ? 'Нет писем, ожидающих ответа' : search.trim() ? 'По вашему поиску ничего не найдено' : 'Переписки по заявкам пока нет'}
+            </p>
           </div>
         ) : (
           <div className="py-1">
             {groups.map((group) => {
-              const isCollapsed = !searching && (collapsed ?? defaultCollapsed).has(group.requestId);
+              const isCollapsed = !narrowing && (collapsed ?? defaultCollapsed).has(group.requestId);
               return (
                 <div key={group.requestId} className="mb-0.5">
                   <div className="flex items-center gap-1 px-2 py-1.5 sticky top-0 z-10 bg-white/95 backdrop-blur-sm">
@@ -248,7 +292,9 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
                               {thread.manual_inbox_id != null && <span className="ml-1.5 text-accent-600">· вручную</span>}
                             </p>
                             <div className="mt-1.5 flex min-w-0 items-center gap-2">
-                              <span title={status.title} className={cn('inline-flex shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1', status.className)}>{status.label}</span>
+                              {!isAwaitingResponse(thread) && (
+                                <span title={status.title} className={cn('inline-flex shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1', status.className)}>{status.label}</span>
+                              )}
                               <span className="truncate text-xs text-ink-600">
                                 {thread.messages_count} {pluralize(thread.messages_count, 'письмо', 'письма', 'писем')}
                                 {hasReplies && <> · {thread.replies_count} {pluralize(thread.replies_count, 'ответ', 'ответа', 'ответов')}</>}
