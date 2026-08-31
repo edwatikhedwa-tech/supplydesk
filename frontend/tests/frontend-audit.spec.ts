@@ -808,6 +808,9 @@ test('delivery unknown is visible in the supplier row and actionable in correspo
     messages_count: 1,
     replies_count: 0,
     unread_count: 0,
+    pending_outbound_count: 0,
+    last_outbound_status: 'delivery_unknown',
+    last_message_direction: 'outbound',
   };
   const message = {
     id: 9072,
@@ -960,7 +963,7 @@ test('outbound workflow is coherent and the supplier mail status stays separate 
   // An accepted SMTP message cannot coexist with the user-facing
   // "Черновик / 0 принято почтовым сервером" state.
   await expect(page.getByText('В работе', { exact: true })).toBeVisible();
-  await expect(page.getByText('1 принято почтовым сервером', { exact: true })).toBeVisible();
+  await expect(page.getByText('1 отправлено', { exact: true })).toBeVisible();
   await expect(page.locator('span:visible').filter({ hasText: /^◷\s*Ждём ответа$/ }).first()).toBeVisible();
   await expect(page.getByText('Черновик', { exact: true })).toHaveCount(0);
 

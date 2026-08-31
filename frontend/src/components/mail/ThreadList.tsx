@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { cn, formatRelativeDate, pluralize } from '@/lib/utils';
 import type { ThreadSummary } from '@/lib/types';
-import { getThreadDisplayStatus, isAwaitingResponse } from '@/components/mail/threadStatus';
+import { getThreadDisplayStatus, isAwaitingResponse, needsThreadAttention } from '@/components/mail/threadStatus';
 
 /** Переписка сгруппирована по заявке, а не сплошным списком.
  *
@@ -14,8 +14,9 @@ import { getThreadDisplayStatus, isAwaitingResponse } from '@/components/mail/th
  *  читался как общий почтовый ящик, ради ухода от которого продукт и делается.
  *
  *  Заявки отсортированы по свежести последнего письма, внутри — поставщики
- *  так же. Группа с непрочитанными ответами раскрыта, остальные свёрнуты:
- *  список остаётся коротким, а то, что требует внимания, видно сразу. */
+ *  так же. Группа с непрочитанными ответами, ошибкой или активной отправкой
+ *  раскрыта, остальные свёрнуты: список остаётся коротким, а то, что требует
+ *  внимания, видно сразу. */
 interface RequestGroup {
   requestId: number;
   requestName: string;
@@ -118,7 +119,9 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
 
   const groups = useMemo(() => groupByRequest(visibleThreads), [visibleThreads]);
   const defaultCollapsed = useMemo(
-    () => new Set(groups.filter((group) => group.unreadCount === 0).map((group) => group.requestId)),
+    () => new Set(groups
+      .filter((group) => !group.threads.some(needsThreadAttention))
+      .map((group) => group.requestId)),
     [groups],
   );
 

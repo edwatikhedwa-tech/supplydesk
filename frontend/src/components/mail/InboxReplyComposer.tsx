@@ -116,6 +116,7 @@ export function InboxReplyComposer({ message, onClose, onSent }: InboxReplyCompo
               id="inbox-reply-body"
               ariaLabel="Текст ответа"
               placeholder="Напишите ответ…"
+              autoFocus
               onChange={({ bodyText: nextBodyText }) => setBodyText(nextBodyText)}
             />
           </div>

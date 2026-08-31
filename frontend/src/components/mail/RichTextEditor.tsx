@@ -7,12 +7,13 @@ interface RichTextEditorProps {
   placeholder?: string;
   ariaLabel: string;
   id?: string;
+  autoFocus?: boolean;
   disabled?: boolean;
   onChange?: (value: RichTextValue) => void;
 }
 
 export const RichTextEditor = forwardRef<HTMLDivElement, RichTextEditorProps>(function RichTextEditor(
-  { initialHtml = '', placeholder = 'Напишите письмо…', ariaLabel, id, disabled = false, onChange }: RichTextEditorProps,
+  { initialHtml = '', placeholder = 'Напишите письмо…', ariaLabel, id, autoFocus = false, disabled = false, onChange }: RichTextEditorProps,
   forwardedRef,
 ) {
   const localRef = useRef<HTMLDivElement>(null);
@@ -22,6 +23,10 @@ export const RichTextEditor = forwardRef<HTMLDivElement, RichTextEditorProps>(fu
   useEffect(() => {
     if (localRef.current) localRef.current.innerHTML = initialHtml;
   }, [initialHtml]);
+
+  useEffect(() => {
+    if (autoFocus && !disabled) localRef.current?.focus();
+  }, [autoFocus, disabled]);
 
   const exec = (command: string, value?: string) => {
     document.execCommand(command, false, value);

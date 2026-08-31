@@ -13,6 +13,12 @@ export function isAwaitingResponse(thread: ThreadSummary): boolean {
     && thread.last_outbound_status === 'sent';
 }
 
+/** Keep groups with unread or operationally important threads expanded. */
+export function needsThreadAttention(thread: ThreadSummary): boolean {
+  return thread.unread_count > 0
+    || ['sending', 'queued', 'failed', 'delivery_unknown'].includes(thread.last_outbound_status ?? '');
+}
+
 /** Convert transport/reply facts into one compact, readable list status. */
 export function getThreadDisplayStatus(thread: ThreadSummary): ThreadDisplayStatus {
   if (thread.unread_count > 0) {
