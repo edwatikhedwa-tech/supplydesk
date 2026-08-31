@@ -181,6 +181,12 @@ export interface ThreadSummary {
   /** Непрочитанные ответы поставщика. Гаснет при открытии треда — в отличие
    *  от replies_count, который считает все ответы за всё время. */
   unread_count: number;
+  /** Number of outbound messages still queued or currently sending. */
+  pending_outbound_count: number;
+  /** Latest outbound transport state, if this thread has an outbound message. */
+  last_outbound_status: string | null;
+  /** Direction of the latest message in the thread. */
+  last_message_direction: MailDirection | null;
   /** ID исходного inbox-письма для ручной связи без поставщика/треда. */
   manual_inbox_id?: number | null;
 }
@@ -563,6 +569,8 @@ export interface InboxMessage {
   received_at: string;
   status: string;
   provider_message_id?: string | null;
+  /** Incoming message has not been opened in the current workspace. */
+  unread?: boolean;
   /** Внешние изображения в HTML письма заблокированы до явного показа. */
   has_remote_images?: boolean;
 }
@@ -601,6 +609,7 @@ export interface InboxPreview {
   from_email: string;
   subject: string;
   received_at: string;
+  unread: boolean;
 }
 
 export interface InboxSuggestion {

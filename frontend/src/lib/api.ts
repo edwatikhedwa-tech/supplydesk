@@ -130,6 +130,7 @@ export const api = {
   restoreBlacklist: (entryId: number) => request<{ ok: true }>(`/api/blacklist/${entryId}/restore`, { method: 'POST' }),
 
   listThreads: () => request<{ items: ThreadSummary[] }>('/api/correspondence'),
+  listOutboxThreads: () => request<{ items: ThreadSummary[] }>('/api/mail/queue/messages'),
   threadMessages: (requestId: number, supplierId: number) =>
     request<{ items: MailMessage[] }>(`/api/mail/threads?request_id=${requestId}&supplier_id=${supplierId}`),
   listInbox: () => request<{ items: InboxMessage[] }>('/api/mail/inbox'),

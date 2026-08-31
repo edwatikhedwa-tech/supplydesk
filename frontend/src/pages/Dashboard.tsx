@@ -111,7 +111,7 @@ function UnmatchedMailCard({ item, expanded, message, loading, error, onToggle, 
       >
         <div className="relative mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
           <Mail size={15} />
-          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white" title="Остаётся непрочитанным" />
+          {item.unread && <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white" title="Непрочитанное письмо" />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-bold text-ink-800">{item.from_email}</div>
@@ -148,7 +148,7 @@ function UnmatchedMailCard({ item, expanded, message, loading, error, onToggle, 
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-3">
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Непрочитанное письмо без привязки
+                  {item.unread && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />} {item.unread ? 'Непрочитанное письмо без привязки' : 'Письмо без привязки'}
                 </span>
                 <Link to={`/messages?tab=unmatched&inbox=${item.id}`} className="inline-flex min-h-10 items-center gap-1 px-1 text-xs font-bold text-accent-700 hover:underline">
                   Открыть в переписке <ArrowRight size={13} />
@@ -220,10 +220,11 @@ export function Dashboard() {
       return next;
     });
     try {
-      // This read-only endpoint does not mark an unmatched message as read.
-      // The dashboard deliberately keeps its amber unread state after opening.
+      // Opening the conversation marks the incoming message as read on the
+      // server, just like the request-thread reader does.
       const conversation = await api.inboxConversation(messageId);
       setUnmatchedMessages((current) => ({ ...current, [messageId]: conversation }));
+      setUnmatchedPreview((current) => current.map((item) => item.id === messageId ? { ...item, unread: false } : item));
     } catch (error) {
       setMailErrors((current) => ({
         ...current,

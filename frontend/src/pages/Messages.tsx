@@ -4,13 +4,14 @@ import { ArrowLeft, CheckCircle2, Link as LinkIcon, Loader2, Mail, RefreshCw, Re
 import { api, ApiError } from '@/lib/api';
 import { cn, formatFullDate, formatRelativeDate } from '@/lib/utils';
 import { ThreadList } from '@/components/mail/ThreadList';
+import { OutboxList } from '@/components/mail/OutboxList';
 import { ThreadDetail } from '@/components/mail/ThreadDetail';
 import { Composer, type MailComposerContext } from '@/components/mail/Composer';
 import { EmailRenderer } from '@/components/mail/EmailRenderer';
 import { InboxReplyComposer } from '@/components/mail/InboxReplyComposer';
 import type { InboxMessage, InboxSuggestion, MailMessage, ManualLinkRequestOption, ThreadSummary } from '@/lib/types';
 
-type Mode = 'requests' | 'unmatched';
+type Mode = 'requests' | 'unmatched' | 'outbox';
 
 function threadKey(thread: ThreadSummary): string {
   return thread.manual_inbox_id != null
@@ -57,7 +58,10 @@ export function Messages() {
   const wantedTab = params.get('tab');
   const wantedInboxId = params.get('inbox') ? Number(params.get('inbox')) : null;
   useEffect(() => {
-    if (wantedTab === 'unmatched') setMode('unmatched');
+    if (wantedTab === 'unmatched') {
+      setMode('unmatched');
+      setSelectedThread(null);
+    }
   }, [wantedTab]);
 
   useEffect(() => {
@@ -82,6 +86,11 @@ export function Messages() {
 
   const handleSent = () => setRefreshKey((k) => k + 1);
 
+  const changeMode = (nextMode: Mode) => {
+    setMode(nextMode);
+    setSelectedThread(null);
+  };
+
   /** Открытие треда помечает его входящие прочитанными на сервере
    *  (MailRepository.thread_messages), поэтому список нужно перезапросить —
    *  иначе отметка «непрочитано» гасла бы только после F5. Обновляем после
@@ -101,20 +110,26 @@ export function Messages() {
       <div className="flex min-h-[76px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-ink-200/70 bg-white px-4 py-3 sm:h-[76px] sm:flex-nowrap sm:px-8 sm:py-0">
         <div className="min-w-0">
           <h1 className="text-page-title font-bold text-ink-900">Переписка</h1>
-          <p className="text-xs text-ink-500 mt-0.5">Треды по заявкам и письма без привязки</p>
+          <p className="text-xs text-ink-500 mt-0.5">Переписка по заявкам, очередь отправки и письма без привязки</p>
         </div>
         <div className="flex items-center bg-ink-100 rounded-lg p-0.5">
           <button
-            onClick={() => setMode('requests')}
+            onClick={() => changeMode('requests')}
             className={cn('min-h-10 px-4 py-1.5 text-sm font-medium rounded-md transition-all', mode === 'requests' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
           >
             По заявкам
           </button>
           <button
-            onClick={() => setMode('unmatched')}
+            onClick={() => changeMode('unmatched')}
             className={cn('min-h-10 px-4 py-1.5 text-sm font-medium rounded-md transition-all', mode === 'unmatched' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
           >
             Без привязки
+          </button>
+          <button
+            onClick={() => changeMode('outbox')}
+            className={cn('min-h-10 px-4 py-1.5 text-sm font-medium rounded-md transition-all', mode === 'outbox' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
+          >
+            Очередь
           </button>
         </div>
       </div>
@@ -140,7 +155,26 @@ export function Messages() {
                 onRead={handleThreadRead}
               />
             ) : (
-              <EmptyState />
+              <EmptyState className="hidden xl:flex" />
+            )}
+          </>
+        ) : mode === 'outbox' ? (
+          <>
+            <OutboxList
+              selectedThreadKey={selectedThread ? threadKey(selectedThread) : null}
+              onSelectThread={setSelectedThread}
+              refreshKey={refreshKey}
+            />
+            {selectedThread ? (
+              <ThreadDetail
+                thread={selectedThread}
+                onBack={() => setSelectedThread(null)}
+                onReply={selectedThread.manual_inbox_id == null ? handleReply : undefined}
+                onOpenRequest={(requestId) => navigate(`/requests/${requestId}`)}
+                onRead={handleThreadRead}
+              />
+            ) : (
+              <EmptyState className="hidden xl:flex" />
             )}
           </>
         ) : (
@@ -243,6 +277,13 @@ function UnmatchedInbox({ preselectId }: { preselectId?: number | null }) {
     setSuggestions([]);
     setAttachError('');
     setLinkedRequest(null);
+    // Loading the conversation acknowledges the incoming message on the
+    // server. Only update the list after that succeeds, so a failed read
+    // request does not silently lose the unread marker.
+    void api.inboxConversation(msg.id).then(() => {
+      setItems((prev) => prev.map((item) => item.id === msg.id ? { ...item, unread: false } : item));
+      setSelected((current) => current?.id === msg.id ? { ...current, unread: false } : current);
+    }).catch(() => {});
     api.inboxSuggestions(msg.id).then((res) => setSuggestions(res.items)).catch(() => setSuggestions([]));
   };
 
@@ -361,13 +402,18 @@ function UnmatchedInbox({ preselectId }: { preselectId?: number | null }) {
             <button
               key={msg.id}
               onClick={() => openMessage(msg)}
-              className={cn('w-full px-3 py-2.5 text-left border-l-2 transition-colors', selected?.id === msg.id ? 'bg-accent-50/50 border-accent-500' : 'border-transparent hover:bg-ink-50')}
+              aria-label={`${msg.from_email}: ${msg.subject || '(без темы)'}.${msg.unread ? ' Непрочитанное письмо.' : ''}`}
+              className={cn('w-full border-l-2 px-3 py-2.5 text-left transition-colors', selected?.id === msg.id ? 'bg-accent-50/50 border-accent-500' : 'border-transparent hover:bg-ink-50')}
             >
               <div className="flex items-center justify-between gap-2 mb-0.5">
-                <span className="text-sm truncate font-medium text-ink-700">{msg.from_email}</span>
+                <span className={cn('flex min-w-0 items-center gap-1.5 truncate text-sm', msg.unread ? 'font-bold text-ink-900' : 'font-medium text-ink-700')}>
+                  <span aria-hidden="true" className={cn('h-2 w-2 shrink-0 rounded-full', msg.unread ? 'bg-amber-500' : 'bg-transparent')} />
+                  <span className="truncate">{msg.from_email}</span>
+                </span>
                 <span className="text-xs text-ink-500 shrink-0">{formatRelativeDate(msg.received_at)}</span>
               </div>
               <p className="text-sm truncate text-ink-600">{msg.subject}</p>
+              {msg.unread && <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700">Новое письмо</p>}
             </button>
           ))
         )}

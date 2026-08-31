@@ -363,6 +363,11 @@ class SupplierHandler(SimpleHTTPRequestHandler):
             if session:
                 self._json(200, {"items": self.app.repository.queue_stats(session["workspace_id"])})
             return
+        if parsed.path == "/api/mail/queue/messages":
+            session = self._require_session()
+            if session:
+                self._json(200, {"items": self.app.repository.list_outbox_threads(session["workspace_id"])})
+            return
         if parsed.path.startswith("/api/mail/campaigns/"):
             session = self._require_session()
             if session:

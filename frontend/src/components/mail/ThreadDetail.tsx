@@ -96,6 +96,7 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
         const conversation = await api.inboxConversation(thread.manual_inbox_id);
         setMessages(mapInboxConversation(conversation));
         setCollapsed(new Set());
+        onRead?.();
         return;
       }
       const res = await api.threadMessages(thread.request_id, thread.supplier_id);
@@ -189,11 +190,16 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
         <p className="text-sm text-ink-500">Не удалось загрузить переписку</p>
+        <button type="button" onClick={() => void loadMessages()} className="mt-3 inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-accent-700 hover:bg-accent-50">
+          <RefreshCw size={14} /> Повторить
+        </button>
       </div>
     );
   }
 
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const lastMessagePending = lastMessage?.direction === 'outbound' && ['queued', 'sending'].includes(lastMessage.status);
+  const canReply = Boolean(onReply && !lastMessagePending);
 
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-ink-50/50">
@@ -203,15 +209,17 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
             <ArrowLeft size={18} />
           </button>
           <h2 className="min-w-0 flex-1 truncate text-base font-semibold text-ink-900">{thread.subject}</h2>
-          {onReply && (
+          {canReply ? (
             <button
-              onClick={() => onReply(thread, lastMessage)}
+              onClick={() => onReply?.(thread, lastMessage)}
               className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-ink-50 px-3 py-1.5 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-100"
             >
               <Reply size={15} />
               Ответить
             </button>
-          )}
+          ) : lastMessagePending ? (
+            <span title="Ответ станет доступен после завершения текущей отправки" className="inline-flex min-h-10 items-center rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">Письмо отправляется</span>
+          ) : null}
         </div>
       </div>
 
@@ -365,9 +373,9 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
             );
           })}
 
-          {messages.length > 0 && onReply && (
+          {messages.length > 0 && canReply && (
             <button
-              onClick={() => onReply(thread, lastMessage)}
+              onClick={() => onReply?.(thread, lastMessage)}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 rounded-xl transition-colors"
             >
               <Reply size={15} />Ответить

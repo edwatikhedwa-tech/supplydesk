@@ -1758,7 +1758,7 @@ class MailRepository:
                 {"supplier_ids": sorted(target_ids)},
             )
 
-    def list_threads(self, workspace_id: int) -> list[dict[str, Any]]:
+    def list_threads(self, workspace_id: int, *, include_queue_only: bool = False) -> list[dict[str, Any]]:
         with self.connect() as connection:
             rows = connection.execute(
                 """SELECT * FROM (
@@ -1772,16 +1772,29 @@ class MailRepository:
                                AND lower(COALESCE(m.from_email,'')) NOT LIKE 'mailer-daemon@%'
                                AND lower(COALESCE(m.from_email,'')) NOT LIKE 'postmaster@%'
                                AND NOT EXISTS (SELECT 1 FROM mail_message_reads mr WHERE mr.message_id=m.id)) AS unread_count,
+                            (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='outbound' AND m.status IN ('queued', 'sending')) AS pending_outbound_count,
+                            (SELECT m.status FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='outbound' ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_outbound_status,
+                            (SELECT m.direction FROM mail_messages m WHERE m.thread_id=t.id ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_direction,
                             NULL AS manual_inbox_id
                      FROM mail_threads t JOIN requests r ON r.id=t.request_id JOIN suppliers s ON s.id=t.supplier_id
-                     WHERE t.workspace_id=?
+                     WHERE t.workspace_id=? AND (? = 1 OR EXISTS (
+                         SELECT 1 FROM mail_messages visible_m
+                         WHERE visible_m.thread_id=t.id AND (
+                             visible_m.direction='inbound'
+                             OR (visible_m.direction='outbound' AND visible_m.status IN ('sent', 'failed', 'delivery_unknown'))
+                         )
+                     ))
                      UNION ALL
                      SELECT -link.id AS id, link.request_id, COALESCE(link.supplier_id, 0) AS supplier_id,
                             inbox.subject, inbox.received_at AS last_message_at, link.created_at,
                             r.name AS request_name, COALESCE(s.name, '') AS supplier_name,
                             COALESCE(s.email, '') AS supplier_email, COALESCE(s.host, '') AS supplier_host,
                             COALESCE(s.external_key, '') AS supplier_external_key,
-                            1 AS messages_count, 0 AS replies_count, 0 AS unread_count,
+                            1 AS messages_count, 0 AS replies_count,
+                            (SELECT COUNT(*) FROM mail_inbox_messages unread_inbox
+                             WHERE unread_inbox.id=inbox.id
+                               AND NOT EXISTS (SELECT 1 FROM mail_inbox_message_reads imr WHERE imr.message_id=unread_inbox.id)) AS unread_count,
+                            0 AS pending_outbound_count, NULL AS last_outbound_status, 'inbound' AS last_message_direction,
                             link.inbox_message_id AS manual_inbox_id
                      FROM mail_inbox_request_links link
                      JOIN mail_inbox_messages inbox ON inbox.id=link.inbox_message_id
@@ -1789,9 +1802,21 @@ class MailRepository:
                      LEFT JOIN suppliers s ON s.id=link.supplier_id
                      WHERE link.workspace_id=? AND link.active=1 AND inbox.status='matched'
                 ) ORDER BY COALESCE(last_message_at, created_at) DESC""",
-                (workspace_id, workspace_id),
+                (workspace_id, int(include_queue_only), workspace_id),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def list_outbox_threads(self, workspace_id: int) -> list[dict[str, Any]]:
+        """Return request threads that still contain an outbound queue item.
+
+        The correspondence view intentionally excludes queue-only threads, but
+        operators still need a durable place to inspect them. Reusing the same
+        summary contract keeps the outbox and correspondence views consistent.
+        """
+        return [
+            item for item in self.list_threads(workspace_id, include_queue_only=True)
+            if item.get("manual_inbox_id") is None and int(item.get("pending_outbound_count") or 0) > 0
+        ]
 
     def list_manual_link_requests(self, workspace_id: int, query: str = "", *, limit: int = 40) -> list[dict[str, Any]]:
         """Return request options for an explicit inbox-link action.
@@ -1995,25 +2020,36 @@ class MailRepository:
         limit = max(1, min(int(limit), 20))
         with self.connect() as connection:
             rows = connection.execute(
-                """SELECT id, from_email, subject, received_at
+                """SELECT id, from_email, subject, received_at,
+                          CASE WHEN EXISTS (
+                              SELECT 1 FROM mail_inbox_message_reads r WHERE r.message_id=mail_inbox_messages.id
+                          ) THEN 0 ELSE 1 END AS unread
                    FROM mail_inbox_messages
                    WHERE workspace_id=? AND status='unmatched'
                    ORDER BY received_at DESC, id DESC LIMIT ?""",
                 (workspace_id, limit),
             ).fetchall()
-        return [dict(row) for row in rows]
+        return [{**dict(row), "unread": bool(row["unread"])} for row in rows]
 
     def list_unmatched_incoming(self, workspace_id: int, *, limit: int = 100) -> list[dict[str, Any]]:
         limit = max(1, min(int(limit), 500))
         with self.connect() as connection:
             rows = connection.execute(
-                """SELECT id, from_email, to_email, subject, body_text, body_html, received_at, status, provider_message_id
+                """SELECT id, from_email, to_email, subject, body_text, body_html, received_at, status, provider_message_id,
+                          CASE WHEN EXISTS (
+                              SELECT 1 FROM mail_inbox_message_reads r WHERE r.message_id=mail_inbox_messages.id
+                          ) THEN 0 ELSE 1 END AS unread
                    FROM mail_inbox_messages
                    WHERE workspace_id=? AND status='unmatched'
                    ORDER BY received_at DESC, id DESC LIMIT ?""",
                 (workspace_id, limit),
             ).fetchall()
-        return [_readable_message(dict(row)) for row in rows]
+        result = []
+        for row in rows:
+            item = _readable_message(dict(row))
+            item["unread"] = bool(item["unread"])
+            result.append(item)
+        return result
 
     @classmethod
     def _find_incoming_thread(cls, connection: sqlite3.Connection, workspace_id: int, account_id: int, incoming: Any) -> dict[str, int] | None:
@@ -8083,6 +8119,10 @@ class MailRepository:
         if not original:
             return None
         with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO mail_inbox_message_reads(message_id, read_at) VALUES (?, ?) ON CONFLICT(message_id) DO NOTHING",
+                (message_id, iso_now()),
+            )
             thread = connection.execute(
                 "SELECT id FROM mail_inbox_threads WHERE workspace_id=? AND mail_account_id=? AND peer_email=?",
                 (workspace_id, original["mail_account_id"], original["from_email"]),
@@ -8094,4 +8134,5 @@ class MailRepository:
                     (int(thread["id"]),),
                 ).fetchall()
                 replies = [_readable_message(dict(row)) for row in rows]
+            connection.commit()
         return {**original, "replies": replies}
