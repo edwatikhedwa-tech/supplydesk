@@ -288,6 +288,22 @@ rewritten.
 - Push: `NOT RUN`.
 - Report: `ai/reports/TASK-MESSAGES-NAV-TOGGLE-20260831-report.md`.
 
+## 2026-08-31T06:46:00Z — IMPLEMENTATION / LIVE ACCEPTANCE — TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831
+
+- Scope: explicit outbound HTML mode with separate `body_text`/`body_html`
+  across bulk, single/thread and unmatched-reply flows.
+- Safety: server-side nh3 allowlist sanitization, derived plain alternative,
+  escaped personalization, idempotency-aware rich snapshots and preserved
+  resend/continuation content.
+- Verification: relevant mail suite `286 OK` with one expected skip; targeted
+  rich/MIME/HTTP/resend/continuation regressions, compileall, typecheck,
+  build, lint and browser desktop/mobile smoke all passed.
+- No database, migration, supplier identity cleanup, `--apply`, SMTP/IMAP or
+  real email was used.
+- Commit: `d90bfd46f6ee421d442f2702c04cb9d280e634d9`.
+- Push: `NOT RUN`.
+- Report: `ai/reports/TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831-report.md`.
+
 ## 2026-08-31T06:42:12Z — IMPLEMENTATION / LIVE ACCEPTANCE — TASK-MESSAGES-NAV-DEFAULT-20260831
 
 - Agent: `Codex`

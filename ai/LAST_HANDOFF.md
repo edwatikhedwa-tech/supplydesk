@@ -1,5 +1,54 @@
 # Last Handoff
 
+## Current handoff — explicit outbound HTML contract complete
+
+Task ID: TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831
+Дата и время UTC: 2026-08-31T06:46:00Z
+Агент: Codex
+Ветка: codex/TASK-STATE-CONTROL-20260830
+HEAD: d90bfd46f6ee421d442f2702c04cb9d280e634d9
+Push: NOT RUN
+Active task: NONE
+Status: COMPLETE — implementation, regression tests and live local UI smoke passed
+
+### Цель
+
+Закрыть подтверждённый outbound rich-text contract mismatch через отдельные
+body_text/body_html поля, server-side sanitization и сохранение пары в
+queue/reply/resend/continuation snapshots.
+
+### Что изменено
+
+- Shared RichTextEditor подключён к bulk campaign, single/request-thread
+  composer и unmatched inbox reply.
+- Frontend/API/backend передают явные body_text и body_html; legacy body
+  оставлен backend compatibility alias.
+- HTML sanitizes через существующий nh3 allowlist; plain alternative выводится
+  из sanitized HTML; dynamic values экранируются.
+- Idempotency fingerprint, delivery-unknown resend и campaign continuation
+  сохраняют rich pair.
+- Добавлены fake-provider/MIME, unsafe HTML, HTTP, four-contact, resend и
+  continuation regression tests.
+
+### Acceptance
+
+- Relevant mail suite: 286 tests, OK (skipped=1).
+- Frontend typecheck/build: PASS; lint: PASS, 0 errors and 8 existing
+  warnings.
+- Local smoke: root/request/auth 200, unknown API 404.
+- Browser without route mocks: bulk composer and reply composer rendered on
+  desktop 1280x720 and mobile 390x844; mobile overflow check PASS.
+- Server remains running on http://127.0.0.1:8000.
+
+### Ограничения
+
+No real SMTP/IMAP, PostgreSQL, production deployment, migration, supplier
+identity cleanup or supplier_identity_audit.py --apply was run. Remote
+images remain blocked by the existing security policy. Existing unrelated
+tracked/untracked worktree paths were preserved and not staged.
+
+Report: ai/reports/TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831-report.md
+
 ## Current handoff — `/messages` navigation collapsed by default
 
 Task ID: `TASK-MESSAGES-NAV-DEFAULT-20260831`

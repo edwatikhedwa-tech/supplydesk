@@ -95,16 +95,19 @@ Agents must not automatically fix these findings while doing another task.
   text. The offline audit independently reproduced this for the existing
   single/thread rich Composer through durable fields and mock-SMTP MIME.
 - Severity: `P1`
-- Why outside current scope: this task was audit-only; implementing or changing
-  MIME/rendering behavior remains a separate application task.
+- Why outside the original audit scope: implementation required a separate
+  application change and explicit business choice. That choice is now recorded
+  as the explicit rich HTML contract.
 - Audit result: `PARTIALLY CONFIRMED` — the bulk/new and unmatched-inbox reply
   paths are plain-text inputs, while the request-thread/single rich Composer
   sends HTML through a plain-text backend field. The system-wide contract is
   mixed/implicit.
-- Next step: record the business decision between a plain-only composer and an
-  explicit sanitized rich-HTML contract, then authorize a separate fix.
-- Status: `OPEN — PARTIALLY CONFIRMED`
+- Next step: controlled real-mailbox acceptance remains separate; no further
+  code action is required for the contract mismatch.
+- Status: `RESOLVED — explicit sanitized rich-HTML contract implemented`
 - Report: `ai/reports/TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830-report.md`
+- Resolution report:
+  `ai/reports/TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831-report.md`
 
 ## FINDING-008 — Unattributed `api/index.py` worktree edit
 

@@ -2,13 +2,12 @@
 
 ## Last update
 
-- Timestamp UTC: `2026-08-31T06:42:12Z` (`TASK-MESSAGES-NAV-DEFAULT-20260831` close).
+- Timestamp UTC: `2026-08-31T06:46:00Z` (`TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831` close).
 - Project root: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
 - Repository: `edwatikhedwa-tech/supplydesk`.
 - Branch: `codex/TASK-STATE-CONTROL-20260830`.
-- HEAD: `36bc4c14ac3e00c0682aa8e65622854dc16aebba` (`TASK-MESSAGES-NAV-DEFAULT-20260831`
-  state-record commit; product implementation is `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e`,
-  push not run).
+- HEAD: `d90bfd46f6ee421d442f2702c04cb9d280e634d9` (`TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831`
+  product implementation commit; push not run).
 - Remote: `origin` → `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Upstream: `origin/codex/TASK-STATE-CONTROL-20260830`.
@@ -19,11 +18,10 @@
   implementation commit is local only and was not pushed.
 - Working tree at close: `DIRTY`; unrelated tracked changes and broad
   untracked entries remain preserved. No unrelated path was staged.
-- Latest verified tests: live `/messages` audit `81/81 PASS`, live Playwright
-  regression `1 passed`, remote-image network check with `0` remote image
-  requests, frontend typecheck `PASS`, lint `PASS` with existing warnings and
-  production build `PASS`; blue-control click and default-collapsed checks
-  `PASS`.
+- Latest verified tests: relevant mail suite `286 OK` with one expected skip,
+  rich HTML/MIME/HTTP/resend/continuation regressions `PASS`, frontend
+  typecheck/build `PASS`, lint `PASS` with eight existing warnings, and
+  desktop/mobile browser smoke `PASS`.
 
 ## Project
 
@@ -34,11 +32,16 @@
 
 ## Current task
 
-- `TASK-MESSAGES-NAV-DEFAULT-20260831` — `COMPLETE`.
-- The implementation commit is `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e`;
+- `TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831` — `COMPLETE`.
+- The implementation commit is `d90bfd46f6ee421d442f2702c04cb9d280e634d9`;
   `ai/ACTIVE_TASK.md` is returned to the explicit idle sentinel.
 
 ## Last completed task
+
+- `TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831` — `COMPLETE`;
+  explicit `body_text`/`body_html` contract, server-side sanitization,
+  rich editor coverage, and snapshot preservation were implemented.
+  Report: `ai/reports/TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831-report.md`.
 
 - `TASK-MESSAGES-NAV-DEFAULT-20260831` — `COMPLETE`; desktop navigation is
   collapsed on first run while saved user preference remains authoritative.
@@ -74,7 +77,8 @@
 - Local implementation commits:
   `a7043cc4f30f926dd792ef4aaceedee05300f3e2`,
   `2ba2547383c42ad92b246527739eb2a2a56f8e76` and
-  `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e`.
+  `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e`, plus
+  `d90bfd46f6ee421d442f2702c04cb9d280e634d9`.
 - Push: `NOT RUN`; the remote branch intentionally remains behind this local
   implementation commit.
 
@@ -89,15 +93,17 @@
   keeps its dashboard action.
 - Desktop navigation defaults to collapsed when no preference is stored;
   existing stored preference is preserved.
-- Only the requested product file was committed for this task; unrelated dirty and
-  untracked paths were preserved.
+- Outbound mail now has explicit `body_text`/`body_html` fields across bulk,
+  single/thread and unmatched-reply flows; HTML is sanitized server-side and
+  preserved in idempotency, resend and continuation snapshots.
+- Unrelated dirty and untracked paths were preserved and were not staged.
 
 ## Runtime
 
 - Local runtime `http://127.0.0.1:8000` remains running after verification.
-- Real browser checks used the live local API without route mocks. Manual link
-  mutation was exercised only on an isolated SQLite copy; no canonical
-  manual-link/unlink mutation was performed.
+- Real browser checks used the live local API without route mocks; bulk and reply
+  editors were opened and rendered at desktop `1280x720` and mobile
+  `390x844`, with no UI send action.
 - No SMTP/IMAP, migration, production deployment or PostgreSQL acceptance was
   performed.
 
@@ -108,20 +114,17 @@
   boundary were recorded.
 - GitHub repository privacy, name, default branch and branch commit were
   checked through `gh`; the remote branch was not changed by this task.
-- The task report records live scenarios, screenshots, network checks and
-  known verification limits.
-- The committed product file changed by this task is limited to
-  `frontend/src/components/Layout.tsx`; state/report changes are being closed
-  in the following state commit.
+- The task report records the explicit contract, sanitizer behavior, regression
+  coverage, smoke commands, screenshots and known verification limits.
+- No database migration or supplier identity cleanup was run.
 
 ## Current priorities
 
 - Current P0: `NONE CONFIRMED`.
 - Current `/messages` P1/P2: `NONE CONFIRMED` in the verified local runtime.
-- Current P1: outbound rich-text behavior is `PARTIALLY CONFIRMED` for the
-  existing rich single/thread composer and remains outside this task;
-  full-suite helper readiness remains `NOT VERIFIED` because the documented
-  helper paths are absent.
+- Current P1: outbound rich-text contract mismatch is `RESOLVED`; real provider
+  mailbox acceptance remains `NOT VERIFIED`. Full-suite helper readiness
+  remains `NOT VERIFIED` because the documented helper paths are absent.
 - Current P2: PostgreSQL acceptance, real Mail.ru acceptance, missing helper
   scripts, parallel `docs/**` state ownership and broad untracked-worktree
   provenance remain `NOT VERIFIED` or `OPEN` as recorded in deferred findings.
@@ -140,10 +143,9 @@
 
 ## Blockers
 
-- No blocker remains for the scoped `/messages` fixes. The unrelated
-  outbound rich-text contract, provider acceptance, missing helper scripts,
-  test isolation and parallel `docs/**` state ownership remain open as
-  separately tracked work.
+- No blocker remains for the explicit outbound content contract. Provider
+  mailbox acceptance, missing helper scripts, test isolation and parallel
+  `docs/**` state ownership remain open as separately tracked work.
 
 ## Active constraints
 

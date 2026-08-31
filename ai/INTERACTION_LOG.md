@@ -182,6 +182,22 @@ This log records agent work interactions. It is append-only.
   were preserved.
 - Report: `ai/reports/TASK-MESSAGES-NAV-TOGGLE-20260831-report.md`.
 
+## 2026-08-31T06:46:00Z — TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831
+
+- Request: implement the explicit rich HTML option with separate
+  `body_text`/`body_html` and sanitization.
+- Mode: `EXTEND → REGRESSION QA → LIVE UI SMOKE → CLOSE`.
+- Result: `COMPLETE`; all outbound authoring paths now submit the explicit
+  pair, server sanitizes HTML, derives the plain alternative and preserves
+  rich snapshots through resend and continuation.
+- Verification: relevant mail suite `286 OK` with one expected skip; frontend
+  typecheck/build/lint `PASS`; root/request/auth smoke `200`, unknown API
+  `404`; browser desktop/mobile composer checks `PASS`.
+- Safety: no live email, SMTP/IMAP, database migration, supplier identity
+  apply or canonical data mutation; unrelated worktree paths were preserved.
+- Commit: `d90bfd46f6ee421d442f2702c04cb9d280e634d9`; Push: `NOT RUN`.
+- Report: `ai/reports/TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831-report.md`.
+
 ## 2026-08-31T06:42:12Z — TASK-MESSAGES-NAV-DEFAULT-20260831
 
 - Request: start the desktop navigation collapsed by default.
@@ -195,4 +211,20 @@ This log records agent work interactions. It is append-only.
 - Push: `NOT RUN`.
 - State: current task closed; unrelated tracked and untracked worktree paths
   were preserved.
+
+## 2026-08-31T06:44:00Z — TASK-MAILRU-SELFTEST-CONTINUATION-20260831
+
+- Request: run one controlled Mail.ru self-test, then continue request 1059
+  only for contacts not previously sent.
+- Safety: canonical local runtime and canonical SQLite verified; existing
+  Yandex campaign 2 remains paused; outgoing was disabled before planning.
+- Self-test: Mail.ru account 23 to the owner's Yandex address was accepted by
+  SMTP with code 250; message/job/attempt records and sent-copy evidence were
+  persisted; no credentials or tokens were logged.
+- Post-test: durable and effective outgoing were switched back to OFF.
+- Continuation dry-run: request 1059 campaign 2, Mail.ru account 23, strict
+  untouched selection found 81 eligible contacts; bounded first batch is 5;
+  no live send occurred during dry-run.
+- State: awaiting immediate operator confirmation before the first 5 supplier
+  contacts are transmitted.
 - Report: `ai/reports/TASK-MESSAGES-NAV-DEFAULT-20260831-report.md`.
