@@ -126,27 +126,21 @@ export function Layout() {
     <>
       <div className={cn('flex h-[76px] items-center border-b border-ink-800', compact ? 'relative flex-col justify-end gap-1 px-2 pb-2 pt-8' : 'px-4')}>
         <button
-          onClick={() => navigate('/')}
-          aria-label="Открыть дашборд"
-          title={compact ? 'Дашборд' : undefined}
+          type="button"
+          onClick={() => showCollapse ? setSidebarCollapsed((value) => !value) : navigate('/')}
+          aria-label={showCollapse ? (compact ? 'Развернуть меню' : 'Свернуть меню') : 'Открыть дашборд'}
+          aria-expanded={showCollapse ? !compact : undefined}
+          aria-controls={showCollapse ? 'desktop-sidebar' : undefined}
+          title={showCollapse ? (compact ? 'Развернуть меню' : 'Свернуть меню') : undefined}
           className={cn('flex h-12 min-w-0 items-center rounded-xl text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500', compact ? 'w-12 justify-center' : 'flex-1 px-3')}
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-600 text-xl font-bold text-white shadow-soft">›</span>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-600 text-white shadow-soft">
+            {showCollapse ? (compact ? <ChevronRight size={18} strokeWidth={2.5} aria-hidden="true" /> : <ChevronLeft size={18} strokeWidth={2.5} aria-hidden="true" />) : '›'}
+          </span>
           <span className={cn('ml-3 min-w-0', compact && 'sr-only')}>
             <span className="block text-base font-bold tracking-tight text-white">SupplyDesk</span>
             <span className="block text-2xs font-medium uppercase tracking-[0.16em] text-ink-400">Procurement OS</span>
           </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setSidebarCollapsed((value) => !value)}
-          aria-label={compact ? 'Развернуть меню' : 'Свернуть меню'}
-          aria-expanded={!compact}
-          aria-controls="desktop-sidebar"
-          title={compact ? 'Развернуть меню' : 'Свернуть меню'}
-          className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500', compact && 'absolute right-2 top-2 h-7 w-7', !showCollapse && 'hidden')}
-        >
-          {compact ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
         </button>
       </div>
       <nav aria-label="Основная навигация" className={cn('flex-1 space-y-1 py-7', compact ? 'px-2' : 'px-4')}>
