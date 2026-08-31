@@ -2,12 +2,12 @@
 
 ## Last update
 
-- Timestamp UTC: `2026-08-31T06:46:00Z` (`TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831` close).
+- Timestamp UTC: `2026-08-31T06:55:58Z` (`TASK-MESSAGES-AUDIT-20260831` close).
 - Project root: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
 - Repository: `edwatikhedwa-tech/supplydesk`.
 - Branch: `codex/TASK-STATE-CONTROL-20260830`.
-- HEAD: `d90bfd46f6ee421d442f2702c04cb9d280e634d9` (`TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831`
-  product implementation commit; push not run).
+- HEAD at audit start: `791f5c27f6743e3f8e7d040dfb8b152e5b27ba2f` (`TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831`
+  state-record commit; this audit's state/report commit is local and push is not run).
 - Remote: `origin` → `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Upstream: `origin/codex/TASK-STATE-CONTROL-20260830`.
@@ -18,10 +18,9 @@
   implementation commit is local only and was not pushed.
 - Working tree at close: `DIRTY`; unrelated tracked changes and broad
   untracked entries remain preserved. No unrelated path was staged.
-- Latest verified tests: relevant mail suite `286 OK` with one expected skip,
-  rich HTML/MIME/HTTP/resend/continuation regressions `PASS`, frontend
-  typecheck/build `PASS`, lint `PASS` with eight existing warnings, and
-  desktop/mobile browser smoke `PASS`.
+- Latest verified tests: this iteration's live `/messages` audit found the
+  queue-only and unread/geometry findings; frontend typecheck `PASS`, lint
+  `PASS` with eight existing warnings, and local HTTP/browser smoke `PASS`.
 
 ## Project
 
@@ -32,11 +31,14 @@
 
 ## Current task
 
-- `TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831` — `COMPLETE`.
-- The implementation commit is `d90bfd46f6ee421d442f2702c04cb9d280e634d9`;
-  `ai/ACTIVE_TASK.md` is returned to the explicit idle sentinel.
+- `TASK-MESSAGES-AUDIT-20260831` — `COMPLETE`.
+- Audit-only; `ai/ACTIVE_TASK.md` remains the explicit idle sentinel.
 
 ## Last completed task
+
+- `TASK-MESSAGES-AUDIT-20260831` — `COMPLETE`; queue-only visibility,
+  unread semantics, grouping and responsive geometry were audited. Report:
+  `ai/reports/TASK-MESSAGES-AUDIT-20260831-report.md`.
 
 - `TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831` — `COMPLETE`;
   explicit `body_text`/`body_html` contract, server-side sanitization,
@@ -100,7 +102,8 @@
 
 ## Runtime
 
-- Local runtime `http://127.0.0.1:8000` remains running after verification.
+- Local runtime `http://127.0.0.1:8000` remains running after verification;
+  Python listener PID `10248` was confirmed.
 - Real browser checks used the live local API without route mocks; bulk and reply
   editors were opened and rendered at desktop `1280x720` and mobile
   `390x844`, with no UI send action.
@@ -117,11 +120,22 @@
 - The task report records the explicit contract, sanitizer behavior, regression
   coverage, smoke commands, screenshots and known verification limits.
 - No database migration or supplier identity cleanup was run.
+- `/messages` returned HTTP `200`; the authenticated browser rendered request
+  list, queue-only detail, delivery-unknown detail and unmatched inbox.
+- Read-only SQLite aggregate: 144 request threads, 84 queue-only threads,
+  16 inbound messages all read, 41 unmatched inbox messages.
+- Portrait/mobile geometry: off-canvas EmptyState was confirmed at 390x844,
+  360x800 and 1024x768; screenshots were saved under
+  `Temp/messages-audit-20260831/screenshots/`.
 
 ## Current priorities
 
 - Current P0: `NONE CONFIRMED`.
-- Current `/messages` P1/P2: `NONE CONFIRMED` in the verified local runtime.
+- Current `/messages` P1: queue-only threads are displayed as correspondence;
+  manual-linked incoming messages do not share the ordinary unread contract.
+- Current `/messages` P2: status absent from list rows, all groups expanded by
+  default, off-canvas EmptyState on narrow/tablet list layout, and Reply shown
+  from queue-only detail.
 - Current P1: outbound rich-text contract mismatch is `RESOLVED`; real provider
   mailbox acceptance remains `NOT VERIFIED`. Full-suite helper readiness
   remains `NOT VERIFIED` because the documented helper paths are absent.
@@ -140,12 +154,16 @@
   binary CID attachment was not available for a live end-to-end check.
 - Arbitrary secrets outside the documented publication scan patterns.
 - Historical authorship/provenance of untracked working-tree paths.
+- A live unread visual fixture was unavailable because current inbound unread
+  count is zero; the request-list error branch was not forced in the browser.
+- Full viewport matrix was not repeated for 1920x1080, 768x1024 and 1640x900.
 
 ## Blockers
 
-- No blocker remains for the explicit outbound content contract. Provider
-  mailbox acceptance, missing helper scripts, test isolation and parallel
-  `docs/**` state ownership remain open as separately tracked work.
+- No implementation blocker for the audit. The next product iteration is
+  blocked only on an explicit lifecycle/visibility decision for queued mail;
+  provider mailbox acceptance, missing helper scripts, test isolation and
+  parallel `docs/**` state ownership remain open separately.
 
 ## Active constraints
 
@@ -158,8 +176,9 @@
 
 ## Current next step
 
-- Separately schedule a real binary CID attachment fixture if that coverage is
-  required; keep the outbound rich-text contract as an independent task.
+- Make the design decision for queue-only visibility and the unified unread
+  contract, then authorize a separate implementation task with backend/UI
+  tests and live unread fixture.
 
 ## Historical / superseded state
 

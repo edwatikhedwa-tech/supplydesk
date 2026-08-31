@@ -317,3 +317,22 @@ rewritten.
 - Commit: `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e`.
 - Push: `NOT RUN`.
 - Report: `ai/reports/TASK-MESSAGES-NAV-DEFAULT-20260831-report.md`.
+
+## 2026-08-31T06:55:58Z — AUDIT / MESSAGES VISIBILITY — TASK-MESSAGES-AUDIT-20260831
+
+- Agent: `Codex`.
+- Mode: `REVIEW / AUDIT ONLY`.
+- Scope: `/messages` request threads, unmatched inbox, delivery/read states,
+  responsive rendering and information architecture.
+- Result: `FAIL` for the current information contract; architecture direction
+  is sound, but queue-only threads and the manual-linked unread gap are
+  confirmed.
+- Evidence: live browser at `http://127.0.0.1:8000/messages`, read-only SQLite
+  aggregate, desktop/mobile screenshots, DOM geometry, typecheck and lint.
+- Findings: `84/144` request threads are queue-only; current inbound unread is
+  `0/16`; unmatched inbox contains `41` messages; mobile/tablet off-canvas
+  EmptyState and default-expanded groups were confirmed.
+- No application code, API, database, migrations, SMTP/IMAP or production
+  settings were changed.
+- Report: `ai/reports/TASK-MESSAGES-AUDIT-20260831-report.md`.
+- Push: `NOT RUN`.

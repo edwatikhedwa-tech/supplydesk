@@ -159,3 +159,68 @@ Agents must not automatically fix these findings while doing another task.
 - Possible next step: owner-led review of any future publish set; no action is
   required for the already completed publication.
 - Status: `SUPERSEDED` (current publication decision resolved)
+
+## FINDING-011 — Queue-only request threads are visible in correspondence
+
+- ID: `FINDING-011`
+- Date: `2026-08-31`
+- Source: live `/messages`, read-only SQLite aggregate and
+  `mail/repository.py:list_threads()`.
+- Description: 84 of 144 request threads contain only outbound messages with
+  status `queued`; the correspondence query returns them without a status
+  predicate.
+- Severity: `P1`
+- Why outside current scope: this iteration is audit-only; changing the
+  visibility contract requires a separate backend/UI implementation decision.
+- Next step: hide queue-only threads from correspondence and expose them in an
+  outbox/queue surface; keep inbound, sent, failed and delivery-unknown items.
+- Status: `OPEN`
+- Report: `ai/reports/TASK-MESSAGES-AUDIT-20260831-report.md`
+
+## FINDING-012 — Manual-linked and unmatched inbound mail lack unread semantics
+
+- ID: `FINDING-012`
+- Date: `2026-08-31`
+- Source: `mail/repository.py`, `frontend/src/pages/Messages.tsx`, live SQLite
+  aggregate.
+- Description: ordinary request messages have `unread_count`, while the
+  manual-linked UNION returns `0` and `inbox_conversation()` does not mark
+  inbox messages read. Current data has 16 inbound messages, all already read,
+  so a live unread visual fixture was unavailable.
+- Severity: `P1`
+- Why outside current scope: unified read state requires a separate data/UI
+  contract and likely a migration or a deliberate materialization rule.
+- Next step: preserve unread through manual linking, mark it read on opening,
+  and add a text/ARIA status in the list.
+- Status: `OPEN — PARTIALLY CONFIRMED`
+- Report: `ai/reports/TASK-MESSAGES-AUDIT-20260831-report.md`
+
+## FINDING-013 — Narrow list layout renders EmptyState outside viewport
+
+- ID: `FINDING-013`
+- Date: `2026-08-31`
+- Source: live DOM geometry at 1024x768, 390x844 and 360x800.
+- Description: request list and EmptyState are rendered as adjacent flex
+  children; the parent clips the EmptyState, leaving visible DOM boxes beyond
+  the viewport while `scrollWidth` stays unchanged.
+- Severity: `P2`
+- Why outside current scope: this iteration is audit-only.
+- Next step: make list/detail mutually exclusive on narrow layouts and repeat
+  geometry and screenshot acceptance.
+- Status: `OPEN`
+- Report: `ai/reports/TASK-MESSAGES-AUDIT-20260831-report.md`
+
+## FINDING-014 — Request groups and row statuses are too dense/ambiguous
+
+- ID: `FINDING-014`
+- Date: `2026-08-31`
+- Source: live screenshots, `ThreadList.tsx` and queue-only detail.
+- Description: all groups start expanded despite the documented intended
+  collapse strategy; rows show counts but no delivery state, and queue-only
+  detail still exposes the primary `Ответить` action.
+- Severity: `P2`
+- Why outside current scope: this iteration is audit-only.
+- Next step: collapse non-attention groups, add explicit row statuses and
+  make reply a deliberate secondary action for unsent messages.
+- Status: `OPEN`
+- Report: `ai/reports/TASK-MESSAGES-AUDIT-20260831-report.md`

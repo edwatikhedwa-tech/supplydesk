@@ -1,5 +1,54 @@
 # Last Handoff
 
+## Current handoff — `/messages` visibility and unread audit
+
+Task ID: `TASK-MESSAGES-AUDIT-20260831`
+Дата и время UTC: `2026-08-31T06:55:58Z`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+HEAD at audit start: `791f5c27f6743e3f8e7d040dfb8b152e5b27ba2f`
+Push: `NOT RUN`
+Active task: `NONE`
+Status: `COMPLETE — audit report written; no product changes`
+
+### Что проверено
+
+- Live `http://127.0.0.1:8000/messages` в авторизованном in-app browser.
+- Read-only SQLite aggregate: 144 request-треда, 84 queue-only треда,
+  16 inbound messages all read, 41 unmatched messages.
+- Request list, queue-only detail, delivery-unknown detail, unmatched list,
+  back navigation and mobile list/detail behavior.
+- Viewports `1440x900`, `1024x768`, `390x844`, `360x800`; current default
+  `1280x720` дополнительно осмотрен.
+- HTTP `/messages` `200`, listener PID `10248`, browser console errors/warnings
+  `0`, typecheck `PASS`, lint `PASS` with 8 existing warnings.
+
+### Главные выводы
+
+- Request-first grouping and separate unmatched inbox are good product
+  decisions.
+- `mail/repository.py:list_threads()` currently exposes 84 threads containing
+  only outbound `queued` messages; they should live in an outbox/queue surface.
+- Ordinary inbound request messages have unread tracking, but manual-linked
+  inbox messages and unmatched inbox rows do not share that contract.
+- All request groups are expanded by default despite the documented intent to
+  keep non-attention groups collapsed.
+- EmptyState is rendered off-canvas on narrow/tablet list layouts; the parent
+  clips it, so page `scrollWidth` does not reveal the geometry defect.
+
+### Артефакты и ограничения
+
+Report: `ai/reports/TASK-MESSAGES-AUDIT-20260831-report.md`
+
+Screenshots:
+
+- `Temp/messages-audit-20260831/screenshots/queue-thread-1440.png`
+- `Temp/messages-audit-20260831/screenshots/requests-list-390.png`
+
+No application code, API, database, migrations, SMTP/IMAP or production
+settings were changed. A live unread fixture and forced request-list error
+state were not available; full 1920/768/1640 viewport coverage was not repeated.
+
 ## Current handoff — explicit outbound HTML contract complete
 
 Task ID: TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831

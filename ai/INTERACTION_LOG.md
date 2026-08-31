@@ -180,6 +180,21 @@ This log records agent work interactions. It is append-only.
 - Push: `NOT RUN`.
 - State: current task closed; unrelated tracked and untracked worktree paths
   were preserved.
+
+## 2026-08-31T06:55:58Z — TASK-MESSAGES-AUDIT-20260831
+
+- Request: inspect `/messages`, find defects and assess whether message
+  display logic is organized correctly.
+- Mode: `REVIEW / AUDIT ONLY`.
+- Result: `FAIL` for the current visibility contract; request-first grouping
+  and separate unmatched inbox are good, but queue-only threads are displayed
+  as correspondence and manual-linked unread semantics are incomplete.
+- Verification: local listener on port `8000`, HTTP `/messages` `200`, live
+  authenticated browser states, read-only SQLite aggregate, screenshots at
+  `1440`, `1024`, `390` and `360`, DOM geometry, typecheck `PASS`, lint `PASS`
+  with 8 existing warnings.
+- No application or canonical data mutation was performed.
+- Report: `ai/reports/TASK-MESSAGES-AUDIT-20260831-report.md`.
 - Report: `ai/reports/TASK-MESSAGES-NAV-TOGGLE-20260831-report.md`.
 
 ## 2026-08-31T06:46:00Z — TASK-MAIL-CONTENT-CONTRACT-IMPLEMENTATION-20260831
