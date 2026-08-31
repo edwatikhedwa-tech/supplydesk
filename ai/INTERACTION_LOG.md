@@ -2,6 +2,31 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-08-31 — TASK-MESSAGES-CID-HEIGHT-FIX-20260831
+
+- Owner requested execution of the next useful frontend task. Investigated
+  the remaining CID rendering gap on `/messages` with real local browser data.
+- Reproduced an iframe height race, fixed `EmailRenderer`, and verified the
+  result at `390`, `1024`, `1440` and `1640` pixels without route mocks.
+- Added Storybook and Playwright regression coverage. Temporary mail data was
+  restored and outgoing mail stayed disabled.
+- Full live regression remains explicitly unverified after two 3-minute
+  timeout attempts. Report: `ai/reports/TASK-MESSAGES-CID-HEIGHT-FIX-20260831-report.md`.
+
+## 2026-08-31T17:52:01Z — TASK-FRONTEND-MAILRU-CONTINUATION-20260831
+
+- Owner requested execution of the recommendations and continuation through
+  Mail.ru without resending to suppliers already contacted.
+- Applied the frontend audit fixes, verified live desktop/mobile rendering,
+  and committed only scoped files as `568391d`; unrelated dirty worktree
+  changes were preserved.
+- Read-only reconciliation found two queued, zero-attempt Mail.ru jobs only:
+  `support@prometall.ru` and `89087178701@mail.ru`. Yandex queue and an
+  uncertain Unicode-domain result were excluded from action.
+- Outgoing remains OFF. Actual provider transmission is awaiting confirmation
+  immediately before sending this exact two-recipient batch.
+- Report: `ai/reports/TASK-FRONTEND-MAILRU-CONTINUATION-20260831-report.md`.
+
 ## 2026-08-31 — TASK-MESSAGES-REAL-DATA-ACCEPTANCE-20260831
 
 - Owner asked to continue the pending work. Finalized the already-run

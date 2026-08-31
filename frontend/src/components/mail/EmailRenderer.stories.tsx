@@ -93,6 +93,19 @@ export const RemoteImagesBlocked: Story = {
   },
 };
 
+export const CidImage: Story = {
+  args: {
+    html: `
+      <h2>CID-изображение</h2>
+      <p>Текст письма должен отображаться рядом со встроенной картинкой.</p>
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=" width="160" height="80" alt="Тестовое CID-изображение">
+      <p>Внешних картинок в этом письме нет.</p>
+    `,
+    text: null,
+    hasRemoteImages: false,
+  },
+};
+
 export const MarketingSpacerCleanup: Story = {
   args: {
     html: `

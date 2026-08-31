@@ -1,5 +1,68 @@
 # Last Handoff
 
+## Latest completed handoff — CID image height fix
+
+Task ID: `TASK-MESSAGES-CID-HEIGHT-FIX-20260831`
+Дата: `2026-08-31`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+Base HEAD before this iteration: `568391d`
+Status: `COMPLETE LOCALLY — targeted fix verified; full live suite remains unverified`
+
+### Что сделано
+
+- Исправлено повторное измерение высоты `EmailRenderer` для уже завершённых
+  встроенных изображений; CID-картинка больше не обрезается при быстром
+  декодировании ресурса.
+- В реальном браузере без route-моков проверены `390`, `1024`, `1440` и
+  `1640` пикселей: изображение видно, текст читаем, горизонтального overflow
+  нет, внешних запросов нет.
+- Добавлены регрессионные проверки для HTML, plain text и CID; Storybook
+  responsive прогон дал `3 passed`.
+- Временная запись в SQLite удалена адресно; число inbox-записей и проверка
+  целостности базы восстановлены.
+
+### Ограничения
+
+- Полный live no-route-mock прогон после исправления не подтверждён: две
+  попытки достигли лимита 3 минуты на ожидании данных/снимка экрана.
+- Утверждённый визуальный baseline не создавался; сохранены before/after
+  screenshots и JSON-замеры.
+
+Report: `ai/reports/TASK-MESSAGES-CID-HEIGHT-FIX-20260831-report.md`
+
+## Current handoff — frontend fixes and exact Mail.ru send confirmation
+
+Task ID: `TASK-FRONTEND-MAILRU-CONTINUATION-20260831`
+Дата: `2026-08-31`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+HEAD: `568391d907c801ce2230051c9caa5a2d9b31ab8c`
+Push: `NOT RUN`
+Status: `READY — implementation verified; external send intentionally held`
+
+### Что сделано
+
+- Applied and committed the scoped frontend audit recommendations.
+- Verified the reply dialog live on desktop/mobile and recorded screenshots;
+  no browser console errors or page overflow were found.
+- Started a separate local smoke server on `127.0.0.1:8001` with outgoing
+  forced OFF and left it running.
+- Read the canonical SQLite database in `mode=ro`. Only two Mail.ru jobs are
+  untouched and already queued for continuation: `support@prometall.ru` and
+  `89087178701@mail.ru`.
+
+### Перед фактической отправкой
+
+- Confirm immediately before action that sending exactly these two recipients
+  from Mail.ru account `23` is intended. Do not include the old Yandex queue,
+  any accepted Mail.ru recipient, or the uncertain Unicode-domain message.
+- After confirmation, enable outgoing only for the controlled run, process only
+  jobs `173` and `174` one at a time, verify provider acceptance and durable
+  statuses, then switch outgoing OFF again.
+
+Report: `ai/reports/TASK-FRONTEND-MAILRU-CONTINUATION-20260831-report.md`
+
 ## Current handoff — real-data messages acceptance
 
 Task ID: `TASK-MESSAGES-REAL-DATA-ACCEPTANCE-20260831`

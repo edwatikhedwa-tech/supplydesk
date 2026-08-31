@@ -1,5 +1,50 @@
 # Active Task
 
+## Latest completed task — CID image height fix
+
+Task ID: `TASK-MESSAGES-CID-HEIGHT-FIX-20260831`
+Mode: `IMPLEMENT → VERIFY`
+Status: `COMPLETE LOCALLY — targeted browser and regression checks passed`
+
+- Исправлена обрезка быстрого встроенного CID-изображения в iframe письма.
+- Проверены реальные локальные MIME-данные, браузерные размеры и отсутствие
+  внешних запросов на `390`, `1024`, `1440` и `1640` пикселях.
+- Полный live no-route-mock прогон после исправления не подтверждён из-за двух
+  тайм-аутов по 3 минуты; это не выдано за PASS.
+- Report: `ai/reports/TASK-MESSAGES-CID-HEIGHT-FIX-20260831-report.md`.
+
+Task ID: `TASK-FRONTEND-MAILRU-CONTINUATION-20260831`
+Agent: `Codex`
+Mode: `IMPLEMENT → VERIFY → SAFE SEND HOLD`
+Started: `2026-08-31`
+Scope: `apply frontend audit fixes, verify the local runtime, reconcile request 1059 Mail.ru continuation recipients, and send only explicitly confirmed untouched Mail.ru jobs`
+Non-goals: `no Yandex sending, no duplicate recipients, no direct SQL-created jobs, no credential changes, no automatic retry of uncertain delivery`
+Status: `READY FOR OWNER CONFIRMATION — code committed; two queued Mail.ru jobs are prepared but not sent`
+Last update: `2026-08-31T17:52:01Z`
+
+## Current evidence
+
+- Frontend typecheck, build and lint passed; lint has `0` errors and `8`
+  pre-existing warnings outside this task.
+- Full visual audit passed `80/80` across desktop, tablet and mobile. Live
+  browser checks confirmed the reply dialog role, editor focus, close action,
+  touch target and no horizontal overflow at `390x844` and `1440x900`.
+- Local HTTP smoke passed on `127.0.0.1:8001` with outgoing forced OFF:
+  root `200`, `/api/auth/me` `200`, protected API `401`, unknown API `404`,
+  and hashed assets returned gzip plus immutable cache headers.
+- Targeted mail safety tests passed `230/230` with one expected skip. Full
+  discovery remains blocked by the system `lxml` DLL/parser environment and
+  one pre-existing `quotequail` folding assertion; no current task file is
+  implicated.
+- Canonical read-only preflight: request `1059`, Mail.ru account `23`
+  (`edwatik@mail.ru`) connected; durable outgoing switch `0` (OFF). Existing
+  Mail.ru continuation jobs `173`/`191` for `support@prometall.ru` and
+  `174`/`192` for `89087178701@mail.ru` have zero attempts and no `sent`
+  history. Eighteen other Mail.ru messages were accepted; the Unicode-domain
+  message has an uncertain result and will not be retried.
+- No SMTP/DATA action was performed in this task. The two queued jobs remain
+  unchanged until owner confirmation of this exact recipient list.
+
 Task ID: `NONE`
 Agent: `Codex`
 Mode: `CLOSE`

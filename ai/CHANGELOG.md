@@ -3,6 +3,33 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-08-31 — CID IMAGE HEIGHT FIX — TASK-MESSAGES-CID-HEIGHT-FIX-20260831
+
+- Fixed a fast inline-image timing issue in `EmailRenderer` that could leave
+  the mail iframe at `24px` and clip a CID image.
+- Added a MIME-derived local CID fixture, Storybook coverage and responsive
+  Playwright evidence for `390`, `1024`, `1440` and `1640` pixel widths.
+- Typecheck, build, lint and the three-case Storybook responsive suite passed.
+  The full live no-route-mock suite remains unverified after two 3-minute
+  timeout attempts; this is recorded in the task report.
+- No external send, SMTP/IMAP, API, queue, status, filter or request-link
+  behavior was changed.
+
+## 2026-08-31T17:52:01Z — FRONTEND FIXES AND MAILRU CONTINUATION HOLD — TASK-FRONTEND-MAILRU-CONTINUATION-20260831
+
+- Applied the scoped frontend recommendations and committed them as
+  `568391d` (code commit; push not run).
+- Verified typecheck/build/lint, `80/80` visual scenarios, live desktop/mobile
+  dialog screenshots, `230/230` targeted mail safety tests, doctor DryRun and
+  local HTTP smoke with outgoing OFF.
+- Read-only canonical preflight identified two and only two untouched queued
+  Mail.ru recipients: `support@prometall.ru` and `89087178701@mail.ru`.
+- No provider send was started. The exact batch is held for action-time owner
+  confirmation; accepted and uncertain historical recipients remain excluded.
+- Full backend discovery is not PASS because the system lxml DLL/parser is
+  broken and one pre-existing quote-folding assertion fails; this is recorded
+  in the task report.
+
 ## 2026-08-31T16:45:33Z — REAL-DATA MESSAGES ACCEPTANCE — TASK-MESSAGES-REAL-DATA-ACCEPTANCE-20260831
 
 - Completed 8 no-route-mock Playwright checks against real `/messages` data:

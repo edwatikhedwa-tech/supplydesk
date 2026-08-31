@@ -350,10 +350,20 @@ export function EmailRenderer({ html, text, className, hasRemoteImages = false }
 
       const imageListeners: Array<{ image: HTMLImageElement; type: 'load' | 'error' }> = [];
       doc.querySelectorAll<HTMLImageElement>('img').forEach((image) => {
-        if (!image.complete) {
-          image.addEventListener('load', updateHeight, { once: true });
-          image.addEventListener('error', updateHeight, { once: true });
-          imageListeners.push({ image, type: 'load' }, { image, type: 'error' });
+        // A data URL can become `complete` before the iframe's load handler
+        // runs. In that case there is no future load event to trigger a second
+        // measurement, and a fast inline image can be clipped by the initial
+        // 24px iframe height. Keep listeners for late loads and explicitly
+        // wait for already-complete images to finish decoding.
+        image.addEventListener('load', updateHeight);
+        image.addEventListener('error', updateHeight);
+        imageListeners.push({ image, type: 'load' }, { image, type: 'error' });
+        if (image.complete) {
+          if (typeof image.decode === 'function') {
+            void image.decode().then(() => updateHeight(), () => updateHeight());
+          } else {
+            window.setTimeout(updateHeight, 0);
+          }
         }
       });
 

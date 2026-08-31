@@ -1,5 +1,41 @@
 # Current State
 
+## Latest task update — CID image height fix
+
+- Timestamp UTC: `2026-08-31` (`TASK-MESSAGES-CID-HEIGHT-FIX-20260831`).
+- Fixed a race in `EmailRenderer` where a fast inline CID image could be
+  marked complete before the height listener was attached, leaving the mail
+  iframe at roughly `24px` and visually clipping the message.
+- Added a local MIME-derived CID acceptance fixture, a Storybook scenario and
+  a responsive Playwright regression covering `390`, `1024`, `1440` and
+  `1640` pixels. All targeted CID checks passed after the fix; no external
+  requests were observed and the fixture was removed after verification.
+- Typecheck, lint, build and the three-case Storybook responsive suite passed.
+  The full live no-route-mock suite remains unverified because two attempts
+  reached its 3-minute timeout while waiting for a row or taking a screenshot.
+- Report: `ai/reports/TASK-MESSAGES-CID-HEIGHT-FIX-20260831-report.md`.
+
+## Latest task update — frontend fixes and Mail.ru continuation hold
+
+- Timestamp UTC: `2026-08-31T17:52:01Z`
+  (`TASK-FRONTEND-MAILRU-CONTINUATION-20260831`).
+- Committed the frontend audit fixes in `568391d`: accessible/focus-trapped
+  reply dialogs, mobile drawer isolation, filter/search semantics, supplier
+  selection labels, route-level lazy loading, local font fallback and static
+  asset gzip/immutable caching. Only task files were staged; unrelated dirty
+  worktree files remain unstaged.
+- Verified typecheck, build, lint, `80/80` visual scenarios, live browser
+  screenshots at `390x844` and `1440x900`, targeted mail safety tests `230/230`,
+  doctor DryRun and HTTP smoke on port `8001` with outgoing OFF.
+- Canonical read-only reconciliation for request `1059` found exactly two
+  queued Mail.ru jobs with zero attempts and no sent history:
+  `support@prometall.ru` (supplier `2855`, job `173`, message `191`) and
+  `89087178701@mail.ru` (supplier `2875`, job `174`, message `192`). No other
+  recipients are eligible for this continuation; Yandex queued work remains
+  untouched. The uncertain Unicode-domain result is excluded from retry.
+- Actual Mail.ru sending is paused pending action-time confirmation of those
+  exact two recipients. Durable outgoing remains `0` / OFF.
+
 ## Latest task update — real-data messages acceptance
 
 - Timestamp UTC: `2026-08-31T16:45:33Z`
