@@ -88,6 +88,14 @@ export function Messages() {
    *  того, как ThreadDetail успел загрузить письма и проставить отметки. */
   const handleThreadRead = useCallback(() => setRefreshKey((k) => k + 1), []);
 
+  const handleManualUnlink = useCallback(async (inboxMessageId: number) => {
+    await api.unlinkManualInboxMessage(inboxMessageId);
+    setSelectedThread(null);
+    setMode('unmatched');
+    setRefreshKey((k) => k + 1);
+    window.dispatchEvent(new CustomEvent('supplydesk:unmatched-mail-changed', { detail: { delta: 1 } }));
+  }, []);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden h-screen">
       <div className="flex min-h-[76px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-ink-200/70 bg-white px-4 py-3 sm:h-[76px] sm:flex-nowrap sm:px-8 sm:py-0">
@@ -128,6 +136,7 @@ export function Messages() {
                 onBack={() => setSelectedThread(null)}
                 onReply={selectedThread.manual_inbox_id == null ? handleReply : undefined}
                 onOpenRequest={(requestId) => navigate(`/requests/${requestId}`)}
+                onUnlinkManual={selectedThread.manual_inbox_id != null ? handleManualUnlink : undefined}
                 onRead={handleThreadRead}
               />
             ) : (

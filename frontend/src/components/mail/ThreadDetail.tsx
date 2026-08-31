@@ -18,6 +18,8 @@ interface ThreadDetailProps {
   onBack: () => void;
   onReply?: (thread: ThreadSummary, lastMessage: MailMessage | null) => void;
   onOpenRequest?: (requestId: number) => void;
+  /** Отвязать вручную сопоставленное письмо и вернуть его во входящие без привязки. */
+  onUnlinkManual?: (inboxMessageId: number) => Promise<void>;
   /** Вызывается после загрузки писем: сервер к этому моменту уже пометил
    *  входящие прочитанными, и список тредов надо перезапросить. */
   onRead?: () => void;
@@ -61,7 +63,7 @@ function mapInboxConversation(conversation: InboxConversation): MailMessage[] {
   return [original, ...replies];
 }
 
-export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onRead }: ThreadDetailProps) {
+export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkManual, onRead }: ThreadDetailProps) {
   const [messages, setMessages] = useState<MailMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -70,6 +72,21 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onRead }:
   const [actionError, setActionError] = useState('');
   const [actionBusy, setActionBusy] = useState<number | null>(null);
   const [confirmResend, setConfirmResend] = useState<number | null>(null);
+  const [unlinkBusy, setUnlinkBusy] = useState(false);
+  const [unlinkError, setUnlinkError] = useState('');
+
+  const unlinkManual = async () => {
+    if (thread.manual_inbox_id == null || !onUnlinkManual) return;
+    setUnlinkBusy(true);
+    setUnlinkError('');
+    try {
+      await onUnlinkManual(thread.manual_inbox_id);
+    } catch (error) {
+      setUnlinkError(error instanceof Error ? error.message : 'Не удалось отвязать письмо.');
+    } finally {
+      setUnlinkBusy(false);
+    }
+  };
 
   const loadMessages = useCallback(async () => {
     setLoading(true);
@@ -206,7 +223,23 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onRead }:
                 <p className="text-2xs font-semibold text-ink-600 uppercase tracking-wider mb-1">Заявка</p>
                 <p className="text-sm font-medium text-ink-900">{thread.request_name}</p>
                 <p className="text-sm text-ink-500 mt-0.5">{thread.supplier_name || 'Поставщик не определён'}</p>
-                {thread.manual_inbox_id != null && <p className="mt-1 text-xs font-medium text-accent-600">Письмо привязано вручную</p>}
+                {thread.manual_inbox_id != null && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <p className="text-xs font-medium text-accent-600">Письмо привязано вручную</p>
+                    {onUnlinkManual && (
+                      <button
+                        type="button"
+                        onClick={() => void unlinkManual()}
+                        disabled={unlinkBusy}
+                        aria-busy={unlinkBusy}
+                        className="inline-flex min-h-9 items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ink-600 ring-1 ring-ink-200 transition-colors hover:bg-ink-50 hover:text-ink-900 disabled:cursor-wait disabled:opacity-60"
+                      >
+                        {unlinkBusy ? 'Отвязываем…' : 'Отвязать письмо'}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {unlinkError && <p role="alert" className="mt-1.5 text-xs text-rose-700">{unlinkError}</p>}
               </div>
               {onOpenRequest && (
                 <button

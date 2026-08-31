@@ -75,6 +75,7 @@ const READER_CSS = `
 
 const INVISIBLE_EMAIL_MARKS = /\u034F|\u200B|\u200C|\u200D|\u2060|\u2800|\uFEFF/g;
 const EMPTY_LAYOUT_TEXT = /[\s\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000\u2800]/g;
+const MIN_EMAIL_CONTENT_HEIGHT = 24;
 
 function escapeHtml(text: string): string {
   return text
@@ -289,7 +290,7 @@ interface EmailRendererProps {
 export function EmailRenderer({ html, text, className, hasRemoteImages = false }: EmailRendererProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const observersRef = useRef<{ disconnect: () => void } | null>(null);
-  const [height, setHeight] = useState(120);
+  const [height, setHeight] = useState(MIN_EMAIL_CONTENT_HEIGHT);
   const [error, setError] = useState(false);
   const documentMarkup = useMemo(() => buildEmailDocument(html, text), [html, text]);
   // The API flag describes the original message. The marker is the stronger
@@ -307,7 +308,7 @@ export function EmailRenderer({ html, text, className, hasRemoteImages = false }
     observersRef.current?.disconnect();
     observersRef.current = null;
     setError(false);
-    setHeight(120);
+    setHeight(MIN_EMAIL_CONTENT_HEIGHT);
     return () => {
       observersRef.current?.disconnect();
       observersRef.current = null;
@@ -335,7 +336,7 @@ export function EmailRenderer({ html, text, className, hasRemoteImages = false }
           const scrollHeight = Math.max(
             body.scrollHeight,
             doc.documentElement.scrollHeight,
-            80,
+            MIN_EMAIL_CONTENT_HEIGHT,
           );
           setHeight(scrollHeight + 4);
         });
