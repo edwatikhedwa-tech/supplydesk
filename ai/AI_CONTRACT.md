@@ -55,6 +55,22 @@ verification.
 - `COMPLIANT` — all mandatory rules are satisfied and evidenced.
 - `NOT COMPLIANT` — at least one mandatory rule is not satisfied.
 
+## Communication with the owner
+
+For every substantial task, write the user-facing result in clear Russian and
+keep it brief. Start with these three short sections:
+
+1. **Сделано** — what was changed or checked and why it matters.
+2. **Проблемы и ограничения** — confirmed problems, failed checks and unknowns.
+3. **Следующий шаг** — one practical recommendation for what to do next.
+
+Explain each unavoidable technical term the first time it appears, in the
+same sentence and in ordinary language. Do not report only raw commands,
+`PASS`/`FAIL` values, commit hashes or English names: add one short sentence
+explaining what the check means for the user. Keep the mandatory instruction
+check at the end when required, but introduce it as a short technical
+compliance summary rather than using it as the main explanation.
+
 ## Security and data boundary
 
 Never commit passwords, API keys, OAuth tokens, cookies, private keys, `.env`
