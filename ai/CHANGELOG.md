@@ -256,3 +256,20 @@ rewritten.
   tests, `docs/**`, live database, SMTP, IMAP or supplier identity state.
 - Report: `ai/reports/TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830-report.md`.
 - Push: `NOT RUN`.
+
+## 2026-08-31T06:21:32Z — IMPLEMENTATION / LIVE ACCEPTANCE — TASK-MESSAGES-UX-20260831
+
+- Agent: `Codex`
+- Scope: `/messages` frontend UX only.
+- Changes: removed the artificial short-mail iframe minimum, added persisted
+  manual-link unlink control after reload, and refreshed the unmatched list and
+  counter after successful unlink.
+- Safety: remote-image blocking/notice detection, API contracts unrelated to
+  unlink, queue, statuses, filters, database, migrations, SMTP and IMAP were
+  not changed or used.
+- Verification: live no-mock audit `81/81 PASS`; live Playwright regression
+  `1 passed`; remote image requests `0`; typecheck/build `PASS`; lint `PASS`
+  with existing warnings.
+- Commit: `a7043cc4f30f926dd792ef4aaceedee05300f3e2`.
+- Push: `NOT RUN`.
+- Report: `ai/reports/TASK-MESSAGES-UX-20260831-report.md`.

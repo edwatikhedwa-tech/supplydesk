@@ -2,25 +2,26 @@
 
 ## Last update
 
-- Timestamp UTC: `2026-08-30T18:56:25Z` (mail content contract audit close).
+- Timestamp UTC: `2026-08-31T06:21:32Z` (`TASK-MESSAGES-UX-20260831` close).
 - Project root: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
 - Repository: `edwatikhedwa-tech/supplydesk`.
 - Branch: `codex/TASK-STATE-CONTROL-20260830`.
-- HEAD: `602d7c42df6269513c9dc112ace90b19d8f9082a` (audit baseline; verified
-  against the remote branch before the state-report update).
+- HEAD: `a7043cc4f30f926dd792ef4aaceedee05300f3e2` (`TASK-MESSAGES-UX-20260831`
+  implementation commit; push not run).
 - Remote: `origin` → `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Upstream: `origin/codex/TASK-STATE-CONTROL-20260830`.
-- GitHub branch HEAD at audit: `602d7c42df6269513c9dc112ace90b19d8f9082a`.
+- GitHub branch HEAD at audit: previous remote SHA; local implementation is
+  one commit ahead and was intentionally not pushed.
 - Repository visibility: `private`.
-- Publication: `COMPLETE` — publication commit
-  `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e` is on the confirmed private
-  remote; this task performs state reconciliation only.
-- Working tree at audit: `DIRTY`; `56` untracked porcelain entries, no staged
-  entries and no tracked modifications. These paths remain outside this task.
-- Latest verified tests: the offline mail-content audit report records `171`
-  backend tests `OK`, one continuation test `OK`, the isolated mock-MIME
-  probe `OK`, frontend typecheck `PASS` and frontend build `PASS`.
+- Publication: `COMPLETE` for the previously published history; this task's
+  implementation commit is local only and was not pushed.
+- Working tree at close: `DIRTY`; unrelated tracked changes and broad
+  untracked entries remain preserved. No unrelated path was staged.
+- Latest verified tests: live `/messages` audit `81/81 PASS`, live Playwright
+  regression `1 passed`, remote-image network check with `0` remote image
+  requests, frontend typecheck `PASS`, lint `PASS` with existing warnings and
+  production build `PASS`.
 
 ## Project
 
@@ -31,10 +32,15 @@
 
 ## Current task
 
-- `NONE / IDLE`.
-- `ai/ACTIVE_TASK.md` contains the explicit idle sentinel.
+- `TASK-MESSAGES-UX-20260831` — `COMPLETE`.
+- The implementation commit is `a7043cc4f30f926dd792ef4aaceedee05300f3e2`;
+  `ai/ACTIVE_TASK.md` is returned to the explicit idle sentinel.
 
 ## Last completed task
+
+- `TASK-MESSAGES-UX-20260831` — `COMPLETE`; `/messages` UX fixes were
+  implemented and accepted through real browser checks. Report:
+  `ai/reports/TASK-MESSAGES-UX-20260831-report.md`.
 
 - `TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830` — `COMPLETE`,
   `PARTIALLY CONFIRMED`; the existing rich single/thread composer sends HTML
@@ -49,45 +55,56 @@
 
 ## Publication status
 
-- `COMPLETE` — the private GitHub repository and expected branch were
-  independently confirmed with `gh repo view`, `gh api`, `git ls-remote` and
-  local Git metadata.
+- `COMPLETE` for the previously published private repository and expected
+  branch; those facts were independently confirmed with `gh repo view`,
+  `gh api`, `git ls-remote` and local Git metadata.
 - Publication commit: `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e`.
-- Latest state-record commit before this final record:
+- Latest published state-record commit:
   `55db2aa2d8f80cdf69b4970db26cacce669a7e62`.
-- No new publication action is part of this reconciliation.
+- Local implementation commit: `a7043cc4f30f926dd792ef4aaceedee05300f3e2`.
+- Push: `NOT RUN`; the remote branch intentionally remains behind this local
+  implementation commit.
 
 ## Implemented
 
-- This task changes only repository-local AI state documents under `ai/**`.
-- No product implementation or corrective product task was started.
+- `/messages` now exposes manual unlink from a persisted linked thread and
+  refreshes the unmatched list/counter after success.
+- `EmailRenderer` no longer adds the former `80px` artificial minimum to
+  short plain-text mail; the minimum is `24px`.
+- Existing remote-image blocking and notice detection were not changed.
+- Only three product files were committed for this task; unrelated dirty and
+  untracked paths were preserved.
 
 ## Runtime
 
-- No live runtime, live database, migration, SMTP or IMAP action was performed.
-  The mail audit used temporary SQLite fixtures and fake providers/SMTP only.
-- Product content behavior is now independently verified as
-  `PARTIALLY CONFIRMED` for the rich single/thread route; the fix remains
-  unimplemented by instruction.
+- Local runtime `http://127.0.0.1:8000` remains running after verification.
+- Real browser checks used the live local API without route mocks. Manual link
+  mutation was exercised only on an isolated SQLite copy; no canonical
+  manual-link/unlink mutation was performed.
+- No SMTP/IMAP, migration, production deployment or PostgreSQL acceptance was
+  performed.
 
 ## Verified
 
 - Repository, branch, HEAD, origin, upstream and worktree status were checked
-  in the current checkout; the remote branch matched the audit baseline.
+  in the current checkout; the local implementation commit and remote-ahead
+  boundary were recorded.
 - GitHub repository privacy, name, default branch and branch commit were
-  checked through `gh`; the remote branch matches the local HEAD before this
-  closeout.
-- The task report records the isolated MIME/storage assertions, test commands,
-  and the exact content-contract verdict.
-- The files changed by this task are limited to `ai/**`.
+  checked through `gh`; the remote branch was not changed by this task.
+- The task report records live scenarios, screenshots, network checks and
+  known verification limits.
+- The committed product files changed by this task are limited to the three
+  `/messages` frontend files; state/report changes are being closed in the
+  following state commit.
 
 ## Current priorities
 
 - Current P0: `NONE CONFIRMED`.
+- Current `/messages` P1/P2: `NONE CONFIRMED` in the verified local runtime.
 - Current P1: outbound rich-text behavior is `PARTIALLY CONFIRMED` for the
-  existing rich single/thread composer and remains unimplemented; full-suite
-  helper readiness remains `NOT VERIFIED` because the documented helper paths
-  are absent.
+  existing rich single/thread composer and remains outside this task;
+  full-suite helper readiness remains `NOT VERIFIED` because the documented
+  helper paths are absent.
 - Current P2: PostgreSQL acceptance, real Mail.ru acceptance, missing helper
   scripts, parallel `docs/**` state ownership and broad untracked-worktree
   provenance remain `NOT VERIFIED` or `OPEN` as recorded in deferred findings.
@@ -96,33 +113,34 @@
 
 - The following items remain explicitly `NOT VERIFIED` in this closeout:
   production deployment, PostgreSQL acceptance, real Mail.ru acceptance,
-  visual/responsive acceptance and collaborator access for other agents.
-- Current full product test-suite status; this task intentionally does not
-  rerun product tests.
+  a new live binary CID attachment fixture and collaborator access for other
+  agents.
+- The current canonical SQLite contains `0` rows in `mail_attachments`; the
+  controlled CID fixture was checked in the browser, but a newly ingested
+  binary CID attachment was not available for a live end-to-end check.
 - Arbitrary secrets outside the documented publication scan patterns.
 - Historical authorship/provenance of untracked working-tree paths.
 
 ## Blockers
 
-- The mail-content audit is complete, but a P1 implementation item remains
-  open: choose plain-only or an explicit rich HTML contract before changing
-  product code. Full-suite readiness, provider/database acceptance, test
-  isolation and the parallel `docs/**` state system remain open.
+- No blocker remains for the scoped `/messages` fixes. The unrelated
+  outbound rich-text contract, provider acceptance, missing helper scripts,
+  test isolation and parallel `docs/**` state ownership remain open as
+  separately tracked work.
 
 ## Active constraints
 
-- This task is documentation/state-only: only `ai/**` may change.
-- Do not change application code, frontend, API, mail, migrations, tests,
-  database, production configuration or `docs/**` for this task.
+- This task was limited to `/messages` frontend UX and its verification
+  artifacts.
+- Do not change unrelated application code, backend APIs, mail transport,
+  migrations, database, production configuration or `docs/**` for this task.
 - Do not send email, run migrations, rewrite history, force-push, merge to
-  `main`/`master` or start a new product task.
+  `main`/`master` or push this task without explicit authorization.
 
 ## Current next step
 
-- Record the business decision for the outbound content contract, then create
-  a separately authorized implementation task. The current audit report is
-  `ai/reports/TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830-report.md`; do not
-  implement the fix in this state-only record.
+- Separately schedule a real binary CID attachment fixture if that coverage is
+  required; keep the outbound rich-text contract as an independent task.
 
 ## Historical / superseded state
 

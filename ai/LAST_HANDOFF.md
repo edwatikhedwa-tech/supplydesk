@@ -1,5 +1,53 @@
 # Last Handoff
 
+## Current handoff — `/messages` UX implementation complete
+
+Task ID: `TASK-MESSAGES-UX-20260831`
+Дата и время UTC: `2026-08-31T06:21:32Z`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+HEAD: `a7043cc4f30f926dd792ef4aaceedee05300f3e2`
+Push: `NOT RUN`
+Active task: `NONE`
+Status: `COMPLETE — /messages scoped fixes implemented and live-verified`
+
+### Цель
+
+Исправить подтверждённые UX-дефекты `/messages`: пустую высоту короткого
+plain-text письма и отсутствие действия отвязки после перезагрузки вручную
+привязанного письма.
+
+### Что изменено
+
+- `EmailRenderer` использует минимум `24px` вместо искусственных `80px`;
+  remote-image blocking, CID handling и notice detection не изменялись.
+- `ThreadDetail` показывает `Отвязать письмо` для manual-linked треда,
+  включая busy/error states.
+- `Messages` вызывает существующий unlink API, закрывает linked view,
+  обновляет вкладку `Без привязки` и счётчик после успеха.
+
+### Acceptance
+
+- Live no-mock audit на `127.0.0.1:8000`: `81/81 PASS`, viewports `390`,
+  `1024`, `1440`, `1640`, runtime errors/failed requests `0`.
+- Remote-image network check: `0` remote image requests and `0` external
+  image sources remaining.
+- Live Playwright regression: `1 passed`; isolated manual-link flow:
+  link → persistence → reload → unlink → unmatched — `PASS`.
+- Frontend typecheck/build: `PASS`; lint: `PASS` with existing warnings.
+- Server left running on `127.0.0.1:8000` (PID `9476`).
+
+### Ограничения
+
+Canonical SQLite has `0` rows in `mail_attachments`, so a newly ingested
+binary CID attachment was not available for live end-to-end fixture testing;
+the existing controlled CID fixture was checked in `/messages` and showed no
+remote notice. SMTP/IMAP, migrations, PostgreSQL and production deployment
+were not run. Existing unrelated dirty/untracked worktree paths remain
+preserved and uncommitted.
+
+Report: `ai/reports/TASK-MESSAGES-UX-20260831-report.md`
+
 ## Current handoff — mail content contract audit complete
 
 Task ID: `TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830`

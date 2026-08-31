@@ -148,3 +148,20 @@ This log records agent work interactions. It is append-only.
 - Safety: no live database, migration, SMTP/IMAP, email, supplier merge,
   resend/status UI or product-file change; `Push: NOT RUN`.
 - Report: `ai/reports/TASK-MAIL-CONTENT-CONTRACT-AUDIT-20260830-report.md`.
+
+## 2026-08-31T06:21:32Z — TASK-MESSAGES-UX-20260831
+
+- Request: implement the confirmed remaining `/messages` UX fixes after the
+  live audit.
+- Mode: `IMPLEMENTATION → LIVE QA → CLOSE`.
+- Product scope: `EmailRenderer`, `ThreadDetail`, `Messages` only.
+- Result: `COMPLETE` — short plain-text mail no longer receives the former
+  artificial empty height; manual-linked mail can be unlinked after reload.
+- Verification: live no-mock audit `81/81 PASS`; live Playwright regression
+  `1 passed`; isolated manual-link flow `PASS`; remote image requests `0`;
+  typecheck/build `PASS`; lint `PASS` with existing warnings.
+- Commit: `a7043cc4f30f926dd792ef4aaceedee05300f3e2`.
+- Push: `NOT RUN`.
+- State: current task closed; unrelated tracked modifications and untracked
+  paths were preserved.
+- Report: `ai/reports/TASK-MESSAGES-UX-20260831-report.md`.
