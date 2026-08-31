@@ -1,12 +1,115 @@
 # Active Task
 
 Task ID: `NONE`
-Agent: `NONE`
-Mode: `IDLE`
-Started: `NOT APPLICABLE`
-Scope: `NONE`
-Allowed files: `NONE`
-Status: `IDLE — no active task`
+Agent: `Codex`
+Mode: `CLOSE`
+Started: `2026-08-31`
+Scope: `TASK-MESSAGES-REAL-DATA-ACCEPTANCE-20260831 completed locally: verify real /messages link, reload, unlink and mobile flows`
+Non-goals: `no SMTP/IMAP, no sending, no queue or database changes, no unrelated application cleanup`
+Status: `IDLE — TASK-MESSAGES-REAL-DATA-ACCEPTANCE-20260831 completed locally; no active task`
+Last update: `2026-08-31T16:45:33Z`
 
-The last completed task remains recorded in `ai/CHANGELOG.md`,
-`ai/INTERACTION_LOG.md`, `ai/LAST_HANDOFF.md` and its task report.
+## Latest completed task — real-data messages acceptance
+
+- 8/8 no-route-mock browser checks passed against real local data.
+- Manual link, persistence after reload and unlink were verified and the
+  original state was restored. Mobile link dialog and queue had no horizontal
+  overflow.
+- Outgoing remained disabled; no application code or permanent business data
+  changed. Real binary CID content was not available for a production-like
+  check.
+- Report: `ai/reports/TASK-MESSAGES-REAL-DATA-ACCEPTANCE-20260831-report.md`.
+
+## Paused previous active task
+
+Task ID: `TASK-PROJECT-RECOVERY-20260831`
+Agent: `Codex`
+Mode: `PRESERVE → BOOTSTRAP → SMOKE → CONTROLLED SEND`
+Started: `2026-08-31`
+Scope: `restore a reproducible project runtime, verify the server with outgoing OFF, then continue only untouched request-1059 supplier contacts through Mail.ru account 23`
+Non-goals: `no destructive cleanup, no Yandex sending, no duplicate recipients, no direct SQL-created mail jobs, no credential changes, no campaign-state changes, no automatic retry`
+Status: `PAUSED BY OWNER — outgoing remains OFF; no Mail.ru continuation in this task`
+Last update: `2026-08-31`
+
+The owner explicitly authorized continuation through the existing Mail.ru flow
+and requested safe project recovery plus future cleanup documentation.
+The canonical database preflight confirmed account `23` (`edwatik@mail.ru`)
+is connected and has historical Mail.ru SMTP `250` acceptance evidence. The
+only currently queued Mail.ru continuation jobs are `173`/`191` for supplier
+`2855` (`support@prometall.ru`) and `174`/`192` for supplier `2875`
+(`89087178701@mail.ru`). Outgoing is durably disabled.
+
+The project now has read-only `scripts/doctor.ps1`, explicit-mode
+`scripts/bootstrap_supplydesk.ps1`, and `scripts/recover_supplydesk.ps1`.
+The direct system Python has all declared imports available, so
+`supplier_app.py` is currently running as PID `23584` on
+`http://127.0.0.1:8000/` with `MAIL_OUTGOING_DISABLED=1`. Root and API smoke
+checks passed. The recovery script itself still requires `.venv`, so the
+reproducible bootstrap path remains incomplete. No SMTP login or DATA command
+was attempted.
+
+The cleanup phase is intentionally deferred. No files were deleted or moved;
+the dirty worktree must first be inventoried and checkpointed in a writable
+Git environment.
+
+The owner requested immediate execution again. The server startup portion is
+now complete in the current environment; outgoing remains OFF. Mail.ru
+continuation, SMTP authentication and SMTP DATA remain unattempted.
+
+The remaining recovery work is to establish the documented `.venv` bootstrap
+and separately review the bounded Mail.ru continuation. The current working
+tree remains dirty and no cleanup was performed.
+
+## Previous task context — Mail.ru remaining continuation
+
+Task ID: `TASK-MAILRU-REMAINING-CONTINUATION-20260831`
+Status: `BLOCKED — штатный сервер не стартует в текущем окружении; outgoing remains OFF`
+
+## Previous task context — IDN pre-DATA fix and continuation safety
+
+Task ID: `TASK-MAIL-IDN-DELIVERY-CONTINUATION-FIX-20260831`
+Agent: `Codex`
+Mode: `IMPLEMENT → RECONCILE → VERIFY`
+Started: `2026-08-31`
+Scope: `fix pre-DATA Unicode/IDN handling and recipient-scoped continuation deduplication; reconcile only the proven Mail.ru pre-DATA failure for job 172`
+Allowed files: `mail/providers/yandex.py, mail/service.py, mail/repository.py, tests/**, ai/**, canonical DB row job 172/message 190 only`
+Status: `COMPLETE LOCALLY — outgoing remains OFF; live provider transport is unavailable in this execution environment`
+Last update: `2026-08-31T14:03:03Z`
+
+Owner explicitly asked to stop the previous loop and finish the underlying
+problem. The implementation scope therefore expands from the earlier
+read-only verification to the narrow code/data fix described below; no live
+send, reauthorization, account reconnect, campaign-state change or credential
+change is allowed.
+
+The root cause is confirmed in canonical SQLite: Mail.ru job `172` / message
+`190` targets `info@печнойцентр73.рф`, and the previous SMTP path marked the
+durable irreversible stage before MIME/envelope preparation. Python then raised
+`UnicodeEncodeError` while serializing the non-ASCII SMTP envelope, with no SMTP
+code, provider response or DATA evidence. This incorrectly became
+`delivery_unknown`.
+
+The code fix moves the durable gate to the provider callback immediately before
+SMTP DATA and converts only the SMTP envelope domain to IDNA ASCII. Header
+content remains human-readable. Recipient-scoped continuation checks are kept
+independent of supplier identity and block the same normalized mailbox across
+providers.
+
+The proven job `172` / message `190` was reconciled transactionally to
+`failed`/`failed` with `delivery_state=not_sent`; the historical attempt 70 and
+its evidence were not rewritten. Yandex job `20` / message `28` remains
+`delivery_unknown` because its external delivery is not proven either way.
+
+Canonical DB checks after the change: SQLite integrity `ok`, outgoing `0`, no
+active pacing reservations, campaign `2` still `paused_for_health`, and no
+pending duplicate recipient groups in request `1059`. A database backup was
+created at `mail-data/backups/supplier.sqlite3.pre-idn-reconcile-20260831-165009.bak`.
+
+The full evidence is recorded in
+`ai/reports/TASK-MAIL-IDN-DELIVERY-CONTINUATION-FIX-20260831-report.md`.
+
+The earlier read-only IMAP verification remains historical evidence: external
+TCP was blocked by this execution environment, so provider-side Sent-copy
+lookups remain unavailable. That limitation does not block the local IDN fix
+or the strict reconciliation above. Git commit/push still require a separate
+permission fix because `.git/index.lock` cannot be created here.

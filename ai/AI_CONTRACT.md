@@ -71,6 +71,17 @@ explaining what the check means for the user. Keep the mandatory instruction
 check at the end when required, but introduce it as a short technical
 compliance summary rather than using it as the main explanation.
 
+For every recommendation, use a client-readable structure: what it is, why it
+matters, what happens if it is postponed, priority and urgency, what will
+change, what will not change, and whether the owner needs to make a decision
+or take an action. Do not leave terms such as chunk, lazy loading, baseline,
+regression, overflow, acceptance, P3 or CI unexplained; define the term in
+ordinary language first and put the technical name in parentheses only when it
+helps. Explain P0/P1 as a user-blocking or serious-risk issue, P2 as a
+noticeable quality issue, and P3 as a non-urgent polish improvement. Avoid
+vague recommendations such as “optimize” or “look into it” without a concrete
+outcome and an acceptance criterion.
+
 ## Security and data boundary
 
 Never commit passwords, API keys, OAuth tokens, cookies, private keys, `.env`

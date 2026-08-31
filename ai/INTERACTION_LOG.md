@@ -2,6 +2,154 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-08-31 — TASK-MESSAGES-REAL-DATA-ACCEPTANCE-20260831
+
+- Owner asked to continue the pending work. Finalized the already-run
+  no-route-mock acceptance on real local `/messages` data.
+- Confirmed manual link → reload → unlink for inbox message `30`; restored the
+  original unmatched state. Confirmed mobile dialog and queue fit at `390px`.
+- Recorded API/browser evidence and the missing real binary CID fixture. No
+  application code, SMTP, queue or permanent business data was changed.
+
+## 2026-08-31 — TASK-COMMUNICATION-RULE-20260831
+
+- Owner asked for short explanations of what was done, what problems remain,
+  and what should happen next.
+- Added the rule to the shared AI contract and Codex adapter after creating
+  instruction backups. No application behavior changed.
+
+## 2026-08-31 — TASK-MESSAGES-STATUS-FILTER-20260831
+
+- Owner requested a more expressive `Ответ получен` color, removal of the
+  visible `Ожидает ответа` row label, and an additional top filter.
+- Implemented the narrow UI change in `ThreadList.tsx` and `threadStatus.ts`;
+  preserved the existing API and mail behavior.
+- Verified the live local page with no route mocks at `390`, `1024`, `1440`,
+  and `1640`; saved candidate screenshots and Playwright JSON evidence.
+- Typecheck, lint, build and live HTML/plain/CID/remote-image regression were
+  run. The broad legacy audit remains `56/80` because of 24 unrelated
+  pre-existing failures; no unrelated fix was applied.
+
+## 2026-08-31T13:25:18Z — TASK-MAIL-DELIVERY-UNKNOWN-VERIFY-20260831
+
+- Owner said `Действуй!`; continued the previously authorized read-only Yandex
+  verification.
+- Searched the exact RFC for Yandex job `20`/message `28` in the authenticated
+  Yandex `Отправленные` UI. Result: `Таких писем не нашлось`.
+- Recorded the result as `NOT_FOUND` for the selected Sent view only. Did not
+  infer external non-delivery, did not change the database row, did not retry,
+  and did not invoke SMTP DATA. Mail.ru remains blocked by the protected VK
+  login redirect.
+
+## 2026-08-31T13:09:09Z — TASK-MAIL-DELIVERY-UNKNOWN-VERIFY-20260831
+
+- Browser fallback opened Yandex Mail in an authenticated session and exposed
+  the `Отправленные` folder for read-only inspection.
+- Mail.ru redirected to VK authentication; the browser safety boundary blocked
+  that protected page. No bypass or alternate browser workaround was used.
+- Current action required from owner: manually complete Mail.ru/VK sign-in in
+  the visible tab, then report that the Mail.ru inbox is open.
+- No email, mailbox state, database, campaign or outgoing control changed.
+
+## 2026-08-31T12:58:26Z — TASK-MAIL-DELIVERY-UNKNOWN-VERIFY-20260831
+
+- Owner requested starting the required environment.
+- Attempted to start the local SupplyDesk runtime fail-closed with outgoing
+  disabled and the canonical database. It stopped before listening because
+  bundled Python lacks `nh3`; `quotequail` and `bs4` are also absent.
+- Checked alternatives: no registered Python installation, WSL enumeration is
+  access-denied, and Docker has no running engine.
+- No mail/database/campaign mutation occurred; outgoing remains OFF and both
+  delivery-unknown rows remain blocked.
+## 2026-08-31T12:53:28Z — TASK-MAIL-DELIVERY-UNKNOWN-VERIFY-20260831
+
+- Continued the investigation after the IMAP read-only attempt failed.
+- Compared both IMAP endpoints with unrelated public TCP targets. All
+  external connects failed with `WinError 10013` / `PermissionError`; the
+  local port probe returned ordinary refusal because no local server listens.
+- Read-only Windows checks showed outbound firewall policy `AllowOutbound`, no
+  configured proxy and no explicit enabled outbound block rule. Root cause is
+  the execution environment's external-TCP restriction, not account
+  isolation, credentials or provider selection.
+- No database, mail, campaign or runtime control changed; outgoing stayed OFF,
+  SMTP DATA calls stayed `0`, and both delivery-unknown rows remain blocked.
+## 2026-08-31T12:46:00Z — TASK-MAIL-DELIVERY-UNKNOWN-VERIFY-20260831
+
+- Request: proceed with the next safe step after duplicate reconciliation.
+- Action: performed a read-only Sent-copy verification attempt for both
+  unresolved delivery-unknown rows using their provider-specific account and
+  RFC Message-ID; no SMTP code path was invoked.
+- Evidence: both encrypted account credentials decrypted successfully; Yandex
+  access/refresh credentials are present and its stored access token is not
+  expired. TCP connection to both configured IMAP endpoints failed locally
+  before authentication with Windows `WinError 10013` / `PermissionError`.
+- Result: neither Sent copy can be classified as found or not-found from this
+  environment. Both `delivery_unknown` rows remain unresolved and block
+  continuation.
+- Safety: canonical DB opened read-only; outgoing stayed OFF; campaign `2`
+  stayed `paused_for_health`; no job/message/attempt/account/credential/cursor
+  or campaign state changed; SMTP DATA calls `0`.
+- Report: `ai/reports/TASK-MAIL-DELIVERY-UNKNOWN-VERIFY-20260831-report.md`.
+- Commit attempt: Git could not create `.git/index.lock` (`Permission denied`);
+  no paths were staged and push was not run.
+
+## 2026-08-31T12:35:07Z — TASK-MAIL-DUPLICATE-GUARD-20260831
+
+- Request: continue safely without sending the same request twice to one
+  supplier mailbox after the duplicate-delivery report.
+- Evidence: request `1059` contained `21` duplicate outbound email groups;
+  `20` were queued Yandex source messages paired with prepared/accepted
+  Mail.ru continuation records; `mail@pechar.ru` was the separate proven
+  Yandex rejection plus explicit Mail.ru retry.
+- Action: backed up the canonical SQLite database; changed continuation
+  recipient-history checks to email scope; transactionally cancelled/excluded
+  exactly `20` unsent Yandex duplicates and recorded `20` audit events.
+- Safety: outgoing remained OFF, campaign state was unchanged, no message was
+  deleted, no credential was changed, and no SMTP DATA was called.
+
+## 2026-08-31T13:54:22Z — IDN PRE-DATA FIX / DEDUP SAFETY — TASK-MAIL-IDN-DELIVERY-CONTINUATION-FIX-20260831
+
+- Owner requested that the underlying problem be solved fully instead of
+  stopping after another diagnostic check.
+- Confirmed canonical evidence for Mail.ru job `172`/message `190`: IDN
+  recipient `info@печнойцентр73.рф`, `UnicodeEncodeError`, no SMTP code or
+  provider response, no active reservation and no provider message ID.
+- Code fix applied: SMTP envelope domains use IDNA ASCII; the durable outgoing
+  gate is entered immediately before DATA; pre-DATA encoding errors cannot be
+  misclassified as `delivery_unknown`.
+- Recipient-scoped continuation protection was retained across supplier rows
+  and providers. Request `1059` now has zero pending duplicate recipient
+  groups; `s-kl@yandex.ru` has one outbound row. Historical cancelled-vs-sent
+  pairs are not two accepted deliveries.
+- Created DB backup, then reconciled only job `172`/message `190` to
+  `failed`/`failed` with `delivery_state=not_sent`. Attempt `70`, Yandex job
+  `20`/message `28`, campaign 2 and credentials were not rewritten.
+- Verification: SQLite integrity `ok`, outgoing `0`, no active reservations,
+  campaign 2 unchanged, `py_compile` passed. Full unittests could not start
+  because the bundled runtime lacks `nh3`, `bs4` and `quotequail`.
+- No live SMTP/IMAP operation or SMTP DATA call was performed; external TCP
+  remains unavailable in this execution environment.
+
+## 2026-08-31T14:01:13Z — FINAL VERIFICATION — TASK-MAIL-IDN-DELIVERY-CONTINUATION-FIX-20260831
+
+- Full unittest discovery was attempted and stopped at import because the
+  bundled runtime lacks `nh3`; no successful suite result is claimed.
+- Isolated execution of the actual provider code passed IDN envelope smoke.
+- Disposable-copy execution of the strict reconciliation method passed both
+  the apply path and the already-reconciled repeat path.
+- Final canonical checks passed: SQLite integrity `ok`, outgoing `0`, no active
+  reservations, campaign 2 unchanged, Yandex job 20 untouched, zero pending
+  duplicate recipient groups in request 1059, and one `s-kl@yandex.ru` row.
+
+## 2026-08-31T14:03:03Z — GIT CLOSEOUT — TASK-MAIL-IDN-DELIVERY-CONTINUATION-FIX-20260831
+
+- Attempted the scoped Task-ID commit. Git denied creation of
+  `.git/index.lock`; no files were staged and no push was attempted.
+- Verification: integrity `ok`, no active duplicate-delivery candidates,
+  compile/diff checks `PASS`; full unittest run not available because `nh3` and
+  `quotequail` are absent from the bundled runtime.
+- Report: `ai/reports/TASK-MAIL-DUPLICATE-GUARD-20260831-report.md`.
+
 ## 2026-08-30T16:20:16Z — TASK-STATE-CONTROL-20260830
 
 - Request: create a unified project-state contour and update Codex/Claude/Project adapter rules.
@@ -243,3 +391,146 @@ This log records agent work interactions. It is append-only.
 - State: awaiting immediate operator confirmation before the first 5 supplier
   contacts are transmitted.
 - Report: `ai/reports/TASK-MESSAGES-NAV-DEFAULT-20260831-report.md`.
+
+## 2026-08-31T07:32:48Z — TASK-MESSAGES-UX-FIX-20260831
+
+- Request: execute all recommendations from the `/messages` audit.
+- Mode: `EXTEND → backend/UI implementation → regression QA → visual closeout`.
+- Result: `COMPLETE`; correspondence now excludes queue-only outbound items,
+  queue has its own tab, inbox unread state covers unmatched/manual-linked
+  messages, status/collapse/mobile issues are corrected.
+- Verification: `53` targeted/integration tests `OK`, typecheck/build/lint
+  `PASS`, HTTP `200` for `/messages`, expected auth `401`, real browser UI
+  smoke and reviewed screenshots at `1440x900`/`390x844`.
+- Safety: no real provider delivery, SMTP/IMAP or production mutation; broad
+  unrelated worktree paths remain preserved and unstaged.
+- Report: `ai/reports/TASK-MESSAGES-UX-FIX-20260831-report.md`.
+
+## 2026-08-31T07:37:17Z — TASK-MAIL-INCOMING-CONTINUATION-20260831
+
+- Owner confirmed enabling incoming sync for all connected mailboxes and
+  sending remaining request-1059 supplier contacts through Mail.ru.
+- Live account isolation: Yandex `1 / edwatik@yandex.ru / oauth` and Mail.ru
+  `23 / edwatik@mail.ru / app_password` each returned successful IMAP sync
+  while outgoing was OFF; no tokens or secrets were logged.
+- Code changes: `sync_incoming` no longer requests the outgoing account flag;
+  continuation jobs have a dedicated queue/campaign exception only when tied
+  to a ready continuation plan. Regression tests cover both behaviors.
+- Mail.ru live result: batches 1–3 and first two targets of batch 4 were
+  accepted (`17` total, one attempt each). Target 68 became
+  `delivery_unknown` with `UnicodeEncodeError` before SMTP DATA. Outgoing was
+  disabled immediately; target 69 was released before any attempt and target
+  70 plus all later contacts remain unsent.
+- No campaign status change, no Yandex outbound claim, no automatic retry, and
+  no further batch after the safety stop. Final incoming remains enabled for
+  both accounts.
+- Evidence/report: `ai/reports/TASK-MAIL-INCOMING-CONTINUATION-20260831-report.md`.
+
+## 2026-08-31T14:22:36Z — TASK-MAILRU-REMAINING-CONTINUATION-20260831
+
+- Owner asked to start the server and continue sending only the remaining
+  request-1059 supplier companies through Mail.ru.
+- Preflight found connected Mail.ru account `23`, outgoing disabled, zero
+  active reservations, SQLite integrity `ok`, and two already-queued Mail.ru
+  jobs (`173`/`191`, `174`/`192`).
+- `pip install -r requirements.txt` was attempted but outbound TCP to PyPI was
+  denied with `WinError 10013`; `supplier_app.py` was then launched and
+  stopped before binding because `nh3` is unavailable.
+- No email was sent and no database/campaign/credential state was changed.
+
+## 2026-08-31T14:27:00Z — STARTUP FAILURE EXPLANATION — TASK-MAILRU-REMAINING-CONTINUATION-20260831
+
+- Owner asked why the project stopped starting and how to prevent recurrence.
+- Evidence: `supplier_app.py` imports `mail.auth`; package initialization imports
+  `MailService`; `mail.service` imports `mail.content`; `mail.content` imports
+  the absent `nh3` package. The process therefore exits before HTTP bind.
+- The available Python is `3.12.13` with only `cryptography` and `lxml` among
+  the declared mail dependencies. Requirements installation was blocked by
+  outbound TCP policy (`WinError 10013`).
+- The dirty worktree and failed Git index-lock operation are recorded as
+  release-process risks, not as the proven immediate startup cause.
+
+## 2026-08-31T14:40:00Z — TASK-PROJECT-RECOVERY-20260831
+
+- Owner asked for immediate recovery, documentation of the working state, and
+  a later safe project cleanup.
+- Added `doctor`, `bootstrap`, and `recover` scripts with explicit modes and a
+  forced-outgoing-OFF startup gate.
+- PowerShell parse, Plan and DryRun checks passed. Apply stopped before any
+  server or venv start because the current `py.exe` has no installed Python.
+- No application data, mail queue, campaign, account, credential or filesystem
+  cleanup state was changed.
+
+## 2026-08-31T14:50:00Z — SIMPLE STARTUP EXPLANATION — TASK-PROJECT-RECOVERY-20260831
+
+- Owner asked why the service worked in the previous session but cannot start
+  in the current one.
+- Explanation recorded: the previous session had a usable runtime and network
+  path; the current execution environment has no usable Python installation,
+  blocks dependency downloads and has no server listening on port 8000.
+- Mail.ru credentials and canonical SQLite are not the proven cause; no mail,
+  database, campaign or queue state was changed.
+
+## 2026-08-31T14:52:34Z — RECOVERY APPLY RETRY — TASK-PROJECT-RECOVERY-20260831
+
+- Owner requested the server be raised immediately and the pending tasks be
+  executed.
+- Bootstrap `-Apply` was retried and stopped before `.venv` creation because
+  `py.exe` reports no installed Python.
+- No server, provider authentication or SMTP DATA was attempted; data, queue,
+  campaign, credentials and outgoing state were preserved.
+
+## 2026-08-31T14:56:05Z — RUNTIME RECOVERY BLOCKER CONFIRMED — TASK-PROJECT-RECOVERY-20260831
+
+- Owner requested installing everything required for startup.
+- Local dependency cache and usable alternate runtime were not found; the
+  isolated environment cannot execute the available Windows Python or reach
+  package indexes.
+- No application, database, queue, campaign, credential or outgoing state was
+  changed.
+
+## 2026-08-31T14:57:49Z — INSTRUCTION VS RUNTIME CLARIFICATION — TASK-PROJECT-RECOVERY-20260831
+
+- Owner asked whether project instructions forbid dependency installation or
+  server startup and requested removing them.
+- Clarified that the instructions do not forbid these actions; the current
+  blocker is the isolated execution environment, which cannot execute the
+  available Windows Python or reach package indexes.
+- Managed safety instructions were not weakened or removed. No application,
+  database, queue, campaign, credential or outgoing state was changed.
+
+## 2026-08-31T15:01:57Z — SERVER STARTED WITH OUTGOING OFF — TASK-PROJECT-RECOVERY-20260831
+
+- Rechecked the current environment and found system Python `3.11.7` with all
+  declared requirement imports available.
+- Started `supplier_app.py` directly as PID `23584` on port `8000`, with
+  process-level `MAIL_OUTGOING_DISABLED=1`; the process remains running.
+- Evidence: root `200`, `/api/auth/me` `200`, unauthenticated mail API `401`,
+  unknown API `404`, SQLite integrity `ok`, durable outgoing `0`.
+- Relevant runtime test: `python -m unittest tests.test_canonical_runtime -v`
+  returned `8/8 OK`.
+- No SMTP, queue, campaign, account, credential or cleanup action was taken.
+
+## 2026-08-31 — DUPLICATE PROTECTION FIX AND ACCEPTANCE — TASK-MAIL-DUPLICATE-PROTECTION-FINAL-20260831
+
+- Owner requested implementation of the duplicate-email recommendations and
+  mandatory verification.
+- Implemented durable request/email guarding, recipient-scoped retry checks,
+  safe provider-continuation supersession and corrected pre-DATA attempt
+  accounting.
+- Acceptance: focused mail suites `224 OK`, full discovery `384 OK`, doctor
+  DryRun `PASS`, HTTP `200/200/401/404`, outgoing switch `0`.
+- `tests/run-tests.ps1` is absent; no live SMTP/IMAP action was taken.
+## 2026-08-31 — TASK-MESSAGES-AUDIT-REPAIR-20260831
+
+- Owner authorized completing the three failing frontend audit groups after
+  the previous `56/80` result: reply focus, delivery-attention visibility and
+  outbound metric wording.
+- Implemented only the scoped frontend/test changes. The first supplemental
+  screenshot helper used an overly strict status selector and was discarded;
+  the corrected evidence run found no console errors, page errors or page
+  overflow at `1440x900` and `390x844`.
+- Acceptance passed: `80/80` route-mocked visual audit, `1/1` live no-mock
+  email regression, typecheck, lint, build, doctor DryRun and HTTP smoke.
+- `tests/run-tests.ps1` is absent. No SMTP/IMAP, sending, queue, database,
+  request-link or production action was performed.
