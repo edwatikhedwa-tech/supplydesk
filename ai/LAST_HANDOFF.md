@@ -1,5 +1,42 @@
 # Last Handoff
 
+## Current handoff — blue `/messages` navigation toggle complete
+
+Task ID: `TASK-MESSAGES-NAV-TOGGLE-20260831`
+Дата и время UTC: `2026-08-31T06:36:26Z`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+HEAD: `2ba2547383c42ad92b246527739eb2a2a56f8e76`
+Push: `NOT RUN`
+Active task: `NONE`
+Status: `COMPLETE — desktop blue navigation control live-verified`
+
+### Что изменено
+
+Только `frontend/src/components/Layout.tsx`: синяя кнопка теперь переключает
+desktop sidebar между `248` и `76` px; в раскрытом состоянии стрелка смотрит
+влево, в свернутом — вправо. Отдельная дублирующая кнопка удалена. Mobile
+drawer и mobile logo action сохранены.
+
+### Acceptance
+
+- Real no-mock Playwright click check: blue control collapse/expand `PASS`;
+  correct `aria-label`, `aria-expanded` and blue icon state.
+- Full `/messages` audit: `81/81 PASS` at `390`, `1024`, `1440`, `1640` px;
+  console/page/failed requests `0`.
+- Typecheck and build `PASS`; lint `PASS` with existing unrelated warnings.
+- Candidate screenshots:
+  `Temp/read-only-audit-20260830/screenshots/nav-blue-collapsed-1440-viewport.png`
+  and `nav-blue-expanded-1440-viewport.png`.
+
+### Ограничения
+
+Approved baseline: `NO APPROVED BASELINE`. Push, production, PostgreSQL and
+real Mail.ru acceptance were not run. Other dirty/untracked user files were
+preserved.
+
+Report: `ai/reports/TASK-MESSAGES-NAV-TOGGLE-20260831-report.md`
+
 ## Current handoff — `/messages` UX implementation complete
 
 Task ID: `TASK-MESSAGES-UX-20260831`

@@ -2,11 +2,11 @@
 
 ## Last update
 
-- Timestamp UTC: `2026-08-31T06:21:32Z` (`TASK-MESSAGES-UX-20260831` close).
+- Timestamp UTC: `2026-08-31T06:36:26Z` (`TASK-MESSAGES-NAV-TOGGLE-20260831` close).
 - Project root: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
 - Repository: `edwatikhedwa-tech/supplydesk`.
 - Branch: `codex/TASK-STATE-CONTROL-20260830`.
-- HEAD: `a7043cc4f30f926dd792ef4aaceedee05300f3e2` (`TASK-MESSAGES-UX-20260831`
+- HEAD: `2ba2547383c42ad92b246527739eb2a2a56f8e76` (`TASK-MESSAGES-NAV-TOGGLE-20260831`
   implementation commit; push not run).
 - Remote: `origin` → `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`.
@@ -21,7 +21,7 @@
 - Latest verified tests: live `/messages` audit `81/81 PASS`, live Playwright
   regression `1 passed`, remote-image network check with `0` remote image
   requests, frontend typecheck `PASS`, lint `PASS` with existing warnings and
-  production build `PASS`.
+  production build `PASS`; blue-control click check `PASS`.
 
 ## Project
 
@@ -32,11 +32,15 @@
 
 ## Current task
 
-- `TASK-MESSAGES-UX-20260831` — `COMPLETE`.
-- The implementation commit is `a7043cc4f30f926dd792ef4aaceedee05300f3e2`;
+- `TASK-MESSAGES-NAV-TOGGLE-20260831` — `COMPLETE`.
+- The implementation commit is `2ba2547383c42ad92b246527739eb2a2a56f8e76`;
   `ai/ACTIVE_TASK.md` is returned to the explicit idle sentinel.
 
 ## Last completed task
+
+- `TASK-MESSAGES-NAV-TOGGLE-20260831` — `COMPLETE`; the blue desktop
+  control now toggles the sidebar and reverses the arrow direction. Report:
+  `ai/reports/TASK-MESSAGES-NAV-TOGGLE-20260831-report.md`.
 
 - `TASK-MESSAGES-UX-20260831` — `COMPLETE`; `/messages` UX fixes were
   implemented and accepted through real browser checks. Report:
@@ -61,7 +65,8 @@
 - Publication commit: `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e`.
 - Latest published state-record commit:
   `55db2aa2d8f80cdf69b4970db26cacce669a7e62`.
-- Local implementation commit: `a7043cc4f30f926dd792ef4aaceedee05300f3e2`.
+- Local implementation commits: `a7043cc4f30f926dd792ef4aaceedee05300f3e2`
+  and `2ba2547383c42ad92b246527739eb2a2a56f8e76`.
 - Push: `NOT RUN`; the remote branch intentionally remains behind this local
   implementation commit.
 
@@ -72,7 +77,9 @@
 - `EmailRenderer` no longer adds the former `80px` artificial minimum to
   short plain-text mail; the minimum is `24px`.
 - Existing remote-image blocking and notice detection were not changed.
-- Only three product files were committed for this task; unrelated dirty and
+- The blue desktop control now owns sidebar expand/collapse; the mobile logo
+  keeps its dashboard action.
+- Only the requested product file was committed for this task; unrelated dirty and
   untracked paths were preserved.
 
 ## Runtime
@@ -93,9 +100,9 @@
   checked through `gh`; the remote branch was not changed by this task.
 - The task report records live scenarios, screenshots, network checks and
   known verification limits.
-- The committed product files changed by this task are limited to the three
-  `/messages` frontend files; state/report changes are being closed in the
-  following state commit.
+- The committed product file changed by this task is limited to
+  `frontend/src/components/Layout.tsx`; state/report changes are being closed
+  in the following state commit.
 
 ## Current priorities
 

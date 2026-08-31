@@ -273,3 +273,17 @@ rewritten.
 - Commit: `a7043cc4f30f926dd792ef4aaceedee05300f3e2`.
 - Push: `NOT RUN`.
 - Report: `ai/reports/TASK-MESSAGES-UX-20260831-report.md`.
+
+## 2026-08-31T06:36:26Z — IMPLEMENTATION / LIVE ACCEPTANCE — TASK-MESSAGES-NAV-TOGGLE-20260831
+
+- Agent: `Codex`
+- Scope: desktop navigation control used on `/messages`; mobile behavior
+  preserved.
+- Change: the blue logo control now expands/collapses the sidebar and reverses
+  the arrow direction; the duplicate separate collapse control was removed.
+- Verification: real Playwright click check `PASS` for `248 ↔ 76` px,
+  full no-mock `/messages` audit `81/81 PASS`, typecheck/build `PASS`, lint
+  `PASS` with existing warnings.
+- Commit: `2ba2547383c42ad92b246527739eb2a2a56f8e76`.
+- Push: `NOT RUN`.
+- Report: `ai/reports/TASK-MESSAGES-NAV-TOGGLE-20260831-report.md`.

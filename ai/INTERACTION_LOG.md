@@ -165,3 +165,19 @@ This log records agent work interactions. It is append-only.
 - State: current task closed; unrelated tracked modifications and untracked
   paths were preserved.
 - Report: `ai/reports/TASK-MESSAGES-UX-20260831-report.md`.
+
+## 2026-08-31T06:36:26Z — TASK-MESSAGES-NAV-TOGGLE-20260831
+
+- Request: make the blue navigation icon expand/collapse the desktop menu,
+  with a right arrow when collapsed and a left arrow when expanded.
+- Mode: `EXTEND → LIVE QA → CLOSE`.
+- Change: only `frontend/src/components/Layout.tsx`; the duplicate separate
+  collapse button was removed, while mobile logo behavior stayed unchanged.
+- Verification: real click check `PASS` (`248 ↔ 76` px, correct labels and
+  `aria-expanded`); full no-mock `/messages` audit `81/81 PASS`;
+  typecheck/build `PASS`; lint `PASS` with existing warnings.
+- Commit: `2ba2547383c42ad92b246527739eb2a2a56f8e76`.
+- Push: `NOT RUN`.
+- State: current task closed; unrelated tracked and untracked worktree paths
+  were preserved.
+- Report: `ai/reports/TASK-MESSAGES-NAV-TOGGLE-20260831-report.md`.
