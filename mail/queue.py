@@ -95,7 +95,7 @@ class MailQueue:
             # Do not claim/release the same queued job in a tight loop while
             # the global outgoing switch is disabled. This is only a worker
             # efficiency guard; send_claimed_job/_send_with_gate retain the
-            # authoritative race-safe check immediately before the provider.
+            # authoritative race-safe check immediately before provider DATA.
             if not self.service.outgoing_enabled():
                 self.wake_event.wait(timeout=1.0)
                 self.wake_event.clear()

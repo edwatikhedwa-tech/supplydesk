@@ -1433,23 +1433,20 @@ class MailService:
         before_irreversible: Callable[[], None],
         before_transport: Callable[[], None] | None = None,
     ) -> SendAttempt:
-        # The durable gate must be committed before the provider is contacted;
-        # this is what makes a failed gate a true no-network decision. The
-        # provider callback is retained as a last-moment runtime-switch check
-        # immediately before SMTP DATA (or the provider's equivalent).
-        self._assert_outgoing_allowed()
-        before_irreversible()
-        # A runtime/lock loss after the durable gate must not even enter the
-        # provider boundary.  The callback below is intentionally still kept
-        # at the provider's final DATA edge as a second race-safe check.
+        # Provider preparation, MIME serialization, authentication and the
+        # SMTP envelope are reversible.  The durable gate is entered by the
+        # provider callback immediately before SMTP DATA (or the provider's
+        # equivalent), so a pre-DATA error cannot become delivery_unknown.
         self._assert_outgoing_allowed()
         if before_transport is not None:
             before_transport()
 
-        def guarded_before_irreversible() -> None:
+        def enter_irreversible_at_data() -> None:
+            self._assert_outgoing_allowed()
+            before_irreversible()
             self._assert_outgoing_allowed()
 
-        result = provider.send_message(access_token, outgoing, before_irreversible=guarded_before_irreversible)
+        result = provider.send_message(access_token, outgoing, before_irreversible=enter_irreversible_at_data)
         return SendAttempt(result=result, message=outgoing, access_token=access_token, provider=provider)
 
     def _save_sent_copy_best_effort(self, attempt: SendAttempt, *, job_id: int | None = None) -> None:
@@ -1748,7 +1745,7 @@ class MailService:
         return self._outgoing_disabled or env_value in {"1", "true", "yes", "on"}
 
     def outgoing_enabled(self) -> bool:
-        """Cheap worker pre-check; the provider boundary still has the final guard."""
+        """Cheap worker pre-check; the provider DATA boundary still has the final guard."""
         if self.runtime is not None:
             self.runtime.refresh_durable_outgoing()
             if not self.runtime.outgoing_allowed:

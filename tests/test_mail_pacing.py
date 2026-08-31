@@ -727,8 +727,11 @@ class MailPacingAcceptanceTests(unittest.TestCase):
         with self.repo.connect() as connection:
             row = connection.execute("SELECT irreversible_at FROM mail_job_integrity WHERE job_id=?", (queued["job_id"],)).fetchone()
             audit = connection.execute("SELECT outcome FROM mail_send_attempts WHERE job_id=?", (queued["job_id"],)).fetchone()
-        self.assertIsNotNone(row["irreversible_at"])
-        self.assertEqual(audit["outcome"], "blocked_global")
+        # The switch was disabled before the provider's final DATA callback,
+        # so the irreversible gate must not be entered and no send attempt is
+        # charged or recorded.
+        self.assertIsNone(row["irreversible_at"])
+        self.assertIsNone(audit)
 
     def _disable_switch(self) -> None:
         with self.repo.connect() as connection:
@@ -1046,6 +1049,63 @@ class MailPacingAcceptanceTests(unittest.TestCase):
             {"eligible_untouched": 1, "would_create": 1, "accepted_not_repeated": 1, "queued_in_current_campaign": 1},
         )
 
+    def test_continuation_blocks_accepted_email_on_a_different_supplier_row(self) -> None:
+        campaign_id, mailru_id = self._continuation_campaign(count=1)
+        with self.repo.connect() as connection:
+            source = connection.execute(
+                """SELECT ct.normalized_email, ct.supplier_id
+                   FROM mail_campaign_targets ct
+                   WHERE ct.campaign_id=?""",
+                (campaign_id,),
+            ).fetchone()
+        self.assertIsNotNone(source)
+        assert source is not None
+        email = str(source["normalized_email"])
+
+        # Reproduce the legacy identity split: the same mailbox exists on a
+        # second supplier row with another external key.
+        duplicate_supplier_id = self.repo.upsert_supplier(
+            workspace_id=self.user["workspace_id"],
+            external_key="continuation-duplicate-identity",
+            name="Duplicate identity",
+            email=email,
+            host="duplicate.example",
+            request_id=self.request_id,
+        )
+        accepted = self.repo.create_queued_message(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"], request_id=self.request_id,
+            supplier_id=duplicate_supplier_id, account_id=self.account_id,
+            from_email="pacing-owner@example.com", to_email=email,
+            subject="Already accepted", body_text="Already accepted", body_html="<p>Already accepted</p>",
+            message_id_header="<accepted-duplicate-identity@example.com>", attachments=[],
+        )
+        accepted_job = self.repo.claim_job(pacing=self.settings, only_job_id=accepted["job_id"])
+        self.assertIsNotNone(accepted_job)
+        assert accepted_job is not None
+        self.assertTrue(self.repo.enter_irreversible_stage(
+            accepted_job["id"], accepted_job["claim_token"], accepted_job["pacing_reservation_token"],
+        ))
+        accepted_at = iso_now()
+        self.assertTrue(self.repo.mark_job_sent(
+            accepted_job["id"], accepted_job["message_id"], "accepted-provider-id",
+            "<accepted-duplicate-identity@example.com>", accepted_at, accepted_job["claim_token"],
+        ))
+        self.repo.finish_send_attempt(
+            reservation_token=accepted_job["pacing_reservation_token"], outcome="accepted",
+            provider_classification="accepted", account_id=self.account_id,
+            smtp_stage="post_data", smtp_code=250,
+        )
+
+        dry_run = self.service.continuation_dry_run(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+            campaign_id=campaign_id, mail_account_id=mailru_id, limit=1,
+        )
+        self.assertEqual(dry_run["eligible_untouched"], 0)
+        self.assertEqual(dry_run["would_create"], 0)
+        self.assertEqual(dry_run["accepted_not_repeated"], 1)
+        self.assertEqual(dry_run["selected_targets"], [])
+        self.assertEqual(self.provider.send_calls, 0)
+
     def _mailru_account(self) -> int:
         encrypted = encrypt(
             "mailru-continuation-secret",
@@ -1122,7 +1182,40 @@ class MailPacingAcceptanceTests(unittest.TestCase):
             campaign_targets = connection.execute(
                 "SELECT COUNT(*) FROM mail_campaign_targets WHERE campaign_id=?", (campaign_id,)
             ).fetchone()[0]
+            source = connection.execute(
+                """SELECT m.id AS source_message_id,
+                          ct.status AS target_status, ct.exclusion_reason,
+                          j.status AS job_status, m.status AS message_status,
+                          mmi.resend_of_message_id
+                   FROM mail_campaign_targets ct
+                   JOIN mail_jobs j ON j.id=ct.job_id
+                   JOIN mail_messages m ON m.id=j.message_id
+                   LEFT JOIN mail_message_integrity mmi ON mmi.message_id=m.id
+                   WHERE ct.campaign_id=? AND ct.ordinal=1""",
+                (campaign_id,),
+            ).fetchone()
         self.assertEqual((operation_jobs, campaign_targets), (5, 6))
+        self.assertEqual(
+            (source["target_status"], source["job_status"], source["message_status"]),
+            ("excluded", "cancelled", "cancelled"),
+        )
+        self.assertEqual(source["exclusion_reason"], "provider_continuation_superseded")
+        self.assertEqual(source["resend_of_message_id"], None)
+        with self.repo.connect() as connection:
+            continuation_lineage = connection.execute(
+                """SELECT ot.normalized_email, ot.resend_of_message_id,
+                          source_m.id AS source_message_id
+                   FROM mail_send_operation_targets ot
+                   JOIN mail_campaign_targets source_ct
+                     ON source_ct.campaign_id=?
+                    AND source_ct.normalized_email=ot.normalized_email
+                   JOIN mail_jobs source_j ON source_j.id=source_ct.job_id
+                   JOIN mail_messages source_m ON source_m.id=source_j.message_id
+                   WHERE ot.operation_id=?""",
+                (campaign_id, result["operation_id"]),
+            ).fetchall()
+        self.assertEqual(len(continuation_lineage), 5)
+        self.assertTrue(all(row[1] == row[2] for row in continuation_lineage))
 
         remaining = self.service.continuation_dry_run(
             user_id=self.user["id"], workspace_id=self.user["workspace_id"],

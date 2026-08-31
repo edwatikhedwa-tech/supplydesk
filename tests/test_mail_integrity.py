@@ -55,6 +55,13 @@ class IntegrityProvider:
         self.send_calls += 1
         if self.mode == "refused":
             raise ProviderError("Явный отказ сервера", transient=True)
+        if self.mode == "pre_data":
+            raise ProviderError(
+                "Не удалось сформировать письмо.",
+                provider_code="message-encoding",
+                smtp_stage="pre_data",
+                exception_class="UnicodeEncodeError",
+            )
         if self.before_irreversible_hook is not None:
             self.before_irreversible_hook()
         if before_irreversible is not None:
@@ -628,7 +635,25 @@ class MailIntegrityAcceptanceTests(unittest.TestCase):
         with patch.object(self.repo, "enter_irreversible_stage", return_value=False):
             with self.assertRaisesRegex(ProviderError, "фиксировать начало"):
                 self.service.send_claimed_job(job)
-        self.assertEqual(self.provider.send_calls, 0)
+        # The provider may be contacted for reversible preparation, but the
+        # durable gate must remain untouched and DATA must not be reached.
+        self.assertEqual(self.provider.send_calls, 1)
+        self.assertIsNone(self.repo.get_job_integrity(job["id"])["irreversible_at"])
+
+    def test_10a_pre_data_encoding_failure_is_terminal_without_delivery_unknown(self) -> None:
+        self.provider.mode = "pre_data"
+        queued = self._one(key="pre-data-encoding")
+        job = self.repo.claim_job()
+        MailQueue(self.repo, self.service, pacing=PacingSettings(min_interval_seconds=0, max_interval_seconds=0))._process(job)
+        self.assertEqual(self._status(queued["message_id"]), ("failed", "failed"))
+        self.assertEqual(self.provider.sent, [])
+        with self.repo.connect() as connection:
+            row = connection.execute(
+                "SELECT j.attempts, j.status, ji.irreversible_at FROM mail_jobs j "
+                "JOIN mail_job_integrity ji ON ji.job_id=j.id WHERE j.id=?",
+                (queued["job_id"],),
+            ).fetchone()
+        self.assertEqual((row["attempts"], row["status"], row["irreversible_at"]), (0, "failed", None))
 
     def test_11_success_then_result_db_failure_never_uses_ordinary_retry(self) -> None:
         self._one(key="db-failure")
@@ -808,12 +833,11 @@ class MailIntegrityAcceptanceTests(unittest.TestCase):
                 "SELECT j.attempts, ji.irreversible_at FROM mail_jobs j JOIN mail_job_integrity ji ON ji.job_id=j.id WHERE j.id=?",
                 (queued["job_id"],),
             ).fetchone()
-        # The durable gate is intentionally recorded before provider entry.
-        # The final callback then blocks the provider boundary after the
-        # switch changes; release is net-neutral for attempts, but the gate
-        # remains evidence that this claim reached the irreversible phase.
+        # The final callback observes the switch immediately before the
+        # irreversible stage, so the claim is released without charging an
+        # attempt or recording a false irreversible-stage marker.
         self.assertEqual(row["attempts"], 0)
-        self.assertIsNotNone(row["irreversible_at"])
+        self.assertIsNone(row["irreversible_at"])
 
     def test_34_positive_data_response_survives_quit_failure(self) -> None:
         class QuitFailingSMTP:

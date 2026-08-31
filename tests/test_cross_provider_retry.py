@@ -171,6 +171,36 @@ class CrossProviderRetryTests(unittest.TestCase):
         self.assertFalse(preview["eligible"])
         self.assertIn("later_accepted_send", preview["blocked_reasons"])
 
+    def test_retry_04b_active_same_email_on_different_supplier_row_is_blocked(self) -> None:
+        source = self._source()
+        duplicate_supplier_id = self.repo.upsert_supplier(
+            workspace_id=self.user["workspace_id"],
+            external_key="retry-duplicate-identity",
+            name="Duplicate identity",
+            email=self.supplier["email"],
+            host="duplicate.example",
+            request_id=self.request_id,
+        )
+        queued = self.repo.create_queued_message(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+            request_id=self.request_id, supplier_id=duplicate_supplier_id,
+            account_id=self.yandex_id, from_email="edwatik@yandex.ru",
+            to_email=self.supplier["email"], subject="Competing queued message",
+            body_text="Competing queued message", body_html="<p>Competing queued message</p>",
+            message_id_header="<competing-queued@example.com>", attachments=[],
+        )
+
+        preview = self._preview(source)
+
+        self.assertFalse(preview["eligible"])
+        self.assertIn("active_delivery_for_recipient", preview["blocked_reasons"])
+        self.assertEqual(preview["active_delivery_for_recipient"], True)
+        with self.repo.connect() as connection:
+            self.assertEqual(
+                connection.execute("SELECT status FROM mail_jobs WHERE id=?", (queued["job_id"],)).fetchone()[0],
+                "queued",
+            )
+
     def test_retry_05_apply_creates_one_new_identity_and_preserves_source(self) -> None:
         source = self._source()
         with self.repo.connect() as connection:

@@ -41,7 +41,7 @@ _MAX_INLINE_IMAGE_BYTES = 512 * 1024
 _MAX_INLINE_IMAGE_TOTAL_BYTES = 2 * 1024 * 1024
 
 
-_SMTP_STAGES = frozenset({"connect", "ehlo", "auth", "mail_from", "rcpt_to", "data_command", "data_body", "post_data", "unknown"})
+_SMTP_STAGES = frozenset({"connect", "ehlo", "auth", "mail_from", "rcpt_to", "pre_data", "data_command", "data_body", "post_data", "unknown"})
 
 
 def _safe_smtp_response(response: bytes | str | None) -> str | None:
@@ -63,6 +63,26 @@ def _smtp_enhanced_status(response: bytes | str | None) -> str | None:
     safe = _safe_smtp_response(response)
     match = re.search(r"\b([245]\.\d\.\d)\b", safe or "")
     return match.group(1) if match else None
+
+
+def _smtp_envelope_address(address: str) -> str:
+    """Return an SMTP-safe envelope address, including IDN domains."""
+
+    mailbox = parseaddr(str(address or ""))[1].strip()
+    if "@" not in mailbox:
+        return mailbox
+    local_part, domain = mailbox.rsplit("@", 1)
+    try:
+        local_part.encode("ascii")
+        ascii_domain = domain.encode("idna").decode("ascii")
+    except UnicodeError as exc:
+        raise ProviderError(
+            "Адрес получателя содержит неподдерживаемые символы.",
+            provider_code="recipient-encoding",
+            smtp_stage="rcpt_to",
+            exception_class=type(exc).__name__,
+        ) from exc
+    return f"{local_part}@{ascii_domain}"
 
 
 @dataclass(slots=True)
@@ -443,13 +463,26 @@ class YandexMailProvider(MailProvider):
         """
 
         sender = parseaddr(str(email_message.get("From", "")))[1]
-        recipients = [address for _name, address in getaddresses(email_message.get_all("To", [])) if address]
+        sender = _smtp_envelope_address(sender)
+        recipients = [
+            _smtp_envelope_address(address)
+            for _name, address in getaddresses(email_message.get_all("To", []))
+            if address
+        ]
         if not sender or not recipients:
             raise ProviderError("Почтовый сервер отклонил адрес получателя.")
-        # `policy.SMTP` gives smtplib-compatible CRLF serialization.  The
-        # Message API has no `linesep` keyword; passing one raises after the
-        # durable irreversible gate and is therefore classified as unknown.
-        encoded = email_message.as_bytes(policy=policy.SMTP)
+        # `policy.SMTP` gives smtplib-compatible CRLF serialization.  MIME
+        # serialization is deliberately before the durable DATA gate, so a
+        # Unicode encoding error is a terminal pre-DATA failure.
+        try:
+            encoded = email_message.as_bytes(policy=policy.SMTP)
+        except UnicodeError as exc:
+            raise ProviderError(
+                "Не удалось сформировать письмо из-за неподдерживаемого символа.",
+                provider_code="message-encoding",
+                smtp_stage="pre_data",
+                exception_class=type(exc).__name__,
+            ) from exc
         code, response = smtp.mail(sender)
         if code != 250:
             cls._raise_smtp_response(

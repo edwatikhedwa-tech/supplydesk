@@ -21,12 +21,14 @@ class PhaseSMTP:
         self.send_error = send_error
         self.replies = [(354, b"2.0.0 send data"), data_reply]
         self.commands: list[str] = []
+        self.recipients: list[str] = []
         self.payload: bytes | None = None
 
     def mail(self, _sender: str):
         return 250, b"2.1.0 sender ok"
 
-    def rcpt(self, _recipient: str):
+    def rcpt(self, recipient: str):
+        self.recipients.append(recipient)
         return 250, b"2.1.5 recipient ok"
 
     def putcmd(self, command: str):
@@ -41,11 +43,11 @@ class PhaseSMTP:
         self.payload = payload
 
 
-def _email_message() -> object:
+def _email_message(*, to_email: str = "recipient@example.com") -> object:
     return YandexMailProvider._build_email(
         OutgoingMessage(
             from_email="sender@yandex.ru",
-            to_email="recipient@example.com",
+            to_email=to_email,
             subject="Evidence test",
             body_text="A body",
             body_html="<p>A body</p>",
@@ -89,6 +91,13 @@ class SmtpEvidenceTests(unittest.TestCase):
         self.assertEqual(outcome.smtp_enhanced_status, "2.0.0")
         self.assertIn("DATA", smtp.commands)
         self.assertTrue((smtp.payload or b"").endswith(b".\r\n"))
+
+    def test_e03a_idn_recipient_uses_ascii_smtp_envelope(self) -> None:
+        smtp = PhaseSMTP()
+        YandexMailProvider._smtp_send_message(smtp, _email_message(to_email="info@печнойцентр73.рф"))
+        expected_domain = "печнойцентр73.рф".encode("idna").decode("ascii")
+        self.assertEqual(smtp.recipients, [f"info@{expected_domain}"])
+        self.assertIn("DATA", smtp.commands)
 
     def test_e04_data_command_rejection_is_not_unknown(self) -> None:
         smtp = PhaseSMTP()

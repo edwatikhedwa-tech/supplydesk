@@ -4362,6 +4362,165 @@ class MailRepository:
 
     # --------------------------------------------- outgoing send operations
 
+    def _ensure_request_email_guard_connection(
+        self,
+        connection: sqlite3.Connection | PostgresConnection,
+        *,
+        workspace_id: int,
+        request_id: int,
+        normalized_email: str,
+        operation_id: int,
+        allow_existing: bool = False,
+        source_message_id: int | None = None,
+    ) -> bool:
+        """Claim the durable request/email guard for one logical outreach.
+
+        Initial outreach must create a fresh guard.  A provider continuation
+        or a proven cross-provider rejection may reuse the existing guard, but
+        only when it names the exact source message being replaced.  The
+        unique primary key remains the final race-safe barrier across workers,
+        supplier rows and providers.
+        """
+
+        email = _normalized_mail_address(normalized_email)
+        if not email or "@" not in email:
+            raise ValueError("Нельзя создать guard для некорректного email.")
+        existing = connection.execute(
+            """SELECT operation_id FROM mail_request_email_guards
+               WHERE workspace_id=? AND request_id=? AND normalized_email=?
+               LIMIT 1""",
+            (int(workspace_id), int(request_id), email),
+        ).fetchone()
+        if existing:
+            if not allow_existing:
+                raise ContactSendGuardConflictError(
+                    "Для этой заявки письмо на данный email уже было поставлено в очередь. "
+                    "Повтор требует явного разрешения."
+                )
+            if source_message_id is not None:
+                source = connection.execute(
+                    """SELECT id FROM mail_messages
+                       WHERE id=? AND workspace_id=? AND request_id=?
+                         AND direction='outbound' AND LOWER(TRIM(to_email))=?""",
+                    (int(source_message_id), int(workspace_id), int(request_id), email),
+                ).fetchone()
+                if not source:
+                    raise ContinuationPlanConflictError(
+                        "Источник provider-switch не совпадает с recipient guard."
+                    )
+            return False
+
+        if not allow_existing and connection.execute(
+            """SELECT 1 FROM mail_messages
+               WHERE workspace_id=? AND request_id=? AND direction='outbound'
+                 AND LOWER(TRIM(to_email))=?""",
+            (int(workspace_id), int(request_id), email),
+        ).fetchone():
+            raise ContactSendGuardConflictError(
+                "Для этой заявки письмо на данный email уже было поставлено в очередь. "
+                "Повтор требует явного разрешения."
+            )
+        if allow_existing:
+            if source_message_id is None or not connection.execute(
+                """SELECT 1 FROM mail_messages
+                   WHERE id=? AND workspace_id=? AND request_id=?
+                     AND direction='outbound' AND LOWER(TRIM(to_email))=?""",
+                (int(source_message_id), int(workspace_id), int(request_id), email),
+            ).fetchone():
+                raise ContinuationPlanConflictError(
+                    "Provider-switch guard требует существующий исходный message."
+                )
+        inserted = connection.execute(
+            """INSERT INTO mail_request_email_guards(
+                   workspace_id, request_id, normalized_email,
+                   operation_id, created_at, updated_at
+               ) VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT DO NOTHING""",
+            (int(workspace_id), int(request_id), email, int(operation_id), iso_now(), iso_now()),
+        )
+        if inserted.rowcount != 1:
+            if allow_existing:
+                return False
+            raise ContactSendGuardConflictError(
+                "Для этой заявки письмо на данный email уже было поставлено в очередь. "
+                "Повтор требует явного разрешения."
+            )
+        return True
+
+    def _supersede_untouched_provider_source_connection(
+        self,
+        connection: sqlite3.Connection | PostgresConnection,
+        *,
+        workspace_id: int,
+        request_id: int,
+        target_id: int,
+        source_job_id: int,
+        source_message_id: int,
+        user_id: int,
+        reason: str = "provider_continuation_superseded",
+    ) -> None:
+        """Cancel one untouched source job before creating its provider attempt."""
+
+        row = connection.execute(
+            """SELECT j.status AS job_status, j.attempts, m.status AS message_status,
+                      ji.irreversible_at
+               FROM mail_jobs j
+               JOIN mail_messages m ON m.id=j.message_id
+               LEFT JOIN mail_job_integrity ji ON ji.job_id=j.id
+               WHERE j.id=? AND j.message_id=? AND m.id=?
+                 AND m.workspace_id=? AND m.request_id=? AND m.direction='outbound'""",
+            (
+                int(source_job_id), int(source_message_id), int(source_message_id),
+                int(workspace_id), int(request_id),
+            ),
+        ).fetchone()
+        attempts = connection.execute(
+            "SELECT 1 FROM mail_send_attempts WHERE job_id=? LIMIT 1",
+            (int(source_job_id),),
+        ).fetchone()
+        if (
+            not row
+            or str(row["job_status"] or "") != "queued"
+            or str(row["message_status"] or "") != "queued"
+            or int(row["attempts"] or 0) != 0
+            or row["irreversible_at"] is not None
+            or attempts
+        ):
+            raise ContinuationPlanConflictError(
+                "Исходное письмо уже изменилось или начало отправляться; provider-switch отменён."
+            )
+        now = iso_now()
+        safe_reason = str(reason or "provider_continuation_superseded")[:500]
+        connection.execute(
+            """UPDATE mail_jobs
+               SET status='cancelled', next_attempt_at=NULL, last_error=?, updated_at=?
+               WHERE id=? AND status='queued' AND attempts=0""",
+            (safe_reason, now, int(source_job_id)),
+        )
+        connection.execute(
+            """UPDATE mail_messages
+               SET status='cancelled', error=?, sent_at=NULL
+               WHERE id=? AND status='queued'""",
+            (safe_reason, int(source_message_id)),
+        )
+        connection.execute(
+            """UPDATE mail_campaign_targets
+               SET status='excluded', exclusion_reason=?, updated_at=?
+               WHERE id=? AND job_id=? AND status IN ('eligible', 'waiting')""",
+            (safe_reason, now, int(target_id), int(source_job_id)),
+        )
+        self._audit_connection(
+            connection, int(workspace_id), int(user_id), "mail.provider_source_superseded",
+            "mail_message", str(source_message_id),
+            {
+                "request_id": int(request_id),
+                "source_job_id": int(source_job_id),
+                "source_message_id": int(source_message_id),
+                "target_id": int(target_id),
+                "reason": safe_reason,
+            },
+        )
+
     def get_send_operation(self, workspace_id: int, idempotency_key: str) -> dict[str, Any] | None:
         with self.connect() as connection:
             row = connection.execute(
@@ -4982,20 +5141,37 @@ class MailRepository:
         connection: sqlite3.Connection | PostgresConnection,
         request_id: int,
         supplier_id: int | None,
+        normalized_email: str | None = None,
     ) -> bool:
-        if supplier_id is None:
-            return False
-        state = connection.execute(
+        if supplier_id is not None and connection.execute(
             "SELECT 1 FROM request_supplier_states WHERE request_id=? AND supplier_id=? AND status IN ('replied','answered') LIMIT 1",
             (request_id, supplier_id),
-        ).fetchone()
-        if state:
+        ).fetchone():
             return True
+        email = _normalized_mail_address(normalized_email)
+        if email and connection.execute(
+            """SELECT 1
+               FROM request_supplier_states rss
+               JOIN suppliers s ON s.id=rss.supplier_id
+               WHERE rss.request_id=? AND LOWER(TRIM(s.email))=?
+                 AND rss.status IN ('replied','answered')
+               LIMIT 1""",
+            (request_id, email),
+        ).fetchone():
+            return True
+        inbound_filter = "request_id=? AND direction='inbound'"
+        inbound_params: tuple[Any, ...] = (request_id,)
+        if supplier_id is not None:
+            inbound_filter += " AND supplier_id=?"
+            inbound_params += (supplier_id,)
+        if email:
+            inbound_filter += " AND LOWER(TRIM(from_email))=?"
+            inbound_params += (email,)
         rows = connection.execute(
-            """SELECT from_email, subject, body_text
+            f"""SELECT from_email, subject, body_text
                FROM mail_messages
-               WHERE request_id=? AND supplier_id=? AND direction='inbound'""",
-            (request_id, supplier_id),
+               WHERE {inbound_filter}""",
+            inbound_params,
         ).fetchall()
         for row in rows:
             sender = _normalized_mail_address(row["from_email"])
@@ -5008,6 +5184,51 @@ class MailRepository:
             ) is None:
                 return True
         return False
+
+    @staticmethod
+    def _accepted_recipient_provider(
+        connection: sqlite3.Connection | PostgresConnection,
+        request_id: int,
+        normalized_recipient: str,
+    ) -> str | None:
+        """Return the latest accepted provider for a request recipient.
+
+        Continuation safety is recipient-scoped.  Supplier IDs are not a safe
+        deduplication key because the same mailbox can exist on several legacy
+        supplier rows with different external keys.
+        """
+
+        email = _normalized_mail_address(normalized_recipient)
+        if not email:
+            return None
+        row = connection.execute(
+            """SELECT provider FROM (
+                   SELECT ma.provider AS provider,
+                          COALESCE(m.sent_at, m.created_at) AS accepted_at,
+                          m.id AS event_id
+                   FROM mail_messages m
+                   JOIN mail_accounts ma ON ma.id=m.mail_account_id
+                   LEFT JOIN mail_jobs j ON j.message_id=m.id
+                   WHERE m.request_id=? AND m.direction='outbound'
+                     AND LOWER(TRIM(m.to_email))=?
+                     AND (m.status='sent' OR j.status='sent'
+                          OR EXISTS (
+                              SELECT 1 FROM mail_send_attempts sa
+                              WHERE sa.job_id=j.id AND sa.outcome='accepted'
+                          ))
+                   UNION ALL
+                   SELECT re.provider_type AS provider,
+                          re.accepted_at AS accepted_at,
+                          re.id AS event_id
+                   FROM mail_reconciled_outbound_events re
+                   WHERE re.request_id=? AND LOWER(TRIM(re.normalized_recipient))=?
+                     AND re.outcome='accepted'
+               ) accepted_events
+               ORDER BY accepted_at DESC, event_id DESC
+               LIMIT 1""",
+            (request_id, email, request_id, email),
+        ).fetchone()
+        return str(row["provider"]) if row and row["provider"] else None
 
     def _continuation_target_rows(
         self,
@@ -5044,53 +5265,59 @@ class MailRepository:
         evaluations: list[dict[str, Any]] = []
         request_id = int(campaign["request_id"])
         workspace_id = int(campaign["workspace_id"])
+        seen_emails: set[str] = set()
         for row in rows:
             target_id = int(row["target_id"])
             email = _normalized_mail_address(row["normalized_email"])
             supplier_id = int(row["supplier_id"]) if row["supplier_id"] is not None else None
             reasons: list[str] = []
-            accepted_provider = self._accepted_supplier_provider(connection, request_id, supplier_id, email)
-            reconciled = bool(supplier_id and connection.execute(
+            duplicate_recipient_in_campaign = bool(email and email in seen_emails)
+            if email:
+                seen_emails.add(email)
+            accepted_provider = self._accepted_recipient_provider(connection, request_id, email)
+            reconciled = bool(connection.execute(
                 """SELECT 1 FROM mail_reconciled_outbound_events
-                   WHERE request_id=? AND supplier_id=? AND normalized_recipient=?
+                   WHERE request_id=? AND LOWER(TRIM(normalized_recipient))=?
                      AND outcome='accepted' LIMIT 1""",
-                (request_id, supplier_id, email),
+                (request_id, email),
             ).fetchone())
-            disputed_transient = bool(supplier_id and connection.execute(
+            disputed_transient = bool(connection.execute(
                 """SELECT 1
                    FROM mail_send_attempts sa
                    JOIN mail_jobs sj ON sj.id=sa.job_id
                    JOIN mail_messages sm ON sm.id=sj.message_id
-                   WHERE sm.request_id=? AND sm.supplier_id=?
+                   WHERE sm.request_id=?
                      AND LOWER(TRIM(sm.to_email))=?
                      AND sa.outcome='transient_rejected' LIMIT 1""",
-                (request_id, supplier_id, email),
+                (request_id, email),
             ).fetchone())
-            delivery_unknown = bool(supplier_id and connection.execute(
+            delivery_unknown = bool(connection.execute(
                 """SELECT 1
                    FROM mail_jobs sj JOIN mail_messages sm ON sm.id=sj.message_id
-                   WHERE sm.request_id=? AND sm.supplier_id=?
+                   WHERE sm.request_id=?
                      AND LOWER(TRIM(sm.to_email))=?
                      AND (sj.status='delivery_unknown' OR sm.status='delivery_unknown')
                    LIMIT 1""",
-                (request_id, supplier_id, email),
+                (request_id, email),
             ).fetchone())
-            continuation_prepared = bool(supplier_id and connection.execute(
+            continuation_prepared = bool(connection.execute(
                 """SELECT 1
                    FROM mail_continuation_plans cp
                    JOIN mail_send_operations co ON co.id=cp.operation_id
                    JOIN mail_job_integrity cji ON cji.operation_id=co.id
                    JOIN mail_jobs cj ON cj.id=cji.job_id
                    JOIN mail_messages cm ON cm.id=cj.message_id
-                   WHERE cp.campaign_id=? AND cm.request_id=? AND cm.supplier_id=?
-                     AND LOWER(TRIM(cm.to_email))=?
+                   WHERE cp.request_id=? AND cm.request_id=?
+                      AND LOWER(TRIM(cm.to_email))=?
                    LIMIT 1""",
-                (int(campaign["id"]), request_id, supplier_id, email),
+                (request_id, request_id, email),
             ).fetchone())
             suppressed = self._continuation_suppressed_connection(
                 connection, workspace_id, row["external_key"], email,
             )
-            answered = self._continuation_answered_connection(connection, request_id, supplier_id)
+            answered = self._continuation_answered_connection(connection, request_id, supplier_id, email)
+            if duplicate_recipient_in_campaign:
+                reasons.append("duplicate_recipient_in_campaign")
             if str(row["target_status"] or "") == "excluded":
                 reasons.append(str(row["exclusion_reason"] or "excluded"))
             if accepted_provider:
@@ -5139,6 +5366,7 @@ class MailRepository:
                 "disputed_transient": disputed_transient,
                 "delivery_unknown": delivery_unknown,
                 "continuation_prepared": continuation_prepared,
+                "duplicate_recipient_in_campaign": duplicate_recipient_in_campaign,
                 "suppressed": suppressed,
                 "answered": answered,
                 "strictly_untouched": not reasons,
@@ -5422,22 +5650,22 @@ class MailRepository:
                    FROM mail_send_attempts a
                    JOIN mail_jobs j ON j.id=a.job_id
                    JOIN mail_messages m ON m.id=j.message_id
-                   WHERE m.request_id=? AND m.supplier_id=?
+                   WHERE m.request_id=? AND LOWER(TRIM(m.to_email))=?
                      AND a.outcome='accepted'
                      AND a.id<>? AND COALESCE(a.ended_at, a.started_at)>?
                    LIMIT 1""",
-                (int(source["request_id"]), int(source["supplier_id"]),
+                (int(source["request_id"]), recipient,
                  int(attempt["id"]) if attempt is not None else -1, source_time),
             ).fetchone()) or bool(connection.execute(
                 """SELECT 1
                    FROM mail_messages m
                    LEFT JOIN mail_jobs j ON j.message_id=m.id
-                   WHERE m.request_id=? AND m.supplier_id=?
+                   WHERE m.request_id=? AND LOWER(TRIM(m.to_email))=?
                      AND m.id<>?
                      AND (m.status='sent' OR j.status='sent')
                      AND COALESCE(m.sent_at, m.created_at)>?
                    LIMIT 1""",
-                (int(source["request_id"]), int(source["supplier_id"]),
+                (int(source["request_id"]), recipient,
                  int(original_message_id), source_time),
             ).fetchone())
             if accepted_later:
@@ -5447,9 +5675,9 @@ class MailRepository:
         if source is not None:
             reconciled_accepted = bool(connection.execute(
                 """SELECT 1 FROM mail_reconciled_outbound_events
-                   WHERE request_id=? AND supplier_id=?
+                   WHERE request_id=? AND LOWER(TRIM(normalized_recipient))=?
                      AND outcome='accepted' LIMIT 1""",
-                (int(source["request_id"]), int(source["supplier_id"])),
+                (int(source["request_id"]), recipient),
             ).fetchone())
             if reconciled_accepted:
                 blocked.append("reconciled_accepted")
@@ -5461,15 +5689,31 @@ class MailRepository:
                    FROM mail_messages m
                    LEFT JOIN mail_jobs j ON j.message_id=m.id
                    LEFT JOIN mail_send_attempts a ON a.job_id=j.id
-                   WHERE m.request_id=? AND m.supplier_id=?
+                   WHERE m.request_id=?
                      AND LOWER(TRIM(m.to_email))=?
                      AND (m.status='delivery_unknown' OR j.status='delivery_unknown'
                           OR a.outcome='delivery_unknown')
                    LIMIT 1""",
-                (int(source["request_id"]), int(source["supplier_id"]), recipient),
+                (int(source["request_id"]), recipient),
             ).fetchone())
             if delivery_unknown:
                 blocked.append("delivery_unknown_history")
+
+        active_delivery_for_recipient = False
+        if source is not None:
+            active_delivery_for_recipient = bool(connection.execute(
+                """SELECT 1
+                   FROM mail_messages m
+                   LEFT JOIN mail_jobs j ON j.message_id=m.id
+                   WHERE m.request_id=? AND LOWER(TRIM(m.to_email))=?
+                     AND m.id<>?
+                     AND (m.status IN ('queued', 'sending', 'delivery_unknown')
+                          OR j.status IN ('queued', 'sending', 'delivery_unknown'))
+                   LIMIT 1""",
+                (int(source["request_id"]), recipient, int(original_message_id)),
+            ).fetchone())
+            if active_delivery_for_recipient:
+                blocked.append("active_delivery_for_recipient")
 
         suppressed = False
         answered = False
@@ -5478,7 +5722,7 @@ class MailRepository:
                 connection, int(workspace_id), source["external_key"], recipient,
             )
             answered = self._continuation_answered_connection(
-                connection, int(source["request_id"]), int(source["supplier_id"]),
+                connection, int(source["request_id"]), int(source["supplier_id"]), recipient,
             )
             if suppressed:
                 blocked.append("suppressed")
@@ -5489,9 +5733,10 @@ class MailRepository:
         if source is not None and retry_schema_ready:
             existing_retry = bool(connection.execute(
                 """SELECT 1 FROM mail_cross_provider_retries
-                   WHERE workspace_id=? AND (original_job_id=? OR original_message_id=?)
+                   WHERE workspace_id=? AND request_id=?
+                     AND LOWER(TRIM(normalized_recipient))=?
                    LIMIT 1""",
-                (int(workspace_id), int(original_job_id), int(original_message_id)),
+                (int(workspace_id), int(source["request_id"]), recipient),
             ).fetchone())
             if existing_retry:
                 blocked.append("retry_already_planned")
@@ -5565,6 +5810,7 @@ class MailRepository:
             "accepted_later": accepted_later,
             "reconciled_accepted": reconciled_accepted,
             "delivery_unknown": delivery_unknown,
+            "active_delivery_for_recipient": active_delivery_for_recipient,
             "suppressed": suppressed,
             "answered": answered,
             "would_create": 1 if not blocked else 0,
@@ -5731,6 +5977,15 @@ class MailRepository:
                 (int(workspace_id), int(user_id), int(request_id), int(target_account_id), operation_key, fingerprint, now, now),
             )
             operation_id = int(operation_cursor.lastrowid)
+            self._ensure_request_email_guard_connection(
+                connection,
+                workspace_id=workspace_id,
+                request_id=request_id,
+                normalized_email=evaluation["_normalized_recipient"],
+                operation_id=operation_id,
+                allow_existing=True,
+                source_message_id=int(original_message_id),
+            )
             message_id_header = make_msgid(domain=str(target["email"]).split("@", 1)[-1])
             body_text = str(source_content["body_text"] or "")
             body_html = source_content["body_html"] or f"<p>{escape(body_text).replace(chr(10), '<br>')}</p>"
@@ -5954,17 +6209,36 @@ class MailRepository:
             operation_id = int(operation_cursor.lastrowid)
             jobs: list[dict[str, Any]] = []
             for item in effective:
+                self._ensure_request_email_guard_connection(
+                    connection,
+                    workspace_id=workspace_id,
+                    request_id=request_id,
+                    normalized_email=str(item["normalized_email"]),
+                    operation_id=operation_id,
+                    allow_existing=True,
+                    source_message_id=int(item["source_message_id"]),
+                )
+                self._supersede_untouched_provider_source_connection(
+                    connection,
+                    workspace_id=workspace_id,
+                    request_id=request_id,
+                    target_id=int(item["target_id"]),
+                    source_job_id=int(item["job_id"]),
+                    source_message_id=int(item["source_message_id"]),
+                    user_id=user_id,
+                )
                 message_id_header = make_msgid(domain=str(account["email"]).split("@", 1)[-1])
                 connection.execute(
                     """INSERT INTO mail_send_operation_targets(
                         operation_id, normalized_email, supplier_id, message_id_header,
                         subject, body_text, body_html, resend_of_message_id,
                         created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)""",
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         operation_id, item["normalized_email"], int(item["supplier_id"]),
                         message_id_header, item["frozen_subject"], item["frozen_body_text"],
                         item["frozen_body_html"] or f"<p>{escape(str(item['frozen_body_text'])).replace(chr(10), '<br>')}</p>",
+                        int(item["source_message_id"]),
                         now, now,
                     ),
                 )
@@ -5986,6 +6260,7 @@ class MailRepository:
                     body_html=item["frozen_body_html"] or f"<p>{escape(str(item['frozen_body_text'])).replace(chr(10), '<br>')}</p>",
                     message_id_header=message_id_header, attachments=attachments,
                     operation_id=operation_id, normalized_email=item["normalized_email"],
+                    resend_of_message_id=int(item["source_message_id"]),
                     personalization_level=int(item["personalization_level"]),
                 )
                 connection.execute(
@@ -7263,13 +7538,41 @@ class MailRepository:
                     exception_class=exception_class,
                 )
             else:
+                integrity = connection.execute(
+                    "SELECT irreversible_at FROM mail_job_integrity WHERE job_id=?",
+                    (int(job["id"]),),
+                ).fetchone()
+                irreversible_reached = bool(integrity and integrity["irreversible_at"] is not None)
+                no_transport_started = (
+                    str(smtp_stage or "") == "pre_data"
+                    and str(provider_classification or "") in {"message-encoding", "recipient-encoding"}
+                )
+                if not irreversible_reached and not no_transport_started:
+                    charged = connection.execute(
+                        """UPDATE mail_jobs SET attempts=attempts+1, updated_at=?
+                           WHERE id=? AND status='sending'
+                             AND NOT EXISTS (
+                               SELECT 1 FROM mail_job_integrity
+                               WHERE job_id=? AND irreversible_at IS NOT NULL
+                             )""",
+                        (now, int(job["id"]), int(job["id"])),
+                    )
+                    if charged.rowcount != 1:
+                        if not self.database_url:
+                            connection.rollback()
+                        return {"cooldown_triggered": False, "cooldown_until": cooldown_until, "breaker_state": breaker_state}
+                current_job = connection.execute(
+                    "SELECT attempts FROM mail_jobs WHERE id=?",
+                    (int(job["id"]),),
+                ).fetchone()
                 self._insert_send_attempt(
                     connection,
                     job_id=int(job["id"]), message_id=int(job["message_id"]), reply_id=None,
                     account_id=account_id, reservation_token=reservation_token,
-                    attempt_number=int(job.get("attempts") or 1), started_at=now, ended_at=now,
+                    attempt_number=int(current_job["attempts"] or 1) if current_job else int(job.get("attempts") or 1),
+                    started_at=now, ended_at=now,
                     outcome=outcome, provider_classification=provider_classification,
-                    irreversible_reached=False, cooldown_triggered=cooldown_triggered,
+                    irreversible_reached=irreversible_reached, cooldown_triggered=cooldown_triggered,
                     next_retry_at=next_retry_at, error=error,
                     smtp_stage=smtp_stage, smtp_code=smtp_code,
                     smtp_enhanced_status=smtp_enhanced_status,
@@ -7859,6 +8162,141 @@ class MailRepository:
                 (int(enabled), iso_now()),
             )
         return enabled
+
+    def reconcile_pre_data_delivery_unknown(
+        self,
+        workspace_id: int,
+        user_id: int,
+        message_id: int,
+        *,
+        expected_job_id: int,
+        expected_account_id: int,
+        expected_exception_class: str = "UnicodeEncodeError",
+        comment: str = "",
+    ) -> dict[str, Any]:
+        """Reconcile one proven pre-DATA encoding failure without a resend.
+
+        This is intentionally narrower than the manual delivery-unknown
+        resolver.  It only changes an unknown job when the immutable evidence
+        proves that no SMTP DATA response exists and the recorded exception is
+        the known pre-DATA encoding defect.
+        """
+
+        now = iso_now()
+        safe_error = "Письмо не было отправлено: ошибка кодирования адреса до SMTP DATA."
+        safe_comment = str(comment or "").strip()[:500] or (
+            "Пред-DATA ошибка UnicodeEncodeError: домен получателя должен передаваться в SMTP в IDNA-форме."
+        )
+        with self.connect() as connection:
+            if not self.database_url:
+                connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """SELECT j.id AS job_id, j.message_id, j.mail_account_id, j.status AS job_status,
+                          j.provider_message_id AS job_provider_message_id,
+                          m.workspace_id, m.user_id, m.request_id, m.supplier_id,
+                          m.to_email, m.message_id AS message_id_header,
+                          m.status AS message_status, m.sent_at, m.direction,
+                          ji.irreversible_at, ji.copy_status,
+                          a.outcome AS attempt_outcome, a.provider_classification,
+                          a.irreversible_reached,
+                          e.smtp_stage, e.smtp_code, e.provider_response_safe,
+                          e.exception_class AS evidence_exception_class
+                   FROM mail_jobs j
+                   JOIN mail_messages m ON m.id=j.message_id
+                   JOIN mail_job_integrity ji ON ji.job_id=j.id
+                   JOIN mail_send_attempts a ON a.job_id=j.id
+                   LEFT JOIN mail_send_attempt_evidence e ON e.attempt_id=a.id
+                   WHERE j.id=? AND m.workspace_id=? AND m.user_id=? AND m.id=?
+                     AND j.mail_account_id=? AND m.mail_account_id=?
+                     AND m.direction='outbound'
+                     AND a.id=(SELECT MAX(a2.id) FROM mail_send_attempts a2 WHERE a2.job_id=j.id)""",
+                (expected_job_id, workspace_id, user_id, message_id, expected_account_id, expected_account_id),
+            ).fetchone()
+            if not row:
+                raise ValueError("Пред-DATA evidence для указанного письма не найдена.")
+            existing = connection.execute(
+                "SELECT delivery_state, resolved_at FROM mail_delivery_resolutions WHERE message_id=?",
+                (message_id,),
+            ).fetchone()
+            if existing:
+                if existing["delivery_state"] != "not_sent" or row["job_status"] != "failed" or row["message_status"] != "failed":
+                    raise ValueError("Для письма уже существует несовместимое delivery resolution.")
+                if not self.database_url:
+                    connection.commit()
+                return {"ok": True, "already_reconciled": True, "job_id": expected_job_id, "message_id": message_id}
+            if row["job_status"] != "delivery_unknown" or row["message_status"] != "delivery_unknown":
+                raise ValueError("Письмо уже не находится в состоянии delivery_unknown.")
+            if row["attempt_outcome"] != "uncertain" or not row["irreversible_reached"]:
+                raise ValueError("Попытка не содержит требуемого evidence uncertain/irreversible.")
+            if row["provider_classification"] != "internal-uncertain":
+                raise ValueError("Классификация попытки не соответствует внутренней пред-DATA ошибке.")
+            exception_class = row["evidence_exception_class"]
+            if exception_class != expected_exception_class:
+                raise ValueError("Класс исключения не соответствует известной ошибке кодирования.")
+            if row["smtp_stage"] not in (None, "unknown", "pre_data") or row["smtp_code"] is not None or row["provider_response_safe"]:
+                raise ValueError("Найдены признаки SMTP-ответа; автоматическая пред-DATA сверка запрещена.")
+            if row["irreversible_at"] is None or row["sent_at"] is not None or row["job_provider_message_id"]:
+                raise ValueError("В записи есть признаки подтверждённой передачи; сверка запрещена.")
+            active_reservation = connection.execute(
+                """SELECT 1 FROM mail_send_reservations
+                   WHERE owner_type='job' AND owner_id=? AND status IN ('reserved', 'started') LIMIT 1""",
+                (expected_job_id,),
+            ).fetchone()
+            if active_reservation:
+                raise ValueError("У письма есть активная pacing reservation; сверка запрещена.")
+            connection.execute(
+                "UPDATE mail_jobs SET status='failed', next_attempt_at=NULL, last_error=?, updated_at=? WHERE id=? AND status='delivery_unknown'",
+                (safe_error, now, expected_job_id),
+            )
+            connection.execute(
+                "UPDATE mail_messages SET status='failed', error=?, sent_at=NULL WHERE id=? AND status='delivery_unknown'",
+                (safe_error, message_id),
+            )
+            connection.execute(
+                "UPDATE request_supplier_states SET status='failed', last_error=?, updated_at=? WHERE last_message_id=?",
+                (safe_error, now, message_id),
+            )
+            connection.execute(
+                """UPDATE mail_job_integrity
+                   SET claim_owner=NULL, claim_token=NULL, lease_expires_at=NULL,
+                       copy_status='not_applicable', copy_error=NULL, updated_at=?
+                   WHERE job_id=?""",
+                (now, expected_job_id),
+            )
+            connection.execute(
+                """UPDATE mail_cross_provider_retries
+                   SET status='failed', last_error=?, updated_at=?
+                   WHERE operation_id=(SELECT operation_id FROM mail_job_integrity WHERE job_id=?)
+                     AND status NOT IN ('accepted', 'delivery_unknown')""",
+                (safe_error, now, expected_job_id),
+            )
+            snapshot = {
+                "workspace_id": workspace_id,
+                "request_id": row["request_id"],
+                "supplier_id": row["supplier_id"],
+                "message_id": message_id,
+                "recipient_email": row["to_email"],
+                "message_id_header": row["message_id_header"],
+                "delivery_state": "not_sent",
+                "resolved_by": user_id,
+                "resolved_at": now,
+                "comment": safe_comment,
+            }
+            connection.execute(
+                """INSERT INTO mail_delivery_resolutions(
+                    workspace_id, request_id, supplier_id, message_id,
+                    recipient_email, message_id_header, delivery_state,
+                    resolved_by, resolved_at, comment
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                tuple(snapshot.values()),
+            )
+            self._audit_connection(
+                connection, workspace_id, user_id, "mail.delivery_unknown.reconciled_pre_data",
+                "mail_message", str(message_id), snapshot,
+            )
+            if not self.database_url:
+                connection.commit()
+        return {"ok": True, "already_reconciled": False, "job_id": expected_job_id, "message_id": message_id, "resolved_at": now}
 
     def resolve_delivery_unknown(
         self,
