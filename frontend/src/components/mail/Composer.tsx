@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { Loader2, Send, X } from 'lucide-react';
 import { ApiError, api } from '@/lib/api';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { RichTextEditor } from './RichTextEditor';
 import { readRichTextEditor } from './richTextUtils';
 
@@ -25,6 +26,9 @@ export function Composer({ context, onClose, onSent }: ComposerProps) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const editorRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useDialogFocus(dialogRef, editorRef, onClose, !sending);
 
   const handleSend = async () => {
     if (!subject.trim()) return;
@@ -49,11 +53,17 @@ export function Composer({ context, onClose, onSent }: ComposerProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/20 backdrop-blur-sm">
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-ink-200 overflow-hidden">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="composer-title"
+        className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-ink-200 overflow-hidden"
+      >
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-ink-100">
-          <h3 className="text-base font-semibold text-ink-900">Ответить</h3>
-          <button onClick={onClose} className="p-1.5 -mr-1.5 text-ink-400 hover:text-ink-900 hover:bg-ink-100 rounded-lg transition-colors">
-            <X size={18} />
+          <h3 id="composer-title" className="text-base font-semibold text-ink-900">Ответить</h3>
+          <button type="button" aria-label="Закрыть форму ответа" onClick={onClose} disabled={sending} className="-mr-1.5 inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg p-1.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:opacity-50">
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
@@ -80,9 +90,9 @@ export function Composer({ context, onClose, onSent }: ComposerProps) {
             />
           </div>
 
-          <RichTextEditor ref={editorRef} initialHtml={context.body} ariaLabel="Текст письма" placeholder="Напишите письмо..." />
+          <RichTextEditor ref={editorRef} initialHtml={context.body} ariaLabel="Текст письма" placeholder="Напишите письмо..." autoFocus />
 
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
         </div>
 
         <div className="flex items-center justify-end px-5 py-3.5 border-t border-ink-100 bg-ink-50">

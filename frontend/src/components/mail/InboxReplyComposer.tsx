@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Loader2, Send, X } from 'lucide-react';
 import { ApiError, api } from '@/lib/api';
 import type { InboxMessage } from '@/lib/types';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { RichTextEditor } from './RichTextEditor';
 import { readRichTextEditor } from './richTextUtils';
 
@@ -25,6 +26,9 @@ export function InboxReplyComposer({ message, onClose, onSent }: InboxReplyCompo
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const editorRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useDialogFocus(dialogRef, editorRef, onClose, !sending);
 
   useEffect(() => {
     setSubject(message.subject.startsWith('Re:') ? message.subject : `Re: ${message.subject || 'Письмо без темы'}`);
@@ -65,6 +69,7 @@ export function InboxReplyComposer({ message, onClose, onSent }: InboxReplyCompo
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink-900/25 p-4 backdrop-blur-sm">
       <div
+        ref={dialogRef}
         aria-labelledby="inbox-reply-title"
         aria-modal="true"
         role="dialog"

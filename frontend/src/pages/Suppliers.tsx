@@ -133,6 +133,8 @@ export function Suppliers() {
           {filterConfig.map((f) => (
             <button
               key={f.key}
+              type="button"
+              aria-pressed={filter === f.key}
               onClick={() => setFilter(f.key)}
               className={`min-h-10 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 filter === f.key ? 'bg-accent-600 text-white' : 'text-ink-500 hover:text-ink-800 hover:bg-ink-50'
@@ -145,7 +147,9 @@ export function Suppliers() {
         </div>
         <div className="relative flex-1 min-w-[240px] max-w-xs">
           <Search className="w-4 h-4 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <label htmlFor="suppliers-search" className="sr-only">Поиск по названию, ИНН или сайту</label>
           <input
+            id="suppliers-search"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

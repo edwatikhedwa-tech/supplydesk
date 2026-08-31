@@ -106,7 +106,9 @@ export function Blacklist() {
       <div className="mb-5">
         <div className="relative flex-1 min-w-[240px] max-w-xs">
           <Search className="w-4 h-4 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <label htmlFor="blacklist-search" className="sr-only">Поиск по названию или ИНН</label>
           <input
+            id="blacklist-search"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

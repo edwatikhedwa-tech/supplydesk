@@ -42,6 +42,7 @@ export function Layout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileSidebarRef = useRef<HTMLElement>(null);
   const wasMobileOpen = useRef(false);
   // Счётчик писем без привязки к заявке. Такое письмо — это ответ, который
   // система не смогла отнести к закупке; без пометки в навигации оно тихо
@@ -94,6 +95,11 @@ export function Layout() {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const sidebar = mobileSidebarRef.current;
+    if (sidebar) sidebar.toggleAttribute('inert', !mobileOpen);
+  }, [mobileOpen]);
 
   useEffect(() => {
     if (!mobileOpen) {
@@ -236,7 +242,9 @@ export function Layout() {
       </aside>
       <aside
         id="mobile-sidebar"
+        ref={mobileSidebarRef}
         aria-label="Мобильная навигация"
+        aria-hidden={!mobileOpen}
         className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-ink-800 bg-ink-900 transition-transform duration-200 lg:hidden ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}

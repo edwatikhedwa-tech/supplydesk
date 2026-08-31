@@ -114,18 +114,24 @@ export function Messages() {
         </div>
         <div className="flex items-center bg-ink-100 rounded-lg p-0.5">
           <button
+            type="button"
+            aria-pressed={mode === 'requests'}
             onClick={() => changeMode('requests')}
             className={cn('min-h-10 px-4 py-1.5 text-sm font-medium rounded-md transition-all', mode === 'requests' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
           >
             По заявкам
           </button>
           <button
+            type="button"
+            aria-pressed={mode === 'unmatched'}
             onClick={() => changeMode('unmatched')}
             className={cn('min-h-10 px-4 py-1.5 text-sm font-medium rounded-md transition-all', mode === 'unmatched' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
           >
             Без привязки
           </button>
           <button
+            type="button"
+            aria-pressed={mode === 'outbox'}
             onClick={() => changeMode('outbox')}
             className={cn('min-h-10 px-4 py-1.5 text-sm font-medium rounded-md transition-all', mode === 'outbox' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
           >

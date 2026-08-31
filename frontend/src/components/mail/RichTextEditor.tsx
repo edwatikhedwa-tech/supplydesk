@@ -55,8 +55,13 @@ export const RichTextEditor = forwardRef<HTMLDivElement, RichTextEditorProps>(fu
         contentEditable={!disabled}
         suppressContentEditableWarning
         id={id}
+        role="textbox"
+        aria-multiline="true"
         aria-label={ariaLabel}
         aria-disabled={disabled}
+        aria-readonly={disabled}
+        aria-placeholder={placeholder}
+        tabIndex={disabled ? -1 : 0}
         data-placeholder={placeholder}
         onInput={() => { if (!disabled) onChange?.(readRichTextEditor(localRef.current)); }}
         className="min-h-[140px] max-h-[280px] overflow-y-auto px-3 py-2.5 text-sm text-ink-800 outline-none focus:outline-none disabled:bg-ink-50 [&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-ink-300"

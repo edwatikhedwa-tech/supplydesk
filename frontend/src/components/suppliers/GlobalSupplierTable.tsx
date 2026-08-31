@@ -56,7 +56,8 @@ function MobileSupplierCard({
           type="button"
           onClick={() => onToggleSelect(s.id)}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-          aria-label={`${selected ? 'Снять выбор' : 'Выбрать'} поставщика`}
+          aria-label={`${selected ? 'Снять выбор с' : 'Выбрать'} поставщика ${displaySupplierName(s.name, s.inn) || s.site}`}
+          aria-pressed={selected}
         >
           <span className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${selected ? 'border-accent-600 bg-accent-600' : 'border-ink-300 hover:border-accent-400'}`}>
             {selected && <Check className="h-3 w-3 text-white" />}
@@ -184,7 +185,7 @@ export function GlobalSupplierTable({
             style={{ gridTemplateColumns: template }}
           >
             <div className="flex items-center justify-center">
-              <button onClick={onToggleSelectAll} className="flex h-9 w-9 items-center justify-center" aria-label="Выбрать всех">
+              <button type="button" onClick={onToggleSelectAll} className="flex h-9 w-9 items-center justify-center" aria-label={allSelected ? 'Снять выбор со всех поставщиков' : 'Выбрать всех поставщиков'} aria-pressed={allSelected}>
                 <span className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
                   allSelected ? 'border-accent-600 bg-accent-600' : someSelected ? 'border-accent-400 bg-accent-400' : 'border-ink-300 hover:border-accent-400'
                 }`}>
@@ -234,7 +235,7 @@ export function GlobalSupplierTable({
                     style={{ gridTemplateColumns: template }}
                   >
                     <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => onToggleSelect(s.id)} className="flex h-9 w-9 items-center justify-center" aria-label="Выбрать поставщика">
+                      <button type="button" onClick={() => onToggleSelect(s.id)} className="flex h-9 w-9 items-center justify-center" aria-label={`${isSelected ? 'Снять выбор с' : 'Выбрать'} поставщика ${displaySupplierName(s.name, s.inn) || s.site}`} aria-pressed={isSelected}>
                         <span className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${isSelected ? 'border-accent-600 bg-accent-600' : 'border-ink-300 hover:border-accent-400'}`}>
                           {isSelected && <Check className="h-3 w-3 text-white" />}
                         </span>
@@ -338,6 +339,8 @@ export function GlobalSupplierTable({
             type="button"
             onClick={onToggleSelectAll}
             className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-xs font-semibold text-accent-700 hover:bg-accent-50"
+            aria-label={allSelected ? 'Снять выбор со всех поставщиков' : 'Выбрать всех поставщиков'}
+            aria-pressed={allSelected}
           >
             <span className={`flex h-5 w-5 items-center justify-center rounded border-2 ${allSelected ? 'border-accent-600 bg-accent-600' : someSelected ? 'border-accent-400 bg-accent-400' : 'border-ink-300'}`}>
               {(allSelected || someSelected) && <Check className="h-3 w-3 text-white" />}

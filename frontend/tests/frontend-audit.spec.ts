@@ -253,6 +253,14 @@ test('matched correspondence preserves sender CSS and keeps a wide email inside 
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: testInfo.outputPath(`${testInfo.project.name}-matched-html-reader.png`), fullPage: false });
 
+  await page.getByRole('button', { name: 'Ответить', exact: true }).first().click();
+  const replyDialog = page.getByRole('dialog', { name: 'Ответить' });
+  await expect(replyDialog).toBeVisible();
+  await expect(replyDialog.getByRole('textbox', { name: 'Текст письма' })).toBeFocused();
+  await expect(replyDialog.getByRole('button', { name: 'Закрыть форму ответа' })).toBeVisible();
+  await replyDialog.getByRole('button', { name: 'Закрыть форму ответа' }).click();
+  await expect(replyDialog).toBeHidden();
+
   const axeResults = await new AxeBuilder({ page }).analyze();
   expect(axeResults.violations, formatAxeViolations(axeResults.violations)).toEqual([]);
 });

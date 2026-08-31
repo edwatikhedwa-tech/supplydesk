@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import base64
+import gzip
 import hashlib
+import io
 import json
 import logging
 import os
@@ -247,6 +249,7 @@ class SupplierHandler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/auth/me":
             self._auth_me()
             return
+
         if parsed.path == "/api/auth/yandex/start":
             self._auth_yandex_start()
             return
@@ -436,6 +439,33 @@ class SupplierHandler(SimpleHTTPRequestHandler):
         # and let the browser router resolve it. Auth is decided client-side via
         # /api/auth/me so this response never needs to vary by session.
         self._serve_app_shell()
+
+    def send_head(self):
+        """Serve hashed frontend assets with compression and immutable caching."""
+        if not self.path.split("?", 1)[0].startswith("/assets/"):
+            return super().send_head()
+
+        self.directory = str(FRONTEND_DIST)
+        path = Path(self.translate_path(self.path))
+        if not path.is_file():
+            return super().send_head()
+
+        body = path.read_bytes()
+        content_encoding = None
+        accepted_encodings = self.headers.get("Accept-Encoding", "")
+        if path.suffix.lower() in {".js", ".css", ".html", ".svg", ".json"} and "gzip" in accepted_encodings.lower():
+            body = gzip.compress(body, compresslevel=6, mtime=0)
+            content_encoding = "gzip"
+
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-type", self.guess_type(str(path)))
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+        self.send_header("Vary", "Accept-Encoding")
+        if content_encoding:
+            self.send_header("Content-Encoding", content_encoding)
+        self.end_headers()
+        return io.BytesIO(body)
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)

@@ -152,7 +152,9 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
       <div className="px-3 pt-3 pb-2.5 border-b border-ink-100 shrink-0">
         <div className="relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+          <label htmlFor="messages-search" className="sr-only">Поиск по поставщику, заявке или письму</label>
           <input
+            id="messages-search"
             type="text"
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
