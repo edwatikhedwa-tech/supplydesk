@@ -2,13 +2,12 @@
 
 ## Last update
 
-- Timestamp UTC: `2026-08-31T06:36:26Z` (`TASK-MESSAGES-NAV-TOGGLE-20260831` close).
+- Timestamp UTC: `2026-08-31T06:42:12Z` (`TASK-MESSAGES-NAV-DEFAULT-20260831` close).
 - Project root: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
 - Repository: `edwatikhedwa-tech/supplydesk`.
 - Branch: `codex/TASK-STATE-CONTROL-20260830`.
-- HEAD: `20e2e09f183bd476cf19fa12806532220bd48708` (`TASK-MESSAGES-NAV-TOGGLE-20260831`
-  state-record commit; product implementation is `2ba2547383c42ad92b246527739eb2a2a56f8e76`,
-  push not run).
+- HEAD: `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e` (`TASK-MESSAGES-NAV-DEFAULT-20260831`
+  product implementation commit; push not run).
 - Remote: `origin` → `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Upstream: `origin/codex/TASK-STATE-CONTROL-20260830`.
@@ -22,7 +21,8 @@
 - Latest verified tests: live `/messages` audit `81/81 PASS`, live Playwright
   regression `1 passed`, remote-image network check with `0` remote image
   requests, frontend typecheck `PASS`, lint `PASS` with existing warnings and
-  production build `PASS`; blue-control click check `PASS`.
+  production build `PASS`; blue-control click and default-collapsed checks
+  `PASS`.
 
 ## Project
 
@@ -33,11 +33,15 @@
 
 ## Current task
 
-- `TASK-MESSAGES-NAV-TOGGLE-20260831` — `COMPLETE`.
-- The implementation commit is `2ba2547383c42ad92b246527739eb2a2a56f8e76`;
+- `TASK-MESSAGES-NAV-DEFAULT-20260831` — `COMPLETE`.
+- The implementation commit is `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e`;
   `ai/ACTIVE_TASK.md` is returned to the explicit idle sentinel.
 
 ## Last completed task
+
+- `TASK-MESSAGES-NAV-DEFAULT-20260831` — `COMPLETE`; desktop navigation is
+  collapsed on first run while saved user preference remains authoritative.
+  Report: `ai/reports/TASK-MESSAGES-NAV-DEFAULT-20260831-report.md`.
 
 - `TASK-MESSAGES-NAV-TOGGLE-20260831` — `COMPLETE`; the blue desktop
   control now toggles the sidebar and reverses the arrow direction. Report:
@@ -66,8 +70,10 @@
 - Publication commit: `85fb7a2d9ac2f3697f33c7b5f930f44adabf799e`.
 - Latest published state-record commit:
   `55db2aa2d8f80cdf69b4970db26cacce669a7e62`.
-- Local implementation commits: `a7043cc4f30f926dd792ef4aaceedee05300f3e2`
-  and `2ba2547383c42ad92b246527739eb2a2a56f8e76`.
+- Local implementation commits:
+  `a7043cc4f30f926dd792ef4aaceedee05300f3e2`,
+  `2ba2547383c42ad92b246527739eb2a2a56f8e76` and
+  `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e`.
 - Push: `NOT RUN`; the remote branch intentionally remains behind this local
   implementation commit.
 
@@ -80,6 +86,8 @@
 - Existing remote-image blocking and notice detection were not changed.
 - The blue desktop control now owns sidebar expand/collapse; the mobile logo
   keeps its dashboard action.
+- Desktop navigation defaults to collapsed when no preference is stored;
+  existing stored preference is preserved.
 - Only the requested product file was committed for this task; unrelated dirty and
   untracked paths were preserved.
 

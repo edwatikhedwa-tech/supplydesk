@@ -1,5 +1,43 @@
 # Last Handoff
 
+## Current handoff — `/messages` navigation collapsed by default
+
+Task ID: `TASK-MESSAGES-NAV-DEFAULT-20260831`
+Дата и время UTC: `2026-08-31T06:42:12Z`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+HEAD at product change: `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e`
+Push: `NOT RUN`
+Active task: `NONE`
+Status: `COMPLETE — default collapsed behavior live-verified`
+
+### Что изменено
+
+В `frontend/src/components/Layout.tsx` отсутствие сохранённой настройки
+теперь означает свернутое desktop-меню (`76 px`). Сохранённое пользователем
+значение не меняется: `true` остаётся свернутым, `false` — раскрытым.
+
+### Acceptance
+
+- Fresh-context real Playwright без route-mocks: default `76 px`, label
+  `Развернуть меню`, `aria-expanded=false` — `PASS`.
+- Click blue control: `248 px`, label `Свернуть меню`, `aria-expanded=true` —
+  `PASS`.
+- Reload preserves the clicked choice — `PASS`.
+- Full no-mock `/messages` audit after the change: `81/81 PASS` at `390`,
+  `1024`, `1440`, `1640` px; console/page/failed requests `0`.
+- Typecheck/build `PASS`; lint `PASS` with existing unrelated warnings.
+- Candidate screenshot:
+  `Temp/read-only-audit-20260830/screenshots/nav-default-collapsed-1440-viewport.png`.
+
+### Ограничения
+
+Approved baseline: `NO APPROVED BASELINE`. Push, production, PostgreSQL and
+real Mail.ru acceptance were not run. Other dirty/untracked user files were
+preserved.
+
+Report: `ai/reports/TASK-MESSAGES-NAV-DEFAULT-20260831-report.md`
+
 ## Current handoff — blue `/messages` navigation toggle complete
 
 Task ID: `TASK-MESSAGES-NAV-TOGGLE-20260831`

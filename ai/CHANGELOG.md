@@ -287,3 +287,17 @@ rewritten.
 - Commit: `2ba2547383c42ad92b246527739eb2a2a56f8e76`.
 - Push: `NOT RUN`.
 - Report: `ai/reports/TASK-MESSAGES-NAV-TOGGLE-20260831-report.md`.
+
+## 2026-08-31T06:42:12Z — IMPLEMENTATION / LIVE ACCEPTANCE — TASK-MESSAGES-NAV-DEFAULT-20260831
+
+- Agent: `Codex`
+- Scope: desktop navigation default on `/messages`; saved preference and
+  mobile behavior preserved.
+- Change: when no sidebar preference exists, navigation starts collapsed;
+  stored `true`/`false` remains authoritative.
+- Verification: fresh-context real Playwright `PASS` (`76 px` default), blue
+  click/reload persistence `PASS`, full no-mock `/messages` audit `81/81 PASS`,
+  typecheck/build `PASS`, lint `PASS` with existing warnings.
+- Commit: `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e`.
+- Push: `NOT RUN`.
+- Report: `ai/reports/TASK-MESSAGES-NAV-DEFAULT-20260831-report.md`.

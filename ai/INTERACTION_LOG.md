@@ -181,3 +181,18 @@ This log records agent work interactions. It is append-only.
 - State: current task closed; unrelated tracked and untracked worktree paths
   were preserved.
 - Report: `ai/reports/TASK-MESSAGES-NAV-TOGGLE-20260831-report.md`.
+
+## 2026-08-31T06:42:12Z — TASK-MESSAGES-NAV-DEFAULT-20260831
+
+- Request: start the desktop navigation collapsed by default.
+- Mode: `EXTEND → LIVE QA → CLOSE`.
+- Change: absent localStorage preference now resolves to collapsed; existing
+  saved preference remains unchanged.
+- Verification: fresh-context real Playwright `PASS` (`76 px` default), blue
+  click and reload persistence `PASS`, full no-mock `/messages` audit
+  `81/81 PASS`, typecheck/build `PASS`, lint `PASS` with existing warnings.
+- Commit: `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e`.
+- Push: `NOT RUN`.
+- State: current task closed; unrelated tracked and untracked worktree paths
+  were preserved.
+- Report: `ai/reports/TASK-MESSAGES-NAV-DEFAULT-20260831-report.md`.
