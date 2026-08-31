@@ -29,6 +29,7 @@ from .deliverability import (
     subject_quality,
     unresolved_placeholders,
 )
+from .content import html_to_text, sanitize_email_html
 from .pacing import PacingSettings
 from .providers.base import MailProvider
 from .repository import (
@@ -476,7 +477,9 @@ class MailService:
         request_id: int,
         suppliers: list[dict[str, Any]],
         subject: str,
-        body: str,
+        body: str | None = None,
+        body_text: str | None = None,
+        body_html: str | None = None,
         attachments: list[dict[str, Any]] | None = None,
         manual_stage_approval: bool | None = None,
         allow_manual_resend: bool = False,
@@ -559,7 +562,9 @@ class MailService:
             result["warnings"].append("campaign_exceeds_daily_budget")
 
         subject_value = str(subject or "")
-        body_value = str(body or "")
+        body_value, body_html_value = self._normalize_outbound_content(
+            body=body, body_text=body_text, body_html=body_html,
+        )
         try:
             self._validate_subject(subject_value)
         except ValueError:
@@ -575,7 +580,7 @@ class MailService:
         result["warnings"].extend(subject_warnings)
         result["warnings"].extend(body_warnings)
         unsupported_placeholders = [
-            name for name in unresolved_placeholders(subject_value, body_value)
+            name for name in unresolved_placeholders(subject_value, "\n".join(filter(None, (body_value, body_html_value))))
             if name not in KNOWN_PLACEHOLDERS
         ]
         if unsupported_placeholders:
@@ -705,7 +710,7 @@ class MailService:
             try:
                 target = self._render_outbound_target(
                     account=account, request=request, supplier=item,
-                    subject=subject_value, body=body_value,
+                    subject=subject_value, body=body_value, body_html=body_html_value,
                     supplier_id=flags.get("supplier_id"),
                 )
             except ValueError:
@@ -772,7 +777,9 @@ class MailService:
         request: dict[str, Any],
         supplier: dict[str, Any],
         subject: str,
-        body: str,
+        body: str | None = None,
+        body_text: str | None = None,
+        body_html: str | None = None,
         supplier_id: int | None = None,
         message_id_header: str | None = None,
         resend_of_message_id: int | None = None,
@@ -788,15 +795,25 @@ class MailService:
             "sender_name": str(request.get("sender_name") or "").strip(),
             "company_name": str(request.get("company_name") or "").strip(),
         }
-        body_text = self.personalize(body, **values).strip()
+        text_template = body_text if body_text is not None else body
+        personalized_text = self.personalize(text_template or "", **values).strip()
         recipient_subject = self._validate_subject(self.personalize(subject, **values))
+        if body_html and body_html.strip():
+            personalized_html = self._personalize_html(body_html, values)
+            rendered_html = sanitize_email_html(personalized_html)
+            rendered_text = html_to_text(rendered_html) or personalized_text
+            body_text_value = self._validate_body(rendered_text).strip()
+            body_html_value = rendered_html or f"<p>{escape(body_text_value).replace(chr(10), '<br>')}</p>"
+        else:
+            body_text_value = self._validate_body(personalized_text).strip()
+            body_html_value = f"<p>{escape(body_text_value).replace(chr(10), '<br>')}</p>"
         return {
             "normalized_email": supplier["email"],
             "supplier_id": supplier_id,
             "to_email": supplier["email"],
             "subject": recipient_subject,
-            "body_text": body_text,
-            "body_html": f"<p>{escape(body_text).replace(chr(10), '<br>')}</p>",
+            "body_text": body_text_value,
+            "body_html": body_html_value,
             "message_id_header": message_id_header or make_msgid(domain=account["email"].split("@", 1)[-1]),
             "resend_of_message_id": resend_of_message_id,
             "personalization_level": personalization_level(supplier=supplier, request=request),
@@ -810,7 +827,9 @@ class MailService:
         request_id: int,
         supplier: dict[str, Any],
         subject: str,
-        body: str,
+        body: str | None = None,
+        body_text: str | None = None,
+        body_html: str | None = None,
         attachments: list[dict[str, Any]] | None = None,
         idempotency_key: str | None = None,
         resend_of_message_id: int | None = None,
@@ -829,6 +848,8 @@ class MailService:
             suppliers=[supplier],
             subject=subject,
             body=body,
+            body_text=body_text,
+            body_html=body_html,
             attachments=attachments,
             idempotency_key=operation_key,
             resend_of_message_id=resend_of_message_id,
@@ -847,7 +868,9 @@ class MailService:
         request_id: int,
         suppliers: list[dict[str, Any]],
         subject: str,
-        body: str,
+        body: str | None = None,
+        body_text: str | None = None,
+        body_html: str | None = None,
         attachments: list[dict[str, Any]] | None = None,
         idempotency_key: str | None = None,
         resend_of_message_id: int | None = None,
@@ -866,7 +889,9 @@ class MailService:
                 f"За один раз можно поставить в очередь от 1 до {self.campaign_max_recipients} поставщиков."
             )
         clean_subject = self._validate_subject(subject)
-        clean_body = self._validate_body(body)
+        clean_body, clean_body_html = self._normalize_outbound_content(
+            body=body, body_text=body_text, body_html=body_html,
+        )
         account = self._get_account_for_queue(user_id, workspace_id, mail_account_id=mail_account_id)
         request = self.repository.get_request(workspace_id, request_id)
         if not request:
@@ -883,7 +908,7 @@ class MailService:
         if operation is None:
             preflight_result = self.preflight_bulk(
                 user_id=user_id, workspace_id=workspace_id, request_id=request_id,
-                suppliers=suppliers, subject=clean_subject, body=clean_body,
+                suppliers=suppliers, subject=clean_subject, body=clean_body, body_html=clean_body_html,
                 attachments=attachments or [],
                 manual_stage_approval=effective_manual_stage_approval,
                 allow_manual_resend=resend_of_message_id is not None,
@@ -925,6 +950,7 @@ class MailService:
             normalized_recipients=effective_normalized,
             subject_template=clean_subject,
             body_template=clean_body,
+            body_html_template=clean_body_html,
             attachments=parsed_attachments,
             resend_of_message_id=resend_of_message_id,
             manual_stage_approval=effective_manual_stage_approval,
@@ -937,6 +963,7 @@ class MailService:
             normalized_recipients=effective_normalized,
             subject_template=clean_subject,
             body_template=clean_body,
+            body_html_template=clean_body_html,
             attachments=parsed_attachments,
             resend_of_message_id=resend_of_message_id,
             fingerprint_schema_version=LEGACY_FINGERPRINT_SCHEMA_VERSION,
@@ -955,6 +982,7 @@ class MailService:
                     "normalized_recipients": effective_normalized,
                     "subject_template": clean_subject,
                     "body_template": clean_body,
+                    "body_html_template": clean_body_html,
                     "attachments": parsed_attachments,
                     "resend_of_message_id": resend_of_message_id,
                 },
@@ -997,7 +1025,7 @@ class MailService:
                 )
                 prepared.append(self._render_outbound_target(
                     account=account, request=request, supplier=item,
-                    subject=clean_subject, body=clean_body, supplier_id=supplier_id,
+                    subject=clean_subject, body=clean_body, body_html=clean_body_html, supplier_id=supplier_id,
                     resend_of_message_id=resend_of_message_id,
                 ))
             try:
@@ -1048,6 +1076,7 @@ class MailService:
                         "normalized_recipients": effective_normalized,
                         "subject_template": clean_subject,
                         "body_template": clean_body,
+                        "body_html_template": clean_body_html,
                         "attachments": parsed_attachments,
                         "resend_of_message_id": resend_of_message_id,
                     },
@@ -1139,7 +1168,9 @@ class MailService:
         workspace_id: int,
         inbox_message_id: int,
         subject: str,
-        body: str,
+        body: str | None = None,
+        body_text: str | None = None,
+        body_html: str | None = None,
         attachments: list[dict[str, Any]] | None = None,
     ) -> dict[str, int]:
         """Reply to an unmatched inbox message — no заявка/поставщик involved.
@@ -1161,9 +1192,30 @@ class MailService:
                 "Достигнут безопасный дневной предел отправки. Попробуйте завтра.",
                 transient=True, rate_limited=True, provider_code="local-daily-limit",
             )
-        body_text = self._validate_body(body).strip()
+        body_text_template, body_html_template = self._normalize_outbound_content(
+            body=body, body_text=body_text, body_html=body_html,
+        )
         subject = self._validate_subject(subject or self._reply_subject(original["subject"]))
-        body_html = f"<p>{escape(body_text).replace(chr(10), '<br>')}</p>"
+        values = {
+            "supplier_name": "",
+            "contact_name": "",
+            "supplier_category": "",
+            "supplier_website": "",
+            "supplier_city": "",
+            "request_name": "",
+            "request_description": "",
+            "sender_name": "",
+            "company_name": "",
+        }
+        personalized_text = self.personalize(body_text_template, **values).strip()
+        if body_html_template:
+            rendered_html = sanitize_email_html(self._personalize_html(body_html_template, values))
+            rendered_text = html_to_text(rendered_html) or personalized_text
+            body_text_value = self._validate_body(rendered_text).strip()
+            body_html_value = rendered_html or f"<p>{escape(body_text_value).replace(chr(10), '<br>')}</p>"
+        else:
+            body_text_value = self._validate_body(personalized_text).strip()
+            body_html_value = f"<p>{escape(body_text_value).replace(chr(10), '<br>')}</p>"
         parsed_attachments = self.validate_attachments(attachments or [])
         message_id_header = make_msgid(domain=account["email"].split("@", 1)[-1])
         references = " ".join(token for token in (original.get("references_header"), original.get("message_id")) if token) or None
@@ -1173,13 +1225,13 @@ class MailService:
         )
         reply_id = self.repository.record_inbox_reply(
             inbox_thread_id=thread_id, workspace_id=workspace_id, user_id=user_id, mail_account_id=account["id"],
-            from_email=account["email"], to_email=peer_email, subject=subject, body_text=body_text, body_html=body_html,
+            from_email=account["email"], to_email=peer_email, subject=subject, body_text=body_text_value, body_html=body_html_value,
             message_id_header=message_id_header, in_reply_to=original.get("message_id") or None, references_header=references,
         )
         provider = self._provider_for_account(account, access_token)
         outgoing = OutgoingMessage(
             from_email=account["email"], to_email=peer_email, subject=subject,
-            body_text=body_text, body_html=body_html,
+            body_text=body_text_value, body_html=body_html_value,
             message_id=message_id_header, in_reply_to=original.get("message_id") or None, references=references,
             attachments=[Attachment(filename=item["filename"], mime_type=item["mime_type"], content=item["content"]) for item in parsed_attachments],
         )
@@ -1496,7 +1548,8 @@ class MailService:
             request_id=int(original["request_id"]),
             supplier=supplier,
             subject=original["subject"],
-            body=original["body_text"],
+            body_text=original["body_text"],
+            body_html=original.get("body_html"),
             attachments=[
                 {
                     "filename": item["filename"],
@@ -1605,6 +1658,7 @@ class MailService:
         normalized_recipients: list[dict[str, Any]],
         subject_template: str,
         body_template: str,
+        body_html_template: str | None = None,
         attachments: list[dict[str, Any]],
         resend_of_message_id: int | None,
         manual_stage_approval: bool | None = None,
@@ -1641,6 +1695,11 @@ class MailService:
             ],
             "attachments": attachment_fingerprint,
         }
+        # Keep the schema version stable for legacy body-only operations. The
+        # optional field makes rich HTML intents distinct without invalidating
+        # already persisted fingerprints created before this contract existed.
+        if body_html_template is not None:
+            payload["body_html_template"] = body_html_template
         if fingerprint_schema_version >= FINGERPRINT_SCHEMA_VERSION:
             if type(manual_stage_approval) is not bool:
                 raise ValueError("Для текущей версии отпечатка требуется режим подтверждения этапов.")
@@ -1996,6 +2055,44 @@ class MailService:
         return value
 
     @staticmethod
+    def _validate_html(value: str) -> str:
+        if len(value) > 100_000:
+            raise ValueError("HTML-текст письма превышает 100 000 символов.")
+        return value
+
+    def _normalize_outbound_content(
+        self,
+        *,
+        body: str | None,
+        body_text: str | None,
+        body_html: str | None,
+    ) -> tuple[str, str | None]:
+        """Normalize legacy/plain and explicit HTML input into one send contract.
+
+        ``body`` remains a compatibility alias. When HTML is supplied, its
+        plain-text alternative is always derived from the sanitized fragment;
+        explicit ``body_text`` is only a fallback for HTML with no visible text.
+        """
+        if body_text is not None and not isinstance(body_text, str):
+            raise ValueError("body_text должен быть строкой.")
+        if body_html is not None and not isinstance(body_html, str):
+            raise ValueError("body_html должен быть строкой.")
+        if body is not None and not isinstance(body, str):
+            raise ValueError("body должен быть строкой.")
+
+        explicit_html = body_html.strip() if body_html else ""
+        explicit_text = body_text if body_text is not None else body
+        if explicit_text is None:
+            explicit_text = ""
+        if explicit_html:
+            self._validate_html(explicit_html)
+            safe_html = sanitize_email_html(explicit_html)
+            derived_text = html_to_text(safe_html)
+            text = derived_text or explicit_text
+            return self._validate_body(text), safe_html or None
+        return self._validate_body(explicit_text), None
+
+    @staticmethod
     def _validate_body(value: str) -> str:
         value = str(value)
         if not value.strip():
@@ -2044,6 +2141,12 @@ class MailService:
         ):
             text = text.replace("{{" + key + "}}", values.get(key, "") or "")
         return text
+
+    @classmethod
+    def _personalize_html(cls, template: str, values: dict[str, str]) -> str:
+        """Substitute dynamic values as escaped text before HTML sanitization."""
+        escaped_values = {key: escape(value, quote=True) for key, value in values.items()}
+        return cls.personalize(template, **escaped_values)
 
     def _require_encryption(self) -> None:
         if self._encryption_key is None:

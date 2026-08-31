@@ -143,7 +143,7 @@ export const api = {
   listInboxPreview: () => request<{ items: InboxPreview[] }>('/api/mail/inbox/preview'),
   inboxConversation: (inboxMessageId: number) => request<InboxConversation>(`/api/mail/inbox/conversation?inbox_message_id=${inboxMessageId}`),
 
-  sendMail: (input: { request_id: number; supplier: SupplierSendInput; subject: string; body: string; idempotency_key?: string; allow_repeat?: boolean; mail_account_id?: number }) =>
+  sendMail: (input: { request_id: number; supplier: SupplierSendInput; subject: string; body_text: string; body_html?: string; idempotency_key?: string; allow_repeat?: boolean; mail_account_id?: number }) =>
     request<{ ok: true; queued: unknown[] }>('/api/mail/send', { method: 'POST', body: JSON.stringify(input) }),
   sendMailBulk: (input: {
     request_id: number;
@@ -151,7 +151,8 @@ export const api = {
     // которого поставщика ещё нет — бэкенд заведёт его по адресу.
     suppliers: SupplierSendInput[];
     subject: string;
-    body: string;
+    body_text: string;
+    body_html?: string;
     attachments?: { filename: string; mime_type: string; content_base64: string }[];
     idempotency_key: string;
     manual_stage_approval?: boolean;
@@ -163,7 +164,8 @@ export const api = {
     request_id: number;
     suppliers: SupplierSendInput[];
     subject: string;
-    body: string;
+    body_text: string;
+    body_html?: string;
     attachments?: { filename: string; mime_type: string; content_base64: string }[];
     manual_stage_approval?: boolean;
     allow_repeat?: boolean;
@@ -173,7 +175,8 @@ export const api = {
     request_id: number;
     suppliers: SupplierSendInput[];
     subject: string;
-    body: string;
+    body_text: string;
+    body_html?: string;
     attachments?: { filename: string; mime_type: string; content_base64: string }[];
     manual_stage_approval?: boolean;
     allow_repeat?: boolean;
@@ -238,7 +241,7 @@ export const api = {
   unlinkManualInboxMessage: (inboxMessageId: number) =>
     request<{ ok: true; already_unlinked: boolean; inbox_message_id: number }>(
       '/api/mail/inbox/manual-unlink', { method: 'POST', body: JSON.stringify({ inbox_message_id: inboxMessageId }) }),
-  replyToInbox: (input: { inbox_message_id: number; subject: string; body: string }) =>
+  replyToInbox: (input: { inbox_message_id: number; subject: string; body_text: string; body_html?: string }) =>
     request<{ ok: true }>('/api/mail/inbox/reply', { method: 'POST', body: JSON.stringify(input) }),
   verifyDelivery: (messageId: number) =>
     request<{ outcome: string; status: string; message_id: number }>(`/api/mail/messages/${messageId}/verify`, { method: 'POST', body: JSON.stringify({}) }),

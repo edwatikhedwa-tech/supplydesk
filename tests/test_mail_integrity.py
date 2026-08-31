@@ -385,6 +385,32 @@ class MailIntegrityAcceptanceTests(unittest.TestCase):
         finally:
             harness.close()
 
+    def test_01f_bulk_http_accepts_explicit_html_content_contract(self) -> None:
+        harness = MailEndpointHarness()
+        try:
+            status, response = harness.post(
+                "/api/mail/send-bulk",
+                {
+                    "request_id": 1043,
+                    "suppliers": [{"name": "HTTP HTML", "email": "http-html@example.com", "host": "http-html.example"}],
+                    "subject": "Запрос",
+                    "body_text": "HTTP text",
+                    "body_html": "<p>HTTP <strong>HTML</strong></p>",
+                    "idempotency_key": "http-html-contract",
+                },
+                authenticated=True,
+            )
+            self.assertEqual(status, 202)
+            self.assertEqual(len(response["queued"]), 1)
+            operation = harness.app.repository.get_send_operation(harness.user["workspace_id"], "http-html-contract")
+            self.assertIsNotNone(operation)
+            assert operation is not None
+            target = harness.app.repository.get_send_operation_targets(int(operation["id"]))[0]
+            self.assertEqual(target["body_text"], "HTTP HTML")
+            self.assertIn("<strong>HTML</strong>", target["body_html"])
+        finally:
+            harness.close()
+
     def test_02_same_key_changed_content_is_conflict(self) -> None:
         self._bulk(key="conflict", body="Первый текст")
         with self.assertRaisesRegex(ValueError, "другого содержимого"):
@@ -880,6 +906,11 @@ class MailIntegrityAcceptanceTests(unittest.TestCase):
 
     def test_26_manual_resend_creates_new_message_and_keeps_original_unknown(self) -> None:
         original = self._unknown(key="manual-resend")
+        with self.repo.connect() as connection:
+            connection.execute(
+                "UPDATE mail_messages SET body_text=?, body_html=? WHERE id=?",
+                ("Rich resend", "<p>Rich <strong>resend</strong></p>", original["message_id"]),
+            )
         self.provider.verify_outcome = "not_found"
         result = self.service.resend_delivery_unknown(
             user_id=self.user_id, workspace_id=self.workspace_id, message_id=original["message_id"], confirmed=True,
@@ -890,6 +921,11 @@ class MailIntegrityAcceptanceTests(unittest.TestCase):
             rows = connection.execute("SELECT id, message_id FROM mail_messages WHERE request_id=1043 AND direction='outbound' ORDER BY id").fetchall()
             self.assertEqual(len(rows), 2)
             self.assertNotEqual(rows[0]["message_id"], rows[1]["message_id"])
+            resent = connection.execute(
+                "SELECT body_text, body_html FROM mail_messages WHERE id=?", (rows[1]["id"],)
+            ).fetchone()
+            self.assertEqual(resent["body_text"], "Rich resend")
+            self.assertIn("<strong>resend</strong>", resent["body_html"])
             link = connection.execute("SELECT resend_of_message_id FROM mail_message_integrity WHERE message_id=?", (rows[1]["id"],)).fetchone()
             self.assertEqual(link["resend_of_message_id"], original["message_id"])
 

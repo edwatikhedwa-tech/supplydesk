@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Bold, Italic, Link as LinkIcon, List, ListOrdered, Loader2, Send, X } from 'lucide-react';
+import { useRef, useState, type ChangeEvent } from 'react';
+import { Loader2, Send, X } from 'lucide-react';
 import { ApiError, api } from '@/lib/api';
+import { RichTextEditor } from './RichTextEditor';
+import { readRichTextEditor } from './richTextUtils';
 
 export interface MailComposerContext {
   requestId: number;
@@ -24,28 +26,18 @@ export function Composer({ context, onClose, onSent }: ComposerProps) {
   const [error, setError] = useState('');
   const editorRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (editorRef.current && context.body) {
-      editorRef.current.innerHTML = context.body;
-    }
-  }, [context.body]);
-
-  const exec = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
-  };
-
   const handleSend = async () => {
     if (!subject.trim()) return;
     setSending(true);
     setError('');
     try {
-      const html = editorRef.current?.innerHTML || '';
+      const { bodyHtml, bodyText } = readRichTextEditor(editorRef.current);
       await api.sendMail({
         request_id: context.requestId,
         supplier: { id: context.supplierId, email: context.to, name: context.supplierName },
         subject,
-        body: html,
+        body_text: bodyText,
+        body_html: bodyHtml,
       });
       onSent();
       onClose();
@@ -88,28 +80,7 @@ export function Composer({ context, onClose, onSent }: ComposerProps) {
             />
           </div>
 
-          <div className="border border-ink-200 rounded-lg overflow-hidden">
-            <div className="flex items-center gap-1 px-2 py-1.5 border-b border-ink-100 bg-ink-50">
-              <ToolbarButton onClick={() => exec('bold')} icon={Bold} />
-              <ToolbarButton onClick={() => exec('italic')} icon={Italic} />
-              <ToolbarButton onClick={() => exec('insertUnorderedList')} icon={List} />
-              <ToolbarButton onClick={() => exec('insertOrderedList')} icon={ListOrdered} />
-              <ToolbarButton
-                onClick={() => {
-                  const url = prompt('URL:');
-                  if (url) exec('createLink', url);
-                }}
-                icon={LinkIcon}
-              />
-            </div>
-            <div
-              ref={editorRef}
-              contentEditable
-              suppressContentEditableWarning
-              data-placeholder="Напишите письмо..."
-              className="min-h-[140px] max-h-[280px] overflow-y-auto px-3 py-2.5 text-sm text-ink-800 outline-none focus:outline-none [&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-ink-300"
-            />
-          </div>
+          <RichTextEditor ref={editorRef} initialHtml={context.body} ariaLabel="Текст письма" placeholder="Напишите письмо..." />
 
           {error && <p className="text-sm text-rose-600">{error}</p>}
         </div>
@@ -126,13 +97,5 @@ export function Composer({ context, onClose, onSent }: ComposerProps) {
         </div>
       </div>
     </div>
-  );
-}
-
-function ToolbarButton({ onClick, icon: Icon }: { onClick: () => void; icon: typeof Bold }) {
-  return (
-    <button onClick={onClick} className="p-1.5 text-ink-500 hover:text-ink-900 hover:bg-ink-200 rounded transition-colors">
-      <Icon size={15} />
-    </button>
   );
 }

@@ -1,7 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Loader2, Send, X } from 'lucide-react';
 import { ApiError, api } from '@/lib/api';
 import type { InboxMessage } from '@/lib/types';
+import { RichTextEditor } from './RichTextEditor';
+import { readRichTextEditor } from './richTextUtils';
 
 interface InboxReplyComposerProps {
   message: InboxMessage;
@@ -19,19 +21,21 @@ export function InboxReplyComposer({ message, onClose, onSent }: InboxReplyCompo
   const [subject, setSubject] = useState(() => (
     message.subject.startsWith('Re:') ? message.subject : `Re: ${message.subject || 'Письмо без темы'}`
   ));
-  const [body, setBody] = useState('');
+  const [bodyText, setBodyText] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSubject(message.subject.startsWith('Re:') ? message.subject : `Re: ${message.subject || 'Письмо без темы'}`);
-    setBody('');
+    setBodyText('');
     setError('');
   }, [message.id, message.subject]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!body.trim()) {
+    const { bodyHtml, bodyText: submittedBodyText } = readRichTextEditor(editorRef.current);
+    if (!submittedBodyText.trim()) {
       setError('Напишите текст ответа перед отправкой.');
       return;
     }
@@ -42,7 +46,8 @@ export function InboxReplyComposer({ message, onClose, onSent }: InboxReplyCompo
       await api.replyToInbox({
         inbox_message_id: message.id,
         subject: subject.trim() || 'Re: Письмо без темы',
-        body: body.trim(),
+        body_text: submittedBodyText,
+        body_html: bodyHtml,
       });
       onSent();
     } catch (err) {
@@ -105,13 +110,13 @@ export function InboxReplyComposer({ message, onClose, onSent }: InboxReplyCompo
 
           <div>
             <label htmlFor="inbox-reply-body" className="mb-1.5 block text-sm font-medium text-ink-700">Текст ответа</label>
-            <textarea
+            <RichTextEditor
+              key={message.id}
+              ref={editorRef}
               id="inbox-reply-body"
-              autoFocus
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
+              ariaLabel="Текст ответа"
               placeholder="Напишите ответ…"
-              className="min-h-40 w-full resize-y rounded-xl border border-ink-200 px-3 py-2.5 text-sm leading-6 text-ink-800 outline-none transition-colors placeholder:text-ink-300 focus:border-accent-500 focus:ring-2 focus:ring-accent-100"
+              onChange={({ bodyText: nextBodyText }) => setBodyText(nextBodyText)}
             />
           </div>
 
@@ -129,7 +134,7 @@ export function InboxReplyComposer({ message, onClose, onSent }: InboxReplyCompo
           </button>
           <button
             type="submit"
-            disabled={sending || !body.trim()}
+            disabled={sending || !bodyText.trim()}
             className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {sending ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}

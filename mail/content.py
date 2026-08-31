@@ -42,7 +42,7 @@ _COMMON_ATTRS = {
 _ALLOWED_ATTRS = {
     "*": _COMMON_ATTRS,
     "a": {"href", "title"},
-    "img": {"src", "alt", "width", "height"},
+    "img": {"src", "alt", "width", "height", "data-remote-src"},
     "td": {"colspan", "rowspan", "align", "valign"},
     "th": {"colspan", "rowspan", "align", "valign"},
     "table": {"align", "width", "border", "cellpadding", "cellspacing"},
@@ -114,6 +114,8 @@ def _attribute_filter(tag: str, attribute: str, value: str) -> str | None:
         # CID images are resolved to data: URLs while parsing the MIME message.
         # Relative paths and other schemes have no trusted mailbox base URL.
         return None
+    if tag == "img" and attribute == "data-remote-src":
+        return value if value.strip().lower().startswith(("http://", "https://")) else None
     return value
 
 
@@ -315,6 +317,12 @@ def sanitize_email_html(value: str | None, *, allow_remote_images: bool = False)
             style.decompose()
     for img in soup.find_all("img"):
         source = (img.get("src") or "").strip()
+        remote_source = (img.get("data-remote-src") or "").strip()
+        if not source and remote_source.lower().startswith(("http://", "https://")):
+            if allow_remote_images:
+                img["src"] = remote_source
+                del img["data-remote-src"]
+            continue
         if not source:
             img.decompose()  # attribute_filter already rejected it outright
             continue
@@ -421,7 +429,19 @@ def html_to_text(value: str | None) -> str:
         node.decompose()
     for node in soup.find_all("br"):
         node.replace_with("\n")
-    return _normalize_text(soup.get_text("\n"))
+    # Keep inline formatting inline (``Hello <strong>world</strong>`` must not
+    # become two lines), while retaining the visual separation of paragraphs,
+    # list items and table cells in the text/plain alternative.
+    block_tags = {
+        "address", "article", "aside", "blockquote", "caption", "dd", "div", "dl", "dt",
+        "figure", "figcaption", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6",
+        "header", "hr", "li", "main", "nav", "ol", "p", "pre", "section", "table", "tbody",
+        "td", "tfoot", "th", "thead", "tr", "ul",
+    }
+    for node in soup.find_all(block_tags):
+        node.insert_before("\n")
+        node.insert_after("\n")
+    return _normalize_text(soup.get_text(""))
 
 
 _CSS_BLOCK_RE = re.compile(

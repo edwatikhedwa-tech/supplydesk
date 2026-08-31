@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlparse
 from unittest.mock import patch
 
 import supplier_app
-from mail.content import clean_email_text
+from mail.content import clean_email_text, sanitize_email_html
 from mail.crypto import decrypt, generate_key, load_key
 from mail.providers.yandex import YandexMailProvider
 from mail.queue import MailQueue
@@ -337,6 +337,92 @@ class MailIntegrationTests(unittest.TestCase):
         self.assertIn("body_html", messages[0])
         self.assertIn("has_remote_images", messages[0])
         self.assertIn("Здравствуйте", messages[0]["body_text"])
+
+    def test_explicit_html_contract_keeps_one_selected_company_to_one_message(self) -> None:
+        self.service.queue_one(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"], request_id=1043,
+            supplier={
+                "name": "ООО Четыре контакта", "email": "sales@example.com", "host": "example.com",
+                "contacts": [
+                    {"email": "sales@example.com"}, {"email": "info@example.com"},
+                    {"email": "buy@example.com"}, {"email": "office@example.com"},
+                ],
+            },
+            subject="Запрос", body_text="Rendered text", body_html="<p>Rendered <strong>HTML</strong></p>",
+            idempotency_key="html-single-company",
+        )
+        job = self.repo.claim_job()
+        self.assertIsNotNone(job)
+        assert job is not None
+        self.assertEqual(job["body_text"], "Rendered HTML")
+        self.assertIn("<strong>HTML</strong>", job["body_html"])
+
+        self.service.send_claimed_job(job)
+        self.assertEqual(len(self.provider.sent), 1)
+        mime = BytesParser(policy=policy.default).parsebytes(
+            YandexMailProvider._build_email(self.provider.sent[0], self.provider.sent[0].message_id).as_bytes()
+        )
+        alternatives = {part.get_content_type(): part.get_content() for part in mime.walk() if part.get_content_type() in {"text/plain", "text/html"}}
+        self.assertEqual(alternatives["text/plain"], "Rendered HTML\n")
+        self.assertIn("<strong>HTML</strong>", alternatives["text/html"])
+
+    def test_explicit_html_is_sanitized_before_it_reaches_the_queue_and_mime(self) -> None:
+        self.service.queue_one(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"], request_id=1043,
+            supplier={"name": "ООО Безопасность", "email": "safe@example.com", "host": "safe.example"},
+            subject="Запрос", body_html=(
+                '<p>Добрый день</p><script>alert(1)</script>'
+                '<a href="javascript:alert(1)" onclick="alert(2)">ссылка</a>'
+                '<img src="https://tracker.example/pixel.gif" onerror="alert(3)">'
+            ), idempotency_key="html-sanitization",
+        )
+        job = self.repo.claim_job()
+        self.assertIsNotNone(job)
+        assert job is not None
+        self.assertEqual(job["body_text"], "Добрый день\nссылка")
+        self.assertNotIn("<script", job["body_html"].lower())
+        self.assertNotIn("javascript:", job["body_html"].lower())
+        self.assertNotIn("onclick", job["body_html"].lower())
+        self.assertIn("data-remote-src", job["body_html"])
+
+    def test_plain_text_contract_remains_literal_in_html_alternative(self) -> None:
+        self.service.queue_one(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"], request_id=1043,
+            supplier={"name": "ООО Plain", "email": "plain@example.com", "host": "plain.example"},
+            subject="Запрос", body_text="Hello <world> & test", idempotency_key="plain-contract",
+        )
+        job = self.repo.claim_job()
+        self.assertIsNotNone(job)
+        assert job is not None
+        self.assertEqual(job["body_text"], "Hello <world> & test")
+        self.assertIn("&lt;world&gt; &amp; test", job["body_html"])
+
+    def test_rich_content_fingerprint_prevents_duplicate_retry_and_detects_changed_html(self) -> None:
+        kwargs = {
+            "user_id": self.user["id"], "workspace_id": self.user["workspace_id"], "request_id": 1043,
+            "supplier": {"name": "ООО Retry", "email": "retry@example.com", "host": "retry.example"},
+            "subject": "Запрос", "body_text": "Версия письма", "body_html": "<p>Версия <strong>письма</strong></p>",
+            "idempotency_key": "rich-retry-key",
+        }
+        first = self.service.queue_one(**kwargs)
+        second = self.service.queue_one(**kwargs)
+        self.assertEqual(first, second)
+        with self.repo.connect() as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM mail_messages WHERE direction='outbound'").fetchone()[0], 1)
+        with self.assertRaises(ValueError):
+            self.service.queue_one(**{**kwargs, "body_html": "<p>Другая версия</p>"})
+
+    def test_unmatched_inbox_reply_accepts_explicit_html_contract(self) -> None:
+        message_id = self._seed_unmatched_inbox_message()
+        self.service.reply_to_inbox(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"], inbox_message_id=message_id,
+            subject="Re: Письмо", body_text="fallback", body_html="<p>Ответ <em>готов</em></p>",
+        )
+        self.assertEqual(len(self.provider.sent), 1)
+        self.assertEqual(self.provider.sent[0].body_text, "Ответ готов")
+        self.assertIn("<em>готов</em>", self.provider.sent[0].body_html)
+        conversation = self.repo.inbox_conversation(self.user["workspace_id"], message_id)
+        self.assertIn("<em>готов</em>", conversation["replies"][0]["body_html"])
 
     def test_oauth_login_state_is_one_time_and_not_bound_to_a_session(self) -> None:
         self.repo.create_oauth_login_state(state="login-state-1", code_verifier="verifier", redirect_uri="http://localhost/callback")

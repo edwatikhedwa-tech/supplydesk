@@ -506,7 +506,8 @@ class SupplierHandler(SimpleHTTPRequestHandler):
                     user_id=session["user_id"], workspace_id=session["workspace_id"],
                     request_id=int(body.get("request_id", 1043)),
                     suppliers=body.get("suppliers") or [],
-                    subject=str(body.get("subject", "")), body=str(body.get("body", "")),
+                    subject=str(body.get("subject", "")), body=body.get("body"),
+                    body_text=body.get("body_text"), body_html=body.get("body_html"),
                     attachments=body.get("attachments") or [],
                     manual_stage_approval=manual_stage_approval,
                     allow_repeat=bool(allow_repeat),
@@ -530,7 +531,9 @@ class SupplierHandler(SimpleHTTPRequestHandler):
                 result = self.app.service.queue_one(
                     user_id=session["user_id"], workspace_id=session["workspace_id"],
                     request_id=int(body.get("request_id", 1043)), supplier=body.get("supplier") or {},
-                    subject=body.get("subject", ""), body=body.get("body", ""), attachments=body.get("attachments") or [],
+                    subject=body.get("subject", ""), body=body.get("body"),
+                    body_text=body.get("body_text"), body_html=body.get("body_html"),
+                    attachments=body.get("attachments") or [],
                     idempotency_key=idempotency_key,
                     allow_repeat=bool(allow_repeat),
                     mail_account_id=int(body["mail_account_id"]) if body.get("mail_account_id") is not None else None,
@@ -544,7 +547,9 @@ class SupplierHandler(SimpleHTTPRequestHandler):
                 results = self.app.service.queue_bulk(
                     user_id=session["user_id"], workspace_id=session["workspace_id"],
                     request_id=int(body.get("request_id", 1043)), suppliers=body.get("suppliers") or [],
-                    subject=body.get("subject", ""), body=body.get("body", ""), attachments=body.get("attachments") or [],
+                    subject=body.get("subject", ""), body=body.get("body"),
+                    body_text=body.get("body_text"), body_html=body.get("body_html"),
+                    attachments=body.get("attachments") or [],
                     idempotency_key=idempotency_key,
                     manual_stage_approval=manual_stage_approval,
                     allow_repeat=bool(allow_repeat),
@@ -681,7 +686,9 @@ class SupplierHandler(SimpleHTTPRequestHandler):
                 result = self.app.service.reply_to_inbox(
                     user_id=session["user_id"], workspace_id=session["workspace_id"],
                     inbox_message_id=int(body.get("inbox_message_id", 0)),
-                    subject=body.get("subject", ""), body=body.get("body", ""), attachments=body.get("attachments") or [],
+                    subject=body.get("subject", ""), body=body.get("body"),
+                    body_text=body.get("body_text"), body_html=body.get("body_html"),
+                    attachments=body.get("attachments") or [],
                 )
                 self._json(200, {"ok": True, **result})
             elif parsed.path == "/api/requests":

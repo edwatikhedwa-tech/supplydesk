@@ -1057,7 +1057,7 @@ class MailPacingAcceptanceTests(unittest.TestCase):
             email="continuation@mail.ru", display_name="Mail.ru", credential_encrypted=encrypted,
         )
 
-    def _continuation_campaign(self, count: int = 6) -> tuple[int, int]:
+    def _continuation_campaign(self, count: int = 6, *, body: str = "Continuation body", body_html: str | None = None) -> tuple[int, int]:
         queued = self.service.queue_bulk(
             user_id=self.user["id"], workspace_id=self.user["workspace_id"], request_id=self.request_id,
             suppliers=[
@@ -1069,10 +1069,29 @@ class MailPacingAcceptanceTests(unittest.TestCase):
                 }
                 for index in range(count)
             ],
-            subject="Continuation subject", body="Continuation body", idempotency_key=f"continuation-source-{count}",
+            subject="Continuation subject", body_text=body, body_html=body_html,
+            idempotency_key=f"continuation-source-{count}",
             manual_stage_approval=False,
         )
         return int(queued[0]["campaign_id"]), self._mailru_account()
+
+    def test_continuation_preserves_rich_content_snapshot(self) -> None:
+        campaign_id, mailru_id = self._continuation_campaign(
+            count=1, body="fallback text", body_html="<p>Frozen <strong>HTML</strong></p>",
+        )
+        dry_run = self.service.continuation_dry_run(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+            campaign_id=campaign_id, mail_account_id=mailru_id, limit=1,
+        )
+        result = self.service.apply_campaign_continuation(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+            campaign_id=campaign_id, mail_account_id=mailru_id, limit=1,
+            idempotency_key="continuation-rich-content", selection_fingerprint=dry_run["selection_fingerprint"],
+            operator_confirmed=True,
+        )
+        target = self.repo.get_send_operation_targets(result["operation_id"])[0]
+        self.assertEqual(target["body_text"], "Frozen HTML")
+        self.assertIn("<strong>HTML</strong>", target["body_html"])
 
     def test_continuation_apply_is_bounded_atomic_and_idempotent(self) -> None:
         campaign_id, mailru_id = self._continuation_campaign()
