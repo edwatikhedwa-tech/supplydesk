@@ -28,6 +28,7 @@ class FakeProvider:
         self.sent: list[OutgoingMessage] = []
         self.refresh_calls = 0
         self.connection_tokens: list[str] = []
+        self.incoming_tokens: list[str] = []
         self.fail_with: ProviderError | None = None
         self.incoming_batch = IncomingBatch("77", 7, [], 0)
 
@@ -46,6 +47,7 @@ class FakeProvider:
         return None
 
     def fetch_incoming(self, email: str, access_token: str, *, uidvalidity: str | None, last_uid: int, max_messages: int) -> IncomingBatch:
+        self.incoming_tokens.append(access_token)
         return self.incoming_batch
 
     def send_message(self, access_token: str, message: OutgoingMessage, *, before_irreversible=None) -> SendResult:
@@ -547,6 +549,24 @@ class MailIntegrationTests(unittest.TestCase):
         self.assertEqual(public["incoming_health"], "healthy")
         self.assertIsNotNone(public["incoming_last_success_at"])
         self.assertIsNone(public["incoming_last_error"])
+
+    def test_incoming_sync_does_not_require_outgoing_account_flag(self) -> None:
+        with self.repo.connect() as connection:
+            connection.execute(
+                "UPDATE mail_account_profiles SET outgoing_enabled=0 WHERE account_id=?",
+                (self.account_id,),
+            )
+            connection.execute(
+                "UPDATE mail_runtime_controls SET outgoing_enabled=0 WHERE id=1",
+            )
+
+        result = self.service.sync_incoming(
+            self.user["id"], self.user["workspace_id"], mail_account_id=self.account_id,
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(self.provider.refresh_calls, 0)
+        self.assertEqual(self.provider.incoming_tokens, ["access-secret"])
 
     def test_disconnected_account_cannot_queue_message(self) -> None:
         self.service.disconnect(self.user["id"], self.user["workspace_id"])

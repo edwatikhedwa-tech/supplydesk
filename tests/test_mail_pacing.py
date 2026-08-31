@@ -73,7 +73,7 @@ class MailPacingAcceptanceTests(unittest.TestCase):
         )
         self.encryption_key = generate_key()
         self.service = MailService(
-            self.repo, lambda _provider: self.provider, self.encryption_key,
+            self.repo, lambda _provider, _credential=None: self.provider, self.encryption_key,
             daily_limit=1000, pacing_settings=self.settings,
         )
         self.account_id = self.service.save_oauth_tokens(
@@ -1144,6 +1144,29 @@ class MailPacingAcceptanceTests(unittest.TestCase):
                 idempotency_key="continuation-apply-1",
                 selection_fingerprint=dry_run["selection_fingerprint"], operator_confirmed=True,
             )
+
+    def test_continuation_job_can_run_while_source_campaign_is_paused(self) -> None:
+        campaign_id, mailru_id = self._continuation_campaign(count=2)
+        with self.repo.connect() as connection:
+            connection.execute(
+                "UPDATE mail_campaigns SET status='paused_for_health', pause_reason='provider_policy' WHERE id=?",
+                (campaign_id,),
+            )
+        dry_run = self.service.continuation_dry_run(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+            campaign_id=campaign_id, mail_account_id=mailru_id, limit=1,
+        )
+        result = self.service.apply_campaign_continuation(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"],
+            campaign_id=campaign_id, mail_account_id=mailru_id, limit=1,
+            idempotency_key="continuation-paused-source", selection_fingerprint=dry_run["selection_fingerprint"],
+            operator_confirmed=True,
+        )
+        claimed = self.repo.claim_job(pacing=self.settings)
+        self.assertIsNotNone(claimed)
+        self.assertEqual(claimed["mail_account_id"], mailru_id)
+        MailQueue(self.repo, self.service, pacing=self.settings)._process(claimed)
+        self.assertEqual(self._status(result["jobs"][0]["job_id"])[0:2], ("sent", 1))
 
     def test_continuation_apply_revalidates_suppression_before_creating_job(self) -> None:
         campaign_id, mailru_id = self._continuation_campaign(count=2)

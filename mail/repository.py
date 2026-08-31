@@ -4736,15 +4736,24 @@ class MailRepository:
 
         with self.connect() as connection:
             row = connection.execute(
-                """SELECT c.status AS campaign_status, ct.status AS target_status
+                """SELECT c.status AS campaign_status, ct.status AS target_status,
+                          cp.status AS continuation_status
                    FROM mail_campaign_targets ct
                    JOIN mail_campaigns c ON c.id=ct.campaign_id
+                   LEFT JOIN mail_job_integrity ji ON ji.job_id=ct.job_id
+                   LEFT JOIN mail_continuation_plans cp ON cp.operation_id=ji.operation_id
                    WHERE ct.job_id=?""",
                 (job_id,),
             ).fetchone()
         if row is None:
             return True
-        return row["campaign_status"] == "active" and row["target_status"] == "eligible"
+        # An explicitly applied continuation is a bounded operator-approved
+        # provider switch. It must remain sendable when the source campaign is
+        # paused for health; ordinary campaign jobs still require an active
+        # campaign and an eligible target.
+        return (
+            row["campaign_status"] == "active" and row["target_status"] == "eligible"
+        ) or row["continuation_status"] == "ready"
 
     def campaign_summary(self, workspace_id: int, campaign_id: int) -> dict[str, Any] | None:
         with self.connect() as connection:
@@ -6642,6 +6651,10 @@ class MailRepository:
                              SELECT 1 FROM mail_campaign_targets ct
                              JOIN mail_campaigns c ON c.id=ct.campaign_id
                              WHERE ct.job_id=j.id AND ct.status='eligible' AND c.status='active'
+                           )
+                           OR EXISTS (
+                              SELECT 1 FROM mail_continuation_plans cp
+                              WHERE cp.operation_id=ji.operation_id AND cp.status='ready'
                            )
                          )
                        )

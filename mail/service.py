@@ -272,7 +272,13 @@ class MailService:
         self.repository.disconnect_mail_account(user_id, workspace_id, account_id=int(account["id"]))
 
     def sync_incoming(self, user_id: int, workspace_id: int, *, max_messages: int = 100, mail_account_id: int | None = None) -> dict[str, Any]:
-        account, access_token = self._get_account_and_token(user_id, workspace_id, mail_account_id=mail_account_id)
+        # Reading IMAP is independent from the outgoing transport gate.  A
+        # workspace may deliberately keep SMTP disabled while still polling
+        # connected inboxes for supplier replies and bounces.
+        account, access_token = self._get_account_and_token(
+            user_id, workspace_id, mail_account_id=mail_account_id,
+            require_outgoing=False,
+        )
         provider = self._provider_for_account(account, access_token)
         state = self.repository.get_mail_sync_state(account["id"]) or {}
         try:
@@ -1576,6 +1582,7 @@ class MailService:
         *,
         mail_account_id: int | None = None,
         require_connected: bool = True,
+        require_outgoing: bool = True,
     ) -> dict[str, Any]:
         if mail_account_id is not None:
             account = self.repository.get_mail_account_for_owner(int(mail_account_id), user_id, workspace_id)
@@ -1588,7 +1595,7 @@ class MailService:
                 )
         if not account or (require_connected and account["status"] != "connected"):
             raise ProviderError("Подключите рабочую почту, чтобы отправлять запросы поставщикам.")
-        if require_connected and not bool(account.get("account_outgoing_enabled", 0)):
+        if require_connected and require_outgoing and not bool(account.get("account_outgoing_enabled", 0)):
             raise ProviderError("Исходящая почта для этого аккаунта отключена.", provider_code="account-outgoing-disabled")
         return account
 
@@ -1756,8 +1763,12 @@ class MailService:
         workspace_id: int,
         *,
         mail_account_id: int | None = None,
+        require_outgoing: bool = True,
     ) -> tuple[dict[str, Any], str]:
-        account = self._get_account_for_queue(user_id, workspace_id, mail_account_id=mail_account_id)
+        account = self._get_account_for_queue(
+            user_id, workspace_id, mail_account_id=mail_account_id,
+            require_outgoing=require_outgoing,
+        )
         if account["status"] != "connected":
             raise ProviderError("Подключите рабочую почту, чтобы отправлять запросы поставщикам.")
         return account, self._access_token_for_account(account)
