@@ -1,5 +1,23 @@
 # Last Handoff
 
+## Current handoff — local server running safely
+
+Task ID: `TASK-SERVER-START-20260831`
+Дата: `2026-08-31`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+HEAD: `1b3388b3e34bd6082aade6f5974cff3e5d788b52`
+Status: `RUNNING LOCALLY — http://127.0.0.1:8000/; outgoing OFF`
+
+### Что сделано
+
+- Запущен `supplier_app.py` на `127.0.0.1:8000` и оставлен работающим.
+- Принудительно задан `MAIL_OUTGOING_DISABLED=1`; durable outgoing switch
+  подтверждён как `0`.
+- Проверены HTTP `200/200/401/404`; сервер отвечает.
+
+Report: `ai/reports/TASK-SERVER-START-20260831-report.md`
+
 ## Latest completed handoff — CID image height fix
 
 Task ID: `TASK-MESSAGES-CID-HEIGHT-FIX-20260831`

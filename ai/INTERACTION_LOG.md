@@ -569,3 +569,11 @@ This log records agent work interactions. It is append-only.
   active reservations, SQLite integrity `ok`, and durable outgoing `0` / OFF.
 - No new queue records, duplicate sends, Yandex sends or retry of the uncertain
   Unicode-domain message occurred.
+
+## 2026-08-31T18:28:01Z — TASK-SERVER-START-20260831
+
+- Owner asked to start the server.
+- Started `supplier_app.py` on `127.0.0.1:8000` with outgoing forced OFF and
+  left the local process running.
+- Verified root `200`, auth/me `200`, protected API `401`, unknown API `404`,
+  and durable outgoing `0`.

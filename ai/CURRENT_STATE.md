@@ -1,5 +1,14 @@
 # Current State
 
+## Current task update — local server started with outgoing OFF
+
+- Timestamp UTC: `2026-08-31T18:28:01Z` (`TASK-SERVER-START-20260831`).
+- SupplyDesk запущен на `http://127.0.0.1:8000/`; процесс оставлен работающим.
+- Процессный аварийный выключатель `MAIL_OUTGOING_DISABLED=1`, durable
+  `mail_runtime_controls.outgoing_enabled=0`; очередь писем не отправляется.
+- Smoke-проверка: главная страница `200`, `/api/auth/me` `200`, защищённый
+  `/api/requests` без сессии `401`, неизвестный API `404`.
+
 ## Latest task update — exact Mail.ru continuation sent and closed
 
 - Timestamp UTC: `2026-08-31T18:08:46Z`

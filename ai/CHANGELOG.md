@@ -648,3 +648,10 @@ rewritten.
 - Yandex queue не трогалась, неопределённый Unicode-домен не повторялся.
 - Durable outgoing switch возвращён в `0`; активных reservations нет, SQLite
   integrity check `ok`. Send-only процессы остановлены.
+
+## 2026-08-31T18:28:01Z — LOCAL SERVER STARTED WITH OUTGOING OFF — TASK-SERVER-START-20260831
+
+- Запущен `supplier_app.py` на `127.0.0.1:8000`; процесс оставлен работающим.
+- Установлен процессный `MAIL_OUTGOING_DISABLED=1`, durable outgoing switch
+  подтверждён как `0`; отправка из очереди невозможна.
+- HTTP smoke: root `200`, auth/me `200`, protected API `401`, unknown API `404`.
