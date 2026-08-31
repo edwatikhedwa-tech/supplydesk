@@ -2,6 +2,20 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-08-31T18:38:35Z — TASK-MESSAGES-PRIMARY-FILTER-20260831
+
+- Owner authorized continuing the completed-task backlog; the selected useful
+  task was the pending `/messages` default visibility change.
+- Confirmed current live data read-only: `80` correspondence records, `77`
+  sent/replied primary records, `64` queue records. No SMTP/IMAP or mail
+  mutation was used.
+- Implemented the narrow frontend predicate and labels, added Playwright
+  regression coverage, and preserved direct access to delivery-unknown actions.
+- Real no-route-mock checks passed at `1440x900` and `390x844`; screenshots and
+  runtime evidence are saved under `Temp/messages-primary-filter-20260831/`.
+- Typecheck/build/lint passed; lint retained `8` pre-existing warnings outside
+  the change. State backups and the detailed report were created.
+
 ## 2026-08-31 — TASK-MESSAGES-CID-HEIGHT-FIX-20260831
 
 - Owner requested execution of the next useful frontend task. Investigated

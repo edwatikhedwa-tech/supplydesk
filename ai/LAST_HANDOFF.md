@@ -1,5 +1,55 @@
 # Last Handoff
 
+## Current handoff — messages primary correspondence filter
+
+Task ID: `TASK-MESSAGES-PRIMARY-FILTER-20260831`
+Дата: `2026-08-31`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+Base HEAD before this iteration: `1b3388b3e34bd6082aade6f5974cff3e5d788b52`
+Push: `NOT RUN`
+Status: `COMPLETE LOCALLY — implementation and real-browser acceptance passed`
+
+### Что сделано
+
+- Основная вкладка `/messages` больше не показывает queue-only письма и
+  delivery-error записи по умолчанию. В ней остаются отправленные письма и
+  переписки с ответами.
+- Очередь сохранена отдельной вкладкой и не менялась на уровне API или базы.
+- Прямая ссылка на delivery-unknown тред из карточки поставщика сохранила
+  доступ к проверке статуса и безопасному повтору.
+- Empty-state text получил достаточный контраст, чтобы новый сценарий не
+  добавлял ошибку доступности.
+
+### Что проверено
+
+- Real local no-route-mock browser against `http://127.0.0.1:8000/messages`:
+  `1440x900` and `390x844`, default primary mode, reload, queue tab, API error
+  response and no horizontal overflow.
+- Live counts at verification time: `80` correspondence records, `77`
+  primary records, `64` queue records.
+- Browser runtime: `0` console errors, `0` page errors, `0` failed requests,
+  `0` unexpected non-2xx responses.
+- `npm run typecheck` and `npm run build` passed; `npm run lint` passed with
+  `0` errors and `8` pre-existing warnings.
+- Playwright regression: visibility case `8/8` in the first full viewport run,
+  final focused `2/2`, and delivery-unknown direct-open regression `1/1`.
+- Screenshots and JSON evidence are in
+  `Temp/messages-primary-filter-20260831/`.
+
+### Ограничения и откат
+
+- Для этой задачи no-route-mock проверены `1440` и `390`; `1024` и `1640` не
+  запускались повторно, поскольку менялась только логика списка и финальные
+  desktop/mobile screenshots покрывают визуальные края.
+- SMTP/IMAP, реальные отправки, queue mutations, database writes and request
+  linking were not run or changed.
+- Откат: вернуть только изменения в `ThreadList.tsx`, `threadStatus.ts` и
+  regression test; резервные копии state-файлов находятся в
+  `Temp/state-backups/TASK-MESSAGES-PRIMARY-FILTER-20260831/`.
+
+Report: `ai/reports/TASK-MESSAGES-PRIMARY-FILTER-20260831-report.md`
+
 ## Current handoff — local server running safely
 
 Task ID: `TASK-SERVER-START-20260831`

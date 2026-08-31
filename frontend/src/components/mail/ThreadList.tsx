@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { cn, formatRelativeDate, pluralize } from '@/lib/utils';
 import type { ThreadSummary } from '@/lib/types';
-import { getThreadDisplayStatus, isAwaitingResponse, needsThreadAttention } from '@/components/mail/threadStatus';
+import { getThreadDisplayStatus, isAwaitingResponse, isPrimaryCorrespondence, needsThreadAttention } from '@/components/mail/threadStatus';
 
 /** Переписка сгруппирована по заявке, а не сплошным списком.
  *
@@ -14,9 +14,10 @@ import { getThreadDisplayStatus, isAwaitingResponse, needsThreadAttention } from
  *  читался как общий почтовый ящик, ради ухода от которого продукт и делается.
  *
  *  Заявки отсортированы по свежести последнего письма, внутри — поставщики
- *  так же. Группа с непрочитанными ответами, ошибкой или активной отправкой
- *  раскрыта, остальные свёрнуты: список остаётся коротким, а то, что требует
- *  внимания, видно сразу. */
+ *  так же. Группа с непрочитанными ответами раскрыта, остальные свёрнуты:
+ *  список остаётся коротким, а то, что требует внимания, видно сразу.
+ *  Письма, которые ещё только отправляются или требуют проверки доставки,
+ *  находятся в отдельной вкладке очереди и не смешиваются с историей. */
 interface RequestGroup {
   requestId: number;
   requestName: string;
@@ -62,7 +63,7 @@ interface ThreadListProps {
   refreshKey: number;
 }
 
-type ThreadFilter = 'all' | 'awaiting-response';
+type ThreadFilter = 'primary' | 'awaiting-response';
 
 export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: ThreadListProps) {
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
@@ -72,7 +73,7 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
   const [search, setSearch] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchInput, setSearchInput] = useState('');
-  const [filter, setFilter] = useState<ThreadFilter>('all');
+  const [filter, setFilter] = useState<ThreadFilter>('primary');
 
   useEffect(() => {
     let cancelled = false;
@@ -112,9 +113,14 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
     );
   }, [threads, search]);
 
+  const primaryThreads = useMemo(
+    () => searchedThreads.filter(isPrimaryCorrespondence),
+    [searchedThreads],
+  );
+
   const visibleThreads = useMemo(
-    () => filter === 'awaiting-response' ? searchedThreads.filter(isAwaitingResponse) : searchedThreads,
-    [filter, searchedThreads],
+    () => filter === 'awaiting-response' ? primaryThreads.filter(isAwaitingResponse) : primaryThreads,
+    [filter, primaryThreads],
   );
 
   const groups = useMemo(() => groupByRequest(visibleThreads), [visibleThreads]);
@@ -137,12 +143,12 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
       return next;
     });
 
-  const awaitingCount = searchedThreads.filter(isAwaitingResponse).length;
+  const awaitingCount = primaryThreads.filter(isAwaitingResponse).length;
   // При поиске или фильтрации показываем всё раскрытым: иначе совпадение
   // может оказаться внутри свёрнутой группы и будет выглядеть как «ничего
   // не найдено».
   const searching = Boolean(search.trim());
-  const narrowing = searching || filter !== 'all';
+  const narrowing = searching || filter !== 'primary';
 
   return (
     <div className={cn(
@@ -165,16 +171,16 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
         <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="Фильтр по статусу">
           <button
             type="button"
-            aria-pressed={filter === 'all'}
-            onClick={() => setFilter('all')}
+            aria-pressed={filter === 'primary'}
+            onClick={() => setFilter('primary')}
             className={cn(
               'inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400',
-              filter === 'all' ? 'bg-ink-800 text-white shadow-sm' : 'bg-ink-100 text-ink-600 hover:bg-ink-200 hover:text-ink-800',
+              filter === 'primary' ? 'bg-ink-800 text-white shadow-sm' : 'bg-ink-100 text-ink-600 hover:bg-ink-200 hover:text-ink-800',
             )}
           >
-            Все
-            <span className={cn('rounded-full px-1.5 py-px text-2xs tabular-nums', filter === 'all' ? 'bg-white/20 text-white' : 'bg-white text-ink-500')}>
-              {searchedThreads.length}
+            Отправленные и ответы
+            <span className={cn('rounded-full px-1.5 py-px text-2xs tabular-nums', filter === 'primary' ? 'bg-white/20 text-white' : 'bg-white text-ink-500')}>
+              {primaryThreads.length}
             </span>
           </button>
           <button
@@ -217,8 +223,12 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
         ) : visibleThreads.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
             <Mail size={32} className="text-ink-300 mb-3" />
-            <p className="text-sm text-ink-400">
-              {filter === 'awaiting-response' ? 'Нет писем, ожидающих ответа' : search.trim() ? 'По вашему поиску ничего не найдено' : 'Переписки по заявкам пока нет'}
+            <p className="text-sm text-ink-500">
+              {filter === 'awaiting-response'
+                ? 'Нет писем, ожидающих ответа'
+                : search.trim()
+                  ? 'По вашему поиску ничего не найдено'
+                  : 'Нет отправленных писем или ответов'}
             </p>
           </div>
         ) : (

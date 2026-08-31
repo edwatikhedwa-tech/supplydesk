@@ -1,5 +1,42 @@
 # Active Task
 
+## Current task — idle after messages primary correspondence filter
+
+Task ID: `NONE`
+Agent: `Codex`
+Mode: `CLOSE`
+Started: `2026-08-31`
+Scope: `show only sent/replied correspondence by default on /messages and keep pending outgoing mail in the queue`
+Non-goals: `no API, database, queue, delivery, sending, request-link or other SupplyDesk behavior changes`
+Status: `IDLE — TASK-MESSAGES-PRIMARY-FILTER-20260831 completed locally`
+Last update: `2026-08-31T18:38:35Z`
+
+## Latest completed task — messages primary correspondence filter
+
+Task ID: `TASK-MESSAGES-PRIMARY-FILTER-20260831`
+Mode: `IMPLEMENT → VERIFY → CLOSE`
+Status: `COMPLETE LOCALLY — real browser checks passed; outgoing remained OFF`
+
+- `/messages` теперь по умолчанию показывает только треды с отправленным
+  исходящим письмом или ответом поставщика. Очередь остаётся отдельной вкладкой.
+- Поле поиска и счётчик применяются к этому основному набору; пустое состояние
+  объясняет, что отправленных писем или ответов пока нет.
+- Скрытые из основного списка delivery-error треды по-прежнему доступны через
+  прямое открытие из карточки поставщика, где остаются действия проверки и
+  повторной отправки.
+- Проверка реального локального runtime: correspondence `80`, основной список
+  `77`, queue `64`; на `1440x900` и `390x844` горизонтального переполнения нет.
+- Проверены `npm run typecheck`, `npm run lint`, `npm run build`; lint дал `0`
+  ошибок и `8` существующих предупреждений в других компонентах.
+- Route-mocked regression: final focused `2/2`, delivery-unknown desktop
+  regression `1/1`; initial full viewport run for the new visibility case `8/8`.
+- Реальный no-route-mock браузер: `2/2` viewport checks, `0` console errors,
+  `0` page errors, `0` failed requests и `0` unexpected non-2xx API responses.
+- API unknown-route check вернул ожидаемый `404`; отправка наружу не запускалась,
+  outgoing switch остался выключен.
+- Screenshots and JSON evidence: `Temp/messages-primary-filter-20260831/`.
+- Report: `ai/reports/TASK-MESSAGES-PRIMARY-FILTER-20260831-report.md`.
+
 ## Latest completed task — CID image height fix
 
 Task ID: `TASK-MESSAGES-CID-HEIGHT-FIX-20260831`

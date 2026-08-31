@@ -3,6 +3,20 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-08-31T18:38:35Z — MESSAGES PRIMARY CORRESPONDENCE FILTER — TASK-MESSAGES-PRIMARY-FILTER-20260831
+
+- Changed the default `/messages` correspondence list to show only threads
+  with sent outbound mail or a supplier reply; pending outgoing mail remains in
+  the separate queue tab.
+- Preserved API, database, mail transport, delivery, request-link and queue
+  behavior. Direct delivery-unknown thread access remains actionable.
+- Verified typecheck, build, lint, focused Playwright regressions and real
+  no-route-mock browser checks at `1440x900` and `390x844`.
+- Runtime evidence at verification time: correspondence `80`, primary `77`,
+  queue `64`, no browser/request errors. Report and screenshots are stored in
+  `ai/reports/TASK-MESSAGES-PRIMARY-FILTER-20260831-report.md` and
+  `Temp/messages-primary-filter-20260831/`.
+
 ## 2026-08-31 — CID IMAGE HEIGHT FIX — TASK-MESSAGES-CID-HEIGHT-FIX-20260831
 
 - Fixed a fast inline-image timing issue in `EmailRenderer` that could leave

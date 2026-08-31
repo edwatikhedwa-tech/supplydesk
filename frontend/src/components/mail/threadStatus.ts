@@ -6,6 +6,18 @@ export interface ThreadDisplayStatus {
   className: string;
 }
 
+/**
+ * The primary correspondence list is for mail that reached the provider or
+ * has a supplier reply. Queue-only mail belongs to the dedicated outbox.
+ * Keep a thread with a reply visible even if its newest outbound attempt has
+ * a later transport status, because the conversation still has useful history.
+ */
+export function isPrimaryCorrespondence(thread: ThreadSummary): boolean {
+  return thread.last_outbound_status === 'sent'
+    || thread.replies_count > 0
+    || thread.last_message_direction === 'inbound';
+}
+
 /** A sent thread with no inbound message yet is the actionable waiting state. */
 export function isAwaitingResponse(thread: ThreadSummary): boolean {
   return thread.unread_count === 0

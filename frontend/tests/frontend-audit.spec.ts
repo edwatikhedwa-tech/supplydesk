@@ -755,7 +755,95 @@ test('supplier card keeps long content readable and exposes manual inn and black
   });
 });
 
-test('delivery unknown is visible in the supplier row and actionable in correspondence', async ({ page }, testInfo) => {
+test('messages default list keeps sent and replied mail separate from the outbox', async ({ page }, testInfo) => {
+  const thread = (overrides: Record<string, unknown>) => ({
+    request_id: 2001,
+    supplier_id: 2001,
+    subject: 'Запрос коммерческого предложения',
+    last_message_at: '2026-08-29T10:00:00+00:00',
+    created_at: '2026-08-29T09:00:00+00:00',
+    request_name: 'Проверка списка переписки',
+    supplier_name: 'Поставщик без статуса',
+    supplier_email: 'sales@example.com',
+    supplier_host: 'example.com',
+    supplier_external_key: 'example.com',
+    messages_count: 1,
+    replies_count: 0,
+    unread_count: 0,
+    pending_outbound_count: 0,
+    last_outbound_status: 'sent',
+    last_message_direction: 'outbound',
+    ...overrides,
+  });
+  const sentThread = thread({ supplier_id: 2001, supplier_name: 'Отправленный поставщик' });
+  const repliedThread = thread({
+    supplier_id: 2002,
+    supplier_name: 'Ответивший поставщик',
+    replies_count: 1,
+    unread_count: 1,
+    last_message_direction: 'inbound',
+  });
+  const queuedThread = thread({
+    request_id: 2002,
+    supplier_id: 2003,
+    request_name: 'Письмо только в очереди',
+    supplier_name: 'Ожидающий поставщик',
+    supplier_email: 'queue@example.com',
+    supplier_host: 'queue.example.com',
+    supplier_external_key: 'queue.example.com',
+    last_outbound_status: 'queued',
+    pending_outbound_count: 1,
+  });
+  const failedThread = thread({
+    request_id: 2003,
+    supplier_id: 2004,
+    request_name: 'Письмо с ошибкой',
+    supplier_name: 'Поставщик с ошибкой',
+    supplier_email: 'failed@example.com',
+    supplier_host: 'failed.example.com',
+    supplier_external_key: 'failed.example.com',
+    last_outbound_status: 'failed',
+  });
+  const unknownThread = thread({
+    request_id: 2004,
+    supplier_id: 2005,
+    request_name: 'Письмо с неопределённым статусом',
+    supplier_name: 'Поставщик без подтверждения',
+    supplier_email: 'unknown@example.com',
+    supplier_host: 'unknown.example.com',
+    supplier_external_key: 'unknown.example.com',
+    last_outbound_status: 'delivery_unknown',
+  });
+
+  await page.route('**/api/**', async (route) => {
+    const url = new URL(route.request().url());
+    let payload: unknown = { ok: true };
+    if (url.pathname === '/api/auth/me') {
+      payload = { authenticated: true, csrf_token: 'audit-token', user: { email: 'audit@example.com', display_name: 'Аудит', workspace_name: 'SupplyDesk' } };
+    } else if (url.pathname === '/api/correspondence') {
+      payload = { items: [sentThread, repliedThread, queuedThread, failedThread, unknownThread] };
+    } else if (url.pathname === '/api/mail/queue/messages') {
+      payload = { items: [queuedThread] };
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(payload) });
+  });
+
+  await page.goto('/messages', { waitUntil: 'networkidle' });
+  await expect(page.getByRole('button', { name: /Отправленные и ответы/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: /Отправленный поставщик/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ответивший поставщик/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ожидающий поставщик/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Поставщик с ошибкой/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Поставщик без подтверждения/ })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Очередь', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Очередь отправки' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ожидающий поставщик/ })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: testInfo.outputPath(`${testInfo.project.name}-messages-primary-and-outbox.png`), fullPage: false });
+});
+
+test('delivery unknown stays actionable when opened directly from the supplier row', async ({ page }, testInfo) => {
   const requestItem = {
     id: 1070,
     name: 'Проверка неопределённой отправки',
@@ -869,7 +957,8 @@ test('delivery unknown is visible in the supplier row and actionable in correspo
   await page.screenshot({ path: testInfo.outputPath(`${testInfo.project.name}-delivery-unknown-row.png`), fullPage: true });
 
   await page.goto('/messages', { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: /ООО «Надёжный поставщик»/ }).click();
+  await expect(page.getByRole('button', { name: /ООО «Надёжный поставщик»/ })).toHaveCount(0);
+  await page.goto('/messages?thread=1070:9070', { waitUntil: 'networkidle' });
   await expect(page.getByRole('alert')).toContainText('Оно не будет отправлено повторно автоматически');
   await expect(page.getByRole('button', { name: 'Проверить ещё раз' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Отправить повторно' })).toBeVisible();

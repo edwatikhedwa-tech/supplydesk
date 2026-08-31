@@ -1,5 +1,30 @@
 # Current State
 
+## Current task update — messages primary correspondence filter
+
+- Timestamp UTC: `2026-08-31T18:38:35Z`
+  (`TASK-MESSAGES-PRIMARY-FILTER-20260831`, completed locally).
+- `/messages` по умолчанию фильтрует основной список: остаются письма со
+  статусом `sent` или с ответом поставщика; письма, которые ещё находятся в
+  очереди, не смешиваются с перепиской и показываются во вкладке `Очередь`.
+- Фильтр не меняет API или данные: при текущем read-only снимке
+  `/api/correspondence` вернул `80` тредов, из них `77` попали в основной UI;
+  `/api/mail/queue/messages` вернул `64` очереди.
+- Реальный браузер без route-моков проверен на `1440x900` и `390x844`:
+  выбранный режим остаётся основным после reload, queue sample открывается во
+  вкладке очереди, горизонтального overflow нет.
+- Browser runtime: `0` console errors, `0` page errors, `0` failed requests,
+  `0` unexpected non-2xx responses; неизвестный API route ожидаемо вернул
+  `404`.
+- Typecheck and build passed. Lint passed with `0` errors and `8` pre-existing
+  warnings outside this change. Outgoing remained disabled; SMTP/IMAP were not
+  started.
+- Changed application files: `frontend/src/components/mail/ThreadList.tsx`
+  and `frontend/src/components/mail/threadStatus.ts`. Regression coverage:
+  `frontend/tests/frontend-audit.spec.ts`.
+- Evidence: `Temp/messages-primary-filter-20260831/`; report:
+  `ai/reports/TASK-MESSAGES-PRIMARY-FILTER-20260831-report.md`.
+
 ## Current task update — local server started with outgoing OFF
 
 - Timestamp UTC: `2026-08-31T18:28:01Z` (`TASK-SERVER-START-20260831`).
