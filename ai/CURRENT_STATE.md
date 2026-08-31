@@ -6,8 +6,9 @@
 - Project root: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
 - Repository: `edwatikhedwa-tech/supplydesk`.
 - Branch: `codex/TASK-STATE-CONTROL-20260830`.
-- HEAD: `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e` (`TASK-MESSAGES-NAV-DEFAULT-20260831`
-  product implementation commit; push not run).
+- HEAD: `36bc4c14ac3e00c0682aa8e65622854dc16aebba` (`TASK-MESSAGES-NAV-DEFAULT-20260831`
+  state-record commit; product implementation is `9c15c6f6dc9cadb989196fb23ebcfd696c3b0e3e`,
+  push not run).
 - Remote: `origin` → `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Origin: `https://github.com/edwatikhedwa-tech/supplydesk.git`.
 - Upstream: `origin/codex/TASK-STATE-CONTROL-20260830`.
