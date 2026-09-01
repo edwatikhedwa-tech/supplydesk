@@ -54,7 +54,7 @@ Quarantine was retained and no permanent purge was performed.
 | `02_BACKUP_COPIES/` | 1 source-copy package | 11 | 980,704 |
 | `03_OLD_EXPORTS/` | 1 old-export tree | 13 | 38,160,562 |
 | `04_HISTORICAL_LOCAL_ONLY/` | `artifacts/`, `Temp/`, `tmp/` | 1,247 | 85,291,334 |
-| **Total** | **15 top-level moved entries** | **1,481** | **132,669,560** |
+| **Total** | **17 top-level moved entries** | **1,481** | **132,669,560** |
 
 The review package set includes the five named review ZIP containers. The
 backup source copy was compared with canonical counterparts; differing hashes
