@@ -160,8 +160,8 @@ The legacy marker and quarantine are outside Git. Normal branch push and the
 final remote ref were verified after the security gate.
 
 REMOTE REPORT PUSH: `YES` — `origin/control/safe-cleanup-batch1-20260901`
-initial evidence commit `26e779ccf3ec55c9d7fdf1f54711375183b2035e`, final
-closeout tip `e36942926fc4e9a5c31bdd015b3abdd25480c8fa`
+The initial evidence commit and subsequent metadata-only closeout commits were
+pushed normally; the final remote ref is independently verified at closeout.
 PERMANENT PURGE: `NO`
 CANONICAL DB DELETED: `NO`
 CANONICAL DB MODIFIED: `NO`
