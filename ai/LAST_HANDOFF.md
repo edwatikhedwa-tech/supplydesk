@@ -4,68 +4,69 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: f2e707ac9988223dc87f242d53df837d70ddca5f
+source_commit: f9b0b66432f9e8650e87e5a89dd27a258a416e38
 ---
 
 # Last Handoff
 
 ## Цель
 
-Проверить и укрепить diagnostic control plane V1.1 в отдельной ветке без
-изменения поведения SupplyDesk; зафиксировать и отправить результат.
+Создать воспроизводимую безопасную тестовую и runtime-среду SupplyDesk V1 в
+отдельной ветке без изменения поведения продукта; зафиксировать и отправить
+результат.
 
 ## Что изменено
 
-- Проведён независимый semantic audit V1 traceability и исправлены
-  подозрительные ссылки DATA/RUNTIME/MAIL на специализированные DOC-checks.
-- Введены уровни `NONE/STATIC/STRUCTURAL/BEHAVIORAL/RUNTIME/LIVE_EXTERNAL`
-  для test, diagnostic и live acceptance evidence; validator усилен
-  TRACE-009..013.
-- Failure modes получили symptom, causes, confirming/excluding checks,
-  confidence и repair eligibility; автоматическое recovery остаётся нулевым.
-- Добавлены специализированные статические surface checks, различимые
-  frontend failure codes, opt-in Playwright path и redacted staged-literal
-  scanner.
-- Добавлены disposable negative fixtures; `doctor -Apply` теперь явно
-  блокируется как не реализованный recovery path.
+- Разделены runtime- и test-зависимости через `requirements-test.txt`; pytest
+  и pytest-cov проверены и не объявлены, потому что текущий suite использует
+  стандартный `unittest`.
+- Добавлены официальный backend runner, PowerShell setup с `-Plan/-Apply`,
+  режимы full/quick/diagnostics и loopback-only сетевой guard.
+- Добавлены safe `OFFLINE_TEST` start/stop wrappers, runtime marker,
+  синтетическая конфигурация, disposable SQLite и запрет canonical DB/private
+  `.env`/real SMTP/IMAP.
+- Doctor получил профили `OFFLINE_TEST`, `LOCAL_CANONICAL` и `LIVE_EXTERNAL`;
+  автоматический `-Apply` остаётся safety block.
+- Обновлены manifest, testing documentation, test catalog, traceability,
+  state documents and negative tests.
 
 ## Что проверено
 
-- Ветка `control/diagnostic-plane-v1.1-20260901` создана в отдельном
-  worktree от V1 HEAD `98f4a370e2bf223aea6550630ce49ed05f12a8af`.
-- `19` diagnostic unittest, `validate_docs`, `validate_state`,
-  `validate_traceability` и `git diff --check` подтверждены.
-- Doctor `-Plan` exited `0`; `-DryRun` emitted external JSON and exited `2`
-  only for explicit environment gaps; `-Apply` exited `3` with
-  `SAFETY_BLOCK` and performed no recovery.
-- Commit `f2e707ac9988223dc87f242d53df837d70ddca5f` pushed to
-  `origin/control/diagnostic-plane-v1.1-20260901`; no merge was performed.
-- Application code, frontend source, API, database, migrations and mail data
-  were not changed; no provider or real email action was performed.
+- Worktree branch `control/reproducible-test-runtime-v1-20260901` was created
+  from verified V1.1 remote HEAD `f9b0b66432f9e8650e87e5a89dd27a258a416e38`.
+- Setup, full backend (`411` tests, `0` failures, `0` errors, `1` skipped),
+  frontend clean install/typecheck/lint/build, `25` diagnostic tests,
+  validators and `git diff --check` passed.
+- Safe runtime HTTP/API smoke passed; the marker proved disposable DB,
+  disabled mail, fake/blocked providers and no private `.env` loading.
+- Real-route Playwright public-shell acceptance passed `8/8` viewport projects.
+- Doctor `-Plan` exited `0`; full offline `-DryRun` returned `WARNING`, exit
+  `0`; `-Apply` returned `SAFETY_BLOCK`, exit `3`.
+- Application code, frontend source, API, canonical database, migrations and
+  mail data were not changed; no provider or real email action was performed.
 
 ## Что не прошло
 
-Full backend regression is not verified because `pytest` is unavailable in the
-system environment, is not declared in `requirements.txt`, and
-`tests/run-tests.ps1` is absent. This is recorded as an environment gap, not
-converted into a product pass.
+No required acceptance item is blocked in the offline scope. Live external
+providers, real SMTP/IMAP, real email, production migration behavior and
+full real-provider authenticated flows remain intentionally unverified.
 
 ## Что не проверено
 
-Current database rows, mailbox/provider state, backend runtime parity, current
-frontend gates, browser acceptance, live external acceptance, `knip`, and
-source-checkout local-only unknowns remain `NOT VERIFIED`.
+Canonical database rows, mailbox/provider state, live external acceptance,
+production migration behavior, `knip`, and source-checkout local-only unknowns
+remain `NOT VERIFIED`.
 
 ## Текущее состояние runtime
 
-The app was not started by the runner and external actions were not performed.
-V1.1 adds explicit typed static/runtime/live gaps and safety classifications
-instead of hiding them.
+The app was started only through `OFFLINE_TEST`, checked on real routes, and
+stopped after acceptance. External provider actions were not performed. The
+runtime marker and Doctor profile checks make the safety boundary explicit.
 
 ## Следующий рациональный шаг
 
-Review the pushed V1.1 branch and decide separately whether to merge it; no
-merge is performed automatically.
+Review the pushed reproducible-test-runtime branch and decide separately
+whether to merge it; no merge is performed automatically.
 
 ## Не повторять
 

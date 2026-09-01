@@ -1,0 +1,7 @@
+# SupplyDesk reproducible test contract for Python 3.11.x.
+# The current suite uses the standard-library unittest runner.  Runtime
+# packages are included because tests import the real application modules.
+-r requirements.txt
+
+# NOT_REQUIRED: pytest and pytest-cov.  No current test imports or invokes
+# either package; the official runner is scripts/run_test_suite.py.

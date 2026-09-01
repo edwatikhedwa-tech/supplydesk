@@ -22,6 +22,7 @@ __pycache__/
 pycache/
 *.py[cod]
 .venv/
+.venv-test/
 venv/
 mail-data/
 *.sqlite3
@@ -35,4 +36,6 @@ tmp/
 .vercel
 .env*
 runtime/*.json
+runtime/*.log
+runtime/test-data/
 *.live-mail.lock

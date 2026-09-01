@@ -9,24 +9,36 @@ source_commit: f2e707ac9988223dc87f242d53df837d70ddca5f
 
 # Active Task
 
-Task ID: `NONE`
+Task ID: `TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901`
 Agent: `Codex`
 Mode: `CLOSE`
 Started: `2026-09-01`
-Scope: `diagnostic control plane v1.1 validation and hardening`
-Allowed files: `docs/**`, `ai/**`, `scripts/doctor.ps1`, `scripts/diagnostics/**`, `tests/diagnostics/**`, `PROJECT_MANIFEST.yaml`
-Status: `IDLE — TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901 completed locally and pushed`
-Last update: `2026-09-01T15:02:50Z`
+Scope: `reproducible offline test environment, safe disposable runtime, backend/frontend/browser acceptance and profile-aware diagnostics`
+Allowed files: `requirements-test.txt`, `.gitignore`, `tests/run-tests.ps1`, `tests/diagnostics/**`, `scripts/run_test_suite.py`, `scripts/setup_test_env.ps1`, `scripts/start_test_runtime.ps1`, `scripts/stop_test_runtime.ps1`, `scripts/test_runtime_entry.py`, `scripts/diagnostics/**`, `docs/testing/TEST_ENVIRONMENT.md`, `PROJECT_MANIFEST.yaml`, `ai/**`
+Status: `READY FOR COMMIT/PUSH — acceptance complete; final normal push remains`
+Last update: `2026-09-01T16:08:00Z`
 
-## Current task closed
+## Цель
 
-The task validated and hardened the V1 evidence-based, read-only diagnostic
-control plane. Commit `f2e707ac9988223dc87f242d53df837d70ddca5f` is pushed to
-`origin/control/diagnostic-plane-v1.1-20260901`. Application code, data and mail
-transport remain unchanged.
+Дать чистому checkout воспроизводимую безопасную OFFLINE_TEST-среду без
+приватного `.env`, канонической SQLite, реального SMTP/IMAP и реальных писем.
 
-## Next handoff
+## Границы
 
-The task report and append-only logs are preserved. Any merge or live runtime
-verification remains a separate explicit human action.
+Продуктовый код, фронтенд-код, каноническая база, миграции и настройки
+production не изменяются. Поддерживаются только отдельный test-venv,
+документированные runners/bootstrap, disposable SQLite, безопасный runtime,
+диагностика и состояние проекта.
+
+## Acceptance
+
+Нужны фактические проверки backend regression, frontend `npm ci`/typecheck/lint/build,
+safe runtime HTTP/API, real-route Playwright, profile-aware Doctor, validators,
+git diff check и отдельный commit с Task ID. Реальная почта и внешний live-provider
+acceptance остаются запрещёнными.
+
+## Следующий шаг
+
+Создать commit с Task ID, выполнить обычный push отдельной ветки, затем
+обновить этот sentinel в `IDLE` и зафиксировать remote SHA.
 

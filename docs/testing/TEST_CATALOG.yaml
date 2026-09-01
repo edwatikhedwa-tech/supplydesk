@@ -46,3 +46,11 @@ test_catalog:
     path: tests/test_canonical_runtime.py
     kind: unit
     scope: canonical lock and provenance
+  - id: TEST-ENV-001
+    path: tests/diagnostics/test_reproducible_environment.py
+    kind: negative
+    scope: OFFLINE_TEST profile, disposable database refusal and provider/network safety
+  - id: TEST-ENV-002
+    path: scripts/run_test_suite.py
+    kind: runner
+    scope: loopback-only unittest regression entrypoint

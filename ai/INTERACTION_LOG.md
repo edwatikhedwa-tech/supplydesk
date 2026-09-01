@@ -2,6 +2,19 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-01T15:50:00Z — TEST/RUNTIME IMPLEMENTATION — TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901
+
+- State change: task opened on a separate branch from independently verified
+  V1.1 remote HEAD; source checkout was preserved.
+- State change: added declared test dependency contract, standard-library
+  unittest runner, loopback-only network guard, disposable SQLite runtime and
+  Doctor profiles `OFFLINE_TEST`, `LOCAL_CANONICAL`, `LIVE_EXTERNAL`.
+- Evidence: diagnostic tests `25 PASS`; full runner `411 tests, 0 failures,
+  0 errors, 1 skipped`; frontend clean install/gates passed; Chromium installed;
+  safe runtime HTTP probes and Playwright real-route public shell passed.
+- State change: no product code, canonical DB, migration files, private env,
+  real SMTP/IMAP or real email were changed or used.
+
 ## 2026-09-01T07:11:12Z — TASK-SYSTEM-FRONT-AUDIT-20260901 COMPLETE
 
 - По запросу владельца изучены документация, журналы событий, исходники,
@@ -727,3 +740,14 @@ This log records agent work interactions. It is append-only.
 - State change: commit `f2e707ac9988223dc87f242d53df837d70ddca5f` pushed to
   `origin/control/diagnostic-plane-v1.1-20260901` after one transient DNS
   retry; no merge was performed.
+
+## 2026-09-01T16:05:00Z — TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901 COMPLETE
+
+- State change: reproducible Python/frontend test bootstrap and official
+  unittest runners were added in a separate worktree from verified V1.1 HEAD.
+- State change: safe `OFFLINE_TEST` runtime, disposable SQLite marker,
+  provider/network safety gates and profile-aware Doctor checks were added.
+- Validation target: full backend, frontend clean gates, real-route Playwright,
+  25 diagnostic tests, validators, HTTP/API smoke and diff check.
+- No product code, canonical data, production migration or real email action
+  was performed; live-provider acceptance remains intentionally unverified.

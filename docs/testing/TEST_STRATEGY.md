@@ -15,13 +15,13 @@ source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
    traceability validator.
 2. Diagnostic unit tests: standard-library tests for status classification,
    HTTP expectations, read-only SQLite and machine output.
-3. Backend regression: inherited control baseline `373 passed, 1 skipped,
-   0 failed, 0 errors`; rerun when the environment is available. Existing
-   tests are classified in `TEST_CATALOG.yaml`; they are not rewritten.
+3. Backend regression: historical control baseline `373 passed, 1 skipped`;
+   the reproducible official runner now executes the current combined suite
+   and records its actual totals. Existing tests are classified in
+   `TEST_CATALOG.yaml`; they are not rewritten.
 4. Frontend: `npm ci`, typecheck, lint, build and public-shell browser test;
-   unchanged frontend evidence is inherited and current parity is
-   `NOT VERIFIED` in this worktree.
-5. Doctor: `-Plan` and `-DryRun`; `-Apply` is not executed in V1.
+   clean dependency setup is required before claiming current parity.
+5. Doctor: `-Plan` and profile-aware `-DryRun`; `-Apply` remains blocked.
 
 ## Diagnostic outcome vocabulary
 
@@ -54,3 +54,5 @@ delivery outcome.
 
 The traceability validator reports requirement/test/rule/diagnostic counts and
 rejects inconsistent doctor/failure-mode mappings without modifying the tree.
+Offline eligibility is not the same as behavioral proof: live provider
+acceptance and repair actions remain outside the canonical offline gate.

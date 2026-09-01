@@ -36,6 +36,8 @@ STATUSES = {
     "WARNING",
 }
 EVIDENCE_LEVELS = {"NONE", "STATIC", "STRUCTURAL", "BEHAVIORAL", "RUNTIME", "LIVE_EXTERNAL"}
+ENVIRONMENT_PROFILES = {"OFFLINE_TEST", "LOCAL_CANONICAL", "LIVE_EXTERNAL"}
+PROFILE_REQUIREMENTS = {"REQUIRED", "OPTIONAL", "FORBIDDEN", "NOT_APPLICABLE"}
 FRONTEND_FAILURE_CODES = {
     "INSTALL_FAIL",
     "TYPECHECK_FAIL",
@@ -63,6 +65,7 @@ class CheckResult:
     possible_failure_modes: list[str] = field(default_factory=list)
     evidence_level: str = "STRUCTURAL"
     safe_next_action: str = "OPEN_RUNBOOK"
+    profile_requirement: str = "OPTIONAL"
 
     def __post_init__(self) -> None:
         if self.status not in STATUSES:
@@ -75,6 +78,8 @@ class CheckResult:
             self.possible_failure_modes = list(self.failure_mode_ids)
         if self.safe_next_action not in SAFE_NEXT_ACTIONS:
             raise ValueError(f"unsafe or unknown next action: {self.safe_next_action}")
+        if self.profile_requirement not in PROFILE_REQUIREMENTS:
+            raise ValueError(f"unknown profile requirement: {self.profile_requirement}")
 
 
 def utc_now() -> str:
@@ -213,8 +218,10 @@ def http_status(url: str, timeout: int = 5) -> tuple[int | None, str]:
         return None, "endpoint unavailable"
 
 
-def backend_http_check(base_url: str) -> CheckResult:
+def backend_http_check(base_url: str, profile: str = "LOCAL_CANONICAL") -> CheckResult:
     probes = [("/", {200}), ("/api/auth/me", {200}), ("/api/mail/status", {401}), ("/api/diagnostic-unknown", {404})]
+    if profile == "OFFLINE_TEST":
+        probes.insert(2, ("/api/requests", {401}))
     unavailable = 0
     unexpected: list[str] = []
     for path, expected in probes:
@@ -227,7 +234,8 @@ def backend_http_check(base_url: str) -> CheckResult:
         return CheckResult("DOC-005", "COMP-APP", "PRODUCT_FAILURE", "HTTP contract mismatch: " + ", ".join(unexpected), ["REQ-DIAG-001"], ["FM-BACKEND-001"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", "BACKEND_HTTP_FAIL", evidence_level="RUNTIME", safe_next_action="RUN_TEST")
     if unavailable:
         return CheckResult("DOC-005", "COMP-APP", "ENVIRONMENT_GAP", "safe backend HTTP probes unavailable; no provider action attempted", ["REQ-DIAG-001"], ["FM-BACKEND-001", "FM-MAIL-002"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", "HTTP_ENVIRONMENT_GAP", evidence_level="RUNTIME", safe_next_action="OPEN_RUNBOOK")
-    return CheckResult("DOC-005", "COMP-APP", "PASS", "root 200, auth/me 200, protected mail 401 and unknown route 404; provider boundary untouched", ["REQ-DIAG-001"], ["FM-BACKEND-001", "FM-MAIL-002"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", evidence_level="RUNTIME", safe_next_action="READ_ONLY_CHECK")
+    protected = "protected requests/mail 401" if profile == "OFFLINE_TEST" else "protected mail 401"
+    return CheckResult("DOC-005", "COMP-APP", "PASS", f"root 200, auth/me 200, {protected} and unknown route 404; provider boundary untouched", ["REQ-DIAG-001"], ["FM-BACKEND-001", "FM-MAIL-002"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", evidence_level="RUNTIME", safe_next_action="READ_ONLY_CHECK")
 
 
 def mail_runtime_contract_static(root: Path) -> CheckResult:
@@ -319,12 +327,17 @@ def frontend_check(root: Path, run_frontend: bool) -> CheckResult:
     return CheckResult("DOC-006", "COMP-FRONTEND", "PASS", "frontend typecheck, lint and build passed", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", evidence_level="RUNTIME", safe_next_action="READ_ONLY_CHECK")
 
 
-def database_check(root: Path, db_path: str | None) -> CheckResult:
-    path = Path(db_path) if db_path else root / "mail-data/supplier.sqlite3"
+def database_check(root: Path, db_path: str | None, profile: str = "LOCAL_CANONICAL") -> CheckResult:
+    path = Path(db_path) if db_path else (root / "runtime/test-data/supplier.sqlite3" if profile == "OFFLINE_TEST" else root / "mail-data/supplier.sqlite3")
     if not path.is_absolute():
         path = root / path
+    path = path.resolve()
+    canonical = (root / "mail-data/supplier.sqlite3").resolve()
+    if profile == "OFFLINE_TEST" and (path == canonical or "mail-data" in {part.casefold() for part in path.parts}):
+        return CheckResult("DOC-007", "COMP-DATABASE", "SAFETY_BLOCK", "OFFLINE_TEST refuses the canonical/user mail-data database; no database was opened", ["REQ-DATA-001"], ["FM-DATA-001", "FM-SECURITY-001"], "docs/operations/runbooks/RUNBOOK-DATABASE.md", "CANONICAL_DB_FORBIDDEN", evidence_level="STRUCTURAL", safe_next_action="REQUEST_HUMAN")
     if not path.is_file():
-        return CheckResult("DOC-007", "COMP-DATABASE", "ENVIRONMENT_GAP", "canonical SQLite path is absent; no database was created", ["REQ-DATA-001"], ["FM-DATA-001"], "docs/operations/runbooks/RUNBOOK-DATABASE.md", "DATABASE_ABSENT")
+        label = "disposable test SQLite" if profile == "OFFLINE_TEST" else "canonical SQLite"
+        return CheckResult("DOC-007", "COMP-DATABASE", "ENVIRONMENT_GAP", f"{label} path is absent; no database was created", ["REQ-DATA-001"], ["FM-DATA-001"], "docs/operations/runbooks/RUNBOOK-DATABASE.md", "DATABASE_ABSENT")
     uri = f"file:{path.resolve().as_posix()}?mode=ro"
     try:
         connection = sqlite3.connect(uri, uri=True, timeout=2)
@@ -340,19 +353,28 @@ def database_check(root: Path, db_path: str | None) -> CheckResult:
         return CheckResult("DOC-007", "COMP-DATABASE", "PRODUCT_FAILURE", "read-only SQLite inspection failed", ["REQ-DATA-001"], ["FM-DATA-001"], "docs/operations/runbooks/RUNBOOK-DATABASE.md", "DATABASE_READ_FAIL")
     if quick != "ok" or integrity != "ok":
         return CheckResult("DOC-007", "COMP-DATABASE", "PRODUCT_FAILURE", "SQLite quick_check or integrity_check failed", ["REQ-DATA-001"], ["FM-DATA-001"], "docs/operations/runbooks/RUNBOOK-DATABASE.md", "DATABASE_INTEGRITY_FAIL")
-    return CheckResult("DOC-007", "COMP-DATABASE", "PASS", f"read-only SQLite checks passed; journal={journal}, user_version={user_version}, tables={len(tables)}", ["REQ-DATA-001"], ["FM-DATA-001"], "docs/operations/runbooks/RUNBOOK-DATABASE.md")
+    if profile == "OFFLINE_TEST":
+        table_names = {str(row[0]) for row in tables}
+        required = {"users", "workspaces", "requests", "mail_runtime_controls"}
+        missing = sorted(required - table_names)
+        if missing:
+            return CheckResult("DOC-007", "COMP-DATABASE", "PRODUCT_FAILURE", "disposable SQLite is valid but its migration schema is incomplete: " + ", ".join(missing), ["REQ-DATA-001"], ["FM-DATA-001"], "docs/operations/runbooks/RUNBOOK-DATABASE.md", "DISPOSABLE_SCHEMA_FAIL", evidence_level="STRUCTURAL", safe_next_action="RUN_TEST")
+    return CheckResult("DOC-007", "COMP-DATABASE", "PASS", f"read-only SQLite checks passed; profile={profile}, journal={journal}, user_version={user_version}, tables={len(tables)}", ["REQ-DATA-001"], ["FM-DATA-001"], "docs/operations/runbooks/RUNBOOK-DATABASE.md")
 
 
-def backend_tests_check(root: Path, run_tests: bool) -> CheckResult:
+def backend_tests_check(root: Path, run_tests: bool, profile: str = "LOCAL_CANONICAL") -> CheckResult:
     if not run_tests:
         return CheckResult("DOC-008", "COMP-DOCTOR", "NOT_VERIFIED", "backend regression suite is opt-in; inherited baseline is recorded as 373 passed, 1 skipped", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "NOT_RUN")
-    if importlib.util.find_spec("pytest") is None:
-        return CheckResult("DOC-008", "COMP-DOCTOR", "ENVIRONMENT_GAP", "pytest module is unavailable; backend regression was not started", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "PYTEST_MISSING", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
-    code, meta = run_process([sys.executable, "-m", "pytest", "tests", "-q", "--tb=short"], root, timeout=900)
+    runner = root / "scripts/run_test_suite.py"
+    if not runner.is_file():
+        return CheckResult("DOC-008", "COMP-DOCTOR", "ENVIRONMENT_GAP", "official unittest runner is missing; backend regression was not started", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "TEST_RUNNER_MISSING", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
+    code, meta = run_process([sys.executable, str(runner), "--root", str(root), "--suite", "full"], root, timeout=900)
     if code == 0:
-        return CheckResult("DOC-008", "COMP-DOCTOR", "PASS", "backend regression suite passed; output retained only by hash", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", evidence_level="BEHAVIORAL", safe_next_action="READ_ONLY_CHECK")
+        return CheckResult("DOC-008", "COMP-DOCTOR", "PASS", "official unittest backend regression suite passed; output retained only by hash; pytest is not a prerequisite", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", evidence_level="BEHAVIORAL", safe_next_action="READ_ONLY_CHECK")
     if code == 127:
-        return CheckResult("DOC-008", "COMP-DOCTOR", "ENVIRONMENT_GAP", "pytest executable is unavailable", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "TEST_INSTALL_FAIL", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
+        return CheckResult("DOC-008", "COMP-DOCTOR", "ENVIRONMENT_GAP", "official backend test runner executable is unavailable", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "TEST_INSTALL_FAIL", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
+    if code == 2:
+        return CheckResult("DOC-008", "COMP-DOCTOR", "ENVIRONMENT_GAP", "official backend runner reported a missing test environment", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "TEST_ENVIRONMENT_GAP", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
     return CheckResult("DOC-008", "COMP-DOCTOR", "PRODUCT_FAILURE", "backend regression suite failed; output retained only by hash", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "TEST_FAIL", evidence_level="BEHAVIORAL", safe_next_action="RUN_TEST")
 
 
@@ -378,6 +400,64 @@ def browser_check(root: Path, run_browser: bool, base_url: str = "http://127.0.0
     lowered = completed.stdout.lower()
     code = "OVERFLOW_FAIL" if "overflow" in lowered else "ACCESSIBILITY_FAIL" if "accessibility" in lowered or "axe" in lowered else "BROWSER_FAIL"
     return CheckResult("DOC-009", "COMP-FRONTEND", "PRODUCT_FAILURE", f"public-shell Playwright acceptance failed: {code}; output was retained only by hash", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", code, evidence_level="RUNTIME", safe_next_action="RUN_TEST")
+
+
+def profile_check(profile: str) -> CheckResult:
+    if profile not in ENVIRONMENT_PROFILES:
+        return CheckResult("DOC-019", "COMP-DOCTOR", "SAFETY_BLOCK", f"unknown environment profile: {profile}; no external action was attempted", ["REQ-DIAG-001"], ["FM-SECURITY-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "UNKNOWN_PROFILE", evidence_level="STRUCTURAL", safe_next_action="REQUEST_HUMAN")
+    if profile == "LIVE_EXTERNAL":
+        return CheckResult("DOC-019", "COMP-DOCTOR", "SAFETY_BLOCK", "LIVE_EXTERNAL is explicit and unsupported by the safe Doctor path; real provider acceptance remains manual", ["REQ-DIAG-001"], ["FM-MAIL-002", "FM-SECURITY-001"], "docs/operations/runbooks/RUNBOOK-MAIL-PROVIDER.md", "LIVE_EXTERNAL_MANUAL_ONLY", evidence_level="STRUCTURAL", safe_next_action="REQUEST_HUMAN")
+    if profile == "OFFLINE_TEST":
+        return CheckResult("DOC-019", "COMP-DOCTOR", "PASS", "OFFLINE_TEST policy selected: disposable DB and local runtime are required; canonical DB, private .env, SMTP/IMAP and real mail are forbidden", ["REQ-DIAG-001", "REQ-DIAG-002"], ["FM-SECURITY-001", "FM-DATA-001", "FM-MAIL-002"], "docs/testing/TEST_ENVIRONMENT.md", "OFFLINE_PROFILE_ACTIVE", evidence_level="STRUCTURAL", safe_next_action="READ_ONLY_CHECK")
+    return CheckResult("DOC-019", "COMP-DOCTOR", "PASS", "LOCAL_CANONICAL policy selected: canonical DB inspection is allowed read-only; test runtime and live external mail are not required", ["REQ-DIAG-001"], ["FM-DATA-001"], "docs/operations/runbooks/RUNBOOK-DATABASE.md", "LOCAL_CANONICAL_PROFILE_ACTIVE", evidence_level="STRUCTURAL", safe_next_action="READ_ONLY_CHECK")
+
+
+def test_environment_check(root: Path, profile: str) -> CheckResult:
+    paths = {
+        "test_requirements": root / "requirements-test.txt",
+        "runner": root / "tests/run-tests.ps1",
+        "python_runner": root / "scripts/run_test_suite.py",
+        "setup": root / "scripts/setup_test_env.ps1",
+        "documentation": root / "docs/testing/TEST_ENVIRONMENT.md",
+    }
+    missing = [name for name, path in paths.items() if not path.is_file()]
+    if missing:
+        return CheckResult("DOC-020", "COMP-DOCTOR", "PRODUCT_FAILURE", "test environment contract is incomplete: " + ", ".join(missing), ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/testing/TEST_ENVIRONMENT.md", "TEST_CONTRACT_INCOMPLETE", evidence_level="STRUCTURAL", safe_next_action="RUN_TEST")
+    if profile != "OFFLINE_TEST":
+        return CheckResult("DOC-020", "COMP-DOCTOR", "PASS", "test dependency and runner contract is present; test venv is not required for this profile", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/testing/TEST_ENVIRONMENT.md", "TEST_CONTRACT_PRESENT", evidence_level="STRUCTURAL", safe_next_action="READ_ONLY_CHECK")
+    venv_python = root / ".venv-test/Scripts/python.exe"
+    if not venv_python.is_file():
+        return CheckResult("DOC-020", "COMP-DOCTOR", "ENVIRONMENT_GAP", "OFFLINE_TEST requires .venv-test; setup is separate and was not started by Doctor", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/testing/TEST_ENVIRONMENT.md", "TEST_VENV_ABSENT", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
+    return CheckResult("DOC-020", "COMP-DOCTOR", "PASS", "OFFLINE_TEST requirements, official runner, setup and documentation are present; .venv-test is ready", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/testing/TEST_ENVIRONMENT.md", "TEST_ENVIRONMENT_READY", evidence_level="RUNTIME", safe_next_action="READ_ONLY_CHECK")
+
+
+def test_runtime_check(root: Path, profile: str, marker_path: str | None) -> CheckResult:
+    if profile != "OFFLINE_TEST":
+        return CheckResult("DOC-021", "COMP-APP", "PASS", "safe OFFLINE_TEST runtime marker is not required for this profile", ["REQ-DIAG-001"], ["FM-BACKEND-001"], "docs/testing/TEST_ENVIRONMENT.md", "TEST_RUNTIME_NOT_REQUIRED", evidence_level="STRUCTURAL", safe_next_action="READ_ONLY_CHECK")
+    path = Path(marker_path) if marker_path else root / "runtime/test-runtime.json"
+    if not path.is_absolute():
+        path = root / path
+    if not path.is_file():
+        return CheckResult("DOC-021", "COMP-APP", "ENVIRONMENT_GAP", "OFFLINE_TEST runtime marker is absent; safe backend process was not proven", ["REQ-DIAG-001"], ["FM-BACKEND-001", "FM-SECURITY-001"], "docs/testing/TEST_ENVIRONMENT.md", "TEST_RUNTIME_ABSENT", evidence_level="RUNTIME", safe_next_action="OPEN_RUNBOOK")
+    try:
+        marker = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError):
+        return CheckResult("DOC-021", "COMP-APP", "PRODUCT_FAILURE", "OFFLINE_TEST runtime marker is not valid JSON", ["REQ-DIAG-001"], ["FM-BACKEND-001"], "docs/testing/TEST_ENVIRONMENT.md", "TEST_RUNTIME_MARKER_INVALID", evidence_level="STRUCTURAL", safe_next_action="RUN_TEST")
+    expected = {
+        "profile": "OFFLINE_TEST",
+        "environment": "test",
+        "outgoing_mail": "disabled",
+        "external_providers": "fake/blocked",
+    }
+    mismatches = [key for key, value in expected.items() if marker.get(key) != value]
+    database = marker.get("database") if isinstance(marker.get("database"), dict) else {}
+    if database.get("canonical") is not False or database.get("kind") != "disposable_sqlite":
+        mismatches.append("database")
+    if mismatches:
+        return CheckResult("DOC-021", "COMP-APP", "SAFETY_BLOCK", "OFFLINE_TEST marker violates the safe runtime contract: " + ", ".join(mismatches), ["REQ-DIAG-001"], ["FM-SECURITY-001", "FM-DATA-001"], "docs/testing/TEST_ENVIRONMENT.md", "TEST_RUNTIME_UNSAFE", evidence_level="STRUCTURAL", safe_next_action="REQUEST_HUMAN")
+    if marker.get("status") not in {"starting", "ready"}:
+        return CheckResult("DOC-021", "COMP-APP", "ENVIRONMENT_GAP", "OFFLINE_TEST marker exists but process is not marked starting or ready", ["REQ-DIAG-001"], ["FM-BACKEND-001"], "docs/testing/TEST_ENVIRONMENT.md", "TEST_RUNTIME_NOT_READY", evidence_level="RUNTIME", safe_next_action="OPEN_RUNBOOK")
+    return CheckResult("DOC-021", "COMP-APP", "PASS", "safe OFFLINE_TEST runtime marker proves test environment, disposable DB, disabled mail and blocked external providers", ["REQ-DIAG-001", "REQ-DIAG-002"], ["FM-SECURITY-001", "FM-DATA-001", "FM-MAIL-002"], "docs/testing/TEST_ENVIRONMENT.md", "TEST_RUNTIME_SAFE", evidence_level="RUNTIME", safe_next_action="READ_ONLY_CHECK")
 
 
 SECRET_NAME_TOKENS = ("secret", "credential", "token", "private-key", "password", "cookie")
@@ -456,16 +536,34 @@ def overall_status(results: Iterable[CheckResult]) -> tuple[str, int]:
     return ("WARNING", 0) if "WARNING" in statuses else ("PASS", 0)
 
 
-def run_diagnostics(root: Path, *, base_url: str, frontend_base_url: str = "http://127.0.0.1:5173", run_tests: bool = False, run_frontend: bool = False, run_browser: bool = False, db_path: str | None = None) -> dict[str, Any]:
+def profile_requirement(profile: str, check_id: str) -> str:
+    if profile == "OFFLINE_TEST":
+        if check_id in {"DOC-019", "DOC-020", "DOC-021", "DOC-001", "DOC-002", "DOC-003", "DOC-004", "DOC-005", "DOC-006", "DOC-007", "DOC-008", "DOC-009", "DOC-010"}:
+            return "REQUIRED"
+        return "OPTIONAL"
+    if profile == "LOCAL_CANONICAL":
+        if check_id == "DOC-007":
+            return "REQUIRED"
+        if check_id in {"DOC-019", "DOC-020", "DOC-021"}:
+            return "NOT_APPLICABLE"
+        return "OPTIONAL"
+    if profile == "LIVE_EXTERNAL" and check_id in {"DOC-019", "DOC-021"}:
+        return "FORBIDDEN"
+    return "OPTIONAL"
+
+
+def run_diagnostics(root: Path, *, base_url: str, frontend_base_url: str = "http://127.0.0.1:5173", run_tests: bool = False, run_frontend: bool = False, run_browser: bool = False, db_path: str | None = None, profile: str = "LOCAL_CANONICAL", runtime_marker: str | None = None) -> dict[str, Any]:
+    if profile not in ENVIRONMENT_PROFILES:
+        profile = "UNKNOWN"
     results = [
         git_check(root),
         manifest_check(root),
         docs_check(root),
         python_backend_check(root),
-        backend_http_check(base_url),
+        backend_http_check(base_url, profile),
         frontend_check(root, run_frontend),
-        database_check(root, db_path),
-        backend_tests_check(root, run_tests),
+        database_check(root, db_path, profile),
+        backend_tests_check(root, run_tests, profile),
         browser_check(root, run_browser, frontend_base_url),
         secret_path_check(root),
         mail_runtime_contract_static(root),
@@ -476,15 +574,44 @@ def run_diagnostics(root: Path, *, base_url: str, frontend_base_url: str = "http
         pacing_contract_static(root),
         bounce_contract_static(root),
         campaign_contract_static(root),
+        profile_check(profile),
+        test_environment_check(root, profile),
+        test_runtime_check(root, profile, runtime_marker),
     ]
+    for result in results:
+        result.profile_requirement = profile_requirement(profile, result.check_id)
     status, exit_code = overall_status(results)
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": utc_now(),
         "root": str(root),
+        "environment_profile": profile,
         "overall_status": status,
         "exit_code": exit_code,
         "checks": [asdict(result) for result in results],
+        "profile_policy": {
+            "OFFLINE_TEST": {
+                "disposable_database": "REQUIRED",
+                "canonical_database": "FORBIDDEN",
+                "real_smtp_imap": "FORBIDDEN",
+                "real_email": "FORBIDDEN",
+                "external_network": "FORBIDDEN_BY_DEFAULT",
+                "backend_regression": "REQUIRED",
+                "frontend_gates": "REQUIRED",
+                "playwright_real_routes": "REQUIRED",
+            },
+            "LOCAL_CANONICAL": {
+                "canonical_database": "OPTIONAL_READ_ONLY",
+                "disposable_database": "NOT_REQUIRED",
+                "real_smtp_imap": "NOT_REQUIRED",
+                "real_email": "FORBIDDEN_BY_DEFAULT",
+            },
+            "LIVE_EXTERNAL": {
+                "real_smtp_imap": "MANUAL_ONLY",
+                "real_email": "MANUAL_ONLY",
+                "automatic_doctor_actions": "FORBIDDEN",
+            },
+        },
         "safety": {
             "real_email_sent": False,
             "provider_connections_attempted": False,
@@ -503,13 +630,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--frontend-base-url", default="http://127.0.0.1:5173")
     parser.add_argument("--db-path")
+    parser.add_argument("--profile", choices=sorted(ENVIRONMENT_PROFILES), default="LOCAL_CANONICAL")
+    parser.add_argument("--runtime-marker")
     parser.add_argument("--run-tests", action="store_true")
     parser.add_argument("--run-frontend", action="store_true")
     parser.add_argument("--run-browser", action="store_true")
     args = parser.parse_args(argv)
     root = args.root.resolve()
     try:
-        result = run_diagnostics(root, base_url=args.base_url, frontend_base_url=args.frontend_base_url, run_tests=args.run_tests, run_frontend=args.run_frontend, run_browser=args.run_browser, db_path=args.db_path)
+        result = run_diagnostics(root, base_url=args.base_url, frontend_base_url=args.frontend_base_url, run_tests=args.run_tests, run_frontend=args.run_frontend, run_browser=args.run_browser, db_path=args.db_path, profile=args.profile, runtime_marker=args.runtime_marker)
         output = args.output.resolve()
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

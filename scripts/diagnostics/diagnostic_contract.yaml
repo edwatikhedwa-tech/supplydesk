@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 status_vocabulary: [PASS, PRODUCT_FAILURE, ENVIRONMENT_GAP, SAFETY_BLOCK, NOT_VERIFIED, WARNING]
 exit_codes:
   pass: 0
@@ -94,3 +94,33 @@ checks:
     component: COMP-CAMPAIGN
     evidence_level: STATIC
     mode: read-only
+  - id: DOC-019
+    name: environment_profile_policy
+    component: COMP-DOCTOR
+    evidence_level: STRUCTURAL
+    mode: read-only
+  - id: DOC-020
+    name: reproducible_test_environment_contract
+    component: COMP-DOCTOR
+    evidence_level: RUNTIME
+    mode: read-only
+  - id: DOC-021
+    name: safe_test_runtime_marker
+    component: COMP-APP
+    evidence_level: RUNTIME
+    mode: read-only
+profiles:
+  OFFLINE_TEST:
+    disposable_database: REQUIRED
+    canonical_database: FORBIDDEN
+    real_smtp_imap: FORBIDDEN
+    real_email: FORBIDDEN
+    external_network: FORBIDDEN_BY_DEFAULT
+  LOCAL_CANONICAL:
+    canonical_database: OPTIONAL_READ_ONLY
+    real_smtp_imap: NOT_REQUIRED
+    real_email: FORBIDDEN_BY_DEFAULT
+  LIVE_EXTERNAL:
+    real_smtp_imap: MANUAL_ONLY
+    real_email: MANUAL_ONLY
+    automatic_doctor_actions: FORBIDDEN

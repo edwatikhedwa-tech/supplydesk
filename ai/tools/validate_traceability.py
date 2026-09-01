@@ -202,7 +202,8 @@ def main(argv: list[str] | None = None) -> int:
     tests = sum(row.get("test_verification_level", "NONE") in {"BEHAVIORAL", "RUNTIME", "LIVE_EXTERNAL"} for row in active_rows)
     diagnostic_counts = {level: sum(row.get("diagnostic_level") == level for row in active_rows) for level in LEVELS}
     live_required = sum(row.get("live_acceptance_required", "").lower() == "true" for row in active_rows)
-    fully_offline = sum(row.get("live_acceptance_required", "").lower() == "false" and row.get("diagnostic_level") in {"STATIC", "STRUCTURAL", "BEHAVIORAL"} for row in active_rows)
+    offline_eligible = sum(row.get("live_acceptance_required", "").lower() == "false" for row in active_rows)
+    offline_behavioral = sum(row.get("live_acceptance_required", "").lower() == "false" and row.get("diagnostic_level") in {"BEHAVIORAL", "RUNTIME"} for row in active_rows)
     distinct = sum(bool(item.get("confirming_checks")) and bool(item.get("excluding_checks")) for item in failure_rows)
     symptom_only = sum(not item.get("confirming_checks") or not item.get("excluding_checks") for item in failure_rows)
     if errors:
@@ -214,7 +215,7 @@ def main(argv: list[str] | None = None) -> int:
     print("PASS")
     print(f"active_requirements={len(active)} behavioral_tests={tests}/{len(active)}")
     print("diagnostic_levels=" + ",".join(f"{level}:{diagnostic_counts[level]}" for level in ("NONE", "STATIC", "STRUCTURAL", "BEHAVIORAL", "RUNTIME", "LIVE_EXTERNAL")))
-    print(f"live_external_required={live_required}/{len(active)} fully_diagnosable_offline={fully_offline}/{len(active)}")
+    print(f"live_external_required={live_required}/{len(active)} offline_eligible_requirements={offline_eligible}/{len(active)} offline_behaviorally_diagnosable={offline_behavioral}/{len(active)}")
     print(f"failure_modes={len(failure_rows)} distinctly_diagnosable={distinct}/{len(failure_rows)} symptom_only={symptom_only}/{len(failure_rows)}")
     print("TRACE-001..013 PASS")
     return 0

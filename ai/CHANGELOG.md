@@ -3,6 +3,22 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-01T15:50:00Z — OPEN / SAFE TEST RUNTIME — TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901
+
+- Независимо подтверждён remote HEAD V1.1 и создан отдельный worktree/branch
+  `control/reproducible-test-runtime-v1-20260901`; исходный checkout не менялся.
+- Проведён audit тестов: текущий backend/discovery/diagnostic набор использует
+  `unittest`; `pytest` и `pytest-cov` не доказаны и не добавлялись.
+- Добавлены отдельный `requirements-test.txt`, официальный offline runner,
+  bootstrap test-venv, safe runtime entrypoint/start/stop и profile-aware Doctor.
+- Проверено: diagnostic suite `25 PASS`; затем официальный полный runner
+  `411 tests, 0 failures, 0 errors, 1 skipped`; frontend clean `npm ci`,
+  typecheck, lint с 8 предупреждениями и build прошли; Playwright Chromium
+  установлен отдельно.
+- Safe runtime поднят на disposable SQLite в `OFFLINE_TEST`; HTTP smoke и
+  real-route public-shell acceptance `8 passed`; real mail/provider access не
+  выполнялся.
+
 ## 2026-09-01T07:11:12Z — АУДИТ СИСТЕМЫ И ФРОНТЕНДА — TASK-SYSTEM-FRONT-AUDIT-20260901
 
 - Изучены state-документы, `docs/**`, `Documents/28-8/**`, журналы, исходники,
@@ -805,3 +821,17 @@ rewritten.
 - Commit `f2e707ac9988223dc87f242d53df837d70ddca5f` was pushed to the
   dedicated remote branch; no merge, product-code change, database write,
   migration, provider connection or real email action occurred.
+
+## 2026-09-01T16:05:00Z — TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901 COMPLETE
+
+- Added the reproducible test contract, official unittest runner, PowerShell
+  setup/full/diagnostic wrappers and clean-checkout documentation.
+- Added the safe `OFFLINE_TEST` runtime with disposable SQLite, synthetic
+  configuration, disabled outgoing mail, fake/blocked providers and
+  loopback-only networking; canonical DB and private `.env` remain forbidden.
+- Verified `411` backend tests (`0` failures, `0` errors, `1` skipped), `25`
+  diagnostic tests, frontend install/typecheck/lint/build, `8/8` real-route
+  Playwright viewports, validators, safe HTTP smoke and Doctor profile gates.
+- No product source, canonical database, migrations, provider state or real
+  email action was changed or performed. Final branch push remains the next
+  closeout action.

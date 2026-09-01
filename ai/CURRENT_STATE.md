@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-01
-source_commit: f2e707ac9988223dc87f242d53df837d70ddca5f
+source_commit: f9b0b66432f9e8650e87e5a89dd27a258a416e38
 ---
 
 # Current State
@@ -15,9 +15,9 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T15:02:50Z` — diagnostic control plane V1.1 validation and
-hardening completed on `control/diagnostic-plane-v1.1-20260901` at commit
-`f2e707ac9988223dc87f242d53df837d70ddca5f`.
+`2026-09-01T16:05:00Z` — reproducible safe test and runtime environment V1
+implemented on `control/reproducible-test-runtime-v1-20260901`, based on the
+verified V1.1 remote HEAD `f9b0b66432f9e8650e87e5a89dd27a258a416e38`.
 
 ## Project
 
@@ -29,8 +29,10 @@ hardening completed on `control/diagnostic-plane-v1.1-20260901` at commit
 - Diagnostic V1 branch: `control/diagnostic-plane-v1-20260901` at
   `98f4a370e2bf223aea6550630ce49ed05f12a8af`.
 - Diagnostic V1.1 branch: `control/diagnostic-plane-v1.1-20260901`, created in
-  a separate worktree from the V1 HEAD above; remote branch resolves to
-  `f2e707ac9988223dc87f242d53df837d70ddca5f`.
+  a separate worktree from the V1 HEAD above; verified remote branch resolves
+  to `f9b0b66432f9e8650e87e5a89dd27a258a416e38`.
+- Reproducible test/runtime branch: `control/reproducible-test-runtime-v1-20260901`,
+  kept in a separate worktree and not merged into the default branch.
 - Product behavior is not changed by this control-plane-only task.
 
 ## Runtime
@@ -39,10 +41,12 @@ hardening completed on `control/diagnostic-plane-v1.1-20260901` at commit
   `api/index.py`.
 - Frontend root: `frontend/`; default URLs are
   `http://127.0.0.1:8000` and `http://127.0.0.1:5173`.
-- Database contract: SQLite at `mail-data/supplier.sqlite3`; the canonical
-  control worktree intentionally does not carry local environment or mail data.
-- No runtime, database, mail transport, migration, or external service action
-  was performed by this task.
+- Canonical database contract remains SQLite at `mail-data/supplier.sqlite3`;
+  the safe test profile refuses that path and uses only
+  `runtime/test-data/supplier.sqlite3`.
+- Safe runtime profile: `OFFLINE_TEST`; it uses the real application routes,
+  synthetic credentials, disposable SQLite, disabled outgoing mail and
+  loopback-only networking. The process was stopped after acceptance.
 
 ## Implemented
 
@@ -68,59 +72,70 @@ hardening completed on `control/diagnostic-plane-v1.1-20260901` at commit
 - V1.1 adds disposable negative fixtures for database, backend, frontend,
   secret-path and machine-output classification, and makes `doctor -Apply` an
   explicit safety block because recovery is not implemented.
+- V1 adds `requirements-test.txt`, a standard-library unittest runner,
+  PowerShell setup/run wrappers, and a documented clean-checkout bootstrap.
+- V1 adds `OFFLINE_TEST` safe runtime start/stop wrappers, an owned runtime
+  marker, disposable database enforcement, inherited-provider scrubbing and
+  a loopback-only network guard.
+- Doctor now has explicit `OFFLINE_TEST`, `LOCAL_CANONICAL` and
+  `LIVE_EXTERNAL` profiles; offline checks are separated from live-provider
+  acceptance and `-Apply` remains blocked.
 
 ## Verified
 
-The following evidence is inherited from the canonical control baseline or was
-verified by this diagnostic task:
+The following evidence is inherited from earlier control work or was verified
+on this task's dedicated branch:
 
-- Backend control run: `373 passed, 1 skipped, 0 failed, 0 errors`.
-- Frontend: `npm ci`, typecheck, and build passed; lint passed with 8 warnings.
-- Public shell Playwright acceptance: `8 passed`.
+- Official backend full run: `411 tests, 0 failures, 0 errors, 1 skipped`.
+- Frontend clean install, typecheck and build passed; lint passed with 8
+  warnings.
+- Public-shell Playwright acceptance: `8/8` viewport projects passed against
+  the safe runtime.
 - Published live route acceptance: `18/18 PASS`.
-- Source-checkout doctor dry-run: `PASS`; control-worktree dry-run is expected
-  partial because `.env` and `mail-data` are absent.
+- Safe runtime smoke: root `200`, auth/me `200`, protected APIs `401`, unknown
+  API `404`; synthetic login and protected `200` paths passed.
+- Safe runtime marker: disposable SQLite, canonical `false`, outgoing mail
+  disabled, providers fake/blocked, private `.env` not loaded, real email false.
 - Remote audit retention: audit branch resolves to
   `b5a454f9b39f3cbf01d640d5b67e4231ca25733a` and its retained tree includes the
   audit index, summary, final report, functional baseline, and security findings.
-- Diagnostic tests: `19 passed` with `python -m unittest discover -s
+- Diagnostic tests: `25 passed` with `python -m unittest discover -s
   tests/diagnostics -v`, including controlled negative fixtures.
 - Traceability validator: `PASS`; 21 active requirements, 21/21 behavioral
   test links, 21/21 distinctly diagnosable failure modes, and TRACE-001..013.
-- Doctor `-Plan`: exit `0`; doctor `-DryRun`: exit `2` with no product failure;
-  opt-in frontend/browser diagnostics: explicit environment gaps because
-  `frontend/node_modules` is absent; doctor `-Apply`: `SAFETY_BLOCK`, exit `3`.
+- Doctor `-Plan`: exit `0`; full `-DryRun -Profile OFFLINE_TEST` returned
+  `WARNING`, exit `0`, with all required checks passing and only the expected
+  dirty-worktree warning; `doctor -Apply`: `SAFETY_BLOCK`, exit `3`.
 - Dedicated branch was pushed to `origin`; the first DNS attempt failed
   transiently and the immediate retry succeeded.
 - Documentation, state and traceability validators: `PASS`; `git diff --check`:
   `PASS`.
-- Doctor `-Plan`: exit `0`; doctor `-DryRun`: exit `2` with explicit
-  `NOT_VERIFIED`/`ENVIRONMENT_GAP` for absent local DB and unavailable HTTP,
-  and JSON evidence at the system temporary path.
+- `requirements-test.txt` was installed only into `.venv-test`; no global
+  package install, private `.env`, canonical DB or provider connection was
+  required.
+- Traceability validator now reports `offline_eligible_requirements=21/21` and
+  `offline_behaviorally_diagnosable=6/21`; eligibility is not overclaimed as
+  behavior proof.
 
 ## Not verified
 
-- Backend-backed live routes were not rerun in this V1.1 worktree; HTTP probes
-  remain an explicit environment gap because no backend process was started.
-- Full backend regression was attempted with system Python and an isolated
-  environment containing only `requirements.txt`; `pytest` is not declared or
-  installed, and `tests/run-tests.ps1` is absent.
-- Frontend typecheck/lint/build and browser acceptance were not executed in
-  this worktree because `frontend/node_modules` is absent; the opt-in runner
-  reports `DEPENDENCIES_NOT_INSTALLED` without installing dependencies.
+- Live external provider routes, real SMTP/IMAP, real email and production
+  migration behavior were not exercised by design.
+- Full authenticated real-provider workflows remain outside the safe offline
+  contract; synthetic login and protected local routes were checked.
 - Same-environment parity between the source checkout and the control worktree
   was not re-established.
 - `knip` status remains `NOT VERIFIED`.
-- Current local database rows, mailbox state, provider quotas, and real email
-  delivery were not inspected or exercised.
+- Current canonical database rows, mailbox state and provider quotas were not
+  inspected or exercised.
 - The ownership of the source-checkout local-only Neon skill, `keywords.txt`,
   and root `run_probe.py` remains `UNKNOWN_REVIEW`.
 
 ## Blockers
 
-- No documentation-governance blocker remains for this branch.
-- Product-level follow-up remains bounded by the limitations above and the
-  open findings in [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
+- No reproducible-test-runtime blocker remains for the offline scope.
+- Product/live-provider follow-up remains bounded by the limitations above and
+  the open findings in [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
 
 ## Active constraints
 
@@ -130,11 +145,14 @@ verified by this diagnostic task:
   database, force-push, merge, or change the default branch.
 - Keep audit history on the dedicated audit branch; only the documented pointer
   and selected summaries belong in the canonical working branch.
+- Do not start the safe runtime from a canonical database or private `.env`;
+  use `scripts/start_test_runtime.ps1 -Apply` after the test venv exists.
 
 ## Current next step
 
-`SUPPLYDESK DIAGNOSTIC CONTROL PLANE V1.1` is complete on its dedicated branch;
-review and merge, if desired, remain an explicit human action.
+`SUPPLYDESK REPRODUCIBLE SAFE TEST & RUNTIME ENVIRONMENT V1` is complete on
+its dedicated branch after final validation; review and merge, if desired,
+remain an explicit human action.
 
 ## Canonical references
 
@@ -146,5 +164,6 @@ review and merge, if desired, remain an explicit human action.
 - Latest governance report: [`ai/reports/TASK-DOCUMENTATION-GOVERNANCE-20260901-report.md`](reports/TASK-DOCUMENTATION-GOVERNANCE-20260901-report.md).
 - Diagnostic report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md).
 - Diagnostic V1.1 report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md).
+- Reproducible test/runtime report: [`ai/reports/TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901-report.md`](reports/TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901-report.md).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).
 

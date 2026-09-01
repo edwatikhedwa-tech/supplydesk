@@ -101,7 +101,8 @@ operator_tools:
     classification: TRACK_TOOLING
 
 tracked_test_contract:
-  backend_command: python -m pytest tests -vv --tb=short
+  backend_command: powershell -ExecutionPolicy Bypass -File .\tests\run-tests.ps1
+  backend_diagnostic_command: powershell -ExecutionPolicy Bypass -File .\tests\run-tests.ps1 -Diagnostics
   offline_fixture: benchmarks/enrichment_cases.json
   frontend_install: npm ci --no-audit --fund=false
   frontend_typecheck: npm run typecheck
@@ -109,6 +110,20 @@ tracked_test_contract:
   frontend_build: npm run build
   public_shell: AUDIT_BASE_URL=http://127.0.0.1:5173 npx playwright test tests/frontend-audit.spec.ts -g "public shell" --workers=1
   live_email_tests: not executed; no real mailbox or SMTP access
+
+testing:
+  python_runtime_requirements: requirements.txt
+  python_test_requirements: requirements-test.txt
+  backend_runner: tests/run-tests.ps1
+  setup: scripts/setup_test_env.ps1
+  environment_doc: docs/testing/TEST_ENVIRONMENT.md
+  external_network_default: forbidden
+  canonical_database_allowed: false
+  real_mail_allowed: false
+  runtime_profile: OFFLINE_TEST
+  safe_runtime_start: scripts/start_test_runtime.ps1
+  safe_runtime_stop: scripts/stop_test_runtime.ps1
+  python_test_runner: scripts/run_test_suite.py
 
 protected_local_paths:
   - .env
