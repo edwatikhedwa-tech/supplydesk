@@ -3,6 +3,20 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-01T22:16:53Z — VIBECODING ACKNOWLEDGEMENT OUTPUT FIX — TASK-VIBECODING-ACKNOWLEDGEMENT-OUTPUT-FIX-20260902
+
+- Replaced the old response-prefix instruction with a final-response-only
+  acknowledgement contract in the canonical VibeCoding policy and both
+  instruction adapters.
+- Extended `ai/tools/validate_vibecoding.py` to require the final-only and
+  intermediate-prohibition markers, reject stale prefix instructions and reject
+  hardcoded acknowledgement dates outside canonical `last_corrected`.
+- Added focused negative governance fixtures for missing final semantics, stale
+  intermediate prefix behavior and embedded dates.
+- No product code, CI workflow, database, environment, mail data or frontend
+  behavior changed; backend/frontend/Playwright acceptance was intentionally not
+  run because this task is governance-only.
+
 ## 2026-09-01T15:50:00Z — OPEN / SAFE TEST RUNTIME — TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901
 
 - Независимо подтверждён remote HEAD V1.1 и создан отдельный worktree/branch

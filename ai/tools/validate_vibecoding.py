@@ -36,6 +36,14 @@ RISK_NAMES = ("LOW", "NORMAL", "HIGH")
 FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*(?:\n|\Z)", re.DOTALL)
 FIELD_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$", re.MULTILINE)
 DATE_RE = re.compile(r"^20\d{2}-\d{2}-\d{2}$")
+ACK_TEMPLATE = "Я использую правила VibeCoding'a от <last_corrected>."
+ACK_FINAL_MARKER = "FINAL RESPONSE:\nEXACTLY ONE VIBECODING ACKNOWLEDGEMENT"
+ACK_INTERMEDIATE_MARKER = "INTERMEDIATE RESPONSE:\nNO VIBECODING ACKNOWLEDGEMENT"
+ACK_LITERAL_RE = re.compile(r"Я использую правила VibeCoding'a от 20\d{2}-\d{2}-\d{2}\.")
+ACK_STALE_PREFIX_RE = re.compile(
+    r"(?:begin\s+(?:its\s+)?response\s+with\s*:?|emit)\s*`?Я использую правила VibeCoding'a от",
+    re.IGNORECASE,
+)
 REGISTRY_ENTRY_RE = re.compile(r"^\s{2}-\s+id:\s*([^\s#]+)\s*$", re.MULTILINE)
 REGISTRY_FIELD_RE = re.compile(r"^\s{4}([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$", re.MULTILINE)
 
@@ -142,8 +150,16 @@ def validate(root: Path) -> list[str]:
                 datetime.strptime(corrected, "%Y-%m-%d")
             except ValueError:
                 errors.append(f"POLICY-004 FAIL: last_corrected is not a valid calendar date: {corrected!r}")
-        if "Я использую правила VibeCoding'a от <last_corrected>." not in policy_text:
-            errors.append("POLICY-005 FAIL: mandatory acknowledgement template is missing")
+        if ACK_TEMPLATE not in policy_text:
+            errors.append("POLICY-005 FAIL: acknowledgement template is missing")
+        if ACK_FINAL_MARKER not in policy_text:
+            errors.append("POLICY-022 FAIL: final acknowledgement contract is missing")
+        if ACK_INTERMEDIATE_MARKER not in policy_text:
+            errors.append("POLICY-022 FAIL: intermediate acknowledgement prohibition is missing")
+        if ACK_STALE_PREFIX_RE.search(policy_text):
+            errors.append("POLICY-022 FAIL: canonical policy still requires acknowledgement as a response prefix")
+        if ACK_LITERAL_RE.search(policy_text):
+            errors.append("POLICY-023 FAIL: canonical acknowledgement date must come from last_corrected")
         if "VIBECODING POLICY: NOT VERIFIED" not in policy_text:
             errors.append("POLICY-006 FAIL: unresolved-policy fallback is missing")
         if "## Verification profiles and risk model" not in policy_text:
@@ -180,6 +196,13 @@ def validate(root: Path) -> list[str]:
         text = read_text(instruction)
         if POLICY_REL not in text:
             errors.append(f"POLICY-007 FAIL: {instruction.name} does not reference {POLICY_REL}")
+        lowered = text.lower()
+        if "exactly once in the final response" not in lowered or "never emit it in intermediate" not in lowered:
+            errors.append(f"POLICY-022 FAIL: {instruction.name} does not state final-only acknowledgement semantics")
+        if ACK_STALE_PREFIX_RE.search(text):
+            errors.append(f"POLICY-022 FAIL: {instruction.name} still requires acknowledgement as a response prefix")
+        if ACK_LITERAL_RE.search(text):
+            errors.append(f"POLICY-023 FAIL: {instruction.name} contains a hardcoded acknowledgement date")
 
     manifest = root / "PROJECT_MANIFEST.yaml"
     if not manifest.is_file():

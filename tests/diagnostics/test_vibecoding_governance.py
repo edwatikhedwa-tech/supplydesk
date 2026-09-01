@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 import sys
@@ -52,7 +53,8 @@ class VibeCodingGovernanceTests(unittest.TestCase):
         root = self.make_fixture()
         try:
             path = root / "ai/VIBECODING_RULES.md"
-            path.write_text(path.read_text(encoding="utf-8").replace("last_corrected: 2026-09-01", "last_corrected: invalid"), encoding="utf-8")
+            text = path.read_text(encoding="utf-8")
+            path.write_text(re.sub(r"last_corrected: \d{4}-\d{2}-\d{2}", "last_corrected: invalid", text, count=1), encoding="utf-8")
             result = self.run_validator(root)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("POLICY-004 FAIL", result.stdout)
@@ -67,6 +69,52 @@ class VibeCodingGovernanceTests(unittest.TestCase):
             result = self.run_validator(root)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("AGENTS.md", result.stdout)
+        finally:
+            shutil.rmtree(root)
+
+    def test_intermediate_ack_prefix_fails(self):
+        root = self.make_fixture()
+        try:
+            path = root / "AGENTS.md"
+            text = path.read_text(encoding="utf-8")
+            text = text.replace(
+                "Emit the\nVibeCoding acknowledgement exactly once in the final response after the task\n",
+                "emit `Я использую правила VibeCoding'a от <last_corrected>.`\n",
+            )
+            path.write_text(text, encoding="utf-8")
+            result = self.run_validator(root)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("POLICY-022 FAIL", result.stdout)
+        finally:
+            shutil.rmtree(root)
+
+    def test_literal_ack_date_in_instruction_fails(self):
+        root = self.make_fixture()
+        try:
+            path = root / "CLAUDE.md"
+            path.write_text(
+                path.read_text(encoding="utf-8")
+                + "\nЯ использую правила VibeCoding'a от 2099-12-31.\n",
+                encoding="utf-8",
+            )
+            result = self.run_validator(root)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("POLICY-023 FAIL", result.stdout)
+        finally:
+            shutil.rmtree(root)
+
+    def test_final_ack_contract_is_required(self):
+        root = self.make_fixture()
+        try:
+            path = root / "ai/VIBECODING_RULES.md"
+            text = path.read_text(encoding="utf-8").replace(
+                "FINAL RESPONSE:\nEXACTLY ONE VIBECODING ACKNOWLEDGEMENT\n",
+                "",
+            )
+            path.write_text(text, encoding="utf-8")
+            result = self.run_validator(root)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("POLICY-022 FAIL", result.stdout)
         finally:
             shutil.rmtree(root)
 

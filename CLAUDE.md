@@ -26,10 +26,12 @@ the relevant files were actually connected or read.
 Before any project task, read `PROJECT_MANIFEST.yaml`,
 `ai/CURRENT_STATE.md`, `ai/VIBECODING_RULES.md` and
 `ai/VIBECODING_TOOL_REGISTRY.yaml`; read `last_corrected` from the canonical
-policy, emit `Я использую правила VibeCoding'a от <last_corrected>.`, classify
-the task and select only the required checks. If the policy is missing,
-ambiguous or its date is unreadable, emit `VIBECODING POLICY: NOT VERIFIED`
-and do not modify the project. Detailed rules live only in
+policy, classify the task and select only the required checks. Emit the
+VibeCoding acknowledgement exactly once in the final response after the task
+is completed or stopped; never emit it in intermediate updates. If the policy
+is missing, ambiguous or its date is unreadable, use
+`VIBECODING POLICY: NOT VERIFIED` exactly once in the final response and do
+not modify the project. Detailed rules live only in
 [`ai/VIBECODING_RULES.md`](ai/VIBECODING_RULES.md).
 
 ## Root hygiene

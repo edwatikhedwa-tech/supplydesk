@@ -15,10 +15,12 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T21:56:03Z` — VibeCoding CI performance fix V1 is implemented on
-the dedicated branch. Remote FAST routing passed; the explicit FULL proof
-reproduced the hosted Windows Browser Full performance failure and was stopped
-without timeout escalation.
+`2026-09-01T22:16:53Z` — VibeCoding acknowledgement-output governance fix is
+implemented on its dedicated branch. VibeCoding CI performance fix V1 remains
+implemented on its dedicated branch; its remote FAST routing passed and the
+explicit FULL proof reproduced the hosted Windows Browser Full performance
+failure without timeout escalation. The acknowledgement correction is
+recorded separately.
 
 ## Project
 
@@ -99,10 +101,10 @@ without timeout escalation.
 - Doctor now has explicit `OFFLINE_TEST`, `LOCAL_CANONICAL` and
   `LIVE_EXTERNAL` profiles; offline checks are separated from live-provider
   acceptance and `-Apply` remains blocked.
-- VibeCoding Control Policy V1 is canonical at `ai/VIBECODING_RULES.md` with
-  `last_corrected: 2026-09-01`; its factual tool inventory is
-  `ai/VIBECODING_TOOL_REGISTRY.yaml` and its read-only validator is
-  `ai/tools/validate_vibecoding.py`.
+- VibeCoding Control Policy V1 is canonical at `ai/VIBECODING_RULES.md`; its
+  `last_corrected` value is read from that file by the read-only validator.
+  Its factual tool inventory is `ai/VIBECODING_TOOL_REGISTRY.yaml` and its
+  validator is `ai/tools/validate_vibecoding.py`.
 - VibeCoding bootstrap references are present in `AGENTS.md`, `CLAUDE.md`,
   `PROJECT_MANIFEST.yaml` and this AI entrypoint. The documentation validator
   recognizes the separate canonical policy without weakening current-state
@@ -198,6 +200,10 @@ on this task's dedicated branch:
 - Local V1.1 governance checks and classifier tests were rerun after the
   workflow/validator changes; remote CI execution is verified for the focused
   FAST path.
+- Acknowledgement-output governance correction is isolated to the canonical
+  policy, `AGENTS.md`, `CLAUDE.md`, its validator and focused governance tests:
+  intermediate responses contain no acknowledgement, while the final response
+  contains exactly one rendered from canonical `last_corrected`.
 - Remote FAST proof `33562406201` passed in 1m22s on final configuration
   commit `2b860a5`; Full Control passed and Backend Full/Browser Full were
   skipped by deterministic classification.

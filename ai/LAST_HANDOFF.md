@@ -9,47 +9,49 @@ based_on_commit: 2b860a54e89c062126f872635ea721537c0594dc
 
 # Last Handoff
 
-This handoff records CI Performance Fix V1 closeout evidence. The final
-documentation commit is recorded by Git history, not copied into this
-metadata.
+This handoff records the VibeCoding acknowledgement-output governance fix.
+The final documentation commit is recorded by Git history, not copied into
+this metadata.
 
 ## Цель
 
-Оставить быстрый focused push path, сохранить полный acceptance path и
-зафиксировать фактическое ограничение hosted Windows runner.
+Запретить повторение VibeCoding acknowledgement в промежуточных сообщениях и
+требовать ровно одно acknowledgement в финальном ответе, с датой из
+канонической политики.
 
 ## Что изменено
 
-- CI workflow uses FAST/FOCUSED/FULL/PERIODIC routing, job concurrency and a
-  CI Summary.
-- A real-route one-viewport Browser Smoke was added; the existing 8-viewport
-  Browser Full remains intact with the canonical four-worker configuration.
-- Diagnostic tests are excluded from backend product routing.
-- No product logic, UI, API, database, mail data, credentials, environment,
-  runtime or quarantine content changed.
+- `ai/VIBECODING_RULES.md` now defines final-response-only acknowledgement
+  semantics and reads its date from canonical `last_corrected`.
+- `AGENTS.md` and `CLAUDE.md` no longer require a response prefix.
+- `ai/tools/validate_vibecoding.py` and focused governance tests reject stale
+  prefix behavior and hardcoded dates.
+- No product logic, UI, API, CI architecture, database, mail data, credentials,
+  environment, runtime or quarantine content changed.
 
 ## Что проверено
 
-- Remote FAST proof `33562406201`: PASS, 1m22s; Backend Full and Browser Full
-  were SKIP.
-- Explicit FULL `33562558816`: Fast Control, classification, Doctor and
-  Frontend PASS; Browser Full failed at 11m17s on screenshot/Axe timeouts and
-  Backend Full was cancelled at 11m49s without a final total.
-- Local diagnostics `39/39`, quick runner `50/0/0/0`, all state/documentation/
-  traceability/policy validators, Doctor Plan and diff check passed.
-- Local real-route Browser Smoke passed `1/1` in 1.7s.
+- Focused governance tests: `7/7 PASS`.
+- `python ai/tools/validate_vibecoding.py`: `PASS`, 35 registered tools.
+- Repository search found no stale acknowledgement prefix or hardcoded rendered
+  date in instruction/policy files; date literals remain only in intentional
+  negative-test fixtures.
+- Backend, frontend and Playwright acceptance were not run by explicit task
+  scope.
 
 ## Что не прошло
 
-The hosted Windows full browser acceptance is `NOT VERIFIED` as green. The
-runner reproduced the existing screenshot/Axe timeout behavior across all
-eight viewports. No timeout escalation was applied.
+Nothing failed in the focused governance scope. Full product acceptance is
+`NOT_NEEDED` for this governance-only correction and is not evidence about
+backend, frontend or browser behavior.
 
 ## Что не проверено
 
-Live external providers, real mail, production database behavior, branch
-protection and unlisted CI tools remain outside this task and are not implied
-by the remote workflow results.
+NOT VERIFIED: live external providers, real mail, production database behavior,
+branch protection and unlisted CI tools remain outside this task and were not
+checked. The validator checks repository contract and stale instruction
+patterns; it cannot measure the agent's actual final response, so the runtime
+must still render exactly one acknowledgement there.
 
 ## Текущее состояние runtime
 
@@ -58,12 +60,13 @@ OFFLINE_TEST runtime used for Browser Smoke was stopped.
 
 ## Следующий рациональный шаг
 
-Use the canonical workspace and the remote branch as source of truth. If full
-CI speed must be improved further, open a separate task for Windows
-Playwright/Axe runner profiling; do not increase timeouts in this task.
+Commit and push this isolated governance correction after documentation/state
+validators and `git diff --check` pass. Keep the final user response's
+acknowledgement at exactly one occurrence.
 
 ## Не повторять
 
 Do not use the legacy OneDrive checkout, do not run real mail, do not modify
-protected local data, do not force-push, and do not start another corrective
-remote iteration for this task.
+protected local data, do not run backend/frontend/Playwright for this task, do
+not force-push, and do not add a second acknowledgement to an intermediate
+message.

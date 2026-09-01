@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 version: 1.1
-last_corrected: 2026-09-01
+last_corrected: 2026-09-02
 based_on_commit: f13dad6dc2461ef6dc50242f7fc075895f2a4603
 ---
 
@@ -23,21 +23,30 @@ Before any project task, the agent must read, in this order:
 3. `ai/VIBECODING_RULES.md`;
 4. `ai/VIBECODING_TOOL_REGISTRY.yaml`.
 
-The agent must read `last_corrected` from this file and begin its response with:
+The agent must read `last_corrected` from this file. The VibeCoding
+acknowledgement is a final-response-only marker and must be rendered exactly
+once in the final user-facing response after the task is completed or stopped:
 
 `Я использую правила VibeCoding'a от <last_corrected>.`
 
-For the current policy this renders as:
+It must not be emitted in intermediate status, command, waiting, diagnostic,
+progress, error, continuation or post-tool messages. Intermediate messages
+contain no VibeCoding acknowledgement.
 
-`Я использую правила VibeCoding'a от 2026-09-01.`
+The date is read from this canonical policy at final rendering. It must not be
+copied as an independently maintained literal date into other instruction or
+state files. `last_corrected` changes only when a semantic rule changes;
+spelling, formatting and link-only corrections do not change it.
 
-The date must not be copied as an independently maintained value into other
-instruction or state files. `last_corrected` changes only when a semantic rule
-changes; spelling, formatting and link-only corrections do not change it.
+INTERMEDIATE RESPONSE:
+NO VIBECODING ACKNOWLEDGEMENT
+
+FINAL RESPONSE:
+EXACTLY ONE VIBECODING ACKNOWLEDGEMENT
 
 If this file is missing, is not `CURRENT`, more than one canonical CURRENT
 VibeCoding policy is found, or `last_corrected` cannot be read as an ISO date,
-the agent must begin with:
+the agent must use this fallback exactly once in the final response:
 
 `VIBECODING POLICY: NOT VERIFIED`
 
@@ -329,8 +338,8 @@ apply:
 
 `task → analysis → implementation → local checks → independent checks → evidence → report`
 
-1. **Rule verification.** Read the four bootstrap files, validate the policy
-   date and emit the acknowledgement.
+1. **Rule verification.** Read the four bootstrap files and validate the
+   policy date; render the acknowledgement only in the final response.
 2. **Environment fixation.** Verify repository, branch, HEAD, working tree,
    canonical workspace and relevant runtime/database profile. Do not develop in
    a legacy checkout.
