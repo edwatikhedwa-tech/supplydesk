@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-01
-source_commit: d2ceef3
+source_commit: 9e2acba40a702399653055162fa7101adf6d7486
 ---
 
 # Current State
@@ -15,7 +15,7 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T20:45:00Z` — safe cleanup Batch 2 completed its offline acceptance
+`2026-09-01T17:59:25Z` — safe cleanup Batch 2 completed its offline acceptance
 on the canonical checkout. The new canonical checkout is the development
 source of truth; the historical OneDrive checkout is marked
 `DO_NOT_USE_FOR_DEVELOPMENT` and its three former unknown items are retained
@@ -150,6 +150,10 @@ on this task's dedicated branch:
   synthetic matrix; `.env.example` remains ignored under the publish denylist.
 - Batch 2 acceptance: backend `412/0/0/1`, diagnostics `26/26`, frontend
   install/typecheck/lint/build PASS, Playwright `8/8`, Doctor Full exit `0`.
+- Batch 2 documentation/state/traceability validators and `git diff --check`
+  passed; the cleanup report and manifest are retained in the pushed branch.
+- Remote `control/safe-cleanup-batch2-20260901` was independently verified to
+  match the final closeout commit.
 
 ## Not verified
 
@@ -186,10 +190,9 @@ on this task's dedicated branch:
 
 ## Current next step
 
-`TASK-SAFE-CLEANUP-BATCH2-20260901` has completed the approved cleanup and
-offline acceptance. Final report/state validation and remote ref verification
-are the remaining closeout records; permanent quarantine purge remains
-forbidden.
+`TASK-SAFE-CLEANUP-BATCH2-20260901` is complete and its cleanup report,
+manifest and state closeout are pushed on the dedicated control branch.
+Permanent quarantine purge remains forbidden.
 
 ## Canonical references
 

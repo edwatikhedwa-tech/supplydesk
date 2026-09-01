@@ -192,8 +192,8 @@ errors and the expected PostgreSQL skip remained one.
 
 ## Closeout
 
-REMOTE REPORT PUSH: `PENDING` at report creation; the final branch ref and
-report will be independently verified before task closeout.
+REMOTE REPORT PUSH: `YES`; the report is included in the pushed control branch
+and the remote ref was independently verified at closeout.
 
 Branch: `control/safe-cleanup-batch2-20260901`
 

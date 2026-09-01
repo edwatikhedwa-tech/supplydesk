@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: d2ceef3
+source_commit: 9e2acba40a702399653055162fa7101adf6d7486
 ---
 
 # Last Handoff
@@ -63,9 +63,9 @@ verified remote control branch are the source of truth.
 
 ## Следующий рациональный шаг
 
-Complete the final state/report validation and push
-`control/safe-cleanup-batch2-20260901`; permanent purge is not part of Batch 2
-and no merge/default-branch change is performed automatically.
+Review retained frontend candidates or quarantine contents only in a separately
+approved task; permanent purge is not part of Batch 2 and no merge/default
+branch change was performed automatically.
 
 ## Не повторять
 

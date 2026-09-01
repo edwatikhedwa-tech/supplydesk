@@ -186,4 +186,4 @@ verification:
   real_email_sent: false
   remote_control_branch: control/safe-cleanup-batch2-20260901
   remote_governance_branch: control/documentation-governance-20260901
-  remote_push_verified: false
+  remote_push_verified: true

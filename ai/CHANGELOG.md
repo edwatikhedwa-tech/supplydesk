@@ -875,3 +875,14 @@ rewritten.
   `1` expected skip, `26/26` diagnostics, frontend gates, `8/8` Playwright and
   Doctor Full exit `0`. Final state/report validation and remote push remain
   closeout actions.
+
+## 2026-09-01T17:59:25Z — TASK-SAFE-CLEANUP-BATCH2-20260901 CLOSEOUT
+
+- Documentation, state and traceability validators passed; the cleanup report,
+  duplicate audit and manifest contain no secrets, quarantine content or
+  personal absolute paths.
+- The dedicated branch was pushed normally and its remote ref was independently
+  compared with the local closeout commit. No merge, force-push or default
+  branch change occurred.
+- `ACTIVE_TASK` is now `IDLE`; retained quarantine and permanent-purge review
+  remain separate owner decisions.

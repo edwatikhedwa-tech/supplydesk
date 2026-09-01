@@ -783,3 +783,10 @@ This log records agent work interactions. It is append-only.
 - Full offline acceptance passed on canonical workspace: backend `412/0/0/1`,
   diagnostics `26/26`, frontend install/typecheck/lint/build, safe HTTP
   `200/200/401/404`, Playwright `8/8` and Doctor Full exit `0`.
+
+## 2026-09-01T17:59:25Z — TASK-SAFE-CLEANUP-BATCH2-20260901 CLOSEOUT
+
+- State/report/traceability validators passed and the report, manifest and
+  duplicate audit were staged without protected paths or quarantine content.
+- The dedicated control branch was pushed normally; local and remote SHA-256
+  references matched at closeout. The task sentinel is now `IDLE`.
