@@ -5,13 +5,13 @@ last_audited: 2026-09-01
 profiles:
   FAST:
     purpose: cheap first-line deterministic feedback before expensive jobs
-    tools: validate_vibecoding, validate_docs, validate_state, validate_traceability, diagnostic_tests, git
+    tools: validate_vibecoding, validate_docs, validate_state, validate_traceability, diagnostic_tests, git, change_classifier
   FOCUSED:
     purpose: checks for the changed behavior and its nearest risk surface
-    tools: rg, backend_tests, typescript, eslint, frontend_build, playwright
+    tools: rg, backend_fast, typescript, eslint, frontend_build, browser_smoke
   FULL:
     purpose: independent deep acceptance for pull requests, high-risk changes and explicit manual runs
-    tools: backend_tests, npm_ci, typescript, eslint, frontend_build, playwright, doctor
+    tools: backend_full, npm_ci, typescript, eslint, frontend_build, browser_full, doctor
   PERIODIC:
     purpose: scheduled or manual expensive analysis outside blocking FAST CI
     tools: vulture, knip, coverage, semgrep, codeql, dependency_updates

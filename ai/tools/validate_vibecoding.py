@@ -160,6 +160,18 @@ def validate(root: Path) -> list[str]:
             errors.append("POLICY-015 FAIL: ceremony-check rule is missing")
         if "`NOT_NEEDED` means" not in policy_text or "`NOT_VERIFIED` means" not in policy_text:
             errors.append("POLICY-016 FAIL: NOT_NEEDED versus NOT_VERIFIED semantics are missing")
+        for phrase in (
+            "## CI performance budgets",
+            "SPEED IS PART OF QUALITY",
+            "`NORMAL PUSH`: target `<= 5 minutes`",
+            "`PULL REQUEST / HIGH-RISK`: target `<= 10–15 minutes`",
+            "`PERIODIC DEEP CHECKS`: outside normal push latency",
+            "## Launch frequency and fast browser smoke",
+            "`FULL_BROWSER_ACCEPTANCE`",
+            "`REMOTE CI SHOULD NOT BLOCK AGENT THINKING`",
+        ):
+            if phrase not in policy_text:
+                errors.append(f"POLICY-019 FAIL: performance policy phrase is missing: {phrase}")
 
     for instruction in (root / "AGENTS.md", root / "CLAUDE.md"):
         if not instruction.is_file():
@@ -190,6 +202,46 @@ def validate(root: Path) -> list[str]:
                 errors.append(f"POLICY-008 FAIL: manifest vibecoding.{key} must be {expected!r}")
             elif not (root / expected).exists():
                 errors.append(f"POLICY-008 FAIL: manifest vibecoding.{key} target is missing: {expected}")
+
+    workflow_path = root / ".github/workflows/ci.yml"
+    smoke_path = root / "frontend/tests/fast-browser-smoke.spec.ts"
+    if not workflow_path.is_file():
+        errors.append("POLICY-020 FAIL: CI workflow is missing")
+    else:
+        workflow_text = read_text(workflow_path)
+        for marker in (
+            "workflow_dispatch:",
+            "schedule:",
+            "cancel-in-progress: true",
+            "backend_fast:",
+            "backend_full:",
+            "browser_smoke:",
+            "browser_full:",
+            "ci_summary:",
+            "needs.change_classification.outputs.backend_fast == 'true'",
+            "needs.change_classification.outputs.backend_full == 'true'",
+            "needs.change_classification.outputs.browser_smoke == 'true'",
+            "needs.change_classification.outputs.browser_full == 'true'",
+            "tests/fast-browser-smoke.spec.ts --project=desktop-compact",
+            "tests/frontend-audit.spec.ts -g 'public shell'",
+        ):
+            if marker not in workflow_text:
+                errors.append(f"POLICY-020 FAIL: CI workflow marker is missing: {marker}")
+        full_line = next(
+            (line for line in workflow_text.splitlines() if "tests/frontend-audit.spec.ts -g 'public shell'" in line),
+            "",
+        )
+        if "--workers=1" in full_line or "--timeout=180000" in full_line:
+            errors.append("POLICY-020 FAIL: FULL browser acceptance has diagnostic-only worker or timeout overrides")
+    if not smoke_path.is_file():
+        errors.append("POLICY-021 FAIL: FAST browser smoke test is missing")
+    else:
+        smoke_text = read_text(smoke_path)
+        if "page.route" in smoke_text or "route.fulfill" in smoke_text:
+            errors.append("POLICY-021 FAIL: FAST browser smoke must not use route mocks")
+        for marker in ("page.goto('/login'", "response?.status()).toBe(200)", "page.on('pageerror'", "toBeVisible()"):
+            if marker not in smoke_text:
+                errors.append(f"POLICY-021 FAIL: FAST browser smoke marker is missing: {marker}")
 
     if not registry_path.is_file():
         errors.append(f"POLICY-009 FAIL: missing {REGISTRY_REL}")

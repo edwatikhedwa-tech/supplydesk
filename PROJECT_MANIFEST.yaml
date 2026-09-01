@@ -75,6 +75,7 @@ runtime:
 
 browser_acceptance:
   public_shell_test: frontend/tests/frontend-audit.spec.ts
+  fast_browser_smoke_test: frontend/tests/fast-browser-smoke.spec.ts
   public_shell_base_url: http://127.0.0.1:5173
   live_route_base_url: http://127.0.0.1:8000
   audit_live_route_url: http://127.0.0.1:18000
@@ -120,6 +121,7 @@ tracked_test_contract:
   frontend_lint: npm run lint
   frontend_build: npm run build
   public_shell: AUDIT_BASE_URL=http://127.0.0.1:5173 npx playwright test tests/frontend-audit.spec.ts -g "public shell" --workers=1
+  fast_browser_smoke: AUDIT_BASE_URL=http://127.0.0.1:8000 npx playwright test tests/fast-browser-smoke.spec.ts --project=desktop-compact
   live_email_tests: not executed; no real mailbox or SMTP access
 
 testing:

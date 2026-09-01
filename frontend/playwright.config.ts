@@ -13,7 +13,7 @@ const viewports = [
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /(?:frontend-audit|campaign-ui|mailru-ui)\.spec\.ts/,
+  testMatch: /(?:frontend-audit|fast-browser-smoke|campaign-ui|mailru-ui)\.spec\.ts/,
   timeout: 60_000,
   expect: {
     timeout: 5_000,

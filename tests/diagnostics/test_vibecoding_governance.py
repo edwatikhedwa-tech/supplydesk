@@ -17,6 +17,7 @@ FIXTURE_FILES = (
     ".github/workflows/ci.yml",
     "scripts/ci/classify_changes.ps1",
     "scripts/ci/change_groups.json",
+    "frontend/tests/fast-browser-smoke.spec.ts",
 )
 
 

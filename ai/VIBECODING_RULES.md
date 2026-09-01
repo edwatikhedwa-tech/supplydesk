@@ -121,9 +121,10 @@ claims that every job ran:
 
 - `FAST` — the cheap first line of deterministic protection: policy,
   documentation/state/traceability validators, diagnostic/control tests and Git
-  safety. Target duration is roughly 1–5 minutes, but this is an engineering
-  target, not an artificial pass gate. When Phase 1 tools are configured,
-  selective Ruff, Pyright, Gitleaks and pre-commit checks may join it.
+  safety. Its target is `<= 2 minutes`; an initial acceptable maximum is
+  `<= 5 minutes`. These are engineering targets, not artificial pass gates.
+  When Phase 1 tools are configured, selective Ruff, Pyright, Gitleaks and
+  pre-commit checks may join it.
 - `FOCUSED` — the smallest checks that answer the changed-behavior question:
   focused backend tests, a relevant frontend check or a real browser scenario.
   It is normally run locally by the agent and is not a synonym for full CI.
@@ -143,7 +144,8 @@ The risk levels are:
   is normally `NOT_NEEDED`.
 - `NORMAL` — isolated backend features, frontend logic, local API behavior,
   component changes and ordinary bug fixes. Usually `FAST` + `FOCUSED` plus the
-  relevant backend/frontend/browser job.
+  relevant selected backend/frontend/browser job; normal pushes must not start
+  an unrelated full backend or full browser suite.
 - `HIGH` — mail sending or eligibility, auth, database/migration, shared API or
   runtime, security, dependencies, CI infrastructure, provider integration or
   cross-cutting refactors. Usually `FAST` + `FOCUSED` + relevant `FULL`; use
@@ -163,6 +165,47 @@ explicit final acceptance.
 `NOT_NEEDED` means the policy says the check is irrelevant to this task.
 `NOT_VERIFIED` means the check would be useful or required but evidence is
 missing. They must never be interchanged to hide missing verification.
+
+## CI performance budgets
+
+`SPEED IS PART OF QUALITY`. A pipeline can be functionally correct and still
+fail as a VibeCoding tool when its latency is unreasonable for the class of
+change. The engineering budgets are:
+
+- `FAST CONTROL`: target `<= 2 minutes`, acceptable initial maximum `<= 5
+  minutes`.
+- `NORMAL PUSH`: target `<= 5 minutes` wall-clock.
+- `PULL REQUEST / HIGH-RISK`: target `<= 10–15 minutes` wall-clock when
+  relevant jobs run in parallel.
+- `PERIODIC DEEP CHECKS`: outside normal push latency and not blocking FAST CI.
+
+If a normal push is repeatedly above 10 minutes, record
+`CI_PERFORMANCE_FAILURE` or `PASS_WITH_PERFORMANCE_LIMITATION` and identify
+the measured bottleneck. Do not turn a slow check into an acceptable check by
+repeatedly inflating its timeout. Separate a test timeout from a job timeout.
+
+## Launch frequency and fast browser smoke
+
+The default launch model is:
+
+- `PUSH` → `FAST` only, plus the classifier-selected focused job. A normal
+  backend change may use the existing focused backend suite; a normal UI change
+  may use frontend checks and one real-route FAST browser smoke.
+- `PULL REQUEST` → `FAST` plus relevant FULL backend/frontend/browser/Doctor
+  checks.
+- `workflow_dispatch` with `FULL` → explicit FULL ALL.
+- `SCHEDULE` → PERIODIC or FULL checks outside normal push latency.
+
+The FAST browser smoke is one real `OFFLINE_TEST` runtime, one viewport and
+one to three critical assertions: startup/HTTP success, a real route and one
+key interaction with no critical JavaScript page error. It uses no route mocks,
+full Axe audit, screenshot matrix or deep visual regression. The existing
+eight-viewport Axe and screenshot acceptance remains unchanged as
+`FULL_BROWSER_ACCEPTANCE`; it is not weakened, only run less often.
+
+`REMOTE CI SHOULD NOT BLOCK AGENT THINKING`: after a push, the agent may do
+read-only analysis or prepare the next plan while CI runs, provided new code
+changes are not mixed into the branch under measurement.
 
 ## Minimum tool selection
 
@@ -235,18 +278,21 @@ Important responsibilities:
 
 ## CI control model
 
-The canonical V1.1 remote workflow is `.github/workflows/ci.yml`. It has stable
-job names `SupplyDesk / Fast Control`, `SupplyDesk / Change Classification`,
-`SupplyDesk / Backend`, `SupplyDesk / Frontend`, `SupplyDesk / Browser` and
-`SupplyDesk / Full Control`. `FAST` runs first; relevant expensive jobs wait
+The canonical V1.1 remote workflow is `.github/workflows/ci.yml`. Its stable
+job names are `SupplyDesk / Fast Control`, `SupplyDesk / Change Classification`,
+`SupplyDesk / Backend Fast`, `SupplyDesk / Backend Full`, `SupplyDesk / Frontend`,
+`SupplyDesk / Browser Smoke`, `SupplyDesk / Browser Full`, `SupplyDesk / Full
+Control` and `SupplyDesk / CI Summary`. `FAST` runs first; relevant jobs wait
 for its success and run in parallel where possible. Pushes normally use FAST
-and only the classifier-selected relevant jobs; pull requests run FAST plus
-relevant FULL jobs; `workflow_dispatch` can explicitly request FULL.
+and only the classifier-selected focused jobs; pull requests run FAST plus
+relevant FULL jobs; `workflow_dispatch` with `FULL` and the weekly schedule
+run FULL ALL.
 
 The deterministic path mapping is recorded in
 `scripts/ci/change_groups.json`, and `scripts/ci/classify_changes.ps1` emits
-`docs_only`, `backend`, `frontend`, `browser`, `high_risk`, `control`,
-`full_required` and `unknown`. No LLM participates in CI classification.
+the risk, profile and selected-job flags including `backend_fast`,
+`backend_full`, `browser_smoke`, `browser_full`, `doctor_required`,
+`jobs_required` and `jobs_skipped`. No LLM participates in CI classification.
 
 CI uses a clean `windows-latest` checkout, least-privilege `contents: read`,
 official pinned-major actions, explicit timeouts, safe pip/npm caches and
@@ -256,10 +302,25 @@ mail-data, quarantine or globally installed tools. CI never sends real mail,
 connects to SMTP/IMAP, writes the canonical database or requires production
 secrets. `continue-on-error` is forbidden for a blocking check.
 
-The workflow itself is high risk. After it is pushed, one explicit remote FULL
-run is required for this task. Local YAML inspection alone is not evidence of
-remote CI correctness. GitHub Actions becomes `CONFIGURED` in the registry
-only after that remote run succeeds and its result is independently verified.
+The workflow itself is high risk. After the final configuration is pushed, one
+remote FAST proof and one explicit remote FULL proof are required for a CI
+performance task. Local YAML inspection alone is not evidence of remote CI
+correctness. GitHub Actions becomes `CONFIGURED` in the registry only after
+the required remote proof is independently verified; slow or failed proof is
+recorded honestly as a performance limitation.
+
+## Runner parity and parallelism
+
+The current repository contract keeps `windows-latest` for backend, browser and
+Doctor jobs because their PowerShell wrappers and safe runtime have not been
+proven equivalent on Linux. Fast Control, classification and frontend commands
+are toolchain-level OS-independent candidates, but Linux parity is
+`NOT_VERIFIED` until a clean run proves it. Do not move a job to Ubuntu merely
+to make a dashboard faster. FULL backend, frontend and browser jobs are
+independent and should start in parallel after FAST; the canonical FULL browser
+configuration supplies its normal parallel workers. `workers=1` is reserved for
+diagnosis or an explicitly serialized investigation, not the default FULL
+acceptance.
 
 ## Canonical workflow
 
@@ -368,9 +429,12 @@ Focused: PASS | NOT_NEEDED | NOT_VERIFIED
 Backend: PASS | NOT_NEEDED | NOT_VERIFIED
 Frontend: PASS | NOT_NEEDED | NOT_VERIFIED
 Browser: PASS | NOT_NEEDED | NOT_VERIFIED
+Fast Browser: PASS | NOT_NEEDED | NOT_VERIFIED
 Security: PASS | NOT_NEEDED | NOT_VERIFIED
 Doctor: PASS | NOT_NEEDED | NOT_VERIFIED
 CI: PASS | NOT_CONFIGURED | NOT_RUN | FAIL
+Performance: PASS | PASS_WITH_PERFORMANCE_LIMITATION | FAIL | NOT_VERIFIED
+Normal push: <measured wall-clock and selected jobs>
 Periodic tooling: NOT_NEEDED unless explicitly requested
 Not verified: <explicit unknowns>
 Final status: PASS | PASS_WITH_LIMITATIONS | BLOCKED | FAIL
