@@ -3,7 +3,7 @@ document_id: STATE-001
 status: CURRENT
 canonical: true
 owner: project-control
-updated_at: 2026-09-01
+updated_at: 2026-09-02
 based_on_commit: f13dad6dc2461ef6dc50242f7fc075895f2a4603
 ---
 
@@ -15,10 +15,10 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T19:45:15Z` — VibeCoding CI V1.1 implementation is in progress on
-the dedicated branch. The verified starting point is
-`9d3e58232230b276396f3bc127e2d937bed8482d`; the publication commit is
-intentionally left to Git history rather than duplicated here.
+`2026-09-01T21:56:03Z` — VibeCoding CI performance fix V1 is implemented on
+the dedicated branch. Remote FAST routing passed; the explicit FULL proof
+reproduced the hosted Windows Browser Full performance failure and was stopped
+without timeout escalation.
 
 ## Project
 
@@ -111,6 +111,10 @@ intentionally left to Git history rather than duplicated here.
   LOW/NORMAL/HIGH risk levels and the FAST-first rule. CI implementation is
   tracked in `.github/workflows/ci.yml`; classifier mapping is in
   `scripts/ci/change_groups.json`.
+- CI Performance Fix V1 adds risk-based FAST/FOCUSED/FULL/PERIODIC workflow
+  routing, a real-route one-viewport Browser Smoke, concurrency cancellation,
+  explicit job budgets and a CI Summary. Normal focused pushes do not start
+  Backend Full or Browser Full.
 
 ## Verified
 
@@ -191,8 +195,23 @@ on this task's dedicated branch:
 - The governance commit `1bdda8a` was pushed to
   `origin/control/vibecoding-policy-v1-20260901`; its remote ref was verified
   after normal publication.
-- Local V1.1 governance checks and classifier tests are being rerun after the
-  workflow/validator changes; remote CI execution is not yet verified.
+- Local V1.1 governance checks and classifier tests were rerun after the
+  workflow/validator changes; remote CI execution is verified for the focused
+  FAST path.
+- Remote FAST proof `33562406201` passed in 1m22s on final configuration
+  commit `2b860a5`; Full Control passed and Backend Full/Browser Full were
+  skipped by deterministic classification.
+- Explicit FULL proof `33562558816` ran all required full jobs in parallel;
+  Change Classification, Fast Control, Full Control and Frontend passed, but
+  Browser Full failed after 11m17s on all eight viewport screenshot/Axe
+  scenarios and Backend Full was cancelled after 11m49s without a final test
+  total. This is recorded as `CI_PERFORMANCE_FAILURE`, not as a product
+  regression.
+- Local final control checks after the routing correction: diagnostics
+  `39/39`, official quick runner `50/0/0/0`, VibeCoding/docs/state/traceability
+  validators PASS, Doctor Plan PASS, and local real-route Browser Smoke `1/1`.
+- The GitHub Actions registry intentionally remains `NOT_VERIFIED`: FAST is
+  proven, but the required full remote acceptance is not green.
 
 ## Not verified
 
@@ -229,13 +248,14 @@ on this task's dedicated branch:
 - Do not treat planned or unverified tools as configured, and do not claim a
   check passed unless its command actually ran.
 - CI itself is HIGH risk: remote GitHub Actions status must be verified before
-  its registry entry can become `CONFIGURED`.
+  its registry entry can become `CONFIGURED`; the focused path is proven, but
+  the full path remains NOT_VERIFIED on the hosted runner.
 
 ## Current next step
 
-`TASK-VIBECODING-CI-V1.1-20260901` is in progress. Finish local gates, publish
-the workflow, run one explicit remote FULL profile and record its actual job
-conclusions before closing the task.
+`TASK-CI-PERFORMANCE-FIX-V1-20260902` is in closeout. The final report records
+the remote FAST proof, explicit FULL limitation, selected jobs and rollback;
+do not start another timeout or runner iteration in this task.
 
 ## Canonical references
 
@@ -250,6 +270,7 @@ conclusions before closing the task.
 - Reproducible test/runtime report: [`ai/reports/TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901-report.md`](reports/TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901-report.md).
 - Safe physical cleanup report: [`ai/reports/TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901-report.md`](reports/TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901-report.md).
 - Safe cleanup Batch 2 report: [`ai/reports/TASK-SAFE-CLEANUP-BATCH2-20260901-report.md`](reports/TASK-SAFE-CLEANUP-BATCH2-20260901-report.md).
+- CI performance fix report: [`ai/reports/TASK-CI-PERFORMANCE-FIX-V1-20260902-report.md`](reports/TASK-CI-PERFORMANCE-FIX-V1-20260902-report.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).

@@ -842,3 +842,15 @@ This log records agent work interactions. It is append-only.
 - State change: completed read-only audit of existing runners, runtime wrappers,
   frontend scripts and actual repository path groups. No product/runtime files
   were edited.
+
+## 2026-09-02T21:56:03Z — TASK-CI-PERFORMANCE-FIX-V1-20260902
+
+- State change: added FAST/FOCUSED/FULL/PERIODIC workflow routing, classifier
+  correction, and a real-route Browser Smoke test without mocks.
+- State change: remote FAST proof `33562406201` passed in 1m22s and skipped
+  unrelated full backend/browser jobs.
+- State change: explicit FULL `33562558816` reproduced the hosted Windows
+  screenshot/Axe timeout and slow backend behavior; the run was stopped and
+  recorded as `CI_PERFORMANCE_FAILURE`.
+- State change: no product logic, UI, API, database, mail data, secrets,
+  runtime or quarantine content changed.

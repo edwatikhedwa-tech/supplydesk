@@ -3,71 +3,67 @@ document_id: HANDOFF-002
 status: CURRENT
 canonical: false
 owner: project-control
-updated_at: 2026-09-01
-based_on_commit: f13dad6dc2461ef6dc50242f7fc075895f2a4603
+updated_at: 2026-09-02
+based_on_commit: 2b860a54e89c062126f872635ea721537c0594dc
 ---
 
 # Last Handoff
 
-This handoff records VibeCoding Control Policy V1 closeout. Its starting point
-is `f13dad6dc2461ef6dc50242f7fc075895f2a4603`; the publication
-commit is recorded by Git history, not copied into this metadata.
+This handoff records CI Performance Fix V1 closeout evidence. The final
+documentation commit is recorded by Git history, not copied into this
+metadata.
 
 ## Цель
 
-Создать и опубликовать canonical VibeCoding Control Policy V1, factual tool
-registry и read-only governance validator без изменения продукта.
+Оставить быстрый focused push path, сохранить полный acceptance path и
+зафиксировать фактическое ограничение hosted Windows runner.
 
 ## Что изменено
 
-- Создана ветка `control/vibecoding-policy-v1-20260901` от проверенного
-  canonical HEAD `f13dad6dc2461ef6dc50242f7fc075895f2a4603`.
-- Созданы `ai/VIBECODING_RULES.md`,
-  `ai/VIBECODING_TOOL_REGISTRY.yaml`,
-  `ai/tools/validate_vibecoding.py` и четыре governance-теста.
-- Bootstrap добавлен минимально в `AGENTS.md`, `CLAUDE.md`, manifest и
-  `ai/README.md`; `validate_docs.py` допускает отдельную canonical policy.
-- `validate_state.py` теперь проверяет этот Task ID; state, handoff и report
-  фиксируют risk-based acceptance и ограничения.
-- `.env*`, canonical DB, `mail-data`, runtime, credentials, mail evidence,
-  frontend UI, product source, dependencies, legacy workspace и quarantine не
-  изменялись.
+- CI workflow uses FAST/FOCUSED/FULL/PERIODIC routing, job concurrency and a
+  CI Summary.
+- A real-route one-viewport Browser Smoke was added; the existing 8-viewport
+  Browser Full remains intact with the canonical four-worker configuration.
+- Diagnostic tests are excluded from backend product routing.
+- No product logic, UI, API, database, mail data, credentials, environment,
+  runtime or quarantine content changed.
 
 ## Что проверено
 
-- VibeCoding validator passed with 34 registry entries; governance diagnostics
-  passed `30/30`.
-- `validate_docs`, `validate_state`, `validate_traceability`, Doctor `-Plan`,
-  `git diff --check` and the explicit staging security audit passed.
-- Commit `1bdda8a` was pushed normally and `git ls-remote` confirmed the
-  remote task ref. No force-push, merge or default-branch change occurred.
+- Remote FAST proof `33562406201`: PASS, 1m22s; Backend Full and Browser Full
+  were SKIP.
+- Explicit FULL `33562558816`: Fast Control, classification, Doctor and
+  Frontend PASS; Browser Full failed at 11m17s on screenshot/Axe timeouts and
+  Backend Full was cancelled at 11m49s without a final total.
+- Local diagnostics `39/39`, quick runner `50/0/0/0`, all state/documentation/
+  traceability/policy validators, Doctor Plan and diff check passed.
+- Local real-route Browser Smoke passed `1/1` in 1.7s.
 
 ## Что не прошло
 
-GitHub Actions, branch protection, dependency automation, Context7, browser
-MCP and the planned security/static tools remain unavailable, planned or not
-independently verified as recorded in the registry. Full product/browser gates
-were not needed because runtime and product behavior were unchanged.
+The hosted Windows full browser acceptance is `NOT VERIFIED` as green. The
+runner reproduced the existing screenshot/Axe timeout behavior across all
+eight viewports. No timeout escalation was applied.
 
 ## Что не проверено
 
-Canonical database rows, mailbox/provider state, live external acceptance,
-production migration behavior and platform merge settings remain `NOT VERIFIED`
-by design. The policy does not infer tool availability from a prompt.
+Live external providers, real mail, production database behavior, branch
+protection and unlisted CI tools remain outside this task and are not implied
+by the remote workflow results.
 
 ## Текущее состояние runtime
 
-No runtime was started for this control-plane-only task. The canonical checkout
-and verified remote task branch are the source of truth; the legacy checkout is
-not a development source.
+No canonical or live runtime was left running. The local disposable
+OFFLINE_TEST runtime used for Browser Smoke was stopped.
 
 ## Следующий рациональный шаг
 
-Begin the next task only from the canonical checkout after reading the policy
-and registry. Configure Phase 1 local quality tools in a separately scoped
-task; permanent quarantine purge remains outside this closeout.
+Use the canonical workspace and the remote branch as source of truth. If full
+CI speed must be improved further, open a separate task for Windows
+Playwright/Axe runner profiling; do not increase timeouts in this task.
 
 ## Не повторять
 
-Не использовать legacy OneDrive checkout для разработки; не читать секреты;
-не удалять quarantine навсегда; не запускать real mail actions.
+Do not use the legacy OneDrive checkout, do not run real mail, do not modify
+protected local data, do not force-push, and do not start another corrective
+remote iteration for this task.

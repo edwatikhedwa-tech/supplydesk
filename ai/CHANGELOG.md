@@ -928,6 +928,18 @@ rewritten.
   model, deterministic path mapping/classifier and single Windows-first
   workflow. Remote execution and closeout remain pending.
 
+## 2026-09-02T21:56:03Z — TASK-CI-PERFORMANCE-FIX-V1-20260902
+
+- Reworked CI into FAST/FOCUSED/FULL/PERIODIC routing with a one-viewport real
+  route browser smoke and an always-on CI Summary.
+- Remote FAST proof `33562406201` passed in 1m22s; normal focused routing
+  skipped Backend Full and Browser Full.
+- Explicit FULL proof `33562558816` preserved all full jobs but reproduced the
+  hosted Windows Browser Full screenshot/Axe timeout and the slow Backend Full
+  path; both limitations are recorded without timeout escalation.
+- Corrected `tests/diagnostics/` classification so control tests do not trigger
+  Backend Full. No product/data/mail/secrets/runtime changes occurred.
+
 ## 2026-09-01T19:13:54Z — TASK-VIBECODING-CONTROL-POLICY-V1-20260901 CLOSEOUT
 
 - VibeCoding validator, 30 diagnostic tests, documentation/state/traceability
