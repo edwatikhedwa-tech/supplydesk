@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-01
-source_commit: 09d12018afc4ecb8445f40dc1b717ef078cfae0f
+source_commit: d4d2b2ab2457e3aa103f80120642bff4bc72920f
 ---
 
 # Current State
@@ -15,14 +15,23 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T16:12:07Z` — reproducible safe test and runtime environment V1
-implemented on `control/reproducible-test-runtime-v1-20260901`, based on the
-verified V1.1 remote HEAD `f9b0b66432f9e8650e87e5a89dd27a258a416e38`.
+`2026-09-01T19:10:00Z` — safe physical cleanup Batch 1 completed from the
+verified controlled remote HEAD `d4d2b2ab2457e3aa103f80120642bff4bc72920f`.
+The new canonical checkout is the development source of truth; the historical
+OneDrive checkout is marked `DO_NOT_USE_FOR_DEVELOPMENT`.
 
 ## Project
 
 - Repository: `edwatikhedwa-tech/supplydesk` (private).
-- Product/source HEAD: `c076e1be385c3ae6da2716159e1f46fc2fce23d7`.
+- Verified controlled baseline: `control/reproducible-test-runtime-v1-20260901`
+  at `d4d2b2ab2457e3aa103f80120642bff4bc72920f`.
+- Cleanup branch: `control/safe-cleanup-batch1-20260901`, based on that
+  verified controlled baseline.
+- Canonical development checkout: `<CANONICAL_WORKSPACE>`.
+- Historical legacy checkout: `<LEGACY_WORKSPACE>`, marked
+  `LEGACY_WORKSPACE_DO_NOT_DEVELOP_HERE.txt`.
+- External retained quarantine: `<QUARANTINE_ROOT>`; it is outside the Git
+  repository and is not a source of truth.
 - Canonical control baseline: `control/canonical-baseline-20260901` at
   `792f441b4b6099533177e7c1d23d6252670f9309` before this governance branch.
 - Documentation governance branch: `control/documentation-governance-20260901`.
@@ -35,6 +44,8 @@ verified V1.1 remote HEAD `f9b0b66432f9e8650e87e5a89dd27a258a416e38`.
   pushed at functional commit `09d12018afc4ecb8445f40dc1b717ef078cfae0f` in
   a separate worktree and not merged into the default branch.
 - Product behavior is not changed by this control-plane-only task.
+- Source of truth after cleanup is the verified remote control branch plus the
+  new canonical checkout. The old dirty OneDrive checkout is recovery-only.
 
 ## Runtime
 
@@ -117,6 +128,14 @@ on this task's dedicated branch:
 - Traceability validator now reports `offline_eligible_requirements=21/21` and
   `offline_behaviorally_diagnosable=6/21`; eligibility is not overclaimed as
   behavior proof.
+- Physical cleanup Batch 1 deleted only 308 regeneratable/cache files
+  (`30,228,149` bytes) and moved 1,481 historical/review files
+  (`132,669,560` bytes) to retained external quarantine. No product source,
+  `.env`, canonical database or mail data was deleted, moved or modified.
+- Cleanup before/after manifests are retained outside the repository; all
+  delete and quarantine paths were individually verified after the operation.
+- Legacy marker was added locally; the three unknown-review items remain
+  unresolved and the legacy worktree remains intentionally dirty.
 
 ## Not verified
 
@@ -131,6 +150,8 @@ on this task's dedicated branch:
   inspected or exercised.
 - The ownership of the source-checkout local-only Neon skill, `keywords.txt`,
   and root `run_probe.py` remains `UNKNOWN_REVIEW`.
+- Safe `.gitignore` correction remains deferred because broad rules can hide
+  source/fixture files; no `.gitignore` change was made in Batch 1.
 
 ## Blockers
 
@@ -141,19 +162,21 @@ on this task's dedicated branch:
 ## Active constraints
 
 - Do not modify application logic, UI, API, database, migrations, runtime
-  state, mail data, or production settings in this task.
+  state, mail data, or production settings in this cleanup branch.
 - Do not send real email, connect to real SMTP/IMAP, write the canonical
   database, force-push, merge, or change the default branch.
 - Keep audit history on the dedicated audit branch; only the documented pointer
   and selected summaries belong in the canonical working branch.
 - Do not start the safe runtime from a canonical database or private `.env`;
   use `scripts/start_test_runtime.ps1 -Apply` after the test venv exists.
+- Do not use the legacy OneDrive checkout for development. Do not permanently
+  purge the external quarantine without a separate owner-approved review.
 
 ## Current next step
 
-`SUPPLYDESK REPRODUCIBLE SAFE TEST & RUNTIME ENVIRONMENT V1` is complete on
-its dedicated branch after final validation; review and merge, if desired,
-remain an explicit human action.
+`TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901` is complete pending normal
+security-gate commit/push closeout. Review of retained quarantine and the three
+unknown items is a separate owner decision.
 
 ## Canonical references
 
@@ -166,5 +189,6 @@ remain an explicit human action.
 - Diagnostic report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md).
 - Diagnostic V1.1 report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md).
 - Reproducible test/runtime report: [`ai/reports/TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901-report.md`](reports/TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901-report.md).
+- Safe physical cleanup report: [`ai/reports/TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901-report.md`](reports/TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901-report.md).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).
 

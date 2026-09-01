@@ -843,3 +843,16 @@ rewritten.
   was verified.
 - Task sentinel is now `IDLE`; no merge, force-push, default-branch change,
   product-code change, canonical database write or real email action occurred.
+
+## 2026-09-01T19:10:00Z — TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901
+
+- Created a separate canonical checkout and marked the legacy OneDrive
+  checkout `DO_NOT_USE_FOR_DEVELOPMENT` with a local-only marker.
+- Deleted only 308 verified regeneratable/cache files (`30,228,149` bytes).
+- Moved 1,481 review, backup, old-export and historical-local files
+  (`132,669,560` bytes) to retained external quarantine; permanent purge was
+  not performed.
+- Preserved `.env*`, canonical database, `mail-data`, runtime, credentials,
+  local mail evidence, product source and the three unknown-review items.
+- Verified 411 backend tests, 25 diagnostics, frontend gates, 8/8 Playwright,
+  safe HTTP smoke, Doctor OFFLINE_TEST Full, validators and diff check.

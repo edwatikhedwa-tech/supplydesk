@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: f2e707ac9988223dc87f242d53df837d70ddca5f
+source_commit: d4d2b2ab2457e3aa103f80120642bff4bc72920f
 ---
 
 # Active Task
@@ -13,32 +13,33 @@ Task ID: `NONE`
 Agent: `Codex`
 Mode: `IDLE`
 Started: `2026-09-01`
-Scope: `reproducible offline test environment, safe disposable runtime, backend/frontend/browser acceptance and profile-aware diagnostics`
-Allowed files: `requirements-test.txt`, `.gitignore`, `tests/run-tests.ps1`, `tests/diagnostics/**`, `scripts/run_test_suite.py`, `scripts/setup_test_env.ps1`, `scripts/start_test_runtime.ps1`, `scripts/stop_test_runtime.ps1`, `scripts/test_runtime_entry.py`, `scripts/diagnostics/**`, `docs/testing/TEST_ENVIRONMENT.md`, `PROJECT_MANIFEST.yaml`, `ai/**`
-Status: `IDLE — TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901 complete and branch pushed`
-Last update: `2026-09-01T16:12:07Z`
+Scope: `safe physical cleanup Batch 1, legacy workspace isolation, quarantine and acceptance evidence`
+Allowed files: `ai/**` only in the Git branch; physical actions were limited to
+the explicit external quarantine/delete allowlist
+Status: `IDLE — TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901 complete; push closeout pending`
+Last update: `2026-09-01T19:10:00Z`
 
 ## Цель
 
-Дать чистому checkout воспроизводимую безопасную OFFLINE_TEST-среду без
-приватного `.env`, канонической SQLite, реального SMTP/IMAP и реальных писем.
+Создать отдельную canonical-копию, вынести доказанные legacy review/backup/
+export artifacts в retained quarantine и удалить только воспроизводимый cache,
+не трогая код, `.env`, базу или пользовательские mail data.
 
 ## Границы
 
 Продуктовый код, фронтенд-код, каноническая база, миграции и настройки
-production не изменяются. Поддерживаются только отдельный test-venv,
-документированные runners/bootstrap, disposable SQLite, безопасный runtime,
-диагностика и состояние проекта.
+production не изменяются. Quarantine остаётся вне Git и не удаляется навсегда;
+три unknown-review пункта остаются на месте.
 
 ## Acceptance
 
-Нужны фактические проверки backend regression, frontend `npm ci`/typecheck/lint/build,
-safe runtime HTTP/API, real-route Playwright, profile-aware Doctor, validators,
-git diff check и отдельный commit с Task ID. Реальная почта и внешний live-provider
-acceptance остаются запрещёнными.
+Проверены before/after manifests, physical allowlist, clean canonical checkout,
+backend/frontend/browser acceptance, Doctor, validators, reference search и
+security boundary. Реальная почта и внешний live-provider acceptance остаются
+запрещёнными.
 
 ## Следующий шаг
 
-Активной задачи нет. Review и merge опубликованной ветки остаются отдельным
+Активной задачи нет. Проверка quarantine и permanent purge остаются отдельным
 решением владельца проекта.
 

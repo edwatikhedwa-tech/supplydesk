@@ -759,3 +759,13 @@ This log records agent work interactions. It is append-only.
   `git ls-remote`.
 - State change: task sentinel moved to `IDLE`; review/merge remains a human
   action and no default branch was changed.
+
+## 2026-09-01T19:10:00Z — TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901
+
+- Owner-authorized physical cleanup was executed only against the documented
+  allowlist after independent remote verification and before/after manifests.
+- A fresh canonical checkout was validated independently of the legacy source.
+- Generated/cache deletion, external quarantine move, protected-path checks,
+  reference search, full offline acceptance and runtime stop were completed.
+- No real mail/provider action, canonical DB write, product-source deletion or
+  permanent quarantine purge occurred.
