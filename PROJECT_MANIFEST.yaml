@@ -9,6 +9,7 @@ project:
   visibility: private
   source_head: c076e1be385c3ae6da2716159e1f46fc2fce23d7
   control_branch: control/canonical-baseline-20260901
+  governance_branch: control/documentation-governance-20260901
   audit_branch: audit/repository-hygiene-reports-20260901
   audit_commit: b5a454f9b39f3cbf01d640d5b67e4231ca25733a
 
@@ -145,4 +146,5 @@ verification:
   files_deleted: 0
   real_email_sent: false
   remote_control_branch: control/canonical-baseline-20260901
+  remote_governance_branch: control/documentation-governance-20260901
   remote_push_verified: true
