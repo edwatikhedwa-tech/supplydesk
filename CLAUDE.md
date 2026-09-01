@@ -21,6 +21,17 @@ NOT VERIFIED, FAIL and BLOCKED, and report commit, branch and push status. Do
 not claim that ChatGPT Project or Claude Project has repository access unless
 the relevant files were actually connected or read.
 
+## VibeCoding bootstrap (mandatory)
+
+Before any project task, read `PROJECT_MANIFEST.yaml`,
+`ai/CURRENT_STATE.md`, `ai/VIBECODING_RULES.md` and
+`ai/VIBECODING_TOOL_REGISTRY.yaml`; read `last_corrected` from the canonical
+policy, emit `Я использую правила VibeCoding'a от <last_corrected>.`, classify
+the task and select only the required checks. If the policy is missing,
+ambiguous or its date is unreadable, emit `VIBECODING POLICY: NOT VERIFIED`
+and do not modify the project. Detailed rules live only in
+[`ai/VIBECODING_RULES.md`](ai/VIBECODING_RULES.md).
+
 ## Root hygiene
 
 The repo root holds only real, load-bearing source and config — nothing generated, scratch,

@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-01
-based_on_commit: a228321401270b69c9ac2f07f76435e246b6f5c3
+based_on_commit: f13dad6dc2461ef6dc50242f7fc075895f2a4603
 ---
 
 # Current State
@@ -15,9 +15,9 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T18:36:54Z` — final repository hygiene acceptance completed on the
-canonical checkout. Functional verification is anchored to the checked Batch 2
-baseline `a228321401270b69c9ac2f07f76435e246b6f5c3`; the publication commit is
+`2026-09-01T19:09:33Z` — VibeCoding Control Policy V1 implementation is in
+progress on the dedicated governance branch. The verified starting point is
+`f13dad6dc2461ef6dc50242f7fc075895f2a4603`; the publication commit is
 intentionally left to Git history rather than duplicated here.
 
 ## Project
@@ -27,6 +27,8 @@ intentionally left to Git history rather than duplicated here.
   at `d4d2b2ab2457e3aa103f80120642bff4bc72920f`.
 - Canonical branch: `control/final-hygiene-acceptance-20260901`, created from
   the verified Batch 2 HEAD `a228321401270b69c9ac2f07f76435e246b6f5c3`.
+- Current governance branch: `control/vibecoding-policy-v1-20260901`, created
+  from verified canonical HEAD `f13dad6dc2461ef6dc50242f7fc075895f2a4603`.
 - Cleanup Batch 2 branch: `control/safe-cleanup-batch2-20260901`, retained as
   the immediately preceding evidence branch.
 - Canonical development checkout: `<CANONICAL_WORKSPACE>`.
@@ -95,6 +97,14 @@ intentionally left to Git history rather than duplicated here.
 - Doctor now has explicit `OFFLINE_TEST`, `LOCAL_CANONICAL` and
   `LIVE_EXTERNAL` profiles; offline checks are separated from live-provider
   acceptance and `-Apply` remains blocked.
+- VibeCoding Control Policy V1 is canonical at `ai/VIBECODING_RULES.md` with
+  `last_corrected: 2026-09-01`; its factual tool inventory is
+  `ai/VIBECODING_TOOL_REGISTRY.yaml` and its read-only validator is
+  `ai/tools/validate_vibecoding.py`.
+- VibeCoding bootstrap references are present in `AGENTS.md`, `CLAUDE.md`,
+  `PROJECT_MANIFEST.yaml` and this AI entrypoint. The documentation validator
+  recognizes the separate canonical policy without weakening current-state
+  uniqueness.
 
 ## Verified
 
@@ -169,6 +179,9 @@ on this task's dedicated branch:
   `200/200/401/404`, Playwright `8/8` and Doctor Full exit `0`.
 - Final branch was pushed normally and `git ls-remote` independently confirmed
   its remote HEAD; no force-push, merge or default-branch change occurred.
+- VibeCoding policy validator and four governance diagnostic tests passed during
+  implementation; final acceptance and remote publication for this task remain
+  pending.
 
 ## Not verified
 
@@ -202,12 +215,14 @@ on this task's dedicated branch:
   use `scripts/start_test_runtime.ps1 -Apply` after the test venv exists.
 - Do not use the legacy OneDrive checkout for development. Do not permanently
   purge the external quarantine without a separate owner-approved review.
+- Do not treat planned or unverified tools as configured, and do not claim a
+  check passed unless its command actually ran.
 
 ## Current next step
 
-`TASK-FINAL-REPOSITORY-HYGIENE-ACCEPTANCE-20260901` is complete and pushed.
-The large cleanup phase is complete for the canonical tree; permanent
-quarantine purge remains forbidden and frontend review candidates remain open.
+`TASK-VIBECODING-CONTROL-POLICY-V1-20260901` is in progress on its dedicated
+branch. Complete risk-based acceptance, publish the branch and verify its
+remote ref; no product or local-data work is part of this task.
 
 ## Canonical references
 

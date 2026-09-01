@@ -910,3 +910,12 @@ rewritten.
 - `ACTIVE_TASK` is now `IDLE`; the canonical checkout and final remote branch
   are the source of truth. No force-push, merge, product/data/mail change or
   quarantine purge occurred.
+
+## 2026-09-01T19:09:33Z — TASK-VIBECODING-CONTROL-POLICY-V1-20260901
+
+- Created the canonical VibeCoding V1 policy, factual tool registry and
+  read-only governance validator with disposable negative/positive tests.
+- Added minimal policy bootstrap references to `AGENTS.md`, `CLAUDE.md`,
+  `PROJECT_MANIFEST.yaml` and the AI state entrypoint.
+- No product behavior, UI, API, database, mail data, runtime, dependency or
+  quarantine changes were made. Acceptance and remote publication remain open.

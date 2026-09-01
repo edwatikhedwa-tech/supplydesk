@@ -1,0 +1,345 @@
+version: 1
+registry_id: VIBECODING-TOOLS-001
+policy: ai/VIBECODING_RULES.md
+last_audited: 2026-09-01
+tools:
+  - id: git
+    name: Git
+    purpose: history, diff, rollback and commit evidence
+    category: SOURCE_CONTROL_ISOLATION
+    required_for: ALL_TASKS
+    execution_frequency: ON_DEMAND
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: command output and reviewed status/diff
+    notes: repository and clean task branch were verified in this checkout
+  - id: git_worktree
+    name: Git worktree
+    purpose: isolate parallel or canonical workspaces
+    category: SOURCE_CONTROL_ISOLATION
+    required_for: PARALLEL_OR_CLEAN_CHECKOUT_TASKS
+    execution_frequency: ON_DEMAND
+    blocking: false
+    availability: CONFIGURED
+    evidence_required: git worktree list
+    notes: supported by Git; use when isolation is needed
+  - id: github_remote
+    name: GitHub remote
+    purpose: remote source of truth, branch publication and ref verification
+    category: SOURCE_CONTROL_ISOLATION
+    required_for: PUSH_OR_INDEPENDENT_REMOTE_CHECK
+    execution_frequency: PRE_PUSH
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: git remote -v and git ls-remote
+    notes: origin points to the SupplyDesk GitHub repository
+  - id: github_cli
+    name: GitHub CLI
+    purpose: optional read-only GitHub API and workflow inspection
+    category: SOURCE_CONTROL_ISOLATION
+    required_for: GITHUB_PLATFORM_CHECKS
+    execution_frequency: ON_DEMAND
+    blocking: false
+    availability: AVAILABLE_AD_HOC
+    evidence_required: gh version and command-specific output
+    notes: gh executable is present; authentication and platform settings remain task-specific
+  - id: github_mcp
+    name: GitHub MCP/connector
+    purpose: independent remote reads through a connector
+    category: SOURCE_CONTROL_ISOLATION
+    required_for: OPTIONAL_REMOTE_READ
+    execution_frequency: ON_DEMAND
+    blocking: false
+    availability: NOT_AVAILABLE
+    evidence_required: connector tool output
+    notes: no GitHub MCP/connector tool is exposed in this environment; Git CLI is the fallback
+  - id: rg
+    name: ripgrep
+    purpose: reference, import, route, config and usage search
+    category: FAST_SEARCH
+    required_for: CODE_MOVE_DELETE_OR_REFERENCE_ANALYSIS
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: command and captured matches
+    notes: rg executable is present in the environment
+  - id: ruff
+    name: Ruff
+    purpose: Python lint and safe static findings
+    category: PYTHON_QUALITY
+    required_for: PYTHON_CHANGE
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: PLANNED
+    evidence_required: ruff output when configured
+    notes: no ruff executable or repository configuration was found; do not claim a Ruff PASS
+  - id: pyright
+    name: Pyright
+    purpose: Python type checking
+    category: PYTHON_QUALITY
+    required_for: TYPED_PYTHON_CHANGE
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: PLANNED
+    evidence_required: pyright output when configured
+    notes: no pyright executable or repository configuration was found
+  - id: vulture
+    name: Vulture
+    purpose: generate Python unused-code candidates
+    category: PYTHON_QUALITY
+    required_for: CLEANUP_REFACTOR
+    execution_frequency: ON_DEMAND
+    blocking: false
+    availability: PLANNED
+    evidence_required: candidate report plus manual reference/test review
+    notes: no vulture executable was found; candidates never authorize deletion
+  - id: backend_tests
+    name: SupplyDesk backend test suite
+    purpose: backend behavior regression
+    category: PYTHON_TESTING
+    required_for: PYTHON_CHANGE_OR_BACKEND_RISK
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: official runner output with failures and errors
+    notes: current reference is 412 tests, 0 failures, 0 errors, 1 skipped; count may grow
+  - id: coverage
+    name: coverage.py or pytest coverage
+    purpose: exercised-code blind-spot and regression discovery
+    category: PYTHON_TESTING
+    required_for: COVERAGE_REVIEW_OR_BASELINE
+    execution_frequency: PERIODIC
+    blocking: false
+    availability: PLANNED
+    evidence_required: coverage report and comparison baseline
+    notes: no coverage executable or configured baseline was found; 100 percent is not required
+  - id: npm_ci
+    name: npm ci
+    purpose: reproducible frontend dependency installation
+    category: FRONTEND_QUALITY
+    required_for: DEPENDENCY_OR_FRONTEND_CHANGE
+    execution_frequency: PRE_PUSH
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: npm ci output and lockfile use
+    notes: frontend package-lock and npm ci contract are present
+  - id: typescript
+    name: TypeScript typecheck
+    purpose: frontend type correctness
+    category: FRONTEND_QUALITY
+    required_for: FRONTEND_CHANGE_OR_UI_CHANGE
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: npm run typecheck output
+    notes: configured as frontend package script
+  - id: eslint
+    name: ESLint
+    purpose: frontend static quality
+    category: FRONTEND_QUALITY
+    required_for: FRONTEND_CHANGE_OR_UI_CHANGE
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: npm run lint output with error count
+    notes: existing warnings are non-blocking unless policy changes
+  - id: frontend_build
+    name: Vite frontend build
+    purpose: prove frontend compiles
+    category: FRONTEND_QUALITY
+    required_for: FRONTEND_CHANGE_OR_UI_CHANGE
+    execution_frequency: PRE_PUSH
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: npm run build output
+    notes: configured as frontend package script
+  - id: knip
+    name: Knip
+    purpose: generate unused frontend file/export/dependency candidates
+    category: FRONTEND_QUALITY
+    required_for: FRONTEND_CLEANUP_REFACTOR
+    execution_frequency: ON_DEMAND
+    blocking: false
+    availability: PLANNED
+    evidence_required: candidate report and manual ownership/reference/test review
+    notes: no knip executable or script was found; candidates never authorize deletion
+  - id: playwright
+    name: Playwright real-route acceptance
+    purpose: real user-visible browser behavior
+    category: REAL_UI_ACCEPTANCE
+    required_for: UI_CHANGE_OR_CLAIMED_BROWSER_ACCEPTANCE
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: actual running route and Playwright result
+    notes: live-route claims must not use route mocks
+  - id: playwright_mcp
+    name: Playwright MCP or browser connector
+    purpose: optional agent-driven browser inspection
+    category: REAL_UI_ACCEPTANCE
+    required_for: OPTIONAL_UI_INSPECTION
+    execution_frequency: ON_DEMAND
+    blocking: false
+    availability: NOT_VERIFIED
+    evidence_required: browser tool output or Playwright CLI output
+    notes: Playwright CLI is the configured acceptance path; connector availability is not established
+  - id: doctor
+    name: SupplyDesk Doctor
+    purpose: diagnostic control plane and safety profiles
+    category: SUPPLYDESK_DIAGNOSTICS
+    required_for: RUNTIME_MAIL_DATABASE_OR_CONTROL_RISK
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: scripts/doctor.ps1 profile output and exit code
+    notes: OFFLINE_TEST, LOCAL_CANONICAL and LIVE_EXTERNAL profiles are distinct
+  - id: diagnostic_tests
+    name: Diagnostic/control tests
+    purpose: verify diagnostic control-plane behavior
+    category: SUPPLYDESK_DIAGNOSTICS
+    required_for: DIAGNOSTIC_OR_CONTROL_PLANE_CHANGE
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: diagnostic test runner output
+    notes: current reference is 26/26 PASS and may increase
+  - id: validate_docs
+    name: Documentation validator
+    purpose: canonical documentation structure and links
+    category: DOCUMENTATION_TRACEABILITY
+    required_for: DOCS_OR_CONTROL_PLANE_CHANGE
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: python ai/tools/validate_docs.py output
+    notes: read-only standard-library validator
+  - id: validate_state
+    name: State validator
+    purpose: AI control-plane state integrity
+    category: DOCUMENTATION_TRACEABILITY
+    required_for: STATE_OR_INSTRUCTION_CHANGE
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: python ai/tools/validate_state.py output
+    notes: read-only standard-library validator
+  - id: validate_traceability
+    name: Traceability validator
+    purpose: requirements to tests/components/failure modes links
+    category: DOCUMENTATION_TRACEABILITY
+    required_for: REQUIREMENTS_OR_DIAGNOSTIC_CHANGE
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: python ai/tools/validate_traceability.py output
+    notes: run when traceability-relevant surfaces change
+  - id: validate_vibecoding
+    name: VibeCoding governance validator
+    purpose: policy singularity, date, bootstrap and registry checks
+    category: DOCUMENTATION_TRACEABILITY
+    required_for: VIBECODING_POLICY_CHANGE
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: python ai/tools/validate_vibecoding.py output
+    notes: read-only standard-library validator with disposable fixture tests
+  - id: pre_commit
+    name: pre-commit
+    purpose: cheap deterministic local gates before commit
+    category: LOCAL_PRE_COMMIT_CONTROL
+    required_for: PRE_COMMIT_GATE
+    execution_frequency: PRE_COMMIT
+    blocking: true
+    availability: PLANNED
+    evidence_required: pre-commit output after configuration
+    notes: no executable or configuration was found; not installed in this task
+  - id: gitleaks
+    name: Gitleaks
+    purpose: staged and committed secret detection
+    category: SECRET_SECURITY
+    required_for: SECURITY_CHANGE_OR_PRE_PUSH
+    execution_frequency: PRE_PUSH
+    blocking: true
+    availability: PLANNED
+    evidence_required: gitleaks output plus staged-path audit
+    notes: no executable or repository configuration was found; existing secret guardrails remain active
+  - id: semgrep
+    name: Semgrep
+    purpose: tuned security and dangerous-pattern scanning
+    category: SECRET_SECURITY
+    required_for: SECURITY_CHANGE
+    execution_frequency: PR
+    blocking: true
+    availability: PLANNED
+    evidence_required: tuned rule-set output
+    notes: no executable or tuned rule set was found
+  - id: codeql
+    name: CodeQL
+    purpose: independent GitHub-side static/security analysis
+    category: SECRET_SECURITY
+    required_for: SECURITY_PR
+    execution_frequency: PR
+    blocking: true
+    availability: PLANNED
+    evidence_required: GitHub workflow result
+    notes: no CodeQL workflow is present in this checkout
+  - id: dependency_updates
+    name: Dependabot or Renovate
+    purpose: dependency and security update proposals
+    category: DEPENDENCY_CONTROL
+    required_for: DEPENDENCY_CHANGE_OR_PERIODIC_UPDATE
+    execution_frequency: PERIODIC
+    blocking: false
+    availability: NOT_VERIFIED
+    evidence_required: repository or platform configuration and controlled PR
+    notes: no local configuration found; selection is decision_pending and only one path should be chosen
+  - id: context7
+    name: Context7 MCP
+    purpose: current library and framework documentation
+    category: CURRENT_DOCUMENTATION
+    required_for: NEW_OR_CHANGED_EXTERNAL_LIBRARY_API
+    execution_frequency: ON_DEMAND
+    blocking: false
+    availability: NOT_VERIFIED
+    evidence_required: connector output or official documentation link
+    notes: no repository configuration or connector proof was found; do not invent docs
+  - id: github_actions
+    name: GitHub Actions
+    purpose: independent CI outside the coding agent process
+    category: INDEPENDENT_CI
+    required_for: PUSH_OR_PR_ACCEPTANCE
+    execution_frequency: PR
+    blocking: true
+    availability: PLANNED
+    evidence_required: remote workflow run result
+    notes: no .github/workflows directory is present in this checkout
+  - id: branch_protection
+    name: GitHub branch protection or ruleset
+    purpose: enforce required checks at merge
+    category: MERGE_CONTROL
+    required_for: MERGE_GATE
+    execution_frequency: PR
+    blocking: true
+    availability: NOT_VERIFIED
+    evidence_required: GitHub repository settings or ruleset output
+    notes: platform settings were not independently verified in this task
+  - id: sentry
+    name: Sentry
+    purpose: production runtime error observability
+    category: PRODUCTION_OBSERVABILITY
+    required_for: PRODUCTION_RUNTIME
+    execution_frequency: PRODUCTION
+    blocking: false
+    availability: PLANNED
+    evidence_required: privacy-reviewed production integration and event output
+    notes: not required for local development and must not receive secrets or sensitive email content
+  - id: independent_ai_reviewer
+    name: Independent AI PR reviewer
+    purpose: second reasoning perspective after deterministic checks
+    category: AI_REVIEW
+    required_for: HIGH_RISK_OR_AMBIGUOUS_REVIEW
+    execution_frequency: PR
+    blocking: false
+    availability: PLANNED
+    evidence_required: separate reviewer output and human disposition
+    notes: optional and never a replacement for tests, CI, browser or security checks

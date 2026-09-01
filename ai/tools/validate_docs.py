@@ -65,6 +65,7 @@ ROOT_HISTORICAL_NAMES = {
     "EMAIL_PACING_ITERATION2.md",
     "STAGE2_OPERATOR_HOLD_READY.md",
 }
+VIBECODING_POLICY_PATH = "ai/VIBECODING_RULES.md"
 
 
 def rel(path: Path, root: Path) -> str:
@@ -127,7 +128,11 @@ def check_canonical_state(root: Path, docs: list[Path], errors: list[str]) -> No
     for path in docs:
         info = metadata(path.read_text(encoding="utf-8"))
         path_rel = rel(path, root)
-        if info.get("canonical", "").lower() == "true" and info.get("status", "").upper() == "CURRENT":
+        if (
+            path_rel != VIBECODING_POLICY_PATH
+            and info.get("canonical", "").lower() == "true"
+            and info.get("status", "").upper() == "CURRENT"
+        ):
             current.append(path_rel)
         if path.name.upper() == "CURRENT_STATE.MD":
             state_named.append((path_rel, info))

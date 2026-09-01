@@ -21,10 +21,12 @@ Use this order for every task:
 1. Repository [`AGENTS.md`](../AGENTS.md) — entrypoint and non-negotiable boundaries.
 2. [`PROJECT_MANIFEST.yaml`](../PROJECT_MANIFEST.yaml) — repository map and protected paths.
 3. [`CURRENT_STATE.md`](CURRENT_STATE.md) — the only canonical current-state snapshot.
-4. [`ACTIVE_TASK.md`](ACTIVE_TASK.md) — active-task lock/sentinel.
-5. Relevant product documentation from [`docs/README.md`](../docs/README.md).
-6. Relevant [`DECISIONS.md`](DECISIONS.md) and [`DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
-7. Relevant dated task reports and audit evidence under [`reports/`](reports/) and [`audits/`](audits/).
+4. [`VIBECODING_RULES.md`](VIBECODING_RULES.md) — the canonical AI-agent policy.
+5. [`VIBECODING_TOOL_REGISTRY.yaml`](VIBECODING_TOOL_REGISTRY.yaml) — factual tool availability.
+6. [`ACTIVE_TASK.md`](ACTIVE_TASK.md) — active-task lock/sentinel.
+7. Relevant product documentation from [`docs/README.md`](../docs/README.md).
+8. Relevant [`DECISIONS.md`](DECISIONS.md) and [`DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
+9. Relevant dated task reports and audit evidence under [`reports/`](reports/) and [`audits/`](audits/).
 
 Before acting, also read [`AI_CONTRACT.md`](AI_CONTRACT.md) and
 [`WORKFLOW.md`](WORKFLOW.md) for evidence vocabulary and the required task

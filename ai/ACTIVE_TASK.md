@@ -1,42 +1,44 @@
 ---
-document_id: TASK-LOCK-003
+document_id: TASK-LOCK-004
 status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-based_on_commit: a228321401270b69c9ac2f07f76435e246b6f5c3
+based_on_commit: f13dad6dc2461ef6dc50242f7fc075895f2a4603
 ---
 
 # Active Task
 
-Task ID: `NONE`
+Task ID: `TASK-VIBECODING-CONTROL-POLICY-V1-20260901`
 Agent: `Codex`
-Mode: `IDLE`
+Mode: `IMPLEMENT`
 Started: `2026-09-01`
-Scope: `final repository hygiene acceptance and canonical closeout`
-Allowed files: `ai/**`, `docs/DOCUMENTATION_POLICY.md` and
-`PROJECT_MANIFEST.yaml`; no product/data/runtime changes
-Status: `IDLE — TASK-FINAL-REPOSITORY-HYGIENE-ACCEPTANCE-20260901 complete and branch pushed`
-Last update: `2026-09-01T18:39:44Z`
+Scope: `VibeCoding control policy, tool registry, validator and diagnostics`
+Allowed files: `AGENTS.md`, `CLAUDE.md`, `PROJECT_MANIFEST.yaml`, `ai/**`,
+`tests/diagnostics/test_vibecoding_governance.py`,
+`ai/tools/validate_docs.py`; no product/data/runtime changes
+Status: `IN_PROGRESS — governance-only implementation`
+Last update: `2026-09-01T19:09:33Z`
 
 ## Цель
 
-Финально подтвердить состояние canonical SupplyDesk и закрыть большую фазу
-repository cleanup без нового массового удаления и без изменения продукта.
+Создать единую canonical policy VibeCoding V1, factual registry доступных
+инструментов и read-only validation для обязательного AI-agent workflow.
 
 ## Границы
 
-Продуктовые маршруты, фронтенд UI, каноническая база, миграции, mail data и
-настройки production не изменяются. Quarantine остаётся вне Git и не
-удаляется навсегда.
+Product behavior, frontend UI, API, database, migrations, mail data, runtime,
+secrets, dependency installation, legacy workspace and quarantine are not
+changed.
 
 ## Acceptance
 
-Acceptance evidence записана в финальный report; permanent purge не
-выполнять. Normal push и remote-ref verification завершены.
+VibeCoding validator, diagnostics, documentation/state/traceability validators,
+Doctor Plan, diff check and security staging audit must pass. Full product
+regression is not required unless runtime or test-runner behavior changes.
 
 ## Следующий шаг
 
-Активной задачи нет. Следующая работа должна начинаться только из canonical
-workspace; quarantine review и permanent purge требуют отдельного решения.
+Complete the governance acceptance, write the report, commit with this Task ID,
+push the task branch and verify its remote ref.
 

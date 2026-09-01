@@ -813,3 +813,13 @@ This log records agent work interactions. It is append-only.
 - Final metadata was set to the pushed state and `ACTIVE_TASK` returned to
   `IDLE`. No merge/default-branch change, product/data/mail change or
   quarantine purge occurred.
+
+## 2026-09-01T19:09:33Z — TASK-VIBECODING-CONTROL-POLICY-V1-20260901
+
+- State change: created `ai/VIBECODING_RULES.md`,
+  `ai/VIBECODING_TOOL_REGISTRY.yaml` and `ai/tools/validate_vibecoding.py`.
+- State change: added the diagnostic governance test and minimal bootstrap
+  references; updated the documentation validator to exempt the canonical
+  VibeCoding policy from current-state uniqueness.
+- Initial validator, governance tests, documentation validator and diff check
+  passed. Full acceptance and publication are still pending.

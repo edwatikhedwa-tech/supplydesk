@@ -33,6 +33,11 @@ documentation:
   validator: ai/tools/validate_docs.py
   current_state_rule: docs/** has no independent current-state source
 
+vibecoding:
+  policy: ai/VIBECODING_RULES.md
+  tool_registry: ai/VIBECODING_TOOL_REGISTRY.yaml
+  validator: ai/tools/validate_vibecoding.py
+
 diagnostics:
   version: 1.1
   doctor: scripts/doctor.ps1

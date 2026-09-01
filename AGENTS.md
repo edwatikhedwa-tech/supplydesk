@@ -22,6 +22,17 @@ before changing anything. If the task is not sufficiently defined, start with
 an AUDIT that makes no changes. Do not trust a previous agent's report without
 checking its primary evidence.
 
+## VibeCoding bootstrap (mandatory)
+
+Before any project task, read `PROJECT_MANIFEST.yaml`,
+`ai/CURRENT_STATE.md`, `ai/VIBECODING_RULES.md` and
+`ai/VIBECODING_TOOL_REGISTRY.yaml`; read `last_corrected` from the canonical
+policy, emit `Я использую правила VibeCoding'a от <last_corrected>.`, classify
+the task and select only the required checks. If the policy is missing,
+ambiguous or its date is unreadable, emit `VIBECODING POLICY: NOT VERIFIED`
+and do not modify the project. Detailed rules live only in
+[`ai/VIBECODING_RULES.md`](ai/VIBECODING_RULES.md).
+
 ## During and after work
 
 - Keep one primary goal and an explicit scope/non-goals boundary.
