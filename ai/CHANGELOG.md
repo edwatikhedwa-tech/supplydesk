@@ -796,3 +796,12 @@ rewritten.
 - Added controlled negative fixtures with redacted secret evidence and made
   `doctor -Apply` an explicit safety block; no product code, database, mail,
   migration or provider state was changed.
+
+## 2026-09-01T15:02:50Z — TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901 COMPLETE
+
+- Task ID: `TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901`; Status: COMPLETE.
+- Validators, 19 diagnostic tests, doctor Plan/DryRun/Apply and allowlist
+  checks passed with documented environment/live limitations.
+- Commit `f2e707ac9988223dc87f242d53df837d70ddca5f` was pushed to the
+  dedicated remote branch; no merge, product-code change, database write,
+  migration, provider connection or real email action occurred.

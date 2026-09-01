@@ -719,3 +719,11 @@ This log records agent work interactions. It is append-only.
 - Validation target: TRACE-001..013, diagnostic unittest suite, doctor
   Plan/DryRun/Apply, docs/state validators, full available regression attempt,
   diff check and allowed-file boundary.
+
+## 2026-09-01T15:02:50Z — TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901 COMPLETE
+
+- State change: 19 diagnostic tests, TRACE-001..013, docs/state validators,
+  doctor Plan/DryRun/Apply and 27-file allowlist passed with explicit gaps.
+- State change: commit `f2e707ac9988223dc87f242d53df837d70ddca5f` pushed to
+  `origin/control/diagnostic-plane-v1.1-20260901` after one transient DNS
+  retry; no merge was performed.

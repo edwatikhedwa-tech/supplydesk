@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: 98f4a370e2bf223aea6550630ce49ed05f12a8af
+source_commit: f2e707ac9988223dc87f242d53df837d70ddca5f
 ---
 
 # Last Handoff
@@ -12,7 +12,7 @@ source_commit: 98f4a370e2bf223aea6550630ce49ed05f12a8af
 ## Цель
 
 Проверить и укрепить diagnostic control plane V1.1 в отдельной ветке без
-изменения поведения SupplyDesk.
+изменения поведения SupplyDesk; зафиксировать и отправить результат.
 
 ## Что изменено
 
@@ -34,11 +34,12 @@ source_commit: 98f4a370e2bf223aea6550630ce49ed05f12a8af
 - Ветка `control/diagnostic-plane-v1.1-20260901` создана в отдельном
   worktree от V1 HEAD `98f4a370e2bf223aea6550630ce49ed05f12a8af`.
 - `19` diagnostic unittest, `validate_docs`, `validate_state`,
-  `validate_traceability` и `git diff --check` должны быть финально
-  подтверждены перед commit.
+  `validate_traceability` и `git diff --check` подтверждены.
 - Doctor `-Plan` exited `0`; `-DryRun` emitted external JSON and exited `2`
   only for explicit environment gaps; `-Apply` exited `3` with
   `SAFETY_BLOCK` and performed no recovery.
+- Commit `f2e707ac9988223dc87f242d53df837d70ddca5f` pushed to
+  `origin/control/diagnostic-plane-v1.1-20260901`; no merge was performed.
 - Application code, frontend source, API, database, migrations and mail data
   were not changed; no provider or real email action was performed.
 
@@ -63,8 +64,8 @@ instead of hiding them.
 
 ## Следующий рациональный шаг
 
-Finish the final validator/doctor evidence, commit and push the dedicated V1.1
-branch, then review it separately; no merge is performed automatically.
+Review the pushed V1.1 branch and decide separately whether to merge it; no
+merge is performed automatically.
 
 ## Не повторять
 

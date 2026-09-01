@@ -76,7 +76,7 @@ MIGRATIONS:
 NO.
 
 REMOTE PUSH:
-PENDING FINAL COMMIT.
+YES. `origin/control/diagnostic-plane-v1.1-20260901` resolves to commit `f2e707ac9988223dc87f242d53df837d70ddca5f`.
 
 ## Evidence and limitations
 

@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-01
-source_commit: 98f4a370e2bf223aea6550630ce49ed05f12a8af
+source_commit: f2e707ac9988223dc87f242d53df837d70ddca5f
 ---
 
 # Current State
@@ -15,9 +15,9 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T14:58:07Z` — diagnostic control plane V1.1 validation and
-hardening on `control/diagnostic-plane-v1.1-20260901`, based on V1 HEAD
-`98f4a370e2bf223aea6550630ce49ed05f12a8af`.
+`2026-09-01T15:02:50Z` — diagnostic control plane V1.1 validation and
+hardening completed on `control/diagnostic-plane-v1.1-20260901` at commit
+`f2e707ac9988223dc87f242d53df837d70ddca5f`.
 
 ## Project
 
@@ -29,7 +29,8 @@ hardening on `control/diagnostic-plane-v1.1-20260901`, based on V1 HEAD
 - Diagnostic V1 branch: `control/diagnostic-plane-v1-20260901` at
   `98f4a370e2bf223aea6550630ce49ed05f12a8af`.
 - Diagnostic V1.1 branch: `control/diagnostic-plane-v1.1-20260901`, created in
-  a separate worktree from the V1 HEAD above.
+  a separate worktree from the V1 HEAD above; remote branch resolves to
+  `f2e707ac9988223dc87f242d53df837d70ddca5f`.
 - Product behavior is not changed by this control-plane-only task.
 
 ## Runtime
@@ -89,6 +90,8 @@ verified by this diagnostic task:
 - Doctor `-Plan`: exit `0`; doctor `-DryRun`: exit `2` with no product failure;
   opt-in frontend/browser diagnostics: explicit environment gaps because
   `frontend/node_modules` is absent; doctor `-Apply`: `SAFETY_BLOCK`, exit `3`.
+- Dedicated branch was pushed to `origin`; the first DNS attempt failed
+  transiently and the immediate retry succeeded.
 - Documentation, state and traceability validators: `PASS`; `git diff --check`:
   `PASS`.
 - Doctor `-Plan`: exit `0`; doctor `-DryRun`: exit `2` with explicit
@@ -130,8 +133,8 @@ verified by this diagnostic task:
 
 ## Current next step
 
-`SUPPLYDESK DIAGNOSTIC CONTROL PLANE V1.1` is being completed on its dedicated
-branch; review and merge, if desired, remain an explicit human action.
+`SUPPLYDESK DIAGNOSTIC CONTROL PLANE V1.1` is complete on its dedicated branch;
+review and merge, if desired, remain an explicit human action.
 
 ## Canonical references
 
