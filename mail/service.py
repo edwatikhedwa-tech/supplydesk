@@ -9,7 +9,6 @@ import os
 import re
 from datetime import timedelta
 from email.utils import make_msgid
-from email.utils import parseaddr
 from html import escape
 from typing import Any, Callable
 from uuid import uuid4
@@ -40,7 +39,7 @@ from .repository import (
     utc_now,
 )
 from .runtime import RuntimeSession
-from .types import Attachment, DeliveryCheck, IncomingBatch, OutgoingMessage, ProviderError, SendAttempt, SendResult, TokenSet
+from .types import Attachment, DeliveryCheck, IncomingBatch, OutgoingMessage, ProviderError, SendAttempt, TokenSet
 
 
 FINGERPRINT_SCHEMA_VERSION = 3
@@ -1792,7 +1791,7 @@ class MailService:
         )
         expires_at = account.get("token_expires_at")
         if expires_at:
-            from datetime import datetime, timezone
+            from datetime import datetime
 
             try:
                 expires = datetime.fromisoformat(expires_at)

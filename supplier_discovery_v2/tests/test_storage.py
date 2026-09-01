@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from supplier_discovery_v2.models import ContactCandidate, OfferCandidate, QueryVariant, SellerCandidate
+from supplier_discovery_v2.models import ContactCandidate, OfferCandidate, SellerCandidate
 from supplier_discovery_v2.storage import DiscoveryStore
 
 

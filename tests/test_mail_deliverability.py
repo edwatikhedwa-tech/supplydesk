@@ -19,7 +19,7 @@ from mail.deliverability import (
 from mail.pacing import PacingSettings
 from mail.providers.yandex import YandexMailProvider
 from mail.queue import MailQueue
-from mail.repository import MailRepository, iso_now
+from mail.repository import MailRepository
 from mail.service import MailService
 from mail.types import DeliveryCheck, IncomingMessage, ProviderError, SendResult, TokenSet
 

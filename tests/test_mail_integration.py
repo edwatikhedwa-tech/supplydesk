@@ -12,8 +12,8 @@ from urllib.parse import parse_qs, urlparse
 from unittest.mock import patch
 
 import supplier_app
-from mail.content import clean_email_text, sanitize_email_html
-from mail.crypto import decrypt, generate_key, load_key
+from mail.content import clean_email_text
+from mail.crypto import generate_key
 from mail.providers.yandex import YandexMailProvider
 from mail.queue import MailQueue
 from mail.repository import MailRepository

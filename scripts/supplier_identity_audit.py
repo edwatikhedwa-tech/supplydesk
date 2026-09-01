@@ -459,7 +459,6 @@ def merge_supplier_pair(connection: sqlite3.Connection, duplicate_id: int, canon
     # the canonical row and union the durable facts when both rows exist.
     for table in ("request_suppliers", "request_supplier_states", "request_supplier_ratings"):
         for row in rows_for_supplier(connection, table, duplicate_id):
-            keys = {"request_suppliers": "request_id", "request_supplier_states": "request_id", "request_supplier_ratings": "request_id"}
             request_id = int(row["request_id"])
             existing = connection.execute(f"SELECT * FROM [{table}] WHERE request_id=? AND supplier_id=?", (request_id, canonical_id)).fetchone()
             if not existing:

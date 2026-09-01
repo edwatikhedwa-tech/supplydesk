@@ -10,7 +10,7 @@ from .connectors import CATALOGS, FlagmaConnector, GenericCatalogConnector
 from .direct_site import DirectSiteAdapter
 from .http_client import ReadOnlyHttpClient
 from .matching import match_product
-from .models import DiscoveryResult, OfferCandidate, PositionSpec, QueryVariant
+from .models import DiscoveryResult, OfferCandidate, PositionSpec
 from .query_planner import QueryPlanner
 from .storage import DiscoveryStore
 from .xmlriver_subprocess import XmlRiverSubprocess

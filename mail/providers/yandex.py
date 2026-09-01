@@ -7,14 +7,13 @@ import logging
 import re
 import smtplib
 import socket
-import ssl
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from email import policy
 from email.parser import BytesParser
 from email.message import EmailMessage
-from email.utils import formataddr, formatdate, getaddresses, make_msgid, parseaddr, parsedate_to_datetime
+from email.utils import formatdate, getaddresses, parseaddr, parsedate_to_datetime
 from html import escape
 from bs4 import BeautifulSoup
 from urllib.error import HTTPError, URLError
@@ -611,7 +610,7 @@ class YandexMailProvider(MailProvider):
                 found = bool(data and data[0] and data[0].split())
                 return DeliveryCheck("found" if found else "not_found", message_id)
             return self._fetch_sent_message_headers(connection, select_data, message_id)
-        except (imaplib.IMAP4.error, socket.timeout, TimeoutError, OSError) as exc:
+        except (imaplib.IMAP4.error, socket.timeout, TimeoutError, OSError):
             return DeliveryCheck("unavailable", message_id, "Не удалось проверить папку «Отправленные».")
         finally:
             if connection is not None:

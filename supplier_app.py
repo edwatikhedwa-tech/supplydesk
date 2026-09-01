@@ -7,7 +7,6 @@ import io
 import json
 import logging
 import os
-import secrets
 import threading
 import time
 from dataclasses import dataclass, field
@@ -15,7 +14,7 @@ from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import parse_qs, urlparse
 
 from mail.auth import new_token, token_hash
 from mail.crypto import EncryptionConfigError
@@ -26,7 +25,7 @@ from mail.pacing import PacingSettings
 from mail.queue import MailQueue
 from mail.repository import DEFAULT_SESSION_LIFETIME_SECONDS, DeliveryResolutionRequiredError, MailRepository
 from mail.runtime import RuntimeConfigurationError, RuntimeSession
-from mail.service import DEFAULT_TEMPLATE, MailService
+from mail.service import MailService
 from mail.types import ProviderError
 from serp_parser import SerpCollector, read_lines
 from xmlriver_client import XmlRiverClient
