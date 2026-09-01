@@ -7,11 +7,14 @@ project:
   name: SupplyDesk
   repository: edwatikhedwa-tech/supplydesk
   visibility: private
-  source_head: d2ceef3
-  control_branch: control/safe-cleanup-batch2-20260901
+  canonical_branch: control/final-hygiene-acceptance-20260901
   governance_branch: control/documentation-governance-20260901
   audit_branch: audit/repository-hygiene-reports-20260901
   audit_commit: b5a454f9b39f3cbf01d640d5b67e4231ca25733a
+
+baseline:
+  cleanup_batch2_head: a228321401270b69c9ac2f07f76435e246b6f5c3
+  semantics: last verified functional cleanup baseline; document publication commits are tracked by Git history
 
 canonical_state:
   current_state: ai/CURRENT_STATE.md
@@ -154,10 +157,9 @@ dangerous_operations:
   - merge_or_change_default_branch
 
 verification:
-  control_reconciliation_commit: 58103e4373f82f8ced5735c096a1028d2fbb7843
-  control_metadata_commit: f31938622954ad27b9cd1a3e79e797e5e3dae3f6
+  baseline_commit: a228321401270b69c9ac2f07f76435e246b6f5c3
   source_checkout_modified_by_task: false
-  source_head_verified: true
+  baseline_commit_verified: true
   source_env_file_count: 6
   env_values_read: false
   backend_control_run: "412 passed, 1 skipped, 0 failed, 0 errors"
@@ -184,6 +186,6 @@ verification:
   batch2_quarantined_bytes: 43845
   quarantine_purged: false
   real_email_sent: false
-  remote_control_branch: control/safe-cleanup-batch2-20260901
+  remote_control_branch: control/final-hygiene-acceptance-20260901
   remote_governance_branch: control/documentation-governance-20260901
   remote_push_verified: true

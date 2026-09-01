@@ -4,48 +4,53 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: 9e2acba40a702399653055162fa7101adf6d7486
+based_on_commit: a228321401270b69c9ac2f07f76435e246b6f5c3
 ---
 
 # Last Handoff
 
+This handoff records final repository hygiene acceptance. Its functional claims
+are based on `a228321401270b69c9ac2f07f76435e246b6f5c3`; the publication
+commit is recorded by Git history, not copied into this metadata.
+
 ## Цель
 
-Выполнить согласованную глубокую очистку canonical SupplyDesk с сохранением
-legacy-материалов в retained quarantine и без потери уникальных рабочих
-изменений.
+Закрыть финальную приёмку repository hygiene для canonical SupplyDesk без
+нового массового cleanup и без изменения product behavior.
 
 ## Что изменено
 
-- Создана ветка `control/safe-cleanup-batch2-20260901` от проверенного Batch 1
-  HEAD; legacy OneDrive не использовался как рабочий источник.
-- Внешний quarantine Batch 1 сохранён; три legacy unknown-файла перемещены в
-  `05_UNKNOWN_REVIEW` с проверкой отсутствия активных ссылок и SHA-256.
-- Исправлены broad `.gitignore` rules в отдельном коммите `0585275`.
-- Удалены только 18 неиспользуемых импортов и 2 side-effect-free присваивания
-  в отдельном Python-коммите `d2ceef3`.
-- Exact duplicate groups оставлены: 2 группы / 4 файла, удалений 0.
+- Создана ветка `control/final-hygiene-acceptance-20260901` от проверенного
+  Batch 2 HEAD `a228321401270b69c9ac2f07f76435e246b6f5c3`.
+- Исправлена семантика commit metadata: current state/task/handoff используют
+  стабильный `based_on_commit`, а Git history остаётся источником
+  публикационного commit.
+- Подготовлены лёгкий canonical inventory, quarantine disposition
+  recommendation и финальный acceptance report.
+- Root Python modules классифицированы по фактическим imports, CLI/test/docs
+  references; перемещений не выполнялось.
+- Final canonical inventory records 390 tracked files, 45 tracked root
+  objects, zero unknown canonical objects and zero tracked sensitive/generated
+  categories; the two duplicate groups remain intentionally kept.
+- Final acceptance passed: backend `412/0/0/1`, diagnostics `26/26`, frontend
+  clean gates, safe HTTP `200/200/401/404`, Playwright `8/8` and Doctor Full
+  exit `0`.
 - `.env*`, canonical DB, `mail-data`, runtime, credentials, mail evidence,
   frontend UI, спорные frontend candidates и dependencies не изменялись.
 
 ## Что проверено
 
-- `git ls-remote` confirmed Batch 1 base `847b0979a27da9d38f9cc755309a283ad99df699`.
-- Backend full: `412` tests, `0` failures, `0` errors, `1` skipped; diagnostics
-  `26/26`; frontend `npm ci`, typecheck and build passed, lint has 8 warnings.
-- Safe HTTP smoke returned `200/200/401/404`; Playwright real routes `8/8` on
-  canonical frontend; Doctor OFFLINE_TEST Full `PASS`, exit `0`.
-- Focused Python tests, compile check, duplicate audit and `.gitignore` matrix
-  passed. The safe runtime used disposable SQLite and was stopped by its
-  marker-aware stop script.
-- Final docs and remote-ref verification remain the last closeout records;
-  no real SMTP/IMAP or external provider action was performed.
+- Remote final branch is the only remaining publication gate; it must be
+  checked against the locally created commit without force-push.
+- Validators, security boundary and no-sensitive-path staging must remain
+  green at publication; no real SMTP/IMAP or external provider action is
+  allowed.
 
 ## Что не прошло
 
-No required offline acceptance item is blocked. Live external providers, real
-SMTP/IMAP, real email and production migrations remain intentionally
-unverified. Frontend candidates remain review-required and were not deleted.
+Live external providers, real SMTP/IMAP, real email and production migrations
+remain intentionally unverified. Frontend candidates remain review-required
+and were not deleted.
 
 ## Что не проверено
 
@@ -63,9 +68,10 @@ verified remote control branch are the source of truth.
 
 ## Следующий рациональный шаг
 
-Review retained frontend candidates or quarantine contents only in a separately
-approved task; permanent purge is not part of Batch 2 and no merge/default
-branch change was performed automatically.
+After normal publication, begin the next product task only from the canonical
+checkout and final acceptance branch. Review retained frontend candidates or
+quarantine contents only in a separately approved task; permanent purge is not
+part of closeout.
 
 ## Не повторять
 

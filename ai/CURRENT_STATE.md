@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-01
-source_commit: 9e2acba40a702399653055162fa7101adf6d7486
+based_on_commit: a228321401270b69c9ac2f07f76435e246b6f5c3
 ---
 
 # Current State
@@ -15,19 +15,20 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T17:59:25Z` — safe cleanup Batch 2 completed its offline acceptance
-on the canonical checkout. The new canonical checkout is the development
-source of truth; the historical OneDrive checkout is marked
-`DO_NOT_USE_FOR_DEVELOPMENT` and its three former unknown items are retained
-outside the repository in quarantine.
+`2026-09-01T18:36:54Z` — final repository hygiene acceptance completed on the
+canonical checkout. Functional verification is anchored to the checked Batch 2
+baseline `a228321401270b69c9ac2f07f76435e246b6f5c3`; the publication commit is
+intentionally left to Git history rather than duplicated here.
 
 ## Project
 
 - Repository: `edwatikhedwa-tech/supplydesk` (private).
 - Verified controlled baseline: `control/reproducible-test-runtime-v1-20260901`
   at `d4d2b2ab2457e3aa103f80120642bff4bc72920f`.
-- Cleanup branch: `control/safe-cleanup-batch2-20260901`, based on the verified
-  Batch 1 HEAD `847b0979a27da9d38f9cc755309a283ad99df699`.
+- Canonical branch: `control/final-hygiene-acceptance-20260901`, created from
+  the verified Batch 2 HEAD `a228321401270b69c9ac2f07f76435e246b6f5c3`.
+- Cleanup Batch 2 branch: `control/safe-cleanup-batch2-20260901`, retained as
+  the immediately preceding evidence branch.
 - Canonical development checkout: `<CANONICAL_WORKSPACE>`.
 - Historical legacy checkout: `<LEGACY_WORKSPACE>`, marked
   `LEGACY_WORKSPACE_DO_NOT_DEVELOP_HERE.txt`.
@@ -45,8 +46,9 @@ outside the repository in quarantine.
   pushed at functional commit `09d12018afc4ecb8445f40dc1b717ef078cfae0f` in
   a separate worktree and not merged into the default branch.
 - Product behavior is not changed by this control-plane-only task.
-- Source of truth after cleanup is the verified remote control branch plus the
-  new canonical checkout. The old dirty OneDrive checkout is recovery-only.
+- Source of truth after cleanup is the verified remote final-acceptance branch
+  plus the new canonical checkout. The old dirty OneDrive checkout is
+  recovery-only and is not used for development.
 
 ## Runtime
 
@@ -99,7 +101,7 @@ outside the repository in quarantine.
 The following evidence is inherited from earlier control work or was verified
 on this task's dedicated branch:
 
-- Official backend full run: `411 tests, 0 failures, 0 errors, 1 skipped`.
+- Official backend full run: `412 tests, 0 failures, 0 errors, 1 skipped`.
 - Frontend clean install, typecheck and build passed; lint passed with 8
   warnings.
 - Public-shell Playwright acceptance: `8/8` viewport projects passed against
@@ -153,7 +155,18 @@ on this task's dedicated branch:
 - Batch 2 documentation/state/traceability validators and `git diff --check`
   passed; the cleanup report and manifest are retained in the pushed branch.
 - Remote `control/safe-cleanup-batch2-20260901` was independently verified to
-  match the final closeout commit.
+  match the Batch 2 closeout commit before this acceptance branch was created.
+- Final canonical inventory: 390 tracked files, 45 tracked root objects, zero
+  unknown canonical files/directories/root objects, zero tracked review/backup
+  packages, zero tracked generated artifacts, zero tracked env/secret files and
+  zero tracked database files. The two known duplicate groups remain kept by
+  path-purpose design.
+- Final `.gitignore` matrix kept real `.env`, database and runtime artifacts
+  ignored while product JSON/CSV, fixtures and `PROJECT_MANIFEST.yaml` remain
+  visible to Git.
+- Final offline acceptance on the canonical checkout: backend `412/0/0/1`,
+  diagnostics `26/26`, frontend install/typecheck/lint/build PASS, safe HTTP
+  `200/200/401/404`, Playwright `8/8` and Doctor Full exit `0`.
 
 ## Not verified
 
@@ -190,9 +203,9 @@ on this task's dedicated branch:
 
 ## Current next step
 
-`TASK-SAFE-CLEANUP-BATCH2-20260901` is complete and its cleanup report,
-manifest and state closeout are pushed on the dedicated control branch.
-Permanent quarantine purge remains forbidden.
+`TASK-FINAL-REPOSITORY-HYGIENE-ACCEPTANCE-20260901` is the current closeout
+stage. The large cleanup phase is complete for the canonical tree; permanent
+quarantine purge remains forbidden and frontend review candidates remain open.
 
 ## Canonical references
 

@@ -30,7 +30,12 @@ task changes a source of truth.
 ## Lifecycle
 
 Every important operational or product document has a small metadata block with
-`document_id`, `status`, `canonical`, `owner`, `updated_at`, and `source_commit`.
+`document_id`, `status`, `canonical`, `owner`, `updated_at`, and a commit
+anchor. Historical or immutable records may use `source_commit`; current state
+and handoff documents should use `based_on_commit` for the functional baseline
+they describe. The commit that publishes the document is already authoritative
+in Git history, so current documents must not pretend that their own publication
+commit is the functional source commit.
 The allowed lifecycle statuses are:
 
 - `DRAFT` — proposed and not authoritative.

@@ -886,3 +886,18 @@ rewritten.
   branch change occurred.
 - `ACTIVE_TASK` is now `IDLE`; retained quarantine and permanent-purge review
   remain separate owner decisions.
+
+## 2026-09-01T18:36:54Z — TASK-FINAL-REPOSITORY-HYGIENE-ACCEPTANCE-20260901
+
+- Created `control/final-hygiene-acceptance-20260901` from verified Batch 2
+  HEAD `a228321401270b69c9ac2f07f76435e246b6f5c3`.
+- Replaced fragile current-state `source_commit` metadata with a stable
+  `based_on_commit` contract; Git history remains the publication authority.
+- Added the lightweight canonical inventory, quarantine disposition
+  recommendation and final hygiene acceptance report.
+- Confirmed 390 tracked files, 45 tracked root objects, zero canonical unknown
+  objects, zero tracked sensitive/generated categories and two intentionally
+  retained duplicate groups.
+- Re-ran final offline acceptance: backend `412/0/0/1`, diagnostics `26/26`,
+  frontend clean gates, safe HTTP `200/200/401/404`, Playwright `8/8` and
+  Doctor Full exit `0`. No product/data/mail changes or quarantine purge.

@@ -790,3 +790,18 @@ This log records agent work interactions. It is append-only.
   duplicate audit were staged without protected paths or quarantine content.
 - The dedicated control branch was pushed normally; local and remote SHA-256
   references matched at closeout. The task sentinel is now `IDLE`.
+
+## 2026-09-01T18:36:54Z — TASK-FINAL-REPOSITORY-HYGIENE-ACCEPTANCE-20260901
+
+- Read-only baseline confirmed canonical HEAD `a228321401270b69c9ac2f07f76435e246b6f5c3`,
+  clean Batch 2 remote ref, legacy marker/protected local paths and retained
+  external quarantine. No legacy cleanup was repeated.
+- Created the final acceptance branch and classified all canonical root objects,
+  root Python modules, duplicate groups, frontend candidates and ignore rules.
+- Updated the commit-anchor policy and current metadata, adding a lightweight
+  canonical inventory and quarantine disposition recommendation without touching
+  product logic, UI, API, database, mail data or migrations.
+- Final acceptance passed: backend `412/0/0/1`, diagnostics `26/26`, frontend
+  clean install/typecheck/lint/build, safe HTTP `200/200/401/404`, Playwright
+  `8/8`, Doctor Full exit `0`, validators and diff check. Remote publication
+  remains the final gate at this log entry.

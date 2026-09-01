@@ -15,7 +15,8 @@ from pathlib import Path
 
 
 ALLOWED_STATUSES = {"DRAFT", "CURRENT", "SUPERSEDED", "HISTORICAL", "ARCHIVED"}
-REQUIRED_METADATA = {"document_id", "status", "canonical", "owner", "updated_at", "source_commit"}
+REQUIRED_METADATA = {"document_id", "status", "canonical", "owner", "updated_at"}
+COMMIT_ANCHOR_KEYS = {"source_commit", "based_on_commit"}
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*(?:\n|\Z)", re.DOTALL)
 FIELD_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$", re.MULTILINE)
@@ -174,6 +175,8 @@ def check_metadata(root: Path, docs: list[Path], errors: list[str]) -> None:
         path = root / path_rel
         info = metadata(path.read_text(encoding="utf-8")) if path.is_file() else {}
         missing = sorted(REQUIRED_METADATA - set(info))
+        if COMMIT_ANCHOR_KEYS.isdisjoint(info):
+            missing.append("source_commit or based_on_commit")
         if missing:
             errors.append(f"GATE-009 FAIL: {path_rel} metadata missing: {', '.join(missing)}")
 
