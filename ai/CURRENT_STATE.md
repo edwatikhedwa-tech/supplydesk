@@ -15,7 +15,7 @@
   and `ai/DECISIONS.md` now carry the same documentation-freshness rule.
 - Application code, frontend, API, database, migrations, mail settings,
   deployment configuration and external services remain unchanged.
-- Acceptance passed: 91 relative Markdown links checked, secret-pattern scan
+- Acceptance passed: 116 relative Markdown links checked, secret-pattern scan
   passed, `python ai/tools/validate_state.py` passed and `git diff --check`
   passed. Report: `ai/reports/TASK-DOCS-CANONICAL-20260901-report.md`.
 

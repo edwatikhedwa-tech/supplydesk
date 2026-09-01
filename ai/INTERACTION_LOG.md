@@ -686,5 +686,5 @@ This log records agent work interactions. It is append-only.
   документов. Перед изменением сохранены резервные копии.
 - Созданы canonical documentation policy и task card; старые паспорта/аудиты
   сохранены как historical, а навигация направлена в `ai/CURRENT_STATE.md`.
-- Проверка: 91 relative link без ошибок, secret-pattern scan PASS, validator
+- Проверка: 116 relative links без ошибок, secret-pattern scan PASS, validator
   PASS, `git diff --check` PASS. Код, база, рассылка и deployment не менялись.

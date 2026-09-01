@@ -761,6 +761,6 @@ rewritten.
   `HISTORICAL — NOT CURRENT`, сохранены и связаны с canonical state.
 - Обновлены AGENTS, AI contract, workflow, decisions, navigation и
   documentation state; `FINDING-001` и `FINDING-005` закрыты.
-- Acceptance: 91 relative Markdown links, secret-pattern scan, state validator
+- Acceptance: 116 relative Markdown links, secret-pattern scan, state validator
   и `git diff --check` прошли. Application code, data, mail and deployment не
   менялись. Backup: `Temp/20260901-docs-canonical/`.

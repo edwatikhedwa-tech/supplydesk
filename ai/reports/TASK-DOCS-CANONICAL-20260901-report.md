@@ -31,9 +31,9 @@ HISTORICAL — NOT CURRENT and link to ai/CURRENT_STATE.md.
 - Marked docs/CURRENT_STATE.md and docs/DECISIONS.md as supporting/historical;
   preserved their old contents for traceability.
 - Added a current-state reconciliation entry to docs/WORK_LOG.md.
-- Marked the Documents/28-8 catalog, passport, PoC README, architecture history,
-  mail integration guide, frontend QA and old mail audit as historical or
-  procedure-reference documents; updated their navigation to the canonical state.
+- Marked the Documents/28-8 catalog and all of its existing Markdown entry
+  points as historical/supporting or procedure-reference documents; updated
+  their navigation to the canonical state.
 - Updated ai/README.md and Documents/28-8/INDEX.md so a new agent starts at the
   canonical state and policy.
 - Kept application code, frontend code, API, database rows, migrations, mail
@@ -54,7 +54,7 @@ explicitly historical and cannot be mistaken for current counts.
 - Existing worktree changes inventoried and preserved; unrelated files were not
   staged.
 - State files were backed up before modification.
-- Relative navigation links in changed documentation were checked.
+- 116 relative navigation links in changed documentation were checked.
 - The state validator passed.
 - git diff --check passed.
 - Changed-document secret-pattern review found no new credentials, tokens,

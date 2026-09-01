@@ -30,7 +30,7 @@ Status: `COMPLETE LOCALLY — documentation canonicalized`
 
 ### Что проверено
 
-- 91 относительная Markdown-ссылка — без broken links.
+- 116 относительных Markdown-ссылок — без broken links.
 - Secret-pattern scan — новых credentials/token/cookie/header не найдено.
 - `python ai/tools/validate_state.py` — PASS.
 - `git diff --check` — PASS.
