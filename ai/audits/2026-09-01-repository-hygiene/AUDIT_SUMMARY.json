@@ -1,0 +1,86 @@
+{
+  "audit_id": "repository-hygiene-2026-09-01",
+  "date": "2026-09-01",
+  "timezone": "Europe/Volgograd",
+  "status": "PARTIAL",
+  "source": {
+    "repository": "https://github.com/edwatikhedwa-tech/supplydesk.git",
+    "visibility": "PRIVATE",
+    "branch": "codex/TASK-STATE-CONTROL-20260830",
+    "head": "c076e1be385c3ae6da2716159e1f46fc2fce23d7",
+    "working_tree_modified_tracked_files": 2,
+    "staged_files": 0,
+    "untracked_paths": 709,
+    "ignored_paths": 55319,
+    "source_files": 56544,
+    "source_bytes": 956748919
+  },
+  "publication": {
+    "branch": "audit/repository-hygiene-reports-20260901",
+    "path": "ai/audits/2026-09-01-repository-hygiene/",
+    "application_files_added": 0,
+    "database_files_added": 0,
+    "credential_files_added": 0,
+    "screenshot_files_added": 0
+  },
+  "snapshot": {
+    "status": "PASS",
+    "source_files": 56544,
+    "baseline_files": 56543,
+    "path_difference_count": 1,
+    "size_mismatch_count": 1,
+    "lock_classification": "EPHEMERAL_RUNTIME",
+    "lock_snapshot_status": "INTENTIONALLY_EXCLUDED",
+    "logical_database_backup": "PASS"
+  },
+  "sqlite": {
+    "backup_status": "PASS",
+    "backup_method": "Python sqlite3.Connection.backup()",
+    "source_integrity_check": "ok",
+    "backup_integrity_check": "ok",
+    "source_quick_check": "ok",
+    "backup_quick_check": "ok",
+    "journal_mode": "delete",
+    "schema_metadata_and_aggregate_row_counts": "MATCH",
+    "aggregate_row_count_table_entries": 68,
+    "row_contents_published": false,
+    "backup_file_published": false
+  },
+  "functional_baseline": {
+    "status": "PARTIAL",
+    "backend": {
+      "passed": 321,
+      "failed": 52,
+      "errors": 0,
+      "skipped": 1
+    },
+    "playwright_public_shell": "8/8 PASS",
+    "playwright_live_routes": "18/18 PASS",
+    "api_smoke": {
+      "/api/auth/me": 200,
+      "/api/requests_protected": 401,
+      "/api/does-not-exist": 404
+    },
+    "historical_live_email_fixture": "NOT VERIFIED",
+    "screenshots": {
+      "count": 15,
+      "storage": "LOCAL ONLY"
+    }
+  },
+  "security": {
+    "p0_secret_values_proven": false,
+    "secret_values_published": false,
+    "env_files_published": false,
+    "database_or_mail_data_published": false,
+    "raw_logs_published": false,
+    "screenshots_published": false,
+    "env_like_file_count": null,
+    "env_like_file_count_note": "Source reports disagree (5 vs 6); exact count and contents were not verified."
+  },
+  "change_boundary": {
+    "application_code_modified": false,
+    "source_checkout_modified": false,
+    "source_database_modified": false,
+    "cleanup_performed": false
+  }
+}
