@@ -238,6 +238,11 @@ jobs:
         working-directory: frontend
         run: npm ci --no-audit --fund=false
 
+      - name: Build frontend shell for application runtime
+        shell: pwsh
+        working-directory: frontend
+        run: npm run build
+
       - name: Install Chromium for Playwright
         shell: pwsh
         working-directory: frontend
