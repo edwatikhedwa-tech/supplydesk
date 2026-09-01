@@ -2,6 +2,37 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-01T05:43:31Z — TASK-MAILRU-FINAL-CONTINUATION-20260831
+
+- Owner supplied a screenshot asking why one row simultaneously showed
+  `Ждём ответа`, `Ожидает отправки`, and `Отправлено · 3`.
+- Live browser and read-only database evidence identified the row as global
+  company `362`, grouped from four distinct supplier contacts. At screenshot
+  time three contacts were accepted and one Mail.ru job was queued after a
+  pre-DATA connection failure; its later retry ended `post_data / 250`.
+- The current rendered row shows `Отправлено · 4` and no queued badge. Database
+  checks found no duplicate sent recipient and no recipient with multiple
+  accepted attempts.
+- Three separate historical Yandex queued records remain in aggregate counts.
+  Two have disputed irreversible transients; the third recipient has proven
+  historical Mail.ru acceptance. No further SMTP action was taken.
+
+## 2026-08-31T18:58:08Z — TASK-MAILRU-FINAL-CONTINUATION-20260831
+
+- Owner rejected further analysis-only loops and explicitly authorized
+  completion of the remaining Mail.ru supplier delivery without additional
+  confirmation questions.
+- Rechecked live state instead of relying on historical counts. The current
+  continuation contract identifies `61` strictly untouched recipients; it
+  excludes accepted, failed and uncertain delivery outcomes.
+- Context7 verification against the Python `smtplib` documentation confirmed
+  that an empty refusal map / normal SMTP return means recipient acceptance,
+  while connection uncertainty must not be retried as if delivery were known
+  to have failed.
+- Execution is bounded to fresh batches of at most five and one provider job
+  at a time, with the built-in 30–60 second pacing interval and immediate stop
+  on provider rejection, cooldown, breaker opening or uncertain transport.
+
 ## 2026-08-31T18:38:35Z — TASK-MESSAGES-PRIMARY-FILTER-20260831
 
 - Owner authorized continuing the completed-task backlog; the selected useful

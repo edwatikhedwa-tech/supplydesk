@@ -1,5 +1,59 @@
 # Last Handoff
 
+## Current handoff — final Mail.ru continuation completed
+
+Task ID: `TASK-MAILRU-FINAL-CONTINUATION-20260831`
+Дата закрытия UTC: `2026-09-01T05:43:31Z`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+Base HEAD before closeout: `6c3b481c178c5d4375490a269fe31491285fedae`
+Push: `NOT RUN`
+Status: `COMPLETE — verified external acceptance evidence; outgoing OFF`
+
+### Что сделано
+
+- Отправка продолжена только для `61` адреса, которые свежая проверка признала
+  строго не затронутыми предыдущими попытками.
+- `60` писем приняты Mail.ru с SMTP-доказательством `post_data / 250`.
+- Один синтетический адрес отклонён SMTP-кодом `550` на этапе получателя до
+  передачи содержимого; повтор не выполнялся.
+- Финальная проверка не находит новых безопасных адресов для continuation.
+
+### Почему на снимке были три статуса сразу
+
+Карточка «Печи ТУТ» объединяет четыре разных email и четыре сайта одной
+компании. В момент снимка три контакта уже были приняты, а четвёртый ждал
+безопасной повторной попытки после сбоя соединения до передачи письма. Позже
+четвёртый контакт получил SMTP `250`; текущая карточка показывает
+`Ждём ответа` и `Отправлено · 4` без `Ожидает отправки`.
+
+### Остаточное ограничение
+
+Три старых Yandex job всё ещё учитываются как queued. Два имеют спорные
+необратимые transient-попытки, а адрес третьего уже подтверждён как принятый
+Mail.ru через reconciliation evidence. Они не являются безопасными целями для
+повтора; для чистого UI нужна отдельная локальная reconciliation-итерация без
+SMTP.
+
+### Проверено
+
+- Current browser render at `1600x900`: the company row shows four contacts and
+  `Отправлено · 4`; the queued badge from the supplied screenshot is gone.
+- Request `1059`: no duplicate sent recipient and no recipient with multiple
+  accepted attempts.
+- Final continuation dry-run: `safe=true`, `eligible_untouched=0`,
+  `would_create=0`.
+- SQLite integrity `ok`, active reservations `0`, durable outgoing `0`.
+- HTTP smoke: root `200`, protected API `401`, unknown API `404`.
+
+### Следующий безопасный шаг
+
+Отдельно перевести три исторических Yandex queue records в честные конечные
+локальные статусы по уже сохранённым доказательствам и уточнить подписи бейджей
+как количество контактов. Этот шаг не должен запускать SMTP.
+
+Report: `ai/reports/TASK-MAILRU-FINAL-CONTINUATION-20260831-report.md`.
+
 ## Current handoff — messages primary correspondence filter
 
 Task ID: `TASK-MESSAGES-PRIMARY-FILTER-20260831`

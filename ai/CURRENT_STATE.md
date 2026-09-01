@@ -1,5 +1,31 @@
 # Current State
 
+## Current task update — final Mail.ru continuation completed
+
+- Timestamp UTC: `2026-09-01T05:43:31Z`
+  (`TASK-MAILRU-FINAL-CONTINUATION-20260831`, completed).
+- The continuation created `61` Mail.ru jobs from a fresh strictly-untouched
+  selection: `60` ended with explicit SMTP `post_data / 250` acceptance and
+  one ended as a permanent `rcpt_to / 550` invalid-recipient failure before
+  the irreversible stage. There are no delivery-unknown outcomes in this run.
+- Final safety proof: `eligible_untouched=0`, `would_create=0`, no duplicate
+  sent recipient, no recipient with multiple accepted attempts, SQLite
+  integrity `ok`, and active send reservations `0`.
+- The mixed status screenshot is explained by the company-card aggregation:
+  four distinct contacts were grouped together while three were accepted and
+  one was awaiting a safe retry after a pre-DATA connection failure. The same
+  live row now shows `Отправлено · 4` and no queued badge.
+- Three older Yandex jobs still appear in aggregate queue counts. Two are
+  historical disputed irreversible transients and must not be blindly retried;
+  the third recipient has a reconciled Mail.ru acceptance and must not be sent
+  again. Current continuation correctly excludes all three.
+- The server is running at `http://127.0.0.1:8000/` with process-level and
+  durable outgoing disabled. Root returned `200`, protected API without a
+  session returned `401`, and an unknown API returned `404`.
+- Consistent pre-send backup:
+  `mail-data/backups/supplier.sqlite3.pre-mailru-final-20260831-215700.bak`.
+- Report: `ai/reports/TASK-MAILRU-FINAL-CONTINUATION-20260831-report.md`.
+
 ## Current task update — messages primary correspondence filter
 
 - Timestamp UTC: `2026-08-31T18:38:35Z`

@@ -3,6 +3,33 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-01T05:43:31Z — MAIL.RU FINAL CONTINUATION COMPLETE — TASK-MAILRU-FINAL-CONTINUATION-20260831
+
+- Completed thirteen bounded Mail.ru continuation plans: `60` SMTP
+  `post_data / 250` acceptances, one permanent pre-DATA recipient rejection,
+  and zero unknown outcomes.
+- Verified the final continuation is empty, duplicate sent recipients are
+  zero, accepted-attempt duplicates are zero, SQLite integrity is `ok`, and
+  outgoing is effectively OFF.
+- Diagnosed the owner's mixed-status screenshot as an intermediate
+  four-contact company card. The last queued contact later completed and the
+  live card now shows `Отправлено · 4`.
+- Recorded three historical Yandex queue records as a local status-cleanup
+  follow-up; none is safe or necessary to send through Mail.ru.
+
+## 2026-08-31T18:58:08Z — MAIL.RU FINAL CONTINUATION START — TASK-MAILRU-FINAL-CONTINUATION-20260831
+
+- Owner explicitly instructed the agent to finish the remaining supplier
+  delivery without further confirmation prompts and without duplicate mail.
+- Verified the running local server, authenticated API, Mail.ru account `23`,
+  durable/effective outgoing OFF, closed account breaker, no cooldown and no
+  active pacing reservation.
+- A fresh read-only continuation dry-run for campaign `2` returned
+  `safe=true`, `61` strictly untouched recipients and zero live sends.
+- Created a consistent pre-send SQLite backup with
+  `PRAGMA integrity_check=ok`; controlled execution will use fresh bounded
+  plans and one transport job at a time.
+
 ## 2026-08-31T18:38:35Z — MESSAGES PRIMARY CORRESPONDENCE FILTER — TASK-MESSAGES-PRIMARY-FILTER-20260831
 
 - Changed the default `/messages` correspondence list to show only threads

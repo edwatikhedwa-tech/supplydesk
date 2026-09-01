@@ -1,15 +1,42 @@
 # Active Task
 
-## Current task — idle after messages primary correspondence filter
+## Current task — idle after the final Mail.ru continuation
 
 Task ID: `NONE`
 Agent: `Codex`
 Mode: `CLOSE`
-Started: `2026-08-31`
-Scope: `show only sent/replied correspondence by default on /messages and keep pending outgoing mail in the queue`
-Non-goals: `no API, database, queue, delivery, sending, request-link or other SupplyDesk behavior changes`
-Status: `IDLE — TASK-MESSAGES-PRIMARY-FILTER-20260831 completed locally`
-Last update: `2026-08-31T18:38:35Z`
+Started: `2026-09-01`
+Scope: `TASK-MAILRU-FINAL-CONTINUATION-20260831 completed and verified`
+Non-goals: `no automatic reconciliation of historical ambiguous Yandex jobs, no further SMTP, no credential or account changes`
+Status: `IDLE — final continuation completed; outgoing is effectively OFF`
+Last update: `2026-09-01T05:43:31Z`
+
+## Latest completed task — final untouched Mail.ru continuation
+
+Task ID: `TASK-MAILRU-FINAL-CONTINUATION-20260831`
+Status: `COMPLETE — 60 accepted, 1 permanent recipient rejection, 0 unknown outcomes`
+
+- A fresh dry-run identified `61` strictly untouched recipients. Thirteen
+  bounded plans created jobs `175`–`235`; provider transport was processed one
+  job at a time.
+- Mail.ru accepted `60` recipients. Every accepted attempt has SMTP
+  `post_data / 250` evidence. One invalid synthetic recipient was rejected at
+  `rcpt_to` with SMTP `550` before the irreversible stage; no automatic repeat
+  was made.
+- The final dry-run is `safe=true`, `eligible_untouched=0`,
+  `would_create=0`. Request `1059` has no duplicate sent recipient and no
+  recipient with multiple accepted attempts.
+- Three historical Yandex jobs remain locally queued but are not continuation
+  targets: two contain disputed irreversible transient attempts and one
+  recipient has a reconciled Mail.ru acceptance. They were not sent.
+- The screenshot with `Ждём ответа`, `Ожидает отправки` and `Отправлено · 3`
+  was an intermediate four-contact company card. Its fourth contact later
+  completed with SMTP `250`; the current card shows `Отправлено · 4` without
+  the queued badge.
+- Durable and process-level outgoing are OFF, active reservations are `0`,
+  SQLite integrity is `ok`, and the safe local server remains available at
+  `http://127.0.0.1:8000/`.
+- Report: `ai/reports/TASK-MAILRU-FINAL-CONTINUATION-20260831-report.md`.
 
 ## Latest completed task — messages primary correspondence filter
 
