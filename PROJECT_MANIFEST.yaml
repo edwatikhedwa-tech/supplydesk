@@ -1,0 +1,131 @@
+manifest_version: 1
+manifest_id: supplydesk-control-canonical-baseline-20260901
+reconciled_at: 2026-09-01
+status: CANONICAL_WITH_LIMITATIONS
+
+project:
+  name: SupplyDesk
+  repository: edwatikhedwa-tech/supplydesk
+  visibility: private
+  source_head: c076e1be385c3ae6da2716159e1f46fc2fce23d7
+  control_branch: control/canonical-baseline-20260901
+  audit_branch: audit/repository-hygiene-reports-20260901
+  audit_commit: b5a454f9b39f3cbf01d640d5b67e4231ca25733a
+
+canonical_state:
+  current_state: ai/CURRENT_STATE.md
+  active_task: ai/ACTIVE_TASK.md
+  decisions: ai/DECISIONS.md
+  deferred_findings: ai/DEFERRED_FINDINGS.md
+  task_report: ai/reports/TASK-CANONICAL-CONTROL-BASELINE-20260901-report.md
+  rule: ai/CURRENT_STATE.md is the only current-state source; dated reports are evidence or history
+
+runtime:
+  backend_entrypoint: supplier_app.py
+  serverless_entrypoint: api/index.py
+  frontend_root: frontend
+  frontend_dev_command: npm run dev
+  frontend_build_command: npm run build
+  backend_default_port: 8000
+  frontend_default_port: 5173
+  configured_backend_port: NOT_VERIFIED
+  default_backend_url: http://127.0.0.1:8000
+  default_frontend_url: http://127.0.0.1:5173
+
+browser_acceptance:
+  public_shell_test: frontend/tests/frontend-audit.spec.ts
+  public_shell_base_url: http://127.0.0.1:5173
+  live_route_base_url: http://127.0.0.1:8000
+  audit_live_route_url: http://127.0.0.1:18000
+  route_mocks_for_live_acceptance: false
+  real_email_actions: forbidden
+  safe_browser_actions_only: true
+
+database:
+  engine: sqlite
+  canonical_path: mail-data/supplier.sqlite3
+  backup_area: mail-data/sqlite_backup_api
+  doctor_dry_run_writes: false
+  migrations_in_this_baseline: false
+  published: false
+
+operator_tools:
+  - path: scripts/doctor.ps1
+    classification: TRACK_TOOLING
+    modes: [Plan, DryRun, Apply]
+    dry_run_observed: PASS_ON_SOURCE_CHECKOUT
+    apply_executed: false
+  - path: scripts/bootstrap_supplydesk.ps1
+    classification: TRACK_TOOLING
+  - path: scripts/recover_supplydesk.ps1
+    classification: TRACK_TOOLING
+  - path: scripts/process_request_step.py
+    classification: TRACK_TOOLING
+  - path: scripts/runtime_status.py
+    classification: TRACK_TOOLING
+  - path: scripts/supplier_identity_audit.py
+    classification: TRACK_TOOLING
+  - path: scripts/verify_enrichment_live.py
+    classification: TRACK_TOOLING
+  - path: scripts/cross_provider_retry_preview.py
+    classification: TRACK_TOOLING
+
+tracked_test_contract:
+  backend_command: python -m pytest tests -vv --tb=short
+  offline_fixture: benchmarks/enrichment_cases.json
+  frontend_install: npm ci --no-audit --fund=false
+  frontend_typecheck: npm run typecheck
+  frontend_lint: npm run lint
+  frontend_build: npm run build
+  public_shell: AUDIT_BASE_URL=http://127.0.0.1:5173 npx playwright test tests/frontend-audit.spec.ts -g "public shell" --workers=1
+  live_email_tests: not executed; no real mailbox or SMTP access
+
+protected_local_paths:
+  - .env
+  - .env.*
+  - .vercel/.env.*
+  - mail-data/**
+  - runtime/**
+  - Temp/**
+  - frontend/node_modules/**
+  - frontend/dist/**
+  - artifacts/**
+  - .pytest_cache/**
+  - __pycache__/**
+
+not_canonicalized:
+  - review packages, backup directories and zip bundles
+  - captured real-mail fixtures and diagnostic code
+  - generated lookup output and local screenshots
+  - .agents/skills/neon/SKILL.md, keywords.txt and root run_probe.py (UNKNOWN_REVIEW)
+
+dangerous_operations:
+  - send_real_email
+  - connect_to_real_smtp_or_imap
+  - apply_database_migration
+  - write_to_canonical_database
+  - delete_or_move_unallowlisted_files
+  - force_push
+  - merge_or_change_default_branch
+
+verification:
+  control_reconciliation_commit: 58103e4373f82f8ced5735c096a1028d2fbb7843
+  source_checkout_modified_by_task: false
+  source_head_verified: true
+  source_env_file_count: 6
+  env_values_read: false
+  backend_control_run: "373 passed, 1 skipped, 0 failed, 0 errors"
+  backend_published_audit_run: "321 passed, 52 failed, 1 skipped, 0 errors"
+  backend_new_failures: 0
+  backend_new_errors: 0
+  frontend_npm_ci: PASS
+  frontend_typecheck: PASS
+  frontend_lint: "PASS_WITH_8_WARNINGS"
+  frontend_build: PASS
+  playwright_public_shell: "8 passed"
+  playwright_live_routes: "18/18 PASS in published audit; not rerun without backend data"
+  doctor_source_dry_run: PASS
+  doctor_control_dry_run: "EXPECTED_PARTIAL: .env and mail-data absent"
+  knip: NOT_VERIFIED
+  files_deleted: 0
+  real_email_sent: false

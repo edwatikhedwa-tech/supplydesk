@@ -1,5 +1,24 @@
 # Current State
 
+## Current task update — canonical control baseline
+
+- Date: `2026-09-01` (`TASK-CANONICAL-CONTROL-BASELINE-20260901`).
+- A controlled worktree was created from audit commit
+  `b5a454f9b39f3cbf01d640d5b67e4231ca25733a` on branch
+  `control/canonical-baseline-20260901`; the source checkout remains at
+  `c076e1be385c3ae6da2716159e1f46fc2fce23d7` and was not modified by this task.
+- `PROJECT_MANIFEST.yaml` is the reconciled runtime manifest. This file remains
+  the only current-state source; `ai/baselines/**` and the dated task report
+  are evidence for the baseline, not a second state system.
+- The selective ledger reduced project-owned unknowns from `62` to `3`; review,
+  backup, generated, vendor, secret-local, runtime and real-mail data remain
+  outside the canonical working set.
+- Control evidence: backend `373 passed, 1 skipped`, frontend install/typecheck/
+  build passed, lint had 8 warnings, and the public shell Playwright matrix was
+  `8 passed`. Published audit evidence remains `18/18` live routes; no real
+  email was sent.
+- Report: `ai/reports/TASK-CANONICAL-CONTROL-BASELINE-20260901-report.md`.
+
 ## Current task update — canonical documentation and freshness rule
 
 - Timestamp UTC: `2026-09-01T07:29:32Z`
