@@ -66,7 +66,7 @@ function gridTemplate(hasPositions: boolean): string {
     '104px',                // Выручка
     '104px',                // Прибыль
     '104px',                // ЕГРЮЛ
-    '164px',                // Статус письма — отдельная операционная колонка
+    '190px',                // Статус письма — явные contact counts без наложения на Checko
     '72px',                 // Checko — внешняя реестровая ссылка
     '64px',                 // действия
   ].filter(Boolean).join(' ');

@@ -3,6 +3,34 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-01T06:13:09Z — HISTORICAL QUEUE RECONCILIATION COMPLETE — TASK-MAIL-STATUS-RECONCILIATION-20260901
+
+- Applied an allowlisted, evidence-gated and idempotent local reconciliation:
+  jobs `49`/`54` became `delivery_unknown`; job `71` was cancelled and its
+  campaign target marked `reconciled` because Mail.ru acceptance already
+  exists for the exact recipient.
+- Created a verified pre-change database backup. Plan, DryRun, Apply and the
+  repeated DryRun used zero SMTP calls while durable outgoing and active
+  reservations remained zero.
+- Request `1059` now has no queued jobs, no duplicate sent recipient and no
+  recipient with multiple accepted attempts; the continuation plan is empty.
+- Added reconciled acceptance to request facts and explicit Russian contact
+  counts to grouped mail status badges.
+- Verified full backend discovery (`374` pass, one expected PostgreSQL skip),
+  frontend typecheck/lint/build, eight responsive Playwright projects, three
+  live rendered widths, SQLite and HTTP/API smoke.
+
+## 2026-09-01T05:53:58Z — HISTORICAL QUEUE RECONCILIATION START — TASK-MAIL-STATUS-RECONCILIATION-20260901
+
+- Owner instructed the agent to complete all remaining tasks from the current
+  mail-delivery chain.
+- Confirmed three stale queue contradictions without changing data: two
+  irreversible disputed transients and one recipient with durable reconciled
+  Mail.ru acceptance.
+- Scoped the implementation to evidence-gated local reconciliation, request
+  fact aggregation, explicit multi-contact badge labels and verification.
+- No SMTP, account, credential or unrelated worktree action is allowed.
+
 ## 2026-09-01T05:43:31Z — MAIL.RU FINAL CONTINUATION COMPLETE — TASK-MAILRU-FINAL-CONTINUATION-20260831
 
 - Completed thirteen bounded Mail.ru continuation plans: `60` SMTP

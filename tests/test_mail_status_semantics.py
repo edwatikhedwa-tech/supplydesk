@@ -84,6 +84,14 @@ class MailStatusSemanticsTests(unittest.TestCase):
                 ("sent" if status == "sent" else status, error, message_id),
             )
 
+    def _complete_campaign_for_job(self, job_id: int) -> None:
+        with self.repo.connect() as connection:
+            connection.execute(
+                """UPDATE mail_campaigns SET status='completed'
+                   WHERE id=(SELECT campaign_id FROM mail_campaign_targets WHERE job_id=?)""",
+                (job_id,),
+            )
+
     def _company(self) -> dict:
         return next(
             item for item in self.repo.list_suppliers(self.workspace_id, 1043)
@@ -130,6 +138,133 @@ class MailStatusSemanticsTests(unittest.TestCase):
         contacts = {contact["email"]: contact for contact in company["contacts"]}
         self.assertEqual(contacts["status-0@example.com"]["response_status"], "waiting")
         self.assertEqual(contacts["status-1@example.com"]["response_status"], "none")
+
+    def test_reconciled_acceptance_replaces_untouched_source_queue_fact(self) -> None:
+        queued = self._queue(self.supplier_ids[0], "status-0@example.com", "reconciled-source")
+        self._complete_campaign_for_job(queued["job_id"])
+        self.repo.reconcile_outbound_event(
+            request_id=1043,
+            supplier_id=self.supplier_ids[0],
+            normalized_recipient="status-0@example.com",
+            provider_type="mailru",
+            rfc_message_id="<reconciled-status-0@mail.ru>",
+            accepted_at="2026-08-30T10:00:00+00:00",
+            evidence_type="verified-test-fixture",
+            evidence_reference="fixture://reconciled-status-0",
+            evidence_sha256="a" * 64,
+            created_by="test",
+            operator_reason="Verified historical provider acceptance.",
+        )
+
+        preview = self.repo.preview_historical_queued_reconciliation(
+            self.workspace_id,
+            self.user_id,
+            queued["job_id"],
+            expected_resolution="accepted_history",
+        )
+        self.assertTrue(preview["safe"], preview)
+        result = self.repo.reconcile_historical_queued_job(
+            self.workspace_id,
+            self.user_id,
+            queued["job_id"],
+            expected_resolution="accepted_history",
+        )
+        repeated = self.repo.reconcile_historical_queued_job(
+            self.workspace_id,
+            self.user_id,
+            queued["job_id"],
+            expected_resolution="accepted_history",
+        )
+        self.assertFalse(result["already_reconciled"])
+        self.assertTrue(repeated["already_reconciled"])
+        with self.repo.connect() as connection:
+            statuses = connection.execute(
+                """SELECT j.status AS job_status, m.status AS message_status,
+                          ct.status AS target_status, ct.exclusion_reason
+                   FROM mail_jobs j JOIN mail_messages m ON m.id=j.message_id
+                   LEFT JOIN mail_campaign_targets ct ON ct.job_id=j.id
+                   WHERE j.id=?""",
+                (queued["job_id"],),
+            ).fetchone()
+        self.assertEqual((statuses["job_status"], statuses["message_status"]), ("cancelled", "cancelled"))
+        self.assertEqual((statuses["target_status"], statuses["exclusion_reason"]), ("reconciled", "accepted_history_reconciled"))
+        company = self._company()
+        contact = next(item for item in company["contacts"] if item["email"] == "status-0@example.com")
+        self.assertEqual(contact["delivery_status"], "accepted")
+        self.assertEqual(contact["response_status"], "waiting")
+        metrics = self.repo.get_request(self.workspace_id, 1043)["mail_metrics"]
+        self.assertEqual(metrics["queued"], 0)
+        self.assertEqual(metrics["accepted"], 1)
+        self.assertEqual(metrics["accepted_effective"], 1)
+
+    def test_irreversible_transient_queue_reconciles_to_delivery_unknown(self) -> None:
+        queued = self._queue(self.supplier_ids[0], "status-0@example.com", "historical-unknown")
+        self._complete_campaign_for_job(queued["job_id"])
+        timestamp = "2026-08-30T10:00:00+00:00"
+        with self.repo.connect() as connection:
+            connection.execute(
+                "UPDATE mail_jobs SET attempts=1 WHERE id=?",
+                (queued["job_id"],),
+            )
+            connection.execute(
+                "UPDATE mail_job_integrity SET irreversible_at=? WHERE job_id=?",
+                (timestamp, queued["job_id"]),
+            )
+            connection.execute(
+                """INSERT INTO mail_send_attempts(
+                       job_id, message_id, mail_account_id, attempt_number,
+                       started_at, ended_at, outcome, provider_classification,
+                       irreversible_reached
+                   ) VALUES (?, ?, ?, 1, ?, ?, 'transient_rejected', 'transient', 1)""",
+                (
+                    queued["job_id"], queued["message_id"], self.account_id,
+                    timestamp, timestamp,
+                ),
+            )
+
+        preview = self.repo.preview_historical_queued_reconciliation(
+            self.workspace_id,
+            self.user_id,
+            queued["job_id"],
+            expected_resolution="delivery_unknown",
+        )
+        self.assertTrue(preview["safe"], preview)
+        first = self.repo.reconcile_historical_queued_job(
+            self.workspace_id,
+            self.user_id,
+            queued["job_id"],
+            expected_resolution="delivery_unknown",
+        )
+        repeated = self.repo.reconcile_historical_queued_job(
+            self.workspace_id,
+            self.user_id,
+            queued["job_id"],
+            expected_resolution="delivery_unknown",
+        )
+        self.assertFalse(first["already_reconciled"])
+        self.assertTrue(repeated["already_reconciled"])
+        with self.repo.connect() as connection:
+            statuses = connection.execute(
+                """SELECT j.status AS job_status, m.status AS message_status,
+                          ct.status AS target_status
+                   FROM mail_jobs j JOIN mail_messages m ON m.id=j.message_id
+                   LEFT JOIN mail_campaign_targets ct ON ct.job_id=j.id
+                   WHERE j.id=?""",
+                (queued["job_id"],),
+            ).fetchone()
+        self.assertEqual(
+            (statuses["job_status"], statuses["message_status"]),
+            ("delivery_unknown", "delivery_unknown"),
+        )
+        self.assertEqual(statuses["target_status"], "delivery_unknown")
+        contact = next(
+            item for item in self._company()["contacts"]
+            if item["email"] == "status-0@example.com"
+        )
+        self.assertEqual(contact["delivery_status"], "delivery_unknown")
+        metrics = self.repo.get_request(self.workspace_id, 1043)["mail_metrics"]
+        self.assertEqual(metrics["queued"], 0)
+        self.assertEqual(metrics["delivery_unknown"], 1)
 
     def test_answered_response_does_not_erase_accepted_transport(self) -> None:
         queued = self._queue(self.supplier_ids[0], "status-0@example.com", "answered")

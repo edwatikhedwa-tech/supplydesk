@@ -1,5 +1,51 @@
 # Last Handoff
 
+## Current handoff — historical mail queue and grouped statuses complete
+
+Task ID: `TASK-MAIL-STATUS-RECONCILIATION-20260901`
+Дата закрытия UTC: `2026-09-01T06:13:09Z`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+Base HEAD before closeout: `99f4385fe78936441325a3312831fb89582024a6`
+Push: `NOT RUN`
+Status: `COMPLETE — no remaining safe send; outgoing OFF`
+
+### Что сделано
+
+- Две исторические необратимые попытки (`49`, `54`) переведены из ложной
+  очереди в честный `delivery_unknown` без повторной отправки.
+- Нулевая попытка `71` отменена как устаревшая: точный адрес уже подтверждён
+  сохранённым событием принятия Mail.ru; target помечен `reconciled`.
+- UI теперь учитывает подтверждённое reconciled-событие и подписывает числа в
+  групповых бейджах как количество контактов.
+- Добавлен точный, идемпотентный Plan/DryRun/Apply-скрипт и регрессионные
+  серверные/интерфейсные тесты.
+
+### Проверено
+
+- Request `1059`: queued `0`; sent rows `125`; distinct sent recipients `125`;
+  duplicate sent recipients `0`; duplicate accepted attempts `0`.
+- Continuation dry-run: `safe=true`, `eligible_untouched=0`, `would_create=0`,
+  `would_send_now=0`, `queued_in_current_campaign=0`.
+- SQLite integrity `ok`, active reservations `0`, durable outgoing `0`.
+- Full backend discovery passed `374` tests with one expected PostgreSQL skip;
+  frontend typecheck/build passed, lint has `0` errors and `8` existing
+  warnings; Playwright status regression `8/8`.
+- Live screenshots reviewed at `1640x900`, `768x1024`, `390x844`; no overflow,
+  clipping or badge ambiguity.
+- HTTP/API smoke: root `200`, protected without session `401`, unknown `404`,
+  authenticated request API `200`.
+
+### Runtime и откат
+
+- Server is left running at `http://127.0.0.1:8000/`, PID `16704`, with
+  `MAIL_OUTGOING_DISABLED=1`.
+- Database backup:
+  `mail-data/backups/supplier.sqlite3.pre-status-reconcile-20260901-060602.bak`.
+- No SMTP/IMAP or provider action occurred during this task.
+
+Report: `ai/reports/TASK-MAIL-STATUS-RECONCILIATION-20260901-report.md`.
+
 ## Current handoff — final Mail.ru continuation completed
 
 Task ID: `TASK-MAILRU-FINAL-CONTINUATION-20260831`

@@ -1,5 +1,37 @@
 # Current State
 
+## Current task update — historical mail queue reconciled
+
+- Timestamp UTC: `2026-09-01T06:13:09Z`
+  (`TASK-MAIL-STATUS-RECONCILIATION-20260901`, completed locally).
+- Request `1059` has no queued mail jobs. Historical jobs `49` and `54` are
+  now `delivery_unknown`; job `71` is cancelled and its target is marked
+  `reconciled` because the exact address already has durable Mail.ru
+  acceptance evidence.
+- The reconciliation path is evidence-gated, allowlisted and idempotent. Its
+  Plan, DryRun, Apply and repeated DryRun all reported `safe=true`,
+  `smtp_calls=0`; outgoing stayed durably and process-level OFF.
+- A consistent SQLite backup was created at
+  `mail-data/backups/supplier.sqlite3.pre-status-reconcile-20260901-060602.bak`.
+- Current request history has `125` sent rows for `125` distinct normalized
+  recipients, duplicate sent recipients `0` and duplicate accepted-attempt
+  recipients `0`.
+- Final Mail.ru continuation check: `eligible_untouched=0`, `would_create=0`,
+  `queued_in_current_campaign=0`. No remaining safe supplier send exists.
+- Reconciled acceptances now participate in request mail facts. Grouped cards
+  label counts as contacts, so `Отправлено · 4 контакта` cannot be mistaken
+  for four repeats to one address.
+- Live UI passed desktop `1640x900`, tablet `768x1024` and mobile `390x844`
+  screenshot review with no clipping, overlap or horizontal overflow. The
+  automated status regression passed all eight configured viewports.
+- Full backend discovery passed `374` tests with one expected PostgreSQL skip;
+  the focused mail suites and frontend typecheck/build/lint also passed.
+- Server is running at `http://127.0.0.1:8000/`, PID `16704`, with
+  `MAIL_OUTGOING_DISABLED=1`; HTTP/API smoke returned `200/401/404` as
+  expected and authenticated request API returned `200`.
+- Report:
+  `ai/reports/TASK-MAIL-STATUS-RECONCILIATION-20260901-report.md`.
+
 ## Current task update — final Mail.ru continuation completed
 
 - Timestamp UTC: `2026-09-01T05:43:31Z`

@@ -1,15 +1,38 @@
 # Active Task
 
-## Current task — idle after the final Mail.ru continuation
+## Current task
 
 Task ID: `NONE`
 Agent: `Codex`
-Mode: `CLOSE`
-Started: `2026-09-01`
-Scope: `TASK-MAILRU-FINAL-CONTINUATION-20260831 completed and verified`
-Non-goals: `no automatic reconciliation of historical ambiguous Yandex jobs, no further SMTP, no credential or account changes`
-Status: `IDLE — final continuation completed; outgoing is effectively OFF`
-Last update: `2026-09-01T05:43:31Z`
+Mode: `IDLE`
+Status: `IDLE — TASK-MAIL-STATUS-RECONCILIATION-20260901 completed locally`
+Last update: `2026-09-01T06:13:09Z`
+
+## Latest completed task — historical queue reconciliation and contact badges
+
+Task ID: `TASK-MAIL-STATUS-RECONCILIATION-20260901`
+Status: `COMPLETE — queue cleared truthfully, no SMTP, UI and tests verified`
+
+- Jobs `49` and `54` now have `delivery_unknown`; their historical
+  irreversible attempts were not retried or rewritten.
+- Job `71` is cancelled as an obsolete Yandex source because the exact
+  recipient already has durable Mail.ru acceptance; its campaign target is
+  marked `reconciled`.
+- Request `1059` now has queued jobs `0`, `125` sent rows for `125` distinct
+  recipients, no duplicate sent recipient and no recipient with several
+  accepted attempts.
+- Final continuation dry-run has `eligible_untouched=0`, `would_create=0` and
+  `queued_in_current_campaign=0`; there is nobody left to send safely.
+- Grouped status badges explicitly say `контакт/контакта/контактов`; live
+  desktop, tablet and mobile renders have no overlap or horizontal overflow.
+- Full backend discovery passed `374` tests with one expected PostgreSQL skip;
+  frontend typecheck/build/lint, an eight-viewport Playwright regression,
+  HTTP/API smoke and SQLite integrity checks passed.
+- Backup:
+  `mail-data/backups/supplier.sqlite3.pre-status-reconcile-20260901-060602.bak`.
+- Server remains running at `http://127.0.0.1:8000/` with outgoing OFF.
+- Report:
+  `ai/reports/TASK-MAIL-STATUS-RECONCILIATION-20260901-report.md`.
 
 ## Latest completed task — final untouched Mail.ru continuation
 

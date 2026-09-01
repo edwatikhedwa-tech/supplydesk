@@ -2,6 +2,33 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-01T06:13:09Z — TASK-MAIL-STATUS-RECONCILIATION-20260901 COMPLETE
+
+- Completed the owner's instruction to close the remaining mail-delivery
+  tasks without another provider send or confirmation loop.
+- Preserved the safety distinction: disputed irreversible attempts became
+  unknown rather than retryable, while the exact already-accepted Mail.ru
+  recipient was reconciled without creating a new message.
+- The live request page now shows queue `0`; the mixed company card says
+  `Ждём ответа · 4 контакта` and `Отправлено · 4 контакта`.
+- Reviewed screenshots at desktop, tablet and mobile widths, ran the focused
+  responsive matrix and server suites, and left the safe local server running.
+- Detailed evidence and rollback information are in
+  `ai/reports/TASK-MAIL-STATUS-RECONCILIATION-20260901-report.md`.
+
+## 2026-09-01T05:53:58Z — TASK-MAIL-STATUS-RECONCILIATION-20260901
+
+- Owner requested completion of all previously assigned tasks after the
+  mixed-status explanation.
+- Interpreted the bounded remaining scope as: reconcile three historical queue
+  records without SMTP, make reconciled acceptance visible in request facts,
+  clarify grouped-contact status badges, verify and commit.
+- Read-only contradiction audit confirmed that jobs `49` and `54` cannot be
+  safely retried and job `71` must not be repeated because its recipient has
+  proven Mail.ru acceptance.
+- Selected frontend EXTEND mode: preserve the current SupplyDesk design system,
+  reuse existing badges, add no dependency, and test desktop/mobile rendering.
+
 ## 2026-09-01T05:43:31Z — TASK-MAILRU-FINAL-CONTINUATION-20260831
 
 - Owner supplied a screenshot asking why one row simultaneously showed

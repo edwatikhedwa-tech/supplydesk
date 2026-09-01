@@ -965,13 +965,51 @@ class MailRepository:
         the cursor is used only as a compatibility fallback for old rows that
         have a state but no corresponding message.
         """
-        outbound_rows = connection.execute(
+        outbound_rows = [dict(row) for row in connection.execute(
             """SELECT id, supplier_id, to_email, status, error, created_at
-               FROM mail_messages
+               FROM mail_messages m
                WHERE request_id=? AND direction='outbound'
+                 AND NOT EXISTS (
+                     SELECT 1
+                     FROM mail_jobs j
+                     JOIN mail_campaign_targets ct ON ct.job_id=j.id
+                     WHERE j.message_id=m.id
+                       AND ct.status='reconciled'
+                       AND ct.exclusion_reason='accepted_history_reconciled'
+                 )
                ORDER BY created_at, id""",
             (request_id,),
-        ).fetchall()
+        ).fetchall()]
+        # A canonical recovery may contain provider acceptance that was proven
+        # from a signed/hashed backup without copying the old message row.  It
+        # is still a real contact-level transport fact and must participate in
+        # the request UI.  Keep one synthetic accepted event per recipient,
+        # and only when canonical message history has no accepted row already.
+        accepted_message_emails = {
+            _normalized_mail_address(row["to_email"])
+            for row in outbound_rows
+            if str(row["status"] or "") == "sent" and _normalized_mail_address(row["to_email"])
+        }
+        reconciled_by_email: dict[str, dict[str, Any]] = {}
+        for row in connection.execute(
+            """SELECT id, supplier_id, normalized_recipient, accepted_at
+               FROM mail_reconciled_outbound_events
+               WHERE request_id=? AND outcome='accepted'
+               ORDER BY accepted_at, id""",
+            (request_id,),
+        ).fetchall():
+            email = _normalized_mail_address(row["normalized_recipient"])
+            if email and email not in accepted_message_emails:
+                reconciled_by_email[email] = {
+                    "id": -int(row["id"]),
+                    "supplier_id": int(row["supplier_id"]),
+                    "to_email": email,
+                    "status": "sent",
+                    "error": None,
+                    "created_at": row["accepted_at"] or "",
+                }
+        outbound_rows.extend(reconciled_by_email.values())
+        outbound_rows.sort(key=lambda row: (str(row["created_at"] or ""), int(row["id"])))
         inbound_rows = connection.execute(
             """SELECT id, supplier_id, from_email, subject, body_text, body_html, created_at
                FROM mail_messages
@@ -5007,28 +5045,29 @@ class MailRepository:
                 if str(row["exclusion_reason"] or "").startswith("suppressed"):
                     suppressed += 1
                 continue
-            if row["status"] == "waiting" and job_status == "queued":
+            accepted_provider = accepted_provider_by_target.get(int(row["id"]))
+            if row["status"] == "waiting" and job_status == "queued" and not accepted_provider:
                 waiting += 1
-            if job_status == "queued":
+            if job_status == "queued" and not accepted_provider:
                 queued += 1
             if audit:
                 attempted += 1
             if job_status == "sent":
                 accepted_in_campaign += 1
-            accepted_provider = accepted_provider_by_target.get(int(row["id"]))
             if accepted_provider:
                 accepted_target_ids.add(int(row["id"]))
                 accepted_by_provider[accepted_provider] = accepted_by_provider.get(accepted_provider, 0) + 1
-            if job_status == "delivery_unknown":
-                unknown += 1
-            if job_status == "cancelled":
-                cancelled += 1
-            if "transient_rejected" in statuses and job_status != "sent":
-                failed_transient += 1
-            if job_status == "queued" and "transient_rejected" in statuses and "accepted" not in statuses:
-                historical_disputed_transient += 1
-            if job_status == "failed" and "transient_rejected" not in statuses:
-                failed_permanent += 1
+            else:
+                if job_status == "delivery_unknown":
+                    unknown += 1
+                if job_status == "cancelled":
+                    cancelled += 1
+                if "transient_rejected" in statuses and job_status != "sent":
+                    failed_transient += 1
+                if job_status == "queued" and "transient_rejected" in statuses and "accepted" not in statuses:
+                    historical_disputed_transient += 1
+                if job_status == "failed" and "transient_rejected" not in statuses:
+                    failed_permanent += 1
             if any("spam" in item or "policy" in item for item in classifications):
                 provider_rejections += 1
             if "supplier-suppressed" in classifications or "suppression" in classifications:
@@ -5044,13 +5083,9 @@ class MailRepository:
         )
         accepted = len(accepted_target_ids)
         accepted_reconciled = len(reconciled_target_ids)
-        queued_provider_neutral = max(
-            0,
-            queued - sum(
-                1 for row in target_rows
-                if int(row["id"]) in accepted_target_ids and str(row["job_status"] or "") == "queued"
-            ),
-        )
+        # Accepted history takes precedence over a stale source job above, so
+        # ``queued`` is already provider-neutral here.
+        queued_provider_neutral = queued
         effective_attempted = max(attempted, accepted + failed_permanent + failed_transient + unknown)
         health = {
             "permanent_failure_rate": failed_permanent / effective_attempted if effective_attempted else 0.0,
@@ -8162,6 +8197,310 @@ class MailRepository:
                 (int(enabled), iso_now()),
             )
         return enabled
+
+    def _historical_queued_reconciliation_preview_connection(
+        self,
+        connection: sqlite3.Connection | PostgresConnection,
+        *,
+        workspace_id: int,
+        user_id: int,
+        job_id: int,
+        expected_resolution: str,
+    ) -> dict[str, Any]:
+        """Validate one stale queued job against durable evidence only."""
+
+        resolution = str(expected_resolution or "").strip().lower()
+        if resolution not in {"delivery_unknown", "accepted_history"}:
+            raise ValueError("Unsupported historical queue resolution.")
+        row = connection.execute(
+            """SELECT j.id AS job_id, j.message_id, j.mail_account_id,
+                      j.status AS job_status, j.attempts AS job_attempts,
+                      j.provider_message_id AS job_provider_message_id,
+                      m.workspace_id, m.user_id, m.request_id, m.supplier_id,
+                      m.to_email, m.status AS message_status, m.sent_at,
+                      ji.irreversible_at, ji.claim_owner, ji.claim_token,
+                      ji.lease_expires_at, ma.provider,
+                      ct.id AS campaign_target_id, ct.status AS target_status,
+                      ct.exclusion_reason AS target_exclusion_reason,
+                      c.status AS campaign_status,
+                      COALESCE((SELECT outgoing_enabled FROM mail_runtime_controls WHERE id=1), 0) AS outgoing_enabled
+               FROM mail_jobs j
+               JOIN mail_messages m ON m.id=j.message_id
+               JOIN mail_accounts ma ON ma.id=j.mail_account_id
+               LEFT JOIN mail_job_integrity ji ON ji.job_id=j.id
+               LEFT JOIN mail_campaign_targets ct ON ct.job_id=j.id
+               LEFT JOIN mail_campaigns c ON c.id=ct.campaign_id
+               WHERE j.id=? AND m.workspace_id=? AND m.user_id=?
+                 AND m.direction='outbound'""",
+            (int(job_id), int(workspace_id), int(user_id)),
+        ).fetchone()
+        if not row:
+            raise ValueError("Historical queued job was not found for this owner.")
+        email = _normalized_mail_address(row["to_email"])
+        attempts = [dict(item) for item in connection.execute(
+            """SELECT a.id, a.outcome, a.provider_classification,
+                      a.irreversible_reached, e.smtp_stage, e.smtp_code,
+                      e.provider_response_safe, e.exception_class
+               FROM mail_send_attempts a
+               LEFT JOIN mail_send_attempt_evidence e ON e.attempt_id=a.id
+               WHERE a.job_id=? ORDER BY a.id""",
+            (int(job_id),),
+        ).fetchall()]
+        accepted_event = connection.execute(
+            """SELECT id, provider_type, accepted_at, evidence_sha256
+               FROM mail_reconciled_outbound_events
+               WHERE request_id=? AND supplier_id=?
+                 AND LOWER(TRIM(normalized_recipient))=? AND outcome='accepted'
+               ORDER BY accepted_at DESC, id DESC LIMIT 1""",
+            (int(row["request_id"]), int(row["supplier_id"]), email),
+        ).fetchone()
+        active_reservation = bool(connection.execute(
+            """SELECT 1 FROM mail_send_reservations
+               WHERE owner_type='job' AND owner_id=?
+                 AND status IN ('reserved', 'started') LIMIT 1""",
+            (int(job_id),),
+        ).fetchone())
+        target_job_status = "delivery_unknown" if resolution == "delivery_unknown" else "cancelled"
+        target_message_status = target_job_status
+        target_marker_matches = row["campaign_target_id"] is None or (
+            str(row["target_status"] or "") == (
+                "delivery_unknown" if resolution == "delivery_unknown" else "reconciled"
+            )
+            and (
+                resolution == "delivery_unknown"
+                or str(row["target_exclusion_reason"] or "") == "accepted_history_reconciled"
+            )
+        )
+        already_reconciled = (
+            str(row["job_status"] or "") == target_job_status
+            and str(row["message_status"] or "") == target_message_status
+            and target_marker_matches
+        )
+        reasons: list[str] = []
+        if int(row["outgoing_enabled"] or 0):
+            reasons.append("durable_outgoing_enabled")
+        if active_reservation:
+            reasons.append("active_reservation")
+        if row["claim_owner"] or row["claim_token"] or row["lease_expires_at"]:
+            reasons.append("active_claim")
+        if str(row["provider"] or "") != "yandex":
+            reasons.append("source_provider_not_yandex")
+        if str(row["campaign_status"] or "") == "active":
+            reasons.append("campaign_active")
+        if not already_reconciled and (
+            str(row["job_status"] or "") != "queued"
+            or str(row["message_status"] or "") != "queued"
+        ):
+            reasons.append("source_not_queued")
+        if row["job_provider_message_id"] or row["sent_at"]:
+            reasons.append("source_has_provider_acceptance_fields")
+
+        if resolution == "accepted_history":
+            if not accepted_event:
+                reasons.append("accepted_reconciliation_event_missing")
+            if attempts or int(row["job_attempts"] or 0) != 0:
+                reasons.append("source_has_send_attempts")
+            if row["irreversible_at"] is not None:
+                reasons.append("source_crossed_irreversible_gate")
+        else:
+            accepted_provider = self._accepted_supplier_provider(
+                connection,
+                int(row["request_id"]),
+                int(row["supplier_id"]),
+                email,
+            )
+            outcomes = {str(item.get("outcome") or "") for item in attempts}
+            if accepted_event or accepted_provider or "accepted" in outcomes:
+                reasons.append("accepted_history_present")
+            if not attempts or int(row["job_attempts"] or 0) <= 0:
+                reasons.append("attempt_evidence_missing")
+            if outcomes and outcomes != {"transient_rejected"}:
+                reasons.append("unexpected_attempt_outcome")
+            if attempts and not any(bool(item.get("irreversible_reached")) for item in attempts):
+                reasons.append("irreversible_attempt_evidence_missing")
+            if any(int(item.get("smtp_code") or 0) == 250 for item in attempts):
+                reasons.append("smtp_acceptance_present")
+
+        return {
+            "safe": not reasons,
+            "already_reconciled": already_reconciled and not reasons,
+            "expected_resolution": resolution,
+            "job_id": int(row["job_id"]),
+            "message_id": int(row["message_id"]),
+            "request_id": int(row["request_id"]),
+            "supplier_id": int(row["supplier_id"]),
+            "normalized_recipient": email,
+            "campaign_target_id": int(row["campaign_target_id"]) if row["campaign_target_id"] is not None else None,
+            "attempt_count": len(attempts),
+            "accepted_event_id": int(accepted_event["id"]) if accepted_event else None,
+            "reasons": list(dict.fromkeys(reasons)),
+        }
+
+    def preview_historical_queued_reconciliation(
+        self,
+        workspace_id: int,
+        user_id: int,
+        job_id: int,
+        *,
+        expected_resolution: str,
+    ) -> dict[str, Any]:
+        with self.connect() as connection:
+            return self._historical_queued_reconciliation_preview_connection(
+                connection,
+                workspace_id=workspace_id,
+                user_id=user_id,
+                job_id=job_id,
+                expected_resolution=expected_resolution,
+            )
+
+    def reconcile_historical_queued_job(
+        self,
+        workspace_id: int,
+        user_id: int,
+        job_id: int,
+        *,
+        expected_resolution: str,
+        comment: str = "",
+    ) -> dict[str, Any]:
+        """Make one stale queued record truthful without contacting a provider.
+
+        The operation is deliberately evidence-gated and idempotent.  It can
+        only classify a disputed irreversible transient as delivery-unknown,
+        or cancel an untouched Yandex source whose exact recipient already has
+        a durable reconciled acceptance event.
+        """
+
+        now = iso_now()
+        resolution = str(expected_resolution or "").strip().lower()
+        with self.connect() as connection:
+            if not self.database_url:
+                connection.execute("BEGIN IMMEDIATE")
+            preview = self._historical_queued_reconciliation_preview_connection(
+                connection,
+                workspace_id=workspace_id,
+                user_id=user_id,
+                job_id=job_id,
+                expected_resolution=resolution,
+            )
+            if not preview["safe"]:
+                if not self.database_url:
+                    connection.rollback()
+                raise ValueError(
+                    "Historical queue reconciliation blocked: "
+                    + ", ".join(preview["reasons"])
+                )
+            if preview["already_reconciled"]:
+                if not self.database_url:
+                    connection.commit()
+                return {**preview, "ok": True}
+
+            safe_comment = str(comment or "").strip()[:500]
+            if resolution == "delivery_unknown":
+                safe_error = (
+                    "Результат старой попытки неизвестен: передача могла начаться, "
+                    "но подтверждения почтового сервера нет."
+                )
+                connection.execute(
+                    """UPDATE mail_jobs SET status='delivery_unknown',
+                              next_attempt_at=NULL, last_error=?, updated_at=?
+                       WHERE id=? AND status='queued'""",
+                    (safe_error, now, int(job_id)),
+                )
+                connection.execute(
+                    """UPDATE mail_messages SET status='delivery_unknown', error=?
+                       WHERE id=? AND status='queued'""",
+                    (safe_error, int(preview["message_id"])),
+                )
+                connection.execute(
+                    """UPDATE request_supplier_states
+                       SET status='delivery_unknown', last_error=?, updated_at=?
+                       WHERE request_id=? AND last_message_id=?""",
+                    (
+                        safe_error, now, int(preview["request_id"]),
+                        int(preview["message_id"]),
+                    ),
+                )
+                connection.execute(
+                    """UPDATE mail_campaign_targets
+                       SET status='delivery_unknown', exclusion_reason=NULL, updated_at=?
+                       WHERE job_id=? AND status IN ('eligible', 'waiting')""",
+                    (now, int(job_id)),
+                )
+                action = "mail.historical_queue.reconciled_unknown"
+            else:
+                safe_error = (
+                    "Не отправлено повторно: точный адрес уже принят Mail.ru "
+                    "по подтверждённому историческому событию."
+                )
+                connection.execute(
+                    """UPDATE mail_jobs SET status='cancelled',
+                              next_attempt_at=NULL, last_error=?, updated_at=?
+                       WHERE id=? AND status='queued' AND attempts=0""",
+                    (safe_error, now, int(job_id)),
+                )
+                connection.execute(
+                    """UPDATE mail_messages SET status='cancelled', error=?, sent_at=NULL
+                       WHERE id=? AND status='queued'""",
+                    (safe_error, int(preview["message_id"])),
+                )
+                connection.execute(
+                    """UPDATE request_supplier_states
+                       SET status='cancelled', last_error=?, updated_at=?
+                       WHERE request_id=? AND last_message_id=?""",
+                    (
+                        safe_error, now, int(preview["request_id"]),
+                        int(preview["message_id"]),
+                    ),
+                )
+                connection.execute(
+                    """UPDATE mail_campaign_targets
+                       SET status='reconciled', exclusion_reason='accepted_history_reconciled', updated_at=?
+                       WHERE job_id=? AND status IN ('eligible', 'waiting')""",
+                    (now, int(job_id)),
+                )
+                action = "mail.historical_queue.reconciled_accepted"
+
+            connection.execute(
+                """UPDATE mail_job_integrity
+                   SET claim_owner=NULL, claim_token=NULL, lease_expires_at=NULL,
+                       updated_at=? WHERE job_id=?""",
+                (now, int(job_id)),
+            )
+            connection.execute(
+                """UPDATE mail_cross_provider_retries
+                   SET status=?, last_error=?, updated_at=?
+                   WHERE operation_id=(SELECT operation_id FROM mail_job_integrity WHERE job_id=?)
+                     AND status NOT IN ('accepted', 'delivery_unknown')""",
+                (
+                    "delivery_unknown" if resolution == "delivery_unknown" else "cancelled",
+                    safe_error, now, int(job_id),
+                ),
+            )
+            self._audit_connection(
+                connection,
+                int(workspace_id),
+                int(user_id),
+                action,
+                "mail_message",
+                str(preview["message_id"]),
+                {
+                    "job_id": int(job_id),
+                    "request_id": int(preview["request_id"]),
+                    "supplier_id": int(preview["supplier_id"]),
+                    "expected_resolution": resolution,
+                    "accepted_event_id": preview["accepted_event_id"],
+                    "attempt_count": int(preview["attempt_count"]),
+                    "comment": safe_comment or None,
+                },
+            )
+            if not self.database_url:
+                connection.commit()
+        return {
+            **preview,
+            "ok": True,
+            "already_reconciled": False,
+            "resolved_at": now,
+        }
 
     def reconcile_pre_data_delivery_unknown(
         self,

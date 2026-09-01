@@ -1124,7 +1124,7 @@ test('request status vocabulary separates message metrics from company filters',
     last_error: null,
     updated_at: '2026-08-30T10:01:00+00:00',
     positions_count: 1,
-    suppliers_count: 5,
+    suppliers_count: 6,
     sent_count: 2,
     replies_count: 1,
     mail_metrics: {
@@ -1176,6 +1176,18 @@ test('request status vocabulary separates message metrics from company filters',
     supplier(10903, 'accepted@status-vocabulary.example', { accepted: 1 }, { mail_status: 'waiting', response_status: 'waiting' }),
     supplier(10904, 'failed@status-vocabulary.example', { failed: 1 }, { mail_status: 'error', last_error: 'Провайдер отклонил письмо по политике отправки.' }),
     supplier(10905, 'bounced@status-vocabulary.example', { bounced: 1 }, { mail_status: 'error' }),
+    supplier(10906, 'mixed-0@status-vocabulary.example', { queued: 1, accepted: 3 }, {
+      email_count: 4,
+      site_count: 4,
+      mail_status: 'waiting',
+      response_status: 'waiting',
+      contacts: [
+        { supplier_id: 10906, email: 'mixed-0@status-vocabulary.example', host: 'status-0.example', mail_status: 'waiting', delivery_status: 'accepted', response_status: 'waiting' },
+        { supplier_id: 10907, email: 'mixed-1@status-vocabulary.example', host: 'status-1.example', mail_status: 'waiting', delivery_status: 'accepted', response_status: 'waiting' },
+        { supplier_id: 10908, email: 'mixed-2@status-vocabulary.example', host: 'status-2.example', mail_status: 'waiting', delivery_status: 'accepted', response_status: 'waiting' },
+        { supplier_id: 10909, email: 'mixed-3@status-vocabulary.example', host: 'status-3.example', mail_status: 'sent', delivery_status: 'queued', response_status: 'none' },
+      ],
+    }),
   ];
 
   await page.route('**/api/**', async (route) => {
@@ -1204,11 +1216,14 @@ test('request status vocabulary separates message metrics from company filters',
   await expect(page.getByText('44 отправлено', { exact: true })).toBeVisible();
   await expect(page.getByText('125 отправлено', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Ещё не отправляли\s+1/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Ожидает отправки\s+1/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Отправлено\s+1/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ожидает отправки\s+2/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Отправлено\s+2/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Ошибка отправки\s+1/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Не доставлено\s+1/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Ждём ответа\s+1/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ждём ответа\s+2/ })).toBeVisible();
+  await expect(page.locator('span:visible').filter({ hasText: /^◷Ждём ответа· 3 контакта$/ }).first()).toBeVisible();
+  await expect(page.locator('span:visible').filter({ hasText: /^◷Ожидает отправки· 1 контакт$/ }).first()).toBeVisible();
+  await expect(page.locator('span:visible').filter({ hasText: /^↗Отправлено· 3 контакта$/ }).first()).toBeVisible();
   await expect(page.locator(`[title="Почтовый сервер принял письмо. Доставка во входящие не гарантируется."]:visible`).first()).toBeVisible();
   await expect(page.locator('span:visible').filter({ hasText: 'Почтовый сервер отклонил письмо как нежелательное' }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: /Статус неизвестен/ })).toHaveCount(0);
