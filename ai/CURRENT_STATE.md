@@ -167,6 +167,8 @@ on this task's dedicated branch:
 - Final offline acceptance on the canonical checkout: backend `412/0/0/1`,
   diagnostics `26/26`, frontend install/typecheck/lint/build PASS, safe HTTP
   `200/200/401/404`, Playwright `8/8` and Doctor Full exit `0`.
+- Final branch was pushed normally and `git ls-remote` independently confirmed
+  its remote HEAD; no force-push, merge or default-branch change occurred.
 
 ## Not verified
 
@@ -203,8 +205,8 @@ on this task's dedicated branch:
 
 ## Current next step
 
-`TASK-FINAL-REPOSITORY-HYGIENE-ACCEPTANCE-20260901` is the current closeout
-stage. The large cleanup phase is complete for the canonical tree; permanent
+`TASK-FINAL-REPOSITORY-HYGIENE-ACCEPTANCE-20260901` is complete and pushed.
+The large cleanup phase is complete for the canonical tree; permanent
 quarantine purge remains forbidden and frontend review candidates remain open.
 
 ## Canonical references

@@ -143,6 +143,5 @@ touch application code, database, mail data, legacy recovery material or
 quarantine. The next product stage should start only from the canonical
 workspace and final acceptance branch.
 
-Publication status at report creation: `PENDING`; after normal push, verify the
-final branch with `git ls-remote` and update the final closeout metadata without
-ever force-pushing or merging the default branch.
+Publication status: `PASS`; the final branch was pushed normally and verified
+with `git ls-remote`. No force-push or merge into the default branch occurred.

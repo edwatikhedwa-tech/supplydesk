@@ -40,11 +40,10 @@ commit is recorded by Git history, not copied into this metadata.
 
 ## Что проверено
 
-- Remote final branch is the only remaining publication gate; it must be
-  checked against the locally created commit without force-push.
-- Validators, security boundary and no-sensitive-path staging must remain
-  green at publication; no real SMTP/IMAP or external provider action is
-  allowed.
+- Final branch push completed normally and `git ls-remote` confirmed its remote
+  HEAD. No force-push, merge or default-branch change occurred.
+- Validators, security boundary and no-sensitive-path staging passed at
+  publication; no real SMTP/IMAP or external provider action was performed.
 
 ## Что не прошло
 

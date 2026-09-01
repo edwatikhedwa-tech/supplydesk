@@ -901,3 +901,12 @@ rewritten.
 - Re-ran final offline acceptance: backend `412/0/0/1`, diagnostics `26/26`,
   frontend clean gates, safe HTTP `200/200/401/404`, Playwright `8/8` and
   Doctor Full exit `0`. No product/data/mail changes or quarantine purge.
+
+## 2026-09-01T18:39:44Z — TASK-FINAL-REPOSITORY-HYGIENE-20260901 CLOSEOUT
+
+- Final acceptance documentation was pushed normally to
+  `origin/control/final-hygiene-acceptance-20260901`; `git ls-remote` confirmed
+  the remote HEAD. The first DNS failure was transient and the retry passed.
+- `ACTIVE_TASK` is now `IDLE`; the canonical checkout and final remote branch
+  are the source of truth. No force-push, merge, product/data/mail change or
+  quarantine purge occurred.

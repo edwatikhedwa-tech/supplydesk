@@ -16,8 +16,8 @@ Started: `2026-09-01`
 Scope: `final repository hygiene acceptance and canonical closeout`
 Allowed files: `ai/**`, `docs/DOCUMENTATION_POLICY.md` and
 `PROJECT_MANIFEST.yaml`; no product/data/runtime changes
-Status: `IN PROGRESS — acceptance checks complete; final publication pending`
-Last update: `2026-09-01T18:36:54Z`
+Status: `IDLE — TASK-FINAL-REPOSITORY-HYGIENE-ACCEPTANCE-20260901 complete and branch pushed`
+Last update: `2026-09-01T18:39:44Z`
 
 ## Цель
 
@@ -33,11 +33,10 @@ repository cleanup без нового массового удаления и б
 ## Acceptance
 
 Acceptance evidence записана в финальный report; permanent purge не
-выполнять. Перевести sentinel в IDLE только после normal push и remote-ref
-verification.
+выполнять. Normal push и remote-ref verification завершены.
 
 ## Следующий шаг
 
-Проверки завершены; выполнить только публикацию документации/report на final
-branch, затем перевести sentinel в IDLE.
+Активной задачи нет. Следующая работа должна начинаться только из canonical
+workspace; quarantine review и permanent purge требуют отдельного решения.
 

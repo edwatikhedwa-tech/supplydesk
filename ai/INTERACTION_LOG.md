@@ -805,3 +805,11 @@ This log records agent work interactions. It is append-only.
   clean install/typecheck/lint/build, safe HTTP `200/200/401/404`, Playwright
   `8/8`, Doctor Full exit `0`, validators and diff check. Remote publication
   remains the final gate at this log entry.
+
+## 2026-09-01T18:39:44Z — TASK-FINAL-REPOSITORY-HYGIENE-ACCEPTANCE-20260901 CLOSEOUT
+
+- Normal push created `origin/control/final-hygiene-acceptance-20260901` and
+  `git ls-remote` matched the published HEAD after one transient DNS retry.
+- Final metadata was set to the pushed state and `ACTIVE_TASK` returned to
+  `IDLE`. No merge/default-branch change, product/data/mail change or
+  quarantine purge occurred.
