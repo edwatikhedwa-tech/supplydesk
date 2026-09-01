@@ -688,3 +688,13 @@ This log records agent work interactions. It is append-only.
   сохранены как historical, а навигация направлена в `ai/CURRENT_STATE.md`.
 - Проверка: 116 relative links без ошибок, secret-pattern scan PASS, validator
   PASS, `git diff --check` PASS. Код, база, рассылка и deployment не менялись.
+
+## 2026-09-01T13:34:05Z — TASK-DOCUMENTATION-GOVERNANCE-20260901
+
+- State change: current-state chronology was separated from the canonical
+  snapshot; exactly one current-state authority is now declared.
+- State change: `ai/**` is the operational control plane and `docs/**` is the
+  product-documentation plane; historical root reports were moved to dated
+  history and the remote audit branch was retained.
+- Validation target: documentation validator, state validator, link checks,
+  `git diff --check`, and changed-file allowlist. `DOC_IMPACT=NO`.

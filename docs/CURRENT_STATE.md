@@ -1,4 +1,13 @@
-# Current State
+---
+document_id: DOCS-CURRENT-STATE-HISTORICAL-20260830
+status: HISTORICAL
+canonical: false
+owner: project-control
+updated_at: 2026-08-30
+source_commit: 792f441b4b6099533177e7c1d23d6252670f9309
+---
+
+# Current State — HISTORICAL — NOT CURRENT
 
 > **HISTORICAL — NOT CURRENT.** This file preserves the 2026-08-30 audit
 > snapshot for traceability. Use [`ai/CURRENT_STATE.md`](../ai/CURRENT_STATE.md)

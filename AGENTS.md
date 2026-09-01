@@ -8,13 +8,14 @@ entrypoint and links to the state documents.
 
 Read, in this order:
 
-1. [`ai/AI_CONTRACT.md`](ai/AI_CONTRACT.md)
-2. [`ai/WORKFLOW.md`](ai/WORKFLOW.md)
-3. [`ai/CURRENT_STATE.md`](ai/CURRENT_STATE.md)
-4. [`ai/LAST_HANDOFF.md`](ai/LAST_HANDOFF.md)
-5. [`ai/DECISIONS.md`](ai/DECISIONS.md)
-6. [`ai/DEFERRED_FINDINGS.md`](ai/DEFERRED_FINDINGS.md)
-7. [`ai/ACTIVE_TASK.md`](ai/ACTIVE_TASK.md)
+1. [`AGENTS.md`](AGENTS.md) and the shared rules in [`ai/AI_CONTRACT.md`](ai/AI_CONTRACT.md)
+2. [`PROJECT_MANIFEST.yaml`](PROJECT_MANIFEST.yaml) — repository map and protected boundaries
+3. [`docs/DOCUMENTATION_POLICY.md`](docs/DOCUMENTATION_POLICY.md) — document ownership and lifecycle
+4. [`ai/CURRENT_STATE.md`](ai/CURRENT_STATE.md) — the only canonical current-state source
+5. [`ai/ACTIVE_TASK.md`](ai/ACTIVE_TASK.md) — active-task lock/sentinel
+6. Relevant product documents under [`docs/`](docs/README.md)
+7. Relevant [`ai/DECISIONS.md`](ai/DECISIONS.md) and [`ai/DEFERRED_FINDINGS.md`](ai/DEFERRED_FINDINGS.md)
+8. [`ai/WORKFLOW.md`](ai/WORKFLOW.md), handoff, task reports, and audit evidence as required
 
 Verify the current branch, commit, working tree, URL, port, database and build
 before changing anything. If the task is not sufficiently defined, start with
@@ -33,8 +34,8 @@ checking its primary evidence.
   [`ai/CURRENT_STATE.md`](ai/CURRENT_STATE.md) when project state changes.
 - Keep documentation current in the same task as the change it describes:
   [`ai/CURRENT_STATE.md`](ai/CURRENT_STATE.md) is the only current-state source;
-  dated snapshots in `docs/` and `Documents/28-8/` must be marked
-  `HISTORICAL — NOT CURRENT` and link back to it.
+  `docs/**` owns product documentation, while `ai/**` owns operational control;
+  dated snapshots must be marked `HISTORICAL — NOT CURRENT` and link back to it.
 - At stage close, update [`ai/LAST_HANDOFF.md`](ai/LAST_HANDOFF.md), save a
   report under [`ai/reports/`](ai/reports/), and run
   `python ai/tools/validate_state.py`.

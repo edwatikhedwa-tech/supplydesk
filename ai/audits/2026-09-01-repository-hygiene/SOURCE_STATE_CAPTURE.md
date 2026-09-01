@@ -1,3 +1,12 @@
+---
+document_id: AUDIT-SOURCE-STATE-CAPTURE-20260901
+status: HISTORICAL
+canonical: false
+owner: audit
+updated_at: 2026-09-01
+source_commit: b5a454f9b39f3cbf01d640d5b67e4231ca25733a
+---
+
 <!-- Publication note: the source report set contains a count discrepancy for local env-like files (5 vs 6). Exact contents and final count were not read; treat the count as NOT VERIFIED. -->
 
 # SupplyDesk source state capture

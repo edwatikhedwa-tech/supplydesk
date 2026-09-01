@@ -1,3 +1,12 @@
+---
+document_id: AUDIT-SQLITE-CONSISTENCY-20260901
+status: HISTORICAL
+canonical: false
+owner: audit
+updated_at: 2026-09-01
+source_commit: b5a454f9b39f3cbf01d640d5b67e4231ca25733a
+---
+
 # SQLite consistency report
 
 Status: PASS — `supplier.sqlite3` has a logically consistent frozen backup.

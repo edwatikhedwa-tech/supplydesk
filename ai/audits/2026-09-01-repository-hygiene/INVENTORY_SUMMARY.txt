@@ -1,9 +1,0 @@
-total_files=56553
-tracked_files=266
-modified_tracked_files=2
-untracked_files=709
-ignored_files=55319
-project_owned_untracked_files=154
-duplicate_groups=39
-classification_counts=ARCHIVE_CANDIDATE:27, KEEP:356, UNKNOWN:151
-category_counts=AI_STATE:53, ASSET:6, BACKEND:49, CACHE:1301, CONFIG:7, CURRENT_DOC:52, DATABASE:17, DEPENDENCY_VENDOR:54053, FRONTEND:71, GENERATED:321, HISTORICAL_DOC:27, LOCAL_ONLY:259, LOCAL_RUNTIME:62, MIGRATION:33, RUNTIME:17, SECRET_LOCAL:6, TEST:68, UNKNOWN:151

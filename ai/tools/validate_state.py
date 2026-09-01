@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-TASK_ID = "TASK-STATE-CONTROL-20260830"
+TASK_ID = "TASK-DOCUMENTATION-GOVERNANCE-20260901"
 
 REQUIRED_FILES = [
     "AGENTS.md",
@@ -105,7 +105,10 @@ def check_sections(texts: dict[str, str], errors: list[str]) -> None:
 
 def check_markdown_links(root: Path, texts: dict[str, str], errors: list[str]) -> None:
     markdown_paths = [root / "AGENTS.md", root / "CLAUDE.md"]
-    markdown_paths.extend((root / "ai").rglob("*.md"))
+    markdown_paths.extend(
+        path for path in (root / "ai").rglob("*.md")
+        if not ({"history", "reports", "audits"} & set(path.relative_to(root / "ai").parts))
+    )
     for source in markdown_paths:
         rel_source = source.relative_to(root).as_posix()
         text = texts.get(rel_source)

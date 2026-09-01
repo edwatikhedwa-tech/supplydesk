@@ -1,4 +1,13 @@
-# Decisions
+---
+document_id: DOCS-DECISIONS-HISTORICAL-20260830
+status: HISTORICAL
+canonical: false
+owner: product-docs
+updated_at: 2026-08-30
+source_commit: 792f441b4b6099533177e7c1d23d6252670f9309
+---
+
+# Decisions — HISTORICAL — NOT CURRENT
 
 > **SUPPORTING DECISIONS — NOT CURRENT STATE.** Current repository state and
 > current decisions are maintained in [`ai/CURRENT_STATE.md`](../ai/CURRENT_STATE.md)

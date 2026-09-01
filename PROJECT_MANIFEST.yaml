@@ -20,6 +20,20 @@ canonical_state:
   task_report: ai/reports/TASK-CANONICAL-CONTROL-BASELINE-20260901-report.md
   rule: ai/CURRENT_STATE.md is the only current-state source; dated reports are evidence or history
 
+documentation:
+  operational_root: ai/
+  product_root: docs/
+  canonical_current_state: ai/CURRENT_STATE.md
+  policy: docs/DOCUMENTATION_POLICY.md
+  index: docs/README.md
+  validator: ai/tools/validate_docs.py
+  current_state_rule: docs/** has no independent current-state source
+
+document_lifecycle:
+  statuses: [DRAFT, CURRENT, SUPERSEDED, HISTORICAL, ARCHIVED]
+  canonical_current_state_count: 1
+  historical_root: ai/history/
+
 runtime:
   backend_entrypoint: supplier_app.py
   serverless_entrypoint: api/index.py

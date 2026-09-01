@@ -1,90 +1,121 @@
+---
+document_id: DOCUMENTATION-POLICY-001
+status: CURRENT
+canonical: false
+owner: project-control
+updated_at: 2026-09-01
+source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
+---
+
 # Documentation policy
 
-Статус: действующее правило проекта<br>
-Владелец правила: репозиторий SupplyDesk<br>
-Последняя редакция: 2026-09-01 UTC
+## Purpose
 
-## 1. Единственный источник текущего состояния
+This policy defines which repository documents are operational control, which
+are product documentation, how documents age, and what must be updated when a
+task changes a source of truth.
 
-Канонический источник текущего состояния — [ai/CURRENT_STATE.md](../ai/CURRENT_STATE.md).
-Он содержит только факты, подтверждённые в текущем checkout, runtime, базе,
-тестах или другом первичном источнике.
+## Ownership boundary
 
-Порядок приоритета:
+- `ai/**` is the operational control plane: current state, active-task lock,
+  handoff, decisions, deferred findings, audits, task reports, and later
+  incident records.
+- `docs/**` is product documentation: product context, requirements,
+  architecture, data, API, testing, and operations.
+- `ai/CURRENT_STATE.md` is the only canonical current-state source. `docs/**`
+  must not create a second current-state file or duplicate live counts.
+- `PROJECT_MANIFEST.yaml` is the compact project map and points to these
+  boundaries; it does not replace the current state or product documents.
 
-1. текущий код, схема миграций, runtime и read-only данные;
-2. ai/CURRENT_STATE.md с timestamp, branch/commit и источником факта;
-3. ai/LAST_HANDOFF.md, ai/DECISIONS.md, отчёты и append-only журналы;
-4. профильная документация в docs/ и Documents/28-8/;
-5. датированные аудиты и старые snapshots.
+## Lifecycle
 
-Профильная документация объясняет устройство продукта. Она не переопределяет
-текущие числа, доступность функций, состояние провайдеров или production status.
+Every important operational or product document has a small metadata block with
+`document_id`, `status`, `canonical`, `owner`, `updated_at`, and `source_commit`.
+The allowed lifecycle statuses are:
 
-## 2. Обязательное обновление
+- `DRAFT` — proposed and not authoritative.
+- `CURRENT` — maintained for the present process or product contract.
+- `SUPERSEDED` — replaced by a newer document, with the replacement linked.
+- `HISTORICAL` — retained chronology or evidence; never current authority.
+- `ARCHIVED` — deliberately retained at a dated or remote location and not
+  part of the active working set.
 
-Документация должна обновляться в той же задаче, в которой меняется источник
-факта.
+`canonical: true` is reserved for the one `ai/CURRENT_STATE.md` file. A policy,
+index, task lock, decision register, audit pointer, or product document may be
+`CURRENT` while remaining `canonical: false`.
 
-Обновление обязательно после изменения:
+## Naming and placement
 
-- application/API/frontend поведения;
-- схемы или миграций;
-- mail provider, очереди, runtime gate или deployment;
-- тестового контура, команд запуска или acceptance evidence;
-- пользовательского workflow, лимита, статуса или термина;
-- текущих чисел в базе, runtime или журнале событий.
+- Use stable descriptive names for current documents and date/task IDs for
+  reports, audits, and preserved chronology.
+- Put operational records under `ai/`; put product explanations under the
+  relevant `docs/` domain directory.
+- Put superseded chronology under `ai/history/YYYY/MM/` or the dedicated remote
+  audit branch. Do not leave dated task reports at repository root when they
+  are not project entrypoints.
+- A historical file must state `status: HISTORICAL` (or `ARCHIVED` where
+  appropriate), `canonical: false`, and link to current authority when a local
+  link is practical.
 
-Минимум для существенной задачи:
+## Current-state precedence
 
-- ai/CURRENT_STATE.md — новый подтверждённый snapshot;
-- ai/LAST_HANDOFF.md — что сделано, что не сделано и следующий шаг;
-- ai/CHANGELOG.md — append-only запись изменения;
-- ai/INTERACTION_LOG.md — append-only запись взаимодействия;
-- ai/reports/<TASK-ID>-report.md — доказательства и ограничения;
-- профильный документ — только если изменилось его описываемое поведение.
+When documents disagree, use this order: current code/schema/runtime evidence;
+`ai/CURRENT_STATE.md`; current decisions/deferred findings and handoff; current
+domain documentation; historical reports and audits. A historical report can
+prove what was observed then, but cannot prove that the same fact is true now.
+Unverified values must be labeled `NOT VERIFIED`.
 
-## 3. Как не создавать противоречия
+## Update rules
 
-- Не использовать слово «текущий», «поддерживается», «готово» или «production» без
-  даты, evidence и понятного источника.
-- Числа должны иметь timestamp, область (например, request/workspace), единицу
-  подсчёта и источник.
-- Raw supplier rows, company cards, email contacts, mail attempts и provider
-  acceptance — разные сущности; их нельзя называть одним словом «поставщики» или
-  «отправлено».
-- Live acceptance, historical evidence, planned capability и NOT VERIFIED должны
-  быть явно разделены.
-- Старый snapshot не удаляется ради косметики: вверху ставится
-  HISTORICAL — NOT CURRENT и ссылка на актуальный state.
-- Если код и текст расходятся, текст исправляется или помечается historical;
-  код и read-only runtime не подгоняются под документ.
+If a task changes application/API/frontend behavior, database schema or
+migrations, runtime/deployment, test contracts, user workflow, or a current
+operational fact, the task must check documentation impact and update the
+affected current documents in the same task. At minimum:
 
-## 4. Приёмка документации
+- record `DOC_IMPACT=YES` or `DOC_IMPACT=NO` in the task report;
+- update `ai/CURRENT_STATE.md` when current project facts change;
+- update the relevant `docs/**` contract when product behavior or requirements
+  change;
+- update `ai/DECISIONS.md` when a durable design/control choice is made;
+- update `ai/DEFERRED_FINDINGS.md` when unresolved risk or verification debt is
+  created or closed;
+- add append-only entries to `ai/CHANGELOG.md` and `ai/INTERACTION_LOG.md` for
+  substantial work;
+- retain evidence in a dated task report or audit pointer.
 
-Перед завершением задачи агент обязан:
+For a documentation-only task, `DOC_IMPACT=NO` is valid when the change only
+clarifies ownership, lifecycle, placement, or historical labeling and does not
+alter a product contract.
 
-1. перечитать изменённые документы;
-2. проверить ссылки и существование путей;
-3. проверить даты, branch/commit и ключевые числа по первичным источникам;
-4. выполнить python ai/tools/validate_state.py;
-5. выполнить git diff --check;
-6. проверить, что в изменениях нет секретов, database rows, mail settings или
-   application logic;
-7. перечислить NOT VERIFIED и оставшиеся historical records.
+## Task documentation definition of done
 
-## 5. Откат
+A task may close only when all applicable items are true:
 
-Документационная правка обратима локальным revert соответствующего Task ID-коммита
-или восстановлением резервных копий из указанной в handoff временной папки.
-Файлы приложения, база, миграции и внешние сервисы при этом не затрагиваются.
+- `CODE PASS`: changed code is formatted/checked, or `N/A` for documentation-only work;
+- `TESTS PASS`: relevant tests or validators pass, or the report states exactly what was not rerun and why;
+- `DOC_IMPACT=YES/NO` is explicit;
+- relevant product and operational documents are updated or the report records why no update is needed;
+- `ai/CURRENT_STATE.md` is current when project facts changed;
+- durable choices are in `ai/DECISIONS.md`;
+- unresolved verification debt is in `ai/DEFERRED_FINDINGS.md`;
+- task/audit traceability identifies source commit, changed scope, evidence, and limitations;
+- links, metadata, secrets, and forbidden application/data changes are checked.
 
-## 6. Ответственность за актуальность
+Cosmetic wording or formatting alone is not a reason to rewrite unrelated
+documents. The goal is truthful, navigable, reversible documentation.
 
-Каждый следующий агент обязан начать с ai/CURRENT_STATE.md, проверить его
-timestamp и сверить затрагиваемые факты с первичным источником. При обнаружении
-дрейфа он сначала обновляет state/documentation в рамках текущей задачи, а затем
-описывает продуктовую работу.
+## Audit retention
 
-Наличие старой датированной записи не считается ошибкой, если она явно помечена
-как historical и не выдаётся за текущее состояние.
+Keep a compact audit pointer and important summaries in the canonical branch.
+Keep large forensic inventories, raw logs, screenshots, traces, and generated
+tool output on the dedicated audit branch after verifying its exact ref and
+commit. Never delete or rewrite that branch as part of documentation cleanup.
+See [`ai/AUDIT_POLICY.md`](../ai/AUDIT_POLICY.md).
+
+## Acceptance and rollback
+
+Before closing, run `python ai/tools/validate_docs.py`,
+`python ai/tools/validate_state.py`, and `git diff --check`; reread changed
+documents and inspect the changed-file allowlist. A documentation change is
+reversible by reverting its task commit(s); audit history, application code,
+database, mail data, and migrations are not modified by this policy.

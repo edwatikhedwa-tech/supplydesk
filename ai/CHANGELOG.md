@@ -764,3 +764,14 @@ rewritten.
 - Acceptance: 116 relative Markdown links, secret-pattern scan, state validator
   и `git diff --check` прошли. Application code, data, mail and deployment не
   менялись. Backup: `Temp/20260901-docs-canonical/`.
+
+## 2026-09-01T13:34:05Z — TASK-DOCUMENTATION-GOVERNANCE-20260901
+
+- Reconciled state-like documentation and made `ai/CURRENT_STATE.md` the only
+  canonical current-state source.
+- Moved the 11 root historical/task reports and superseded AI chronology under
+  dated `ai/history/` paths; no historical content was deleted.
+- Added the `ai/**` versus `docs/**` ownership boundary, lifecycle metadata,
+  audit retention policy, documentation indexes, and read-only documentation
+  validator. `DOC_IMPACT=NO` for product behavior; application code and data
+  remain unchanged.
