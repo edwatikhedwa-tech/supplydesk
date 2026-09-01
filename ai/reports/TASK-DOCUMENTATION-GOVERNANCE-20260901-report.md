@@ -1,6 +1,6 @@
 ---
 document_id: TASK-DOCUMENTATION-GOVERNANCE-20260901-REPORT
-status: DRAFT
+status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
@@ -11,8 +11,8 @@ source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 
 ## Status
 
-`DRAFT` until the final local validators, diff allowlist, commit, and remote
-branch verification are complete.
+`CURRENT — PASS_WITH_LIMITATIONS` — governance branch published; product-level
+runtime limitations remain explicitly listed below.
 
 ## Цель
 
@@ -101,9 +101,14 @@ still records the relevant acceptance limitations.
 
 ## Final verification record
 
-The final report is completed only after recording `python
-ai/tools/validate_docs.py`, `python ai/tools/validate_state.py`, `git diff
---check`, the explicit application/data allowlist, and the final remote branch
-SHA. The final branch tip is intentionally verified by Git after the report
-commit rather than guessed in this document.
-
+- `python ai/tools/validate_docs.py`: `PASS` (`GATE-001..009 PASS`).
+- `python ai/tools/validate_state.py`: `PASS`.
+- `git diff --check`: `PASS`.
+- Changed-file allowlist: `PASS`; only `AGENTS.md`, `PROJECT_MANIFEST.yaml`,
+  `ai/**`, and `docs/**` changed.
+- Initial remote publication: `control/documentation-governance-20260901`
+  resolved to `eb019ee9c2f433de5b53022887b1ce6f0a31e61c` before this final
+  report update. The final branch tip is verified by Git after the final report
+  commit and is not guessed or embedded self-referentially here.
+- Application behavior, database, migrations, mail data, and external runtime
+  actions: unchanged/not performed.
