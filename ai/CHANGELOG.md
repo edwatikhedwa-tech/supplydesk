@@ -775,3 +775,15 @@ rewritten.
   audit retention policy, documentation indexes, and read-only documentation
   validator. `DOC_IMPACT=NO` for product behavior; application code and data
   remain unchanged.
+
+## 2026-09-01T14:00:00Z — TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901
+
+- Task ID: `TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901`; Status: IN PROGRESS.
+- Created evidence-based capability, requirement, business-rule, component,
+  test and traceability catalogs without changing product behavior.
+- Added a standard-library read-only diagnostic runner, a ten-check contract,
+  synthetic disposable diagnostic tests, failure modes, runbooks, incident
+  schema and sandbox-only repair-agent contract.
+- Expanded `scripts/doctor.ps1` while preserving Plan/DryRun/Apply; no Apply,
+  migration, canonical database write, provider connection or real email was
+  performed.

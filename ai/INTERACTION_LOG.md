@@ -698,3 +698,12 @@ This log records agent work interactions. It is append-only.
   history and the remote audit branch was retained.
 - Validation target: documentation validator, state validator, link checks,
   `git diff --check`, and changed-file allowlist. `DOC_IMPACT=NO`.
+
+## 2026-09-01T14:00:00Z — TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901
+
+- State change: the diagnostic task was opened in the dedicated branch from
+  governance HEAD `6687fa4289d8f65c47a34e8b7124e113cb3201e6`.
+- State change: diagnostic contracts and evidence maps were added with
+  application, database, migration and provider boundaries preserved.
+- Validation target: traceability, docs/state validators, diagnostic unit
+  tests, doctor Plan/DryRun and changed-file allowlist.

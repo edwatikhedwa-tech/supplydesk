@@ -4,51 +4,59 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
+source_commit: 0c7417c
 ---
 
 # Last Handoff
 
 ## Цель
 
-Закрыть documentation/state governance hardening в отдельной ветке без
-изменения поведения SupplyDesk.
+Закрыть diagnostic control plane V1 в отдельной ветке без изменения поведения
+SupplyDesk.
 
 ## Что изменено
 
-- `ai/CURRENT_STATE.md` сокращён до единственного текущего evidence snapshot.
-- Старая AI-хроника и 11 корневых отчётов перенесены в `ai/history/2026/**`.
-- Добавлены lifecycle, ownership, audit-retention policy и `docs/**` entrypoints.
-- Добавлен read-only `ai/tools/validate_docs.py`.
+- Созданы capability, requirement, business-rule, component, test и
+  traceability catalogs; DRAFT requirement не принят как контракт.
+- Добавлены failure modes, шесть runbooks, incident schema и sandbox-only
+  repair-agent contract без реализации/autonomy.
+- Добавлен стандартный библиотечный diagnostic runner и десять DOC-checks;
+  `scripts/doctor.ps1` сохранил `Plan/DryRun/Apply`.
+- Manifest получил `diagnostics:` pointers; traceability validator read-only.
 
 ## Что проверено
 
-- Ветка и базовый commit соответствуют отдельному governance worktree.
-- Удалённый audit branch и retained audit tree подтверждены.
-- Исторические root reports перемещены без удаления содержимого.
-- Приложение, база, mail data и migrations не изменялись.
+- Ветка `control/diagnostic-plane-v1-20260901` создана от governance HEAD
+  `6687fa4289d8f65c47a34e8b7124e113cb3201e6`.
+- 12 synthetic diagnostic tests, `validate_docs`, `validate_state`,
+  `validate_traceability` and `git diff --check` passed.
+- Doctor `-Plan` exited `0`; `-DryRun` emitted external JSON and exited `2`
+  because local database and live HTTP were unavailable.
+- Application code, frontend source, API, database, migrations and mail data
+  were not changed; no provider or real email action was performed.
 
 ## Что не прошло
 
-Ничего в документационном validator/state validator не должно остаться
-непройденным после финального commit; итоговый статус фиксируется в task report.
+Full backend regression is not rerun because `pytest` is unavailable in this
+environment; `tests/run-tests.ps1` is also absent. This is recorded as an
+environment gap, not converted into a product pass.
 
 ## Что не проверено
 
-Новые backend-backed live routes, runtime parity, текущая база, mailbox/provider
-state, `knip`, и source-checkout local-only unknowns имеют статус `NOT VERIFIED`
-и не проверялись этим task.
+Current database rows, mailbox/provider state, backend runtime parity, current
+frontend gates, browser acceptance, `knip`, and source-checkout local-only
+unknowns remain `NOT VERIFIED`.
 
 ## Текущее состояние runtime
 
-Runtime не запускался и внешние действия не выполнялись в рамках этого
-documentation-only task. Baseline acceptance evidence сохранено в manifest и
-audit pointer.
+The app was not started by the runner and external actions were not performed.
+The latest inherited baseline remains in the manifest; V1 adds explicit typed
+environment gaps instead of hiding them.
 
 ## Следующий рациональный шаг
 
-`SUPPLYDESK DIAGNOSTIC CONTROL PLANE` с отдельным scope, runtime evidence и
-явным решением по open deferred findings.
+Review the diagnostic branch and decide separately whether to merge it; no
+merge is performed automatically.
 
 ## Не повторять
 

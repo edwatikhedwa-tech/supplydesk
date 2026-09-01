@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-01
-source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
+source_commit: 0c7417c
 ---
 
 # Current State
@@ -15,8 +15,8 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T13:34:05Z` — documentation governance reconciliation on
-`control/documentation-governance-20260901`.
+`2026-09-01T14:20:25Z` — diagnostic control plane V1 implementation on
+`control/diagnostic-plane-v1-20260901`.
 
 ## Project
 
@@ -25,7 +25,9 @@ preserved under [`ai/history/`](history/).
 - Canonical control baseline: `control/canonical-baseline-20260901` at
   `792f441b4b6099533177e7c1d23d6252670f9309` before this governance branch.
 - Documentation governance branch: `control/documentation-governance-20260901`.
-- Product behavior is not changed by this documentation-only task.
+- Diagnostic branch: `control/diagnostic-plane-v1-20260901` from governance
+  HEAD `6687fa4289d8f65c47a34e8b7124e113cb3201e6`.
+- Product behavior is not changed by this control-plane-only task.
 
 ## Runtime
 
@@ -48,11 +50,17 @@ preserved under [`ai/history/`](history/).
 - Documentation lifecycle and audit retention policies are recorded in
   [`docs/DOCUMENTATION_POLICY.md`](../docs/DOCUMENTATION_POLICY.md) and
   [`ai/AUDIT_POLICY.md`](AUDIT_POLICY.md).
+- Diagnostic control plane V1 is catalogued in
+  [`docs/product/CAPABILITY_CATALOG.md`](../docs/product/CAPABILITY_CATALOG.md),
+  [`docs/requirements/TRACEABILITY_MATRIX.csv`](../docs/requirements/TRACEABILITY_MATRIX.csv),
+  and [`scripts/diagnostics/diagnostic_contract.yaml`](../scripts/diagnostics/diagnostic_contract.yaml).
+- `scripts/doctor.ps1` now delegates to read-only typed checks and emits
+  machine-readable evidence outside the repository.
 
 ## Verified
 
-The following evidence is inherited from the canonical control baseline and was
-not rerun because this branch changes documentation only:
+The following evidence is inherited from the canonical control baseline or was
+verified by this diagnostic task:
 
 - Backend control run: `373 passed, 1 skipped, 0 failed, 0 errors`.
 - Frontend: `npm ci`, typecheck, and build passed; lint passed with 8 warnings.
@@ -63,10 +71,21 @@ not rerun because this branch changes documentation only:
 - Remote audit retention: audit branch resolves to
   `b5a454f9b39f3cbf01d640d5b67e4231ca25733a` and its retained tree includes the
   audit index, summary, final report, functional baseline, and security findings.
+- Diagnostic tests: `12 passed` with `python -m unittest discover -s
+  tests/diagnostics -v`.
+- Documentation, state and traceability validators: `PASS`; `git diff --check`:
+  `PASS`.
+- Doctor `-Plan`: exit `0`; doctor `-DryRun`: exit `2` with explicit
+  `NOT_VERIFIED`/`ENVIRONMENT_GAP` for absent local DB and unavailable HTTP,
+  and JSON evidence at the system temporary path.
 
 ## Not verified
 
 - New backend-backed live routes were not rerun in this governance worktree.
+- Full backend regression was not rerun: `pytest` is unavailable in this
+  environment and `tests/run-tests.ps1` is absent.
+- Frontend typecheck/lint/build and browser acceptance were not rerun in this
+  worktree; inherited frontend evidence remains the latest confirmed baseline.
 - Same-environment parity between the source checkout and the control worktree
   was not re-established.
 - `knip` status remains `NOT VERIFIED`.
@@ -92,9 +111,8 @@ not rerun because this branch changes documentation only:
 
 ## Current next step
 
-`SUPPLYDESK DIAGNOSTIC CONTROL PLANE` — a separately scoped product/control
-follow-up that must begin by reading this state, the manifest, and the relevant
-audit evidence before any runtime work.
+`SUPPLYDESK DIAGNOSTIC CONTROL PLANE V1` is complete on its dedicated branch;
+review and merge, if desired, remain an explicit human action.
 
 ## Canonical references
 
@@ -104,5 +122,6 @@ audit evidence before any runtime work.
 - Decisions: [`ai/DECISIONS.md`](DECISIONS.md).
 - Deferred findings: [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
 - Latest governance report: [`ai/reports/TASK-DOCUMENTATION-GOVERNANCE-20260901-report.md`](reports/TASK-DOCUMENTATION-GOVERNANCE-20260901-report.md).
+- Diagnostic report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).
 
