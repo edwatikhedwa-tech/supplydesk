@@ -1,0 +1,61 @@
+{
+  "baseline_id": "supplydesk-control-canonical-baseline-20260901",
+  "status": "PASS_WITH_LIMITATIONS",
+  "control_branch": "control/canonical-baseline-20260901",
+  "reconciliation_commit": "58103e4373f82f8ced5735c096a1028d2fbb7843",
+  "source_head": "c076e1be385c3ae6da2716159e1f46fc2fce23d7",
+  "audit_branch": "audit/repository-hygiene-reports-20260901",
+  "audit_commit": "b5a454f9b39f3cbf01d640d5b67e4231ca25733a",
+  "repository_visibility": "PRIVATE",
+  "canonical_state": "ai/CURRENT_STATE.md",
+  "manifest": "PROJECT_MANIFEST.yaml",
+  "tracked_file_count_at_reconciliation": 331,
+  "classification": {
+    "modified_tracked": 2,
+    "project_owned_untracked": 154,
+    "project_owned_ignored_added_for_repro": 1,
+    "total_classified": 157,
+    "project_owned_unknown_before": 62,
+    "project_owned_unknown_after": 3,
+    "actions": {
+      "TRACK_CANONICAL": 2,
+      "TRACK_DOCUMENTATION": 12,
+      "TRACK_TOOLING": 10,
+      "TRACK_TEST": 14,
+      "ARCHIVE_LATER": 93,
+      "LOCAL_ONLY": 22,
+      "GENERATED": 1,
+      "UNKNOWN_REVIEW": 3
+    },
+    "protected_ignored_state": {
+      "SECRET_LOCAL": 6,
+      "DEPENDENCY_VENDOR": 54053,
+      "CACHE": 1301,
+      "GENERATED": 321,
+      "DATABASE": 17,
+      "LOCAL_RUNTIME": 62
+    }
+  },
+  "verification": {
+    "backend_control": {"passed": 373, "failed": 0, "errors": 0, "skipped": 1},
+    "backend_published_audit": {"passed": 321, "failed": 52, "errors": 0, "skipped": 1},
+    "backend_new_failures": 0,
+    "backend_new_errors": 0,
+    "frontend_npm_ci": "PASS",
+    "frontend_typecheck": "PASS",
+    "frontend_lint": {"status": "PASS", "errors": 0, "warnings": 8},
+    "frontend_build": "PASS",
+    "playwright_public_shell": {"passed": 8, "failed": 0},
+    "playwright_live_routes": {"published_audit": "18/18 PASS", "control_rerun": "NOT_VERIFIED"},
+    "doctor_source_dry_run": "PASS",
+    "doctor_control_dry_run": "EXPECTED_PARTIAL",
+    "knip": "NOT_VERIFIED",
+    "files_deleted": 0,
+    "env_published": false,
+    "database_published": false,
+    "real_email_sent": false,
+    "migrations": false,
+    "source_project_destructively_modified": false,
+    "remote_push": "PENDING"
+  }
+}
