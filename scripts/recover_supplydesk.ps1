@@ -1,0 +1,94 @@
+[CmdletBinding()]
+param(
+    [switch]$Plan,
+    [switch]$DryRun,
+    [switch]$Apply,
+    [string]$PythonVersion = '3.11'
+)
+
+$modeCount = 0
+if ($Plan) { $modeCount++ }
+if ($DryRun) { $modeCount++ }
+if ($Apply) { $modeCount++ }
+if ($modeCount -ne 1) {
+    throw 'Specify exactly one mode: -Plan, -DryRun or -Apply.'
+}
+
+$ErrorActionPreference = 'Stop'
+$root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$doctor = Join-Path $PSScriptRoot 'doctor.ps1'
+
+if ($Plan) {
+    Write-Output '[OK] Plan: recovery checks the environment and starts nothing'
+    & $doctor -Plan -PythonVersion $PythonVersion
+    exit $LASTEXITCODE
+}
+
+if ($DryRun) {
+    Write-Output '[OK] DryRun: recovery checks the environment and starts nothing'
+    & $doctor -DryRun -PythonVersion $PythonVersion
+    exit $LASTEXITCODE
+}
+
+Write-Output '[WARN] Apply: the server starts only with MAIL_OUTGOING_DISABLED=1'
+& $doctor -DryRun -PythonVersion $PythonVersion
+if ($LASTEXITCODE -ne 0) {
+    Write-Output '[ERROR] Preflight failed; the server will not start'
+    exit 2
+}
+
+$python = Join-Path $root '.venv\Scripts\python.exe'
+if (-not (Test-Path -LiteralPath $python)) {
+    Write-Output '[ERROR] Apply requires .venv\Scripts\python.exe; install dependencies in a normal Windows runtime'
+    exit 2
+}
+
+$runtime = Join-Path $root 'runtime'
+New-Item -ItemType Directory -Path $runtime -Force | Out-Null
+$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$stdout = Join-Path $runtime "supplier_app.recovery.$stamp.out.log"
+$stderr = Join-Path $runtime "supplier_app.recovery.$stamp.err.log"
+$previousOutgoing = [Environment]::GetEnvironmentVariable('MAIL_OUTGOING_DISABLED', 'Process')
+$env:MAIL_OUTGOING_DISABLED = '1'
+$process = $null
+
+try {
+    $process = Start-Process -FilePath $python -ArgumentList @('supplier_app.py') -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    $ready = $false
+    for ($i = 0; $i -lt 40; $i++) {
+        Start-Sleep -Milliseconds 500
+        $listener = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
+        if ($listener) {
+            try {
+                $response = Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:8000/' -TimeoutSec 3
+                if ([int]$response.StatusCode -eq 200) {
+                    $ready = $true
+                    break
+                }
+            } catch {
+                # The server may still be starting; retry the smoke-test.
+            }
+        }
+        if ($process.HasExited) {
+            break
+        }
+    }
+
+    if (-not $ready) {
+        if ($process -and -not $process.HasExited) {
+            Stop-Process -Id $process.Id -Force
+        }
+        Write-Output "[ERROR] HTTP smoke-test failed. Logs: $stdout and $stderr"
+        exit 2
+    }
+
+    Write-Output '[OK] SupplyDesk started: http://127.0.0.1:8000/'
+    Write-Output "[OK] PID: $($process.Id); outgoing forced OFF"
+    Write-Output "[OK] Logs: $stdout and $stderr"
+} finally {
+    if ($null -eq $previousOutgoing) {
+        Remove-Item Env:MAIL_OUTGOING_DISABLED -ErrorAction SilentlyContinue
+    } else {
+        $env:MAIL_OUTGOING_DISABLED = $previousOutgoing
+    }
+}

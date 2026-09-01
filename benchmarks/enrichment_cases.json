@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "human-cable-product-2026-08-27",
+      "host": "cable-product.ru",
+      "fixture": "fixtures/enrichment/cable-product-malformed.html",
+      "expected_inn_on_site": ["6686161923"],
+      "expected_legal_ids": [{"kind": "ogrn", "value": "1246600036980"}],
+      "expected_resolved_inn": "6686161923"
+    },
+    {
+      "id": "human-and-elektrika-2026-08-27",
+      "host": "and-elektrika.ru",
+      "fixture": "fixtures/enrichment/and-elektrika-about.html",
+      "expected_inn_on_site": [],
+      "expected_legal_ids": [{"kind": "ogrnip", "value": "311774634001264"}],
+      "expected_resolved_inn": "771578087956"
+    }
+  ]
+}

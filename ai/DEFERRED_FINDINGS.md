@@ -9,9 +9,15 @@ Agents must not automatically fix these findings while doing another task.
 - Source: `Documents/28-8/PROJECT_STATUS.md`, Git status and file timestamps.
 - Description: the passport calls itself a 28 August snapshot while the working tree and reports contain later changes.
 - Severity: `P2`
-- Why outside current scope: reconciling product documentation with application code would expand into a product audit.
-- Possible next step: run a separate read-only documentation/code reconciliation and update the passport with evidence.
-- Status: `OPEN`
+- Why outside the original scope: reconciliation required a separate
+  documentation task and evidence review.
+- Possible next step: apply the canonical documentation policy to every future
+  product or infrastructure change.
+- Resolution: the passport is now explicitly marked `HISTORICAL — NOT CURRENT`
+  and links to the canonical state; the documentation policy defines how future
+  snapshots are maintained.
+- Status: `RESOLVED — TASK-DOCS-CANONICAL-20260901`
+- Report: `ai/reports/TASK-DOCS-CANONICAL-20260901-report.md`
 ## FINDING-002 — No configured Git remote (historical blocker)
 
 - ID: `FINDING-002`
@@ -64,11 +70,14 @@ Agents must not automatically fix these findings while doing another task.
   reconciling them. Some claims are historical reports rather than current
   independent evidence.
 - Severity: `P2`
-- Why outside current scope: the task permits changing only `ai/**`; editing or
-  merging `docs/**` would expand scope and could overwrite user work.
-- Possible next step: owner decision on one canonical source and an explicit
-  migration/linking policy.
-- Status: `OPEN`
+- Why outside the original scope: the task permitted changing only `ai/**`; a
+  separate documentation task was required to add the linking policy safely.
+- Resolution: `ai/CURRENT_STATE.md` is the only current-state source;
+  `docs/**` and `Documents/28-8/**` now link to it and old snapshots are marked
+  `HISTORICAL — NOT CURRENT`. `docs/DOCUMENTATION_POLICY.md` is the maintained
+  rule.
+- Status: `RESOLVED — TASK-DOCS-CANONICAL-20260901`
+- Report: `ai/reports/TASK-DOCS-CANONICAL-20260901-report.md`
 
 ## FINDING-006 — Current full backend suite is not green
 
@@ -170,12 +179,13 @@ Agents must not automatically fix these findings while doing another task.
   status `queued`; the correspondence query returns them without a status
   predicate.
 - Severity: `P1`
-- Why outside current scope: this iteration is audit-only; changing the
-  visibility contract requires a separate backend/UI implementation decision.
-- Next step: hide queue-only threads from correspondence and expose them in an
-  outbox/queue surface; keep inbound, sent, failed and delivery-unknown items.
-- Status: `OPEN`
-- Report: `ai/reports/TASK-MESSAGES-AUDIT-20260831-report.md`
+- Why outside current scope: resolved in the follow-up implementation task.
+- Resolution: the default correspondence predicate excludes queue-only
+  `queued`/`sending`/`cancelled` threads; a dedicated `Очередь` surface exposes
+  pending outbound messages, while inbound, sent, failed and delivery-unknown
+  items remain visible.
+- Status: `RESOLVED`
+- Report: `ai/reports/TASK-MESSAGES-UX-FIX-20260831-report.md`
 
 ## FINDING-012 — Manual-linked and unmatched inbound mail lack unread semantics
 
@@ -188,12 +198,12 @@ Agents must not automatically fix these findings while doing another task.
   inbox messages read. Current data has 16 inbound messages, all already read,
   so a live unread visual fixture was unavailable.
 - Severity: `P1`
-- Why outside current scope: unified read state requires a separate data/UI
-  contract and likely a migration or a deliberate materialization rule.
-- Next step: preserve unread through manual linking, mark it read on opening,
-  and add a text/ARIA status in the list.
-- Status: `OPEN — PARTIALLY CONFIRMED`
-- Report: `ai/reports/TASK-MESSAGES-AUDIT-20260831-report.md`
+- Why outside current scope: resolved in the follow-up implementation task.
+- Resolution: `mail_inbox_message_reads` preserves unread for manual-linked and
+  unmatched inbox messages; opening the conversation marks the message read;
+  list rows expose text and ARIA attention state.
+- Status: `RESOLVED`
+- Report: `ai/reports/TASK-MESSAGES-UX-FIX-20260831-report.md`
 
 ## FINDING-013 — Narrow list layout renders EmptyState outside viewport
 
@@ -204,11 +214,11 @@ Agents must not automatically fix these findings while doing another task.
   children; the parent clips the EmptyState, leaving visible DOM boxes beyond
   the viewport while `scrollWidth` stays unchanged.
 - Severity: `P2`
-- Why outside current scope: this iteration is audit-only.
-- Next step: make list/detail mutually exclusive on narrow layouts and repeat
-  geometry and screenshot acceptance.
-- Status: `OPEN`
-- Report: `ai/reports/TASK-MESSAGES-AUDIT-20260831-report.md`
+- Why outside current scope: resolved in the follow-up implementation task.
+- Resolution: narrow `/messages` hides the empty detail column while the list
+  is active; final geometry and screenshots were repeated after the change.
+- Status: `RESOLVED`
+- Report: `ai/reports/TASK-MESSAGES-UX-FIX-20260831-report.md`
 
 ## FINDING-014 — Request groups and row statuses are too dense/ambiguous
 
@@ -219,8 +229,31 @@ Agents must not automatically fix these findings while doing another task.
   collapse strategy; rows show counts but no delivery state, and queue-only
   detail still exposes the primary `Ответить` action.
 - Severity: `P2`
-- Why outside current scope: this iteration is audit-only.
-- Next step: collapse non-attention groups, add explicit row statuses and
-  make reply a deliberate secondary action for unsent messages.
-- Status: `OPEN`
-- Report: `ai/reports/TASK-MESSAGES-AUDIT-20260831-report.md`
+- Why outside current scope: resolved in the follow-up implementation task.
+- Resolution: non-attention groups start collapsed, rows show explicit status
+  pills, and queue-only detail suppresses the reply action until sending is
+  complete.
+- Status: `RESOLVED`
+- Report: `ai/reports/TASK-MESSAGES-UX-FIX-20260831-report.md`
+
+## FINDING-015 — System/front audit: source, deployment, test and UX drift
+
+- ID: `FINDING-015`
+- Date: `2026-09-01`
+- Source: `ai/reports/TASK-SYSTEM-FRONT-AUDIT-20260901-report.md`, current
+  read-only SQLite, source inspection, HTTP smoke and frontend test runs.
+- Description: the audit recorded `AUDIT-001` through `AUDIT-011`. The source
+  documentation part of `AUDIT-001` is resolved by this task; remaining
+  findings are production `/tmp` database fallback and no durable
+  Vercel worker path; a non-reproducible backend test gate; company/contact mail
+  metric ambiguity; reply composer accessibility issue; red Storybook visual
+  gate; missing response security headers; React Router advisory review;
+  duplicate migration prefix without a ledger; inactive login options; and lint
+  warnings.
+- Severity: `P1/P2`
+- Why outside current scope: this turn was review-only; no application or
+  deployment changes were authorized.
+- Possible next step: resolve the remaining P1 items before enabling outgoing
+  production mail, then close P2 items with fresh tests.
+- Status: `OPEN — remaining AUDIT-002 through AUDIT-011`
+- Report: `ai/reports/TASK-SYSTEM-FRONT-AUDIT-20260901-report.md`

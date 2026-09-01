@@ -1,0 +1,1285 @@
+{
+  "scope": {
+    "modified_tracked": 2,
+    "project_owned_untracked": 154,
+    "total_classified": 157
+  },
+  "action_counts": {
+    "ARCHIVE_LATER": 93,
+    "GENERATED": 1,
+    "LOCAL_ONLY": 22,
+    "TRACK_CANONICAL": 2,
+    "TRACK_DOCUMENTATION": 12,
+    "TRACK_TEST": 14,
+    "TRACK_TOOLING": 10,
+    "UNKNOWN_REVIEW": 3
+  },
+  "project_owned_unknown_before": 62,
+  "project_owned_unknown_after": 3,
+  "protected_ignored_state": {
+    "SECRET_LOCAL": 6,
+    "DEPENDENCY_VENDOR": 54053,
+    "CACHE": 1301,
+    "GENERATED": 321,
+    "DATABASE": 17,
+    "LOCAL_RUNTIME": 62
+  },
+  "files": [
+    {
+      "path": "ai/DECISIONS.md",
+      "source_type": "modified_tracked",
+      "original_category": "AI_STATE",
+      "prior_action": "MODIFIED",
+      "action": "TRACK_CANONICAL",
+      "reason": "Diff contains current accepted decisions/findings dated 2026-09-01 and references tracked reports; preserve in control baseline."
+    },
+    {
+      "path": "ai/DEFERRED_FINDINGS.md",
+      "source_type": "modified_tracked",
+      "original_category": "AI_STATE",
+      "prior_action": "MODIFIED",
+      "action": "TRACK_CANONICAL",
+      "reason": "Diff contains current accepted decisions/findings dated 2026-09-01 and references tracked reports; preserve in control baseline."
+    },
+    {
+      "path": ".agents/skills/neon/SKILL.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "UNKNOWN_REVIEW",
+      "reason": "No current runtime or documentation owner was proven; retained locally for a separate owner decision."
+    },
+    {
+      "path": "ai/reports/TASK-MAIL-DELIVERY-UNKNOWN-VERIFY-20260831-report.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "AI_STATE",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "ai/reports/TASK-MAIL-DUPLICATE-GUARD-20260831-report.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "AI_STATE",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "ai/reports/TASK-MAIL-IDN-DELIVERY-CONTINUATION-FIX-20260831-report.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "AI_STATE",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "ai/reports/TASK-MAILRU-REMAINING-CONTINUATION-20260831-report.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "AI_STATE",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "ai/reports/TASK-PROJECT-RECOVERY-20260831-report.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "AI_STATE",
+      "prior_action": "KEEP",
+      "action": "TRACK_DOCUMENTATION",
+      "reason": "Current task/evidence document with no detected email or secret value; preserved as project documentation."
+    },
+    {
+      "path": "CAMPAIGN_130_LIVE_RESULT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "TRACK_DOCUMENTATION",
+      "reason": "Current task/evidence document with no detected email or secret value; preserved as project documentation."
+    },
+    {
+      "path": "CAMPAIGN_HEALTH_CORRECTIVE_LIVE_RESULT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "TRACK_DOCUMENTATION",
+      "reason": "Current task/evidence document with no detected email or secret value; preserved as project documentation."
+    },
+    {
+      "path": "EMAIL_CAMPAIGN_UI_ITERATION4.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "TRACK_DOCUMENTATION",
+      "reason": "Current task/evidence document with no detected email or secret value; preserved as project documentation."
+    },
+    {
+      "path": "EMAIL_CAMPAIGN_UI_ITERATION4_REPORT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "EMAIL_CAMPAIGN_UI_ITERATION4_STEP0.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "TRACK_DOCUMENTATION",
+      "reason": "Current task/evidence document with no detected email or secret value; preserved as project documentation."
+    },
+    {
+      "path": "EMAIL_DELIVERABILITY_ITERATION3.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "TRACK_DOCUMENTATION",
+      "reason": "Current task/evidence document with no detected email or secret value; preserved as project documentation."
+    },
+    {
+      "path": "EMAIL_DELIVERABILITY_ITERATION3_FINAL_REVIEW.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "TRACK_DOCUMENTATION",
+      "reason": "Current task/evidence document with no detected email or secret value; preserved as project documentation."
+    },
+    {
+      "path": "EMAIL_DELIVERABILITY_ITERATION3_LIVE_PLAN.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "TRACK_DOCUMENTATION",
+      "reason": "Current task/evidence document with no detected email or secret value; preserved as project documentation."
+    },
+    {
+      "path": "EMAIL_DELIVERABILITY_ITERATION3_REPORT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "EMAIL_DELIVERABILITY_ITERATION3_STEP0.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "TRACK_DOCUMENTATION",
+      "reason": "Current task/evidence document with no detected email or secret value; preserved as project documentation."
+    },
+    {
+      "path": "EMAIL_DELIVERABILITY_ITERATION3_UI_GAP.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "TRACK_DOCUMENTATION",
+      "reason": "Current task/evidence document with no detected email or secret value; preserved as project documentation."
+    },
+    {
+      "path": "EMAIL_INTEGRITY_ITERATION1_REPORT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "EMAIL_INTEGRITY_STEP0_REPORT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "EMAIL_PACING_ITERATION2.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "TRACK_DOCUMENTATION",
+      "reason": "Current task/evidence document with no detected email or secret value; preserved as project documentation."
+    },
+    {
+      "path": "EMAIL_PACING_ITERATION2_P0_CORRECTIVE_REPORT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "EMAIL_PACING_ITERATION2_REPORT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "EMAIL_PACING_ITERATION2_STEP0.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "frontend/.storybook/main.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "FRONTEND",
+      "prior_action": "KEEP",
+      "action": "TRACK_TOOLING",
+      "reason": "Storybook configuration required by tracked visual test entrypoints."
+    },
+    {
+      "path": "frontend/.storybook/preview.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "FRONTEND",
+      "prior_action": "KEEP",
+      "action": "TRACK_TOOLING",
+      "reason": "Storybook configuration required by tracked visual test entrypoints."
+    },
+    {
+      "path": "frontend/playwright.live-email.config.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "FRONTEND",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current browser test/config or reviewed synthetic visual snapshot; no credentials or real mailbox fixture is added."
+    },
+    {
+      "path": "frontend/playwright.real-email.config.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "FRONTEND",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current browser test/config or reviewed synthetic visual snapshot; no credentials or real mailbox fixture is added."
+    },
+    {
+      "path": "frontend/tests/fixtures/real-mail-ru-welcome.html",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Real-mail diagnostic fixture/code contains provider mailbox identities or captured mail data; safe synthetic replacement is deferred."
+    },
+    {
+      "path": "frontend/tests/fixtures/real-mail-ru-welcome.txt",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Real-mail diagnostic fixture/code contains provider mailbox identities or captured mail data; safe synthetic replacement is deferred."
+    },
+    {
+      "path": "frontend/tests/frontend-audit.spec.ts-snapshots/mobile-large-login-mobile-large-win32.png",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current browser test/config or reviewed synthetic visual snapshot; no credentials or real mailbox fixture is added."
+    },
+    {
+      "path": "frontend/tests/frontend-audit.spec.ts-snapshots/mobile-small-login-mobile-small-win32.png",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current browser test/config or reviewed synthetic visual snapshot; no credentials or real mailbox fixture is added."
+    },
+    {
+      "path": "frontend/tests/live-email-regression.spec.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current browser test/config or reviewed synthetic visual snapshot; no credentials or real mailbox fixture is added."
+    },
+    {
+      "path": "frontend/tests/real-email-diagnostic.spec.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Real-mail diagnostic fixture/code contains provider mailbox identities or captured mail data; safe synthetic replacement is deferred."
+    },
+    {
+      "path": "frontend/tests/storybook-visual.spec.ts-snapshots/mail-emailrenderer--marketing-spacer-cleanup-win32.png",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current browser test/config or reviewed synthetic visual snapshot; no credentials or real mailbox fixture is added."
+    },
+    {
+      "path": "frontend/tests/storybook-visual.spec.ts-snapshots/mail-emailrenderer--plain-text-win32.png",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current browser test/config or reviewed synthetic visual snapshot; no credentials or real mailbox fixture is added."
+    },
+    {
+      "path": "frontend/tests/storybook-visual.spec.ts-snapshots/mail-emailrenderer--remote-images-blocked-win32.png",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current browser test/config or reviewed synthetic visual snapshot; no credentials or real mailbox fixture is added."
+    },
+    {
+      "path": "frontend/tests/storybook-visual.spec.ts-snapshots/mail-emailrenderer--rich-html-win32.png",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current browser test/config or reviewed synthetic visual snapshot; no credentials or real mailbox fixture is added."
+    },
+    {
+      "path": "JOB46_CONTROLLED_RETRY_AFTER.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "JOB46_CONTROLLED_RETRY_BEFORE.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "keywords.txt",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "UNKNOWN_REVIEW",
+      "reason": "No current runtime or documentation owner was proven; retained locally for a separate owner decision."
+    },
+    {
+      "path": "mailru-mvp-backup-20260829/frontend/src/components/Composer.tsx",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "mailru-mvp-backup-20260829/frontend/src/components/RequestPage.tsx",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "mailru-mvp-backup-20260829/frontend/src/lib/api.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "mailru-mvp-backup-20260829/frontend/src/lib/types.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "mailru-mvp-backup-20260829/frontend/src/pages/CampaignPage.tsx",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "mailru-mvp-backup-20260829/frontend/src/pages/Settings.tsx",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "mailru-mvp-backup-20260829/mail/providers/yandex.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "mailru-mvp-backup-20260829/mail/repository.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "mailru-mvp-backup-20260829/mail/service.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "mailru-mvp-backup-20260829/repository-before-binding-fix.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "mailru-mvp-backup-20260829/supplier_app.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "BACKEND",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4.zip",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL.zip",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/00_README.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/EMAIL_CAMPAIGN_UI_ITERATION4.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/EMAIL_CAMPAIGN_UI_ITERATION4_REPORT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/EMAIL_CAMPAIGN_UI_ITERATION4_STEP0.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/EMAIL_DELIVERABILITY_ITERATION3.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/EMAIL_DELIVERABILITY_ITERATION3_FINAL_REVIEW.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/EMAIL_DELIVERABILITY_ITERATION3_LIVE_PLAN.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/EMAIL_DELIVERABILITY_ITERATION3_REPORT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/EMAIL_DELIVERABILITY_ITERATION3_STEP0.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/EMAIL_DELIVERABILITY_ITERATION3_UI_GAP.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/mail-integration.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/messages-and-mail-audit.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/PROJECT_DOCUMENTATION.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/01_DOCUMENTATION/PROJECT_STATUS.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/02_BACKEND/mail/bounce.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/02_BACKEND/mail/deliverability.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/02_BACKEND/mail/pacing.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/02_BACKEND/mail/repository.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/02_BACKEND/mail/service.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/02_BACKEND/mail/types.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/02_BACKEND/supplier_app.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "BACKEND",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/03_MIGRATIONS/001_mail_integration.sql",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/03_MIGRATIONS/022_outgoing_mail_integrity.sql",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/03_MIGRATIONS/023_mail_pacing.sql",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/03_MIGRATIONS/024_deliverability.sql",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/04_TESTS/test_mail_deliverability.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/04_TESTS/test_mail_integration.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/04_TESTS/test_mail_integrity.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/04_TESTS/test_mail_pacing.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/05_FRONTEND/src/App.tsx",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/05_FRONTEND/src/components/Composer.tsx",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/05_FRONTEND/src/components/RequestPage.tsx",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/05_FRONTEND/src/lib/api.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/05_FRONTEND/src/lib/campaign.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/05_FRONTEND/src/lib/types.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/05_FRONTEND/src/pages/CampaignPage.tsx",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/05_FRONTEND/src/useRequestState.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/05_FRONTEND/tests/campaign-ui.spec.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/FILE_MANIFEST.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_20260829_0939/FINAL_REVIEW_SUMMARY.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2.zip",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/00_README.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/01_DOCUMENTATION/EMAIL_CAMPAIGN_UI_ITERATION4.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/01_DOCUMENTATION/EMAIL_CAMPAIGN_UI_ITERATION4_REPORT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/01_DOCUMENTATION/EMAIL_CAMPAIGN_UI_ITERATION4_STEP0.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/01_DOCUMENTATION/EMAIL_DELIVERABILITY_ITERATION3.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/01_DOCUMENTATION/EMAIL_DELIVERABILITY_ITERATION3_LIVE_PLAN.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/01_DOCUMENTATION/EMAIL_DELIVERABILITY_ITERATION3_REPORT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/01_DOCUMENTATION/EMAIL_DELIVERABILITY_ITERATION3_STEP0.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/01_DOCUMENTATION/mail-integration.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/01_DOCUMENTATION/messages-and-mail-audit.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/01_DOCUMENTATION/PROJECT_DOCUMENTATION.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/01_DOCUMENTATION/PROJECT_STATUS.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/02_BACKEND/mail/bounce.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/02_BACKEND/mail/deliverability.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/02_BACKEND/mail/pacing.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/02_BACKEND/mail/repository.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/02_BACKEND/mail/service.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/02_BACKEND/mail/types.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/02_BACKEND/supplier_app.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "BACKEND",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/03_MIGRATIONS/022_outgoing_mail_integrity.sql",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/03_MIGRATIONS/023_mail_pacing.sql",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/03_MIGRATIONS/024_deliverability.sql",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/04_TESTS/test_mail_deliverability.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/04_TESTS/test_mail_integration.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/04_TESTS/test_mail_integrity.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/04_TESTS/test_mail_pacing.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/05_FRONTEND/src/App.tsx",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/05_FRONTEND/src/components/Composer.tsx",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/05_FRONTEND/src/components/RequestPage.tsx",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/05_FRONTEND/src/lib/api.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/05_FRONTEND/src/lib/campaign.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/05_FRONTEND/src/lib/types.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/05_FRONTEND/src/pages/CampaignPage.tsx",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/05_FRONTEND/src/useRequestState.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/05_FRONTEND/tests/campaign-ui.spec.ts",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/FILE_MANIFEST.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "REVIEW_PACKAGE_ITERATION4_FINAL_V2/FINAL_REVIEW_SUMMARY.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "run_probe.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "UNKNOWN_REVIEW",
+      "reason": "No current runtime or documentation owner was proven; retained locally for a separate owner decision."
+    },
+    {
+      "path": "scripts/bootstrap_supplydesk.ps1",
+      "source_type": "project_owned_untracked",
+      "original_category": "RUNTIME",
+      "prior_action": "KEEP",
+      "action": "TRACK_TOOLING",
+      "reason": "Current operator tool referenced by canonical docs; explicit mode or read-only behavior reviewed; dangerous actions remain opt-in."
+    },
+    {
+      "path": "scripts/cross_provider_retry_preview.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "RUNTIME",
+      "prior_action": "KEEP",
+      "action": "TRACK_TOOLING",
+      "reason": "Current operator tool referenced by canonical docs; explicit mode or read-only behavior reviewed; dangerous actions remain opt-in."
+    },
+    {
+      "path": "scripts/doctor.ps1",
+      "source_type": "project_owned_untracked",
+      "original_category": "RUNTIME",
+      "prior_action": "KEEP",
+      "action": "TRACK_TOOLING",
+      "reason": "Current operator tool referenced by canonical docs; explicit mode or read-only behavior reviewed; dangerous actions remain opt-in."
+    },
+    {
+      "path": "scripts/process_request_step.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "RUNTIME",
+      "prior_action": "KEEP",
+      "action": "TRACK_TOOLING",
+      "reason": "Current operator tool referenced by canonical docs; explicit mode or read-only behavior reviewed; dangerous actions remain opt-in."
+    },
+    {
+      "path": "scripts/reconcile_verified_mailru_event.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "RUNTIME",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Contains live recipient/message identity and a database write mode; parameterization is deferred."
+    },
+    {
+      "path": "scripts/recover_supplydesk.ps1",
+      "source_type": "project_owned_untracked",
+      "original_category": "RUNTIME",
+      "prior_action": "KEEP",
+      "action": "TRACK_TOOLING",
+      "reason": "Current operator tool referenced by canonical docs; explicit mode or read-only behavior reviewed; dangerous actions remain opt-in."
+    },
+    {
+      "path": "scripts/runtime_status.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "RUNTIME",
+      "prior_action": "KEEP",
+      "action": "TRACK_TOOLING",
+      "reason": "Current operator tool referenced by canonical docs; explicit mode or read-only behavior reviewed; dangerous actions remain opt-in."
+    },
+    {
+      "path": "scripts/supplier_identity_audit.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "RUNTIME",
+      "prior_action": "KEEP",
+      "action": "TRACK_TOOLING",
+      "reason": "Current operator tool referenced by canonical docs; explicit mode or read-only behavior reviewed; dangerous actions remain opt-in."
+    },
+    {
+      "path": "scripts/verify_enrichment_live.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "RUNTIME",
+      "prior_action": "KEEP",
+      "action": "TRACK_TOOLING",
+      "reason": "Current operator tool referenced by canonical docs; explicit mode or read-only behavior reviewed; dangerous actions remain opt-in."
+    },
+    {
+      "path": "SMTP_EVIDENCE_CONTROLLED_LIVE_BEFORE.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "SMTP_EVIDENCE_CONTROLLED_LIVE_REPORT.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "HISTORICAL_DOC",
+      "prior_action": "ARCHIVE_CANDIDATE",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "STAGE2_CONTROLLED_LIVE_AFTER.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "STAGE2_CONTROLLED_LIVE_BEFORE.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "STAGE2_LIVE_RESUME_BEFORE.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "LOCAL_ONLY",
+      "reason": "Mail evidence or secret-related material is present; raw user/mail data is not added to the canonical baseline."
+    },
+    {
+      "path": "STAGE2_OPERATOR_HOLD_READY.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "CURRENT_DOC",
+      "prior_action": "KEEP",
+      "action": "TRACK_DOCUMENTATION",
+      "reason": "Current task/evidence document with no detected email or secret value; preserved as project documentation."
+    },
+    {
+      "path": "supplier_source_tests/out/latest_summary.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "GENERATED",
+      "reason": "Generated external lookup output, not a test source of truth."
+    },
+    {
+      "path": "supplier_source_tests/README.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current read-only supplier-source test code/documentation; no credentials or captured output."
+    },
+    {
+      "path": "supplier_source_tests/run_probe.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current read-only supplier-source test code/documentation; no credentials or captured output."
+    },
+    {
+      "path": "supplier_source_tests/SOURCE_MATRIX.md",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current read-only supplier-source test code/documentation; no credentials or captured output."
+    },
+    {
+      "path": "supplier_source_tests/sources.py",
+      "source_type": "project_owned_untracked",
+      "original_category": "TEST",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Current read-only supplier-source test code/documentation; no credentials or captured output."
+    },
+    {
+      "path": "benchmarks/enrichment_cases.json",
+      "source_type": "project_owned_ignored",
+      "original_category": "CONFIG",
+      "prior_action": "KEEP",
+      "action": "TRACK_TEST",
+      "reason": "Tracked enrichment tests require this offline case index; it contains no credentials, mailbox data, or secret values."
+    },
+    {
+      "path": "SUPPLYDESK_ITERATION4_REVIEW_FINAL.zip",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    },
+    {
+      "path": "SUPPLYDESK_P0_PACING_REVIEW.zip",
+      "source_type": "project_owned_untracked",
+      "original_category": "UNKNOWN",
+      "prior_action": "UNKNOWN",
+      "action": "ARCHIVE_LATER",
+      "reason": "Historical/review/backup copy; current counterparts or frozen snapshot provide recovery evidence; not a runtime path."
+    }
+  ]
+}
