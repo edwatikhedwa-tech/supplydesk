@@ -80,6 +80,16 @@ class ChangeClassifierTests(unittest.TestCase):
         self.assertEqual(result["backend_full"], "false")
         self.assertEqual(result["browser_full"], "false")
 
+    def test_control_change_with_diagnostic_tests_does_not_require_backend(self):
+        result = classify(
+            ".github/workflows/ci.yml",
+            "tests/diagnostics/test_change_classifier.py",
+        )
+        self.assertEqual(result["backend"], "false")
+        self.assertEqual(result["backend_full"], "false")
+        self.assertEqual(result["browser_full"], "false")
+        self.assertEqual(result["unknown"], "false")
+
     def test_high_risk_backend_change_uses_full_backend_and_doctor(self):
         result = classify("mail/service.py")
         self.assertEqual(result["risk"], "HIGH")

@@ -12,7 +12,7 @@
     "^supplier_discovery_v2/",
     "^supplier_app\\.py$",
     "^[^/]+\\.py$",
-    "^tests/"
+    "^tests/(?!diagnostics/)"
   ],
   "frontend": [
     "^frontend/"
@@ -61,6 +61,7 @@
   "control": [
     "^ai/",
     "^docs/",
+    "^tests/diagnostics/",
     "^scripts/ci/",
     "^(AGENTS|CLAUDE)\\.md$",
     "^PROJECT_MANIFEST\\.yaml$",
