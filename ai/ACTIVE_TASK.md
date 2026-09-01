@@ -1,45 +1,43 @@
 ---
-document_id: TASK-LOCK-001
+document_id: TASK-LOCK-002
 status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: d4d2b2ab2457e3aa103f80120642bff4bc72920f
+source_commit: d2ceef3
 ---
 
 # Active Task
 
-Task ID: `NONE`
+Task ID: `TASK-SAFE-CLEANUP-BATCH2-20260901`
 Agent: `Codex`
-Mode: `IDLE`
+Mode: `CLOSEOUT`
 Started: `2026-09-01`
-Scope: `safe physical cleanup Batch 1, legacy workspace isolation, quarantine and acceptance evidence`
-Allowed files: `ai/**` only in the Git branch; physical actions were limited to
-the explicit external quarantine/delete allowlist
-Status: `IDLE — TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901 complete and branch pushed`
-Last update: `2026-09-01T19:20:00Z`
+Scope: `canonical deep hygiene, resolved unknowns, evidence-gated Python cleanup and offline acceptance`
+Allowed files: `ai/**` plus the explicitly approved Python hygiene bindings;
+physical actions were limited to the three external quarantine moves
+Status: `CLOSEOUT — offline acceptance complete; final validators and remote push pending`
+Last update: `2026-09-01T20:50:00Z`
 
 ## Цель
 
-Создать отдельную canonical-копию, вынести доказанные legacy review/backup/
-export artifacts в retained quarantine и удалить только воспроизводимый cache,
-не трогая код, `.env`, базу или пользовательские mail data.
+Провести безопасную глубокую очистку canonical SupplyDesk без потери кода,
+секретов, базы или пользовательских mail data; сохранить спорное в quarantine.
 
 ## Границы
 
-Продуктовый код, фронтенд-код, каноническая база, миграции и настройки
+Продуктовые маршруты, фронтенд UI, каноническая база, миграции и настройки
 production не изменяются. Quarantine остаётся вне Git и не удаляется навсегда;
-три unknown-review пункта остаются на месте.
+три unknown-review пункта перемещены туда с сохранением hash.
 
 ## Acceptance
 
-Проверены before/after manifests, physical allowlist, clean canonical checkout,
-backend/frontend/browser acceptance, Doctor, validators, reference search и
-security boundary. Реальная почта и внешний live-provider acceptance остаются
-запрещёнными.
+Проверены reference/process/hash gates, duplicate audit, `.gitignore` matrix,
+backend/frontend/browser acceptance, Doctor и security boundary. Финальные
+state/report validators и remote ref verification выполняются при closeout.
 
 ## Следующий шаг
 
-Активной задачи нет. Проверка quarantine и permanent purge остаются отдельным
-решением владельца проекта.
+После closeout активной задачи не будет. Проверка содержимого quarantine и
+permanent purge остаются отдельным решением владельца проекта.
 

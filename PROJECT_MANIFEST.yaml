@@ -7,8 +7,8 @@ project:
   name: SupplyDesk
   repository: edwatikhedwa-tech/supplydesk
   visibility: private
-  source_head: c076e1be385c3ae6da2716159e1f46fc2fce23d7
-  control_branch: control/canonical-baseline-20260901
+  source_head: d2ceef3
+  control_branch: control/safe-cleanup-batch2-20260901
   governance_branch: control/documentation-governance-20260901
   audit_branch: audit/repository-hygiene-reports-20260901
   audit_commit: b5a454f9b39f3cbf01d640d5b67e4231ca25733a
@@ -18,7 +18,7 @@ canonical_state:
   active_task: ai/ACTIVE_TASK.md
   decisions: ai/DECISIONS.md
   deferred_findings: ai/DEFERRED_FINDINGS.md
-  task_report: ai/reports/TASK-CANONICAL-CONTROL-BASELINE-20260901-report.md
+  task_report: ai/reports/TASK-SAFE-CLEANUP-BATCH2-20260901-report.md
   rule: ai/CURRENT_STATE.md is the only current-state source; dated reports are evidence or history
 
 documentation:
@@ -142,7 +142,7 @@ not_canonicalized:
   - review packages, backup directories and zip bundles
   - captured real-mail fixtures and diagnostic code
   - generated lookup output and local screenshots
-  - .agents/skills/neon/SKILL.md, keywords.txt and root run_probe.py (UNKNOWN_REVIEW)
+  - frontend review candidates and direct lighthouse dev dependency (REVIEW_REQUIRED)
 
 dangerous_operations:
   - send_real_email
@@ -160,7 +160,7 @@ verification:
   source_head_verified: true
   source_env_file_count: 6
   env_values_read: false
-  backend_control_run: "373 passed, 1 skipped, 0 failed, 0 errors"
+  backend_control_run: "412 passed, 1 skipped, 0 failed, 0 errors"
   backend_published_audit_run: "321 passed, 52 failed, 1 skipped, 0 errors"
   backend_new_failures: 0
   backend_new_errors: 0
@@ -172,9 +172,18 @@ verification:
   playwright_live_routes: "18/18 PASS in published audit; not rerun without backend data"
   doctor_source_dry_run: PASS
   doctor_control_dry_run: "EXPECTED_PARTIAL: .env and mail-data absent"
-  knip: NOT_VERIFIED
+  knip: "PASS_WITH_LIMITATIONS: candidates retained; no frontend deletion authorized"
   files_deleted: 0
+  python_dead_bindings_removed: "18 unused imports, 2 side-effect-free assignments"
+  frontend_files_deleted: 0
+  frontend_dependencies_removed: 0
+  duplicate_groups_current: 2
+  duplicate_files_deleted: 0
+  unknown_review_remaining: 0
+  batch2_quarantined_files: 3
+  batch2_quarantined_bytes: 43845
+  quarantine_purged: false
   real_email_sent: false
-  remote_control_branch: control/canonical-baseline-20260901
+  remote_control_branch: control/safe-cleanup-batch2-20260901
   remote_governance_branch: control/documentation-governance-20260901
-  remote_push_verified: true
+  remote_push_verified: false

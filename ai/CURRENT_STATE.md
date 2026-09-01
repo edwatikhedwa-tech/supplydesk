@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-01
-source_commit: d4d2b2ab2457e3aa103f80120642bff4bc72920f
+source_commit: d2ceef3
 ---
 
 # Current State
@@ -15,18 +15,19 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T19:10:00Z` — safe physical cleanup Batch 1 completed from the
-verified controlled remote HEAD `d4d2b2ab2457e3aa103f80120642bff4bc72920f`.
-The new canonical checkout is the development source of truth; the historical
-OneDrive checkout is marked `DO_NOT_USE_FOR_DEVELOPMENT`.
+`2026-09-01T20:45:00Z` — safe cleanup Batch 2 completed its offline acceptance
+on the canonical checkout. The new canonical checkout is the development
+source of truth; the historical OneDrive checkout is marked
+`DO_NOT_USE_FOR_DEVELOPMENT` and its three former unknown items are retained
+outside the repository in quarantine.
 
 ## Project
 
 - Repository: `edwatikhedwa-tech/supplydesk` (private).
 - Verified controlled baseline: `control/reproducible-test-runtime-v1-20260901`
   at `d4d2b2ab2457e3aa103f80120642bff4bc72920f`.
-- Cleanup branch: `control/safe-cleanup-batch1-20260901`, based on that
-  verified controlled baseline.
+- Cleanup branch: `control/safe-cleanup-batch2-20260901`, based on the verified
+  Batch 1 HEAD `847b0979a27da9d38f9cc755309a283ad99df699`.
 - Canonical development checkout: `<CANONICAL_WORKSPACE>`.
 - Historical legacy checkout: `<LEGACY_WORKSPACE>`, marked
   `LEGACY_WORKSPACE_DO_NOT_DEVELOP_HERE.txt`.
@@ -134,24 +135,35 @@ on this task's dedicated branch:
   `.env`, canonical database or mail data was deleted, moved or modified.
 - Cleanup before/after manifests are retained outside the repository; all
   delete and quarantine paths were individually verified after the operation.
-- Legacy marker was added locally; the three unknown-review items remain
-  unresolved and the legacy worktree remains intentionally dirty.
+- Legacy marker was added locally; the legacy worktree remains intentionally
+  dirty.
+- Batch 2 moved `.agents/skills/neon/SKILL.md`, `keywords.txt` and root
+  `run_probe.py` to external quarantine after reference, process and hash
+  checks. No canonical source file, database, environment or mail data was
+  physically deleted.
+- Batch 2 removed only 18 proven unused Python imports and 2 side-effect-free
+  dead bindings in commit `d2ceef3`; product behavior and public surfaces were
+  preserved.
+- Batch 2 duplicate audit found 2 groups / 4 files and deleted none. Both
+  groups are retained because their path/package roles differ.
+- Batch 2 `.gitignore` audit removed broad JSON/CSV hiding and passed the full
+  synthetic matrix; `.env.example` remains ignored under the publish denylist.
+- Batch 2 acceptance: backend `412/0/0/1`, diagnostics `26/26`, frontend
+  install/typecheck/lint/build PASS, Playwright `8/8`, Doctor Full exit `0`.
 
 ## Not verified
 
-- Live external provider routes, real SMTP/IMAP, real email and production
-  migration behavior were not exercised by design.
+- NOT VERIFIED: live external provider routes, real SMTP/IMAP, real email and
+  production migration behavior were not exercised by design.
 - Full authenticated real-provider workflows remain outside the safe offline
   contract; synthetic login and protected local routes were checked.
 - Same-environment parity between the source checkout and the control worktree
   was not re-established.
-- `knip` status remains `NOT VERIFIED`.
+- `knip` produced frontend candidates; no frontend file or dependency was
+  removed because the approved allowlist covered Python cleanup only and
+  manual/operator surfaces could not be ruled out.
 - Current canonical database rows, mailbox state and provider quotas were not
   inspected or exercised.
-- The ownership of the source-checkout local-only Neon skill, `keywords.txt`,
-  and root `run_probe.py` remains `UNKNOWN_REVIEW`.
-- Safe `.gitignore` correction remains deferred because broad rules can hide
-  source/fixture files; no `.gitignore` change was made in Batch 1.
 
 ## Blockers
 
@@ -174,9 +186,10 @@ on this task's dedicated branch:
 
 ## Current next step
 
-`TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901` is complete and its evidence
-branch is pushed; the remote ref was verified at closeout. Review of retained
-quarantine and the three unknown items is a separate owner decision.
+`TASK-SAFE-CLEANUP-BATCH2-20260901` has completed the approved cleanup and
+offline acceptance. Final report/state validation and remote ref verification
+are the remaining closeout records; permanent quarantine purge remains
+forbidden.
 
 ## Canonical references
 
@@ -190,5 +203,8 @@ quarantine and the three unknown items is a separate owner decision.
 - Diagnostic V1.1 report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md).
 - Reproducible test/runtime report: [`ai/reports/TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901-report.md`](reports/TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901-report.md).
 - Safe physical cleanup report: [`ai/reports/TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901-report.md`](reports/TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901-report.md).
+- Safe cleanup Batch 2 report: [`ai/reports/TASK-SAFE-CLEANUP-BATCH2-20260901-report.md`](reports/TASK-SAFE-CLEANUP-BATCH2-20260901-report.md).
+- Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
+- Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).
 

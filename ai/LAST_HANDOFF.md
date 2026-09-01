@@ -4,55 +4,54 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: d4d2b2ab2457e3aa103f80120642bff4bc72920f
+source_commit: d2ceef3
 ---
 
 # Last Handoff
 
 ## Цель
 
-Выполнить первую физическую очистку legacy SupplyDesk с отдельной canonical
-копией, retained quarantine и без потери уникальных рабочих изменений.
+Выполнить согласованную глубокую очистку canonical SupplyDesk с сохранением
+legacy-материалов в retained quarantine и без потери уникальных рабочих
+изменений.
 
 ## Что изменено
 
-- Создан fresh canonical checkout вне legacy OneDrive и локальная ветка
-  `control/safe-cleanup-batch1-20260901` от проверенного remote HEAD.
-- До действий создан before-manifest; после действий — after-manifest.
-- Удалены только 308 regeneratable/cache файлов; 1,481 review/backup/export/
-  historical-local файл перемещён во внешний retained quarantine.
+- Создана ветка `control/safe-cleanup-batch2-20260901` от проверенного Batch 1
+  HEAD; legacy OneDrive не использовался как рабочий источник.
+- Внешний quarantine Batch 1 сохранён; три legacy unknown-файла перемещены в
+  `05_UNKNOWN_REVIEW` с проверкой отсутствия активных ссылок и SHA-256.
+- Исправлены broad `.gitignore` rules в отдельном коммите `0585275`.
+- Удалены только 18 неиспользуемых импортов и 2 side-effect-free присваивания
+  в отдельном Python-коммите `d2ceef3`.
+- Exact duplicate groups оставлены: 2 группы / 4 файла, удалений 0.
 - `.env*`, canonical DB, `mail-data`, runtime, credentials, mail evidence,
-  product source и unknown-review items оставлены.
-- Legacy marker объявляет старую папку `DO_NOT_USE_FOR_DEVELOPMENT`.
+  frontend UI, спорные frontend candidates и dependencies не изменялись.
 
 ## Что проверено
 
-- `git ls-remote` confirmed controlled HEAD `d4d2b2ab2457e3aa103f80120642bff4bc72920f`;
-  audit branch was confirmed at `b5a454f9b39f3cbf01d640d5b67e4231ca25733a`.
-- Backend full: `411` tests, `0` failures, `0` errors, `1` skipped; diagnostics
-  `25/25`; frontend install/typecheck/lint/build passed, lint has 8 warnings.
-- Safe HTTP smoke returned `200/200/401/401/404`; real-route Playwright `8/8`;
-  Doctor OFFLINE_TEST Full `PASS`, exit `0`.
-- All validators and `git diff --check` passed. Test runtime used disposable
-  SQLite and was stopped by its marker-aware stop script.
-- Physical delete/move targets and quarantine destinations were verified;
-  no application source, database, migration, env or mail data was changed.
-- Cleanup evidence and metadata-only closeout commits were pushed normally to
-  `origin/control/safe-cleanup-batch1-20260901` after one transient DNS failure;
-  the final remote ref was independently verified at closeout.
+- `git ls-remote` confirmed Batch 1 base `847b0979a27da9d38f9cc755309a283ad99df699`.
+- Backend full: `412` tests, `0` failures, `0` errors, `1` skipped; diagnostics
+  `26/26`; frontend `npm ci`, typecheck and build passed, lint has 8 warnings.
+- Safe HTTP smoke returned `200/200/401/404`; Playwright real routes `8/8` on
+  canonical frontend; Doctor OFFLINE_TEST Full `PASS`, exit `0`.
+- Focused Python tests, compile check, duplicate audit and `.gitignore` matrix
+  passed. The safe runtime used disposable SQLite and was stopped by its
+  marker-aware stop script.
+- Final docs and remote-ref verification remain the last closeout records;
+  no real SMTP/IMAP or external provider action was performed.
 
 ## Что не прошло
 
-No required offline acceptance item is blocked. `.gitignore` corrections and
-the three unknown legacy items remain review-required; live external providers,
-real SMTP/IMAP, real email and production migrations remain intentionally
-unverified.
+No required offline acceptance item is blocked. Live external providers, real
+SMTP/IMAP, real email and production migrations remain intentionally
+unverified. Frontend candidates remain review-required and were not deleted.
 
 ## Что не проверено
 
-Canonical database rows, mailbox/provider state, live external acceptance,
-production migration behavior, `knip`, `.gitignore` safe correction and the
-ownership of the three source-checkout unknowns remain `NOT VERIFIED`.
+Canonical database rows, mailbox/provider state, live external acceptance and
+production migration behavior remain `NOT VERIFIED` by design. Knip was run as
+a candidate generator; no frontend deletion was authorized.
 
 ## Текущее состояние runtime
 
@@ -64,9 +63,9 @@ verified remote control branch are the source of truth.
 
 ## Следующий рациональный шаг
 
-Review retained quarantine and the three unknown items in a separate task;
-permanent purge is not part of Batch 1 and no merge/default-branch change is
-performed automatically.
+Complete the final state/report validation and push
+`control/safe-cleanup-batch2-20260901`; permanent purge is not part of Batch 2
+and no merge/default-branch change is performed automatically.
 
 ## Не повторять
 

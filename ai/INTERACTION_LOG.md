@@ -771,3 +771,15 @@ This log records agent work interactions. It is append-only.
   permanent quarantine purge occurred.
 - Evidence commit `26e779c` was pushed normally after one transient DNS failure;
   remote ref verification passed and no default branch was changed.
+
+## 2026-09-01T20:55:00Z — TASK-SAFE-CLEANUP-BATCH2-20260901
+
+- Owner confirmed the exact allowlist before physical action. Three legacy
+  unknown files were reference-checked, process-checked and moved by exact
+  path into external quarantine; source absence and destination hashes passed.
+- The canonical `.gitignore` correction and Python hygiene remained separate
+  commits. No frontend UI, dependency, database, environment file, mail data
+  or quarantine content entered Git.
+- Full offline acceptance passed on canonical workspace: backend `412/0/0/1`,
+  diagnostics `26/26`, frontend install/typecheck/lint/build, safe HTTP
+  `200/200/401/404`, Playwright `8/8` and Doctor Full exit `0`.

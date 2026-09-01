@@ -73,3 +73,20 @@ this current register. Resolved findings and full chronology are preserved in
 - Why deferred: This task only establishes documentation ownership and retention; it must not broaden into cleanup or application repair.
 - Next verification: Triage each retained audit finding in a separate task with an explicit allowlist and rollback plan.
 
+## FINDING-016 — Frontend candidates remain review-required
+
+- ID: `FINDING-016`
+- Severity: `LOW`
+- Status: `OPEN`
+- Evidence: The isolated Knip audit reported `RiskFactors.tsx`, three manual
+  Playwright/Lighthouse configuration files and the direct `lighthouse`
+  development dependency as candidates.
+- Impact: The repository retains a small amount of potentially unused
+  frontend/tooling surface; deleting it without owner review could remove a
+  manual acceptance path or planned UI component.
+- Why deferred: The approved Batch 2 allowlist authorized only the proven
+  Python cleanup. No frontend file or dependency was deleted.
+- Next verification: Owner approves a separate frontend/dependency allowlist;
+  repeat clean install, reference/build analysis and full browser acceptance
+  before any deletion.
+

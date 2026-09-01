@@ -859,3 +859,19 @@ rewritten.
 - Evidence commit `26e779c` was pushed normally to the dedicated cleanup branch
   after one transient DNS failure; the remote ref was verified. No merge or
   permanent quarantine purge was performed.
+
+## 2026-09-01T20:55:00Z — TASK-SAFE-CLEANUP-BATCH2-20260901
+
+- Created `control/safe-cleanup-batch2-20260901` from the verified Batch 1
+  control HEAD and kept the legacy OneDrive checkout out of development.
+- Corrected the broad `.gitignore` rules in commit `0585275`; the synthetic
+  matrix passed and no secret/data path was exposed for staging.
+- Moved the three resolved legacy unknown items to retained external quarantine
+  (`43,845` bytes) after reference, process and SHA-256 checks.
+- Removed only 18 proven unused Python imports and 2 side-effect-free dead
+  bindings in separate commit `d2ceef3`; duplicate groups and frontend review
+  candidates were kept.
+- Full offline acceptance passed: `412` backend tests with `0` failures and
+  `1` expected skip, `26/26` diagnostics, frontend gates, `8/8` Playwright and
+  Doctor Full exit `0`. Final state/report validation and remote push remain
+  closeout actions.
