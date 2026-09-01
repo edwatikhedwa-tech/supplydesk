@@ -1,5 +1,38 @@
 # Last Handoff
 
+## Current handoff — аудит системы и фронтенда
+
+Task ID: `TASK-SYSTEM-FRONT-AUDIT-20260901`
+Дата закрытия UTC: `2026-09-01T07:11:12Z`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+Base HEAD before closeout: `4dbc8a5f9ea6c6212fb7731af542b3b57d6fa7eb`
+Push: `NOT RUN`
+Status: `COMPLETE LOCALLY — audit report saved`
+
+### Цель
+
+Изучить документацию и журналы, сопоставить систему/SQLite/backend с текущим
+фронтендом и найти слабые места и несостыковки без изменения продукта.
+
+### Результат
+
+- Подтверждены 3 P1 риска: несколько источников текущего состояния, production
+  fallback на эфемерную `/tmp` базу и невоспроизводимый backend release gate.
+- Подтверждены 8 P2 проблем: неоднозначная mail metric, composer a11y,
+  Storybook visual drift, отсутствующие security headers, Router advisory,
+  migration lineage, неподключённые login options и lint warnings.
+- Local HTTP/runtime/database и frontend проверки выполнены; outgoing оставлен
+  выключенным. Live protected UI, PostgreSQL/Vercel worker и Lighthouse score
+  не подтверждены по причинам, указанным в отчёте.
+- Код приложения, данные и внешние сервисы не изменялись; state backups
+  сохранены в `Temp/20260901-system-front-audit/`.
+
+### Что проверено
+
+Подробные команды, результаты, критерии исправления и ограничения находятся в
+`ai/reports/TASK-SYSTEM-FRONT-AUDIT-20260901-report.md`.
+
 ## Current handoff — понятная проверка правил
 
 Task ID: `TASK-INSTRUCTION-CHECK-UX-20260901`

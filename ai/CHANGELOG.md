@@ -3,6 +3,20 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-01T07:11:12Z — АУДИТ СИСТЕМЫ И ФРОНТЕНДА — TASK-SYSTEM-FRONT-AUDIT-20260901
+
+- Изучены state-документы, `docs/**`, `Documents/28-8/**`, журналы, исходники,
+  deployment config, read-only SQLite и runtime.
+- Сохранён аудит с доказательствами и критериями исправления: обнаружены
+  расхождение источников состояния, production `/tmp` fallback без fail-closed
+  проверки, невоспроизводимый backend test gate, неоднозначная mail metric,
+  composer accessibility issue, красный Storybook visual gate и security gaps.
+- Проверены HTTP/runtime/database и frontend gates; outgoing оставлен выключенным.
+- Application code, frontend code, API, database rows, migrations, mail settings
+  и внешние сервисы не менялись. State backups сохранены в
+  `Temp/20260901-system-front-audit/`.
+- Report: `ai/reports/TASK-SYSTEM-FRONT-AUDIT-20260901-report.md`.
+
 ## 2026-09-01T06:38:31Z — ПОНЯТНАЯ ПРОВЕРКА ПРАВИЛ — TASK-INSTRUCTION-CHECK-UX-20260901
 
 - Заменён непонятный английский шаблон `[INSTRUCTION CHECK]` с несколькими

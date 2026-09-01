@@ -1,5 +1,25 @@
 # Current State
 
+## Current task update — аудит системы и фронтенда
+
+- Timestamp UTC: `2026-09-01T07:11:12Z`
+  (`TASK-SYSTEM-FRONT-AUDIT-20260901`, completed locally).
+- Read-only SQLite for request `1059` currently contains `171` relevant supplier
+  links and outbound statuses `sent=125`, `failed=4`, `delivery_unknown=2`,
+  `cancelled=82`, `queued=0`; durable outgoing switch is `0` (sending disabled).
+- Confirmed documentation drift: older `docs/**`/`Documents/28-8/**` still show
+  `sent=62`, `queued=84`, `failed=2`, `delivery_unknown=1`, old supplier totals,
+  Yandex-only claims and deferred UI/live-SMTP statements that conflict with
+  current code, DB and newer state records.
+- Frontend checks: typecheck/build/route-mocked visual suite pass; lint passes
+  with 8 warnings; Storybook build passes but visual suite is `3 passed, 4
+  failed`; axe found a serious contrast issue in the matched reply composer.
+- Full backend unittest is not reproducible in the current environment because
+  bundled/system Python cannot import `nh3` and `requests`; this supersedes no
+  historical pass claim and is recorded as an audit limitation.
+- No application code, API, DB rows, migrations, mail settings or external
+  services were changed. Report: `ai/reports/TASK-SYSTEM-FRONT-AUDIT-20260901-report.md`.
+
 ## Current task update — понятная проверка правил
 
 - Timestamp UTC: `2026-09-01T06:38:31Z`

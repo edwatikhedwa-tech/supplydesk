@@ -2,11 +2,28 @@
 
 ## Current task
 
-Task ID: `NONE`
+Task ID: `TASK-SYSTEM-FRONT-AUDIT-20260901`
 Agent: `Codex`
-Mode: `IDLE`
-Status: `IDLE — TASK-INSTRUCTION-CHECK-UX-20260901 completed locally`
-Last update: `2026-09-01T06:38:31Z`
+Mode: `AUDIT → CLOSE`
+Status: `COMPLETE LOCALLY — system and frontend audit recorded`
+Last update: `2026-09-01T07:11:12Z`
+
+## Latest completed task — аудит системы и фронтенда
+
+Task ID: `TASK-SYSTEM-FRONT-AUDIT-20260901`
+Mode: `AUDIT → CLOSE`
+Status: `COMPLETE LOCALLY — findings and limits recorded`
+
+- Сверены инструкции, state-документы, `docs/**`, `Documents/28-8/**`, исходники,
+  deployment config, read-only SQLite и runtime.
+- Выполнены HTTP smoke, frontend typecheck/lint/build, Playwright visual/focused
+  tests, Storybook build/visual, browser geometry и axe на reply composer.
+- Найдены расхождение источников состояния, fail-open `/tmp` database fallback,
+  невоспроизводимый backend test gate, неоднозначная mail metric, composer
+  accessibility issue, красный Storybook visual gate, отсутствующие security
+  headers, Router advisory, неоднозначные migrations и неактивные login options.
+- Код приложения, база, mail settings и внешние сервисы не изменялись.
+- Report: `ai/reports/TASK-SYSTEM-FRONT-AUDIT-20260901-report.md`.
 
 ## Latest completed task — понятная проверка правил
 
