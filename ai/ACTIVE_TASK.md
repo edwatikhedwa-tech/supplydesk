@@ -2,11 +2,22 @@
 
 ## Current task
 
-Task ID: `TASK-SYSTEM-FRONT-AUDIT-20260901`
+Task ID: `NONE`
 Agent: `Codex`
-Mode: `AUDIT → CLOSE`
-Status: `COMPLETE LOCALLY — system and frontend audit recorded`
-Last update: `2026-09-01T07:11:12Z`
+Mode: `IDLE`
+Status: `IDLE — TASK-DOCS-CANONICAL-20260901 completed locally`
+Last update: `2026-09-01T07:29:32Z`
+
+## Current task — canonical documentation and freshness rule
+
+Task ID: `TASK-DOCS-CANONICAL-20260901`
+Scope: reconcile current-state navigation, mark stale snapshots, add the
+documentation freshness rule and update state/report chronology.
+Non-goals: application logic, frontend, API, database rows, migrations, mail
+settings, deployment configuration, external services and unrelated worktree.
+Definition of Done: one canonical current-state source is explicit; stale
+documents are clearly historical; links and state validator pass; changes are
+reviewable and reversible.
 
 ## Latest completed task — аудит системы и фронтенда
 

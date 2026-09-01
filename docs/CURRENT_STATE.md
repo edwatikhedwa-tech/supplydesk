@@ -1,5 +1,13 @@
 # Current State
 
+> **HISTORICAL — NOT CURRENT.** This file preserves the 2026-08-30 audit
+> snapshot for traceability. Use [`ai/CURRENT_STATE.md`](../ai/CURRENT_STATE.md)
+> for the current state, numbers, runtime and verified evidence. Do not use the
+> values below for operational decisions.
+
+<details>
+<summary>Historical snapshot retained for audit history</summary>
+
 Дата аудита: 2026-08-30. Это snapshot фактически проверенного состояния, не
 changelog.
 
@@ -178,3 +186,5 @@ changelog.
 - `UX-001` (LOW): explicit multi-email contact picker is absent; backend's
   automatic alternate policy is currently the behavior under test.
 - `DB-001` (LOW): duplicate migration numeric prefix and no migration ledger.
+
+</details>

@@ -135,3 +135,32 @@ NEXT RECOMMENDED STEP
 Run the PostgreSQL-specific safety acceptance in an isolated database, then
 review whether the database-wide owner-controlled switch should eventually be
 split into workspace-scoped controls.
+
+## 2026-09-01 07:30 +03:00 — DOCUMENTATION CANONICALIZATION
+
+STATUS
+
+This entry supersedes the older current-state numbers in this append-only log.
+The only current-state source is now [`ai/CURRENT_STATE.md`](../ai/CURRENT_STATE.md).
+Older entries remain historical evidence and must not be used as a live queue
+or supplier count.
+
+CONFIRMED CURRENT SNAPSHOT
+
+- Request `1059`: 171 relevant supplier links; outbound `sent=125`, `failed=4`,
+  `delivery_unknown=2`, `cancelled=82`, `queued=0`.
+- Durable outgoing switch is `0`; no new mail is sent by this documentation
+  task.
+- SQLite integrity check is `ok`.
+- Current code contains a Mail.ru provider implementation; live Mail.ru
+  acceptance remains a separate `NOT VERIFIED` item unless a fresh provider
+  run is recorded.
+
+DOCUMENTATION RULE
+
+[`docs/DOCUMENTATION_POLICY.md`](DOCUMENTATION_POLICY.md) defines the maintenance
+process: update the canonical state and affected feature documentation in the
+same task, mark old snapshots `HISTORICAL — NOT CURRENT`, and run
+state/link/secret/diff checks before closeout. No application code, database
+rows, migrations, mail settings or deployment configuration changed in this
+reconciliation.

@@ -1,5 +1,10 @@
 # Decisions
 
+> **SUPPORTING DECISIONS — NOT CURRENT STATE.** Current repository state and
+> current decisions are maintained in [`ai/CURRENT_STATE.md`](../ai/CURRENT_STATE.md)
+> and [`ai/DECISIONS.md`](../ai/DECISIONS.md). This file preserves the older
+> resend design record; it must not be used for live counts or provider status.
+
 ## RESEND-001
 
 Status: Confirmed by current SQLite implementation and tests.

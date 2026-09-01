@@ -44,6 +44,14 @@ verification.
    BLOCKED until the conflict is resolved.
 10. Close a stage when its Definition of Done is met and no P0/P1 blocker is
     confirmed. Do not start a corrective cycle without a new confirmed cause.
+11. Keep documentation current in the same task as the change it describes.
+    `ai/CURRENT_STATE.md` is the only current-state source; `docs/` and
+    `Documents/28-8/` are supporting or historical documents and must not
+    silently present old snapshots as current.
+12. Every current number, capability, provider, deployment statement or test
+    result must carry a date/scope and a checked source. If it cannot be
+    rechecked, mark it `REPORTED` or `NOT VERIFIED`; if it is old, mark the
+    document `HISTORICAL — NOT CURRENT` and link to the canonical state.
 
 ## Status vocabulary
 

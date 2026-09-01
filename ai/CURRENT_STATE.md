@@ -1,5 +1,24 @@
 # Current State
 
+## Current task update — canonical documentation and freshness rule
+
+- Timestamp UTC: `2026-09-01T07:29:32Z`
+  (`TASK-DOCS-CANONICAL-20260901`, completed locally).
+- `ai/CURRENT_STATE.md` is explicitly established as the only current-state
+  source. A new `docs/DOCUMENTATION_POLICY.md` defines mandatory same-task
+  updates, evidence labels, historical markers, link/secret/state validation and
+  rollback.
+- `docs/CURRENT_STATE.md`, `docs/DECISIONS.md` and the dated
+  `Documents/28-8/` catalog are marked as supporting or historical
+  material; they link back to the canonical state instead of competing with it.
+- Root `AGENTS.md`, `ai/AI_CONTRACT.md`, `ai/WORKFLOW.md`, `docs/ENGINEERING_CONTRACT.md`
+  and `ai/DECISIONS.md` now carry the same documentation-freshness rule.
+- Application code, frontend, API, database, migrations, mail settings,
+  deployment configuration and external services remain unchanged.
+- Acceptance passed: 91 relative Markdown links checked, secret-pattern scan
+  passed, `python ai/tools/validate_state.py` passed and `git diff --check`
+  passed. Report: `ai/reports/TASK-DOCS-CANONICAL-20260901-report.md`.
+
 ## Current task update — аудит системы и фронтенда
 
 - Timestamp UTC: `2026-09-01T07:11:12Z`

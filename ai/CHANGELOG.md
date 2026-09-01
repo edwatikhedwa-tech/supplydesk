@@ -751,3 +751,16 @@ rewritten.
 - Установлен процессный `MAIL_OUTGOING_DISABLED=1`, durable outgoing switch
   подтверждён как `0`; отправка из очереди невозможна.
 - HTTP smoke: root `200`, auth/me `200`, protected API `401`, unknown API `404`.
+
+## 2026-09-01T07:27:56Z — CANONICAL DOCUMENTATION — TASK-DOCS-CANONICAL-20260901
+
+- Установлен единый current-state source: `ai/CURRENT_STATE.md`.
+- Добавлен `docs/DOCUMENTATION_POLICY.md` с обязательным правилом: изменённый
+  факт и документация обновляются в одной задаче и одном коммите.
+- Старые snapshots в `docs/**` и `Documents/28-8/**` помечены
+  `HISTORICAL — NOT CURRENT`, сохранены и связаны с canonical state.
+- Обновлены AGENTS, AI contract, workflow, decisions, navigation и
+  documentation state; `FINDING-001` и `FINDING-005` закрыты.
+- Acceptance: 91 relative Markdown links, secret-pattern scan, state validator
+  и `git diff --check` прошли. Application code, data, mail and deployment не
+  менялись. Backup: `Temp/20260901-docs-canonical/`.

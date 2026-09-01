@@ -31,6 +31,10 @@ checking its primary evidence.
 - Update [`ai/CHANGELOG.md`](ai/CHANGELOG.md) after each substantial action,
   [`ai/INTERACTION_LOG.md`](ai/INTERACTION_LOG.md) after each interaction, and
   [`ai/CURRENT_STATE.md`](ai/CURRENT_STATE.md) when project state changes.
+- Keep documentation current in the same task as the change it describes:
+  [`ai/CURRENT_STATE.md`](ai/CURRENT_STATE.md) is the only current-state source;
+  dated snapshots in `docs/` and `Documents/28-8/` must be marked
+  `HISTORICAL — NOT CURRENT` and link back to it.
 - At stage close, update [`ai/LAST_HANDOFF.md`](ai/LAST_HANDOFF.md), save a
   report under [`ai/reports/`](ai/reports/), and run
   `python ai/tools/validate_state.py`.

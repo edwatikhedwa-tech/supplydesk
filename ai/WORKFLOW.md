@@ -28,6 +28,15 @@ dependencies, and use targeted tests. For a state/documentation iteration,
 application files, migrations, database data and production settings are
 non-goals.
 
+### Documentation freshness rule
+
+Documentation is part of the deliverable, not a later cleanup step. When a
+task changes product behaviour, data, providers, deployment, tests, limits or
+workflow terminology, update the affected documentation in the same task and
+commit. `ai/CURRENT_STATE.md` is the only current-state source. Dated audits
+and old snapshots remain useful evidence only when they are explicitly marked
+`HISTORICAL — NOT CURRENT` and link to the current state.
+
 ## ACCEPTANCE
 
 Independently check the changed artifact at the level of risk. For a web task,
@@ -36,6 +45,11 @@ empty/error states, reload, repeated action and regressions. For documentation,
 run the read-only state validator, check Markdown links, required sections,
 timestamps, secret patterns, instruction references and the Git diff. Record
 evidence and limitations.
+
+For documentation changes also verify that no edited document calls an old
+number, capability or provider state current; check relative Markdown links,
+timestamps, evidence labels and secret patterns. Run the state validator and
+`git diff --check` before closeout.
 
 ## CLOSE
 

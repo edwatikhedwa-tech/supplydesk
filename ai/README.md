@@ -13,6 +13,10 @@ current files.
 4. [`LAST_HANDOFF.md`](LAST_HANDOFF.md) — latest transfer note.
 5. [`ACTIVE_TASK.md`](ACTIVE_TASK.md) — active-task lock/sentinel.
 
+The documentation freshness rule is [`../docs/DOCUMENTATION_POLICY.md`](../docs/DOCUMENTATION_POLICY.md):
+update the canonical state and affected feature documentation in the same task,
+and mark old snapshots as historical.
+
 Supporting records are [`CHANGELOG.md`](CHANGELOG.md),
 [`INTERACTION_LOG.md`](INTERACTION_LOG.md), [`DECISIONS.md`](DECISIONS.md),
 [`DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md), and reports under

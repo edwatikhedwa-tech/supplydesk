@@ -1,5 +1,53 @@
 # Last Handoff
 
+## Current handoff — canonical documentation and freshness rule
+
+Task ID: `TASK-DOCS-CANONICAL-20260901`
+Дата закрытия UTC: `2026-09-01T07:29:32Z`
+Агент: `Codex`
+Ветка: `codex/TASK-STATE-CONTROL-20260830`
+Base HEAD before closeout: `fb258df170eefe14d0766f7bf2ceccd157be2bca`
+Push: `NOT RUN`
+Status: `COMPLETE LOCALLY — documentation canonicalized`
+
+### Цель
+
+Устранить конкурирующие «текущие» паспорта и закрепить правило, по которому
+документация обновляется в той же задаче, что и описываемый факт.
+
+### Что изменено
+
+- Создан `docs/DOCUMENTATION_POLICY.md` с canonical source, evidence-статусами,
+  same-task update rule, проверками и rollback.
+- Правило добавлено в `AGENTS.md`, `ai/AI_CONTRACT.md`, `ai/WORKFLOW.md`,
+  `docs/ENGINEERING_CONTRACT.md` и `ai/DECISIONS.md`.
+- `ai/CURRENT_STATE.md` оставлен единственным current-state source.
+- `docs/CURRENT_STATE.md`, `docs/DECISIONS.md` и документы `Documents/28-8/`
+  помечены historical/supporting, а их навигация ведёт в canonical state.
+- `FINDING-001` и `FINDING-005` переведены в resolved; оставшиеся продуктовые
+  риски не исправлялись.
+- Резервные копии сохранены в `Temp/20260901-docs-canonical/`.
+
+### Что проверено
+
+- 91 относительная Markdown-ссылка — без broken links.
+- Secret-pattern scan — новых credentials/token/cookie/header не найдено.
+- `python ai/tools/validate_state.py` — PASS.
+- `git diff --check` — PASS.
+- Application code, frontend, API, database, migrations, mail settings,
+  deployment and external services не изменялись.
+
+### Не проверено
+
+Live provider delivery, PostgreSQL/Neon, Vercel production и deployment health
+не запускались: они не нужны для этой документационной итерации.
+
+### Следующий шаг
+
+Каждую следующую продуктовую или инфраструктурную задачу закрывать только
+после обновления canonical state и затронутого профильного документа в том же
+коммите.
+
 ## Current handoff — аудит системы и фронтенда
 
 Task ID: `TASK-SYSTEM-FRONT-AUDIT-20260901`
