@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-01
-source_commit: f9b0b66432f9e8650e87e5a89dd27a258a416e38
+source_commit: 09d12018afc4ecb8445f40dc1b717ef078cfae0f
 ---
 
 # Current State
@@ -15,7 +15,7 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T16:05:00Z` — reproducible safe test and runtime environment V1
+`2026-09-01T16:12:07Z` — reproducible safe test and runtime environment V1
 implemented on `control/reproducible-test-runtime-v1-20260901`, based on the
 verified V1.1 remote HEAD `f9b0b66432f9e8650e87e5a89dd27a258a416e38`.
 
@@ -32,7 +32,8 @@ verified V1.1 remote HEAD `f9b0b66432f9e8650e87e5a89dd27a258a416e38`.
   a separate worktree from the V1 HEAD above; verified remote branch resolves
   to `f9b0b66432f9e8650e87e5a89dd27a258a416e38`.
 - Reproducible test/runtime branch: `control/reproducible-test-runtime-v1-20260901`,
-  kept in a separate worktree and not merged into the default branch.
+  pushed at functional commit `09d12018afc4ecb8445f40dc1b717ef078cfae0f` in
+  a separate worktree and not merged into the default branch.
 - Product behavior is not changed by this control-plane-only task.
 
 ## Runtime

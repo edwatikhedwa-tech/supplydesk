@@ -9,14 +9,14 @@ source_commit: f2e707ac9988223dc87f242d53df837d70ddca5f
 
 # Active Task
 
-Task ID: `TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901`
+Task ID: `NONE`
 Agent: `Codex`
-Mode: `CLOSE`
+Mode: `IDLE`
 Started: `2026-09-01`
 Scope: `reproducible offline test environment, safe disposable runtime, backend/frontend/browser acceptance and profile-aware diagnostics`
 Allowed files: `requirements-test.txt`, `.gitignore`, `tests/run-tests.ps1`, `tests/diagnostics/**`, `scripts/run_test_suite.py`, `scripts/setup_test_env.ps1`, `scripts/start_test_runtime.ps1`, `scripts/stop_test_runtime.ps1`, `scripts/test_runtime_entry.py`, `scripts/diagnostics/**`, `docs/testing/TEST_ENVIRONMENT.md`, `PROJECT_MANIFEST.yaml`, `ai/**`
-Status: `READY FOR COMMIT/PUSH — acceptance complete; final normal push remains`
-Last update: `2026-09-01T16:08:00Z`
+Status: `IDLE — TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901 complete and branch pushed`
+Last update: `2026-09-01T16:12:07Z`
 
 ## Цель
 
@@ -39,6 +39,6 @@ acceptance остаются запрещёнными.
 
 ## Следующий шаг
 
-Создать commit с Task ID, выполнить обычный push отдельной ветки, затем
-обновить этот sentinel в `IDLE` и зафиксировать remote SHA.
+Активной задачи нет. Review и merge опубликованной ветки остаются отдельным
+решением владельца проекта.
 

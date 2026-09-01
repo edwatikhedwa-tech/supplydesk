@@ -171,9 +171,9 @@ stored in the repository or emitted by machine-readable diagnostics.
 
 ## REMOTE PUSH:
 
-PENDING at report drafting time; the dedicated branch is intended for a normal
-non-force push after final validation. No merge or default-branch change is
-authorized by this task.
+YES. The dedicated branch was pushed normally and the remote ref was verified
+at functional commit `09d12018afc4ecb8445f40dc1b717ef078cfae0f`. No merge,
+force-push or default-branch change was performed.
 
 ## Проверено
 

@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: f9b0b66432f9e8650e87e5a89dd27a258a416e38
+source_commit: 09d12018afc4ecb8445f40dc1b717ef078cfae0f
 ---
 
 # Last Handoff
