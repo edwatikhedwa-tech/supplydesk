@@ -110,6 +110,7 @@ dangerous_operations:
 
 verification:
   control_reconciliation_commit: 58103e4373f82f8ced5735c096a1028d2fbb7843
+  control_metadata_commit: f31938622954ad27b9cd1a3e79e797e5e3dae3f6
   source_checkout_modified_by_task: false
   source_head_verified: true
   source_env_file_count: 6
@@ -129,3 +130,5 @@ verification:
   knip: NOT_VERIFIED
   files_deleted: 0
   real_email_sent: false
+  remote_control_branch: control/canonical-baseline-20260901
+  remote_push_verified: true

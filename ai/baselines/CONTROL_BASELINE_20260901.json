@@ -3,6 +3,7 @@
   "status": "PASS_WITH_LIMITATIONS",
   "control_branch": "control/canonical-baseline-20260901",
   "reconciliation_commit": "58103e4373f82f8ced5735c096a1028d2fbb7843",
+  "metadata_commit": "f31938622954ad27b9cd1a3e79e797e5e3dae3f6",
   "source_head": "c076e1be385c3ae6da2716159e1f46fc2fce23d7",
   "audit_branch": "audit/repository-hygiene-reports-20260901",
   "audit_commit": "b5a454f9b39f3cbf01d640d5b67e4231ca25733a",
@@ -56,6 +57,6 @@
     "real_email_sent": false,
     "migrations": false,
     "source_project_destructively_modified": false,
-    "remote_push": "PENDING"
+    "remote_push": "VERIFIED_AFTER_FINALIZATION_PUSH"
   }
 }

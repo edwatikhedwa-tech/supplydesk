@@ -131,8 +131,9 @@ what was deferred and which checks still need a safe runtime.
 
 `CANONICAL CONTROL BRANCH: control/canonical-baseline-20260901`
 
-`CONTROL COMMIT: 58103e4373f82f8ced5735c096a1028d2fbb7843` (reconciliation;
-metadata commit is recorded after this report is committed)
+`CONTROL COMMITS: 58103e4373f82f8ced5735c096a1028d2fbb7843` (reconciliation),
+`58bbde8` (manifest/state/report), `f31938622954ad27b9cd1a3e79e797e5e3dae3f6`
+(machine-readable baseline)
 
 `SOURCE HEAD: c076e1be385c3ae6da2716159e1f46fc2fce23d7`
 
@@ -164,7 +165,7 @@ metadata commit is recorded after this report is committed)
 
 `SOURCE PROJECT DESTRUCTIVELY MODIFIED: NO`
 
-`REMOTE PUSH: PENDING METADATA COMMIT AND PUSH`
+`REMOTE PUSH: YES — control branch ref verified after final metadata synchronization`
 
 ## Next stage
 

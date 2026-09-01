@@ -5,6 +5,7 @@
 - Baseline ID: `supplydesk-control-canonical-baseline-20260901`
 - Control branch: `control/canonical-baseline-20260901`
 - Reconciliation commit: `58103e4373f82f8ced5735c096a1028d2fbb7843`
+- Metadata commit: `f31938622954ad27b9cd1a3e79e797e5e3dae3f6`
 - Source HEAD: `c076e1be385c3ae6da2716159e1f46fc2fce23d7`
 - Audit branch: `audit/repository-hygiene-reports-20260901`
 - Audit commit: `b5a454f9b39f3cbf01d640d5b67e4231ca25733a`
@@ -55,6 +56,8 @@ same-secret-environment parity is therefore not claimed.
 - No migration, canonical database write, application refactor, merge, default
   branch change or force-push was performed.
 - The staged security path allowlist and added-line high-signal scan passed.
+- Remote branch `control/canonical-baseline-20260901` was pushed without force
+  and its ref was verified after the final metadata synchronization.
 
 ## Confidence
 
