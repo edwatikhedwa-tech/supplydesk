@@ -1,0 +1,135 @@
+schema_version: 1
+failure_modes:
+  - id: FM-AUTH-001
+    area: auth
+    symptom: unauthorized or cross-workspace access
+    diagnostic: DOC-005
+    runbook: docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-REQUEST-001
+    area: request
+    symptom: request/search/enrichment state is missing or inconsistent
+    diagnostic: DOC-004
+    runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-SUPPLIER-001
+    area: supplier
+    symptom: identity grouping, filter or enrichment mismatch
+    diagnostic: DOC-004
+    runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-DISCOVERY-001
+    area: discovery
+    symptom: query plan, matching or evidence qualification regression
+    diagnostic: DOC-004
+    runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-MESSAGE-001
+    area: messages
+    symptom: queue, sent/failed or incoming visibility mismatch
+    diagnostic: DOC-005
+    runbook: docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-MAIL-001
+    area: incoming_mail
+    symptom: incoming sync, parsing or deduplication mismatch
+    diagnostic: DOC-005
+    runbook: docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-MAIL-002
+    area: provider_boundary
+    symptom: provider unavailable, rejected or uncertain acceptance
+    diagnostic: DOC-005
+    runbook: docs/operations/runbooks/RUNBOOK-MAIL-PROVIDER.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-MAIL-003
+    area: deduplication
+    symptom: duplicate recipient, job or idempotency conflict
+    diagnostic: DOC-005
+    runbook: docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-MAIL-004
+    area: pacing_campaign
+    symptom: pacing, reservation, budget or campaign gate mismatch
+    diagnostic: DOC-005
+    runbook: docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-MAIL-005
+    area: bounce
+    symptom: hard/soft bounce or suppression state mismatch
+    diagnostic: DOC-005
+    runbook: docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-CONTENT-001
+    area: content
+    symptom: HTML, plain, CID, remote-image or overflow rendering mismatch
+    diagnostic: DOC-006
+    runbook: docs/operations/runbooks/RUNBOOK-FRONTEND.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-DATA-001
+    area: database
+    symptom: database absent, unreadable or integrity check fails
+    diagnostic: DOC-007
+    runbook: docs/operations/runbooks/RUNBOOK-DATABASE.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-RUNTIME-001
+    area: runtime
+    symptom: canonical lock, provenance or session parity mismatch
+    diagnostic: DOC-005
+    runbook: docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-BACKEND-001
+    area: backend
+    symptom: backend cannot import, start or satisfy safe HTTP contract
+    diagnostic: DOC-004
+    runbook: docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-FRONTEND-001
+    area: frontend
+    symptom: install, typecheck, lint, build, browser, accessibility or overflow gate fails
+    diagnostic: DOC-006
+    runbook: docs/operations/runbooks/RUNBOOK-FRONTEND.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-DIAGNOSTIC-001
+    area: control_plane
+    symptom: doctor, manifest, documentation or evidence contract is incomplete
+    diagnostic: DOC-001
+    runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-SECURITY-001
+    area: security
+    symptom: high-signal secret path is staged or a forbidden boundary is requested
+    diagnostic: DOC-010
+    runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-TEST-001
+    area: tests
+    symptom: baseline or focused test fails
+    diagnostic: DOC-008
+    runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-REPAIR-001
+    area: repair_agent
+    symptom: proposed repair would leave the sandbox or exceed confirmed scope
+    diagnostic: DOC-001
+    runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
+    automatic_recovery: false
+    human_approval: true

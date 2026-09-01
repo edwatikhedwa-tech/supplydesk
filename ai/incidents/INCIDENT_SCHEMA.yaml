@@ -1,0 +1,26 @@
+schema_version: 1
+document_id: incident-schema-001
+required:
+  - incident_id
+  - opened_at
+  - severity
+  - status
+  - symptom
+  - evidence_refs
+  - requirement_ids
+  - failure_mode_ids
+  - safety_level
+  - scope
+  - actions_taken
+  - actions_forbidden
+  - next_step
+  - closed_at
+allowed:
+  severity: [P0, P1, P2, P3]
+  status: [OPEN, INVESTIGATING, MITIGATED, CLOSED]
+  safety_level: [L0_OBSERVE, L1_SAFE_RECOVERY, L2_DIAGNOSE, L3_SANDBOX_REPAIR, L4_HUMAN_APPROVAL_REQUIRED, L5_FORBIDDEN_AUTOMATIC]
+rules:
+  - evidence_refs must point to repository files or machine output without secret values
+  - actions_taken must distinguish observation from mutation
+  - closed_at is NONE while status is OPEN, INVESTIGATING or MITIGATED
+  - real mail, credential, migration, production and canonical database actions require L4/L5 handling

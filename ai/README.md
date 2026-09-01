@@ -42,6 +42,21 @@ Supporting records are [`CHANGELOG.md`](CHANGELOG.md),
 [`templates/`](templates/). The ChatGPT and Claude Project adapters are under
 [`adapters/`](adapters/).
 
+## Diagnostic read order
+
+For a diagnostic or repair task, read only the relevant slice in this order:
+
+1. [`AGENTS.md`](../AGENTS.md)
+2. [`PROJECT_MANIFEST.yaml`](../PROJECT_MANIFEST.yaml)
+3. [`CURRENT_STATE.md`](CURRENT_STATE.md)
+4. The relevant requirement in [`docs/requirements/requirements.yaml`](../docs/requirements/requirements.yaml)
+5. Its row in [`docs/requirements/TRACEABILITY_MATRIX.csv`](../docs/requirements/TRACEABILITY_MATRIX.csv)
+6. The linked test in [`docs/testing/TEST_CATALOG.yaml`](../docs/testing/TEST_CATALOG.yaml)
+7. The linked failure mode in [`docs/operations/failure_modes.yaml`](../docs/operations/failure_modes.yaml)
+8. The linked runbook under [`docs/operations/runbooks/`](../docs/operations/runbooks/)
+
+Do not use historical reports as a substitute for the current state.
+
 ## Update order
 
 Read the start sequence → audit evidence → record a durable decision when

@@ -30,6 +30,17 @@ documentation:
   validator: ai/tools/validate_docs.py
   current_state_rule: docs/** has no independent current-state source
 
+diagnostics:
+  doctor: scripts/doctor.ps1
+  requirements: docs/requirements/requirements.yaml
+  business_rules: docs/requirements/BUSINESS_RULES.md
+  traceability: docs/requirements/TRACEABILITY_MATRIX.csv
+  test_catalog: docs/testing/TEST_CATALOG.yaml
+  failure_modes: docs/operations/failure_modes.yaml
+  runbooks: docs/operations/runbooks/
+  incident_schema: ai/incidents/INCIDENT_SCHEMA.yaml
+  traceability_validator: ai/tools/validate_traceability.py
+
 document_lifecycle:
   statuses: [DRAFT, CURRENT, SUPERSEDED, HISTORICAL, ARCHIVED]
   canonical_current_state_count: 1

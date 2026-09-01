@@ -1,0 +1,135 @@
+schema_version: 1
+document_id: requirements-catalog-001
+requirements:
+  - id: REQ-AUTH-001
+    type: FUNCTIONAL
+    status: ACTIVE
+    critical: true
+    capability: CAP-AUTH-001
+    summary: workspace-scoped authenticated access
+  - id: REQ-AUTH-002
+    type: SAFETY
+    status: ACTIVE
+    critical: true
+    capability: CAP-AUTH-001
+    summary: csrf ownership and rate-limit gates
+  - id: REQ-REQUEST-001
+    type: FUNCTIONAL
+    status: ACTIVE
+    critical: false
+    capability: CAP-REQUEST-001
+    summary: request and position lifecycle
+  - id: REQ-REQUEST-002
+    type: FUNCTIONAL
+    status: ACTIVE
+    critical: false
+    capability: CAP-REQUEST-001
+    summary: durable search and enrichment progress
+  - id: REQ-SUPPLIER-001
+    type: FUNCTIONAL
+    status: ACTIVE
+    critical: false
+    capability: CAP-SUPPLIER-001
+    summary: supplier identity grouping and filters
+  - id: REQ-SUPPLIER-002
+    type: FUNCTIONAL
+    status: ACTIVE
+    critical: false
+    capability: CAP-SUPPLIER-001
+    summary: manual identifier and enrichment evidence
+  - id: REQ-DISCOVERY-001
+    type: FUNCTIONAL
+    status: ACTIVE
+    critical: false
+    capability: CAP-DISCOVERY-001
+    summary: planned evidence-backed discovery
+  - id: REQ-MESSAGE-001
+    type: FUNCTIONAL
+    status: ACTIVE
+    critical: false
+    capability: CAP-MESSAGE-001
+    summary: message visibility semantics
+  - id: REQ-MAIL-001
+    type: FUNCTIONAL
+    status: ACTIVE
+    critical: true
+    capability: CAP-INCOMING-001
+    summary: safe incoming sync and unmatched preservation
+  - id: REQ-MAIL-002
+    type: SAFETY
+    status: ACTIVE
+    critical: true
+    capability: CAP-DELIVERY-001
+    summary: read-only deliverability preflight
+  - id: REQ-MAIL-003
+    type: SAFETY
+    status: ACTIVE
+    critical: true
+    capability: CAP-DEDUP-001
+    summary: duplicate recipient and idempotency protection
+  - id: REQ-MAIL-004
+    type: FUNCTIONAL
+    status: ACTIVE
+    critical: false
+    capability: CAP-RENDERING-001
+    summary: safe message content rendering
+  - id: REQ-MAIL-005
+    type: SAFETY
+    status: ACTIVE
+    critical: true
+    capability: CAP-DELIVERY-001
+    summary: no automatic retry after acceptance uncertainty
+  - id: REQ-MAIL-006
+    type: SAFETY
+    status: ACTIVE
+    critical: true
+    capability: CAP-PACING-001
+    summary: pacing budget reservations and kill switch
+  - id: REQ-MAIL-007
+    type: FUNCTIONAL
+    status: ACTIVE
+    critical: false
+    capability: CAP-SUPPRESSION-001
+    summary: bounce and suppression semantics
+  - id: REQ-MAIL-008
+    type: FUNCTIONAL
+    status: ACTIVE
+    critical: false
+    capability: CAP-CAMPAIGN-001
+    summary: campaign stage pause and stop
+  - id: REQ-DATA-001
+    type: SAFETY
+    status: ACTIVE
+    critical: true
+    capability: CAP-DATABASE-001
+    summary: read-only canonical database diagnostics
+  - id: REQ-RUNTIME-001
+    type: SAFETY
+    status: ACTIVE
+    critical: true
+    capability: CAP-RUNTIME-001
+    summary: canonical runtime lock and provenance
+  - id: REQ-FRONTEND-001
+    type: FUNCTIONAL
+    status: ACTIVE
+    critical: false
+    capability: CAP-FRONTEND-001
+    summary: frontend quality gates
+  - id: REQ-DIAG-001
+    type: OPERATIONAL
+    status: ACTIVE
+    critical: true
+    capability: CAP-DIAGNOSTIC-001
+    summary: typed doctor outcomes
+  - id: REQ-DIAG-002
+    type: OPERATIONAL
+    status: ACTIVE
+    critical: true
+    capability: CAP-DIAGNOSTIC-001
+    summary: machine-readable diagnostic evidence
+  - id: REQ-DIAG-003
+    type: OPERATIONAL
+    status: DRAFT
+    critical: true
+    capability: CAP-DIAGNOSTIC-001
+    summary: future sandbox-only repair agent contract
