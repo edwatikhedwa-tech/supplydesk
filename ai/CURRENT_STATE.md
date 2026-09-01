@@ -15,9 +15,9 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T19:13:54Z` — VibeCoding Control Policy V1 was completed on the
-dedicated governance branch. The verified starting point is
-`f13dad6dc2461ef6dc50242f7fc075895f2a4603`; the publication commit is
+`2026-09-01T19:45:15Z` — VibeCoding CI V1.1 implementation is in progress on
+the dedicated branch. The verified starting point is
+`9d3e58232230b276396f3bc127e2d937bed8482d`; the publication commit is
 intentionally left to Git history rather than duplicated here.
 
 ## Project
@@ -29,6 +29,8 @@ intentionally left to Git history rather than duplicated here.
   the verified Batch 2 HEAD `a228321401270b69c9ac2f07f76435e246b6f5c3`.
 - Current governance branch: `control/vibecoding-policy-v1-20260901`, created
   from verified canonical HEAD `f13dad6dc2461ef6dc50242f7fc075895f2a4603`.
+- Current CI branch: `control/vibecoding-ci-v1.1-20260901`, created from
+  verified VibeCoding policy HEAD `9d3e58232230b276396f3bc127e2d937bed8482d`.
 - Cleanup Batch 2 branch: `control/safe-cleanup-batch2-20260901`, retained as
   the immediately preceding evidence branch.
 - Canonical development checkout: `<CANONICAL_WORKSPACE>`.
@@ -105,6 +107,10 @@ intentionally left to Git history rather than duplicated here.
   `PROJECT_MANIFEST.yaml` and this AI entrypoint. The documentation validator
   recognizes the separate canonical policy without weakening current-state
   uniqueness.
+- VibeCoding Control Policy V1.1 adds FAST, FOCUSED, FULL and PERIODIC profiles,
+  LOW/NORMAL/HIGH risk levels and the FAST-first rule. CI implementation is
+  tracked in `.github/workflows/ci.yml`; classifier mapping is in
+  `scripts/ci/change_groups.json`.
 
 ## Verified
 
@@ -185,6 +191,8 @@ on this task's dedicated branch:
 - The governance commit `1bdda8a` was pushed to
   `origin/control/vibecoding-policy-v1-20260901`; its remote ref was verified
   after normal publication.
+- Local V1.1 governance checks and classifier tests are being rerun after the
+  workflow/validator changes; remote CI execution is not yet verified.
 
 ## Not verified
 
@@ -220,12 +228,14 @@ on this task's dedicated branch:
   purge the external quarantine without a separate owner-approved review.
 - Do not treat planned or unverified tools as configured, and do not claim a
   check passed unless its command actually ran.
+- CI itself is HIGH risk: remote GitHub Actions status must be verified before
+  its registry entry can become `CONFIGURED`.
 
 ## Current next step
 
-`TASK-VIBECODING-CONTROL-POLICY-V1-20260901` is complete and published on its
-dedicated branch. Start future work from the canonical checkout, read the
-canonical policy first and select checks by task class.
+`TASK-VIBECODING-CI-V1.1-20260901` is in progress. Finish local gates, publish
+the workflow, run one explicit remote FULL profile and record its actual job
+conclusions before closing the task.
 
 ## Canonical references
 

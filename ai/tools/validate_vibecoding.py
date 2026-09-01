@@ -31,6 +31,8 @@ REQUIRED_REGISTRY_FIELDS = {
     "evidence_required",
     "notes",
 }
+PROFILE_NAMES = ("FAST", "FOCUSED", "FULL", "PERIODIC")
+RISK_NAMES = ("LOW", "NORMAL", "HIGH")
 FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*(?:\n|\Z)", re.DOTALL)
 FIELD_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$", re.MULTILINE)
 DATE_RE = re.compile(r"^20\d{2}-\d{2}-\d{2}$")
@@ -144,6 +146,20 @@ def validate(root: Path) -> list[str]:
             errors.append("POLICY-005 FAIL: mandatory acknowledgement template is missing")
         if "VIBECODING POLICY: NOT VERIFIED" not in policy_text:
             errors.append("POLICY-006 FAIL: unresolved-policy fallback is missing")
+        if "## Verification profiles and risk model" not in policy_text:
+            errors.append("POLICY-013 FAIL: verification profiles section is missing")
+        for profile in PROFILE_NAMES:
+            if f"`{profile}`" not in policy_text:
+                errors.append(f"POLICY-013 FAIL: policy profile is missing: {profile}")
+        for risk in RISK_NAMES:
+            if f"`{risk}`" not in policy_text:
+                errors.append(f"POLICY-014 FAIL: policy risk level is missing: {risk}")
+        if "FAST FEEDBACK FIRST" not in policy_text:
+            errors.append("POLICY-015 FAIL: fast-feedback rule is missing")
+        if not re.search(r"DO NOT RUN A CHECK MERELY FOR\s+CEREMONY", policy_text):
+            errors.append("POLICY-015 FAIL: ceremony-check rule is missing")
+        if "`NOT_NEEDED` means" not in policy_text or "`NOT_VERIFIED` means" not in policy_text:
+            errors.append("POLICY-016 FAIL: NOT_NEEDED versus NOT_VERIFIED semantics are missing")
 
     for instruction in (root / "AGENTS.md", root / "CLAUDE.md"):
         if not instruction.is_file():
@@ -165,6 +181,15 @@ def validate(root: Path) -> list[str]:
         }.items():
             if values.get(key) != expected:
                 errors.append(f"POLICY-008 FAIL: manifest vibecoding.{key} must be {expected!r}")
+        for key, expected in {
+            "ci_workflow": ".github/workflows/ci.yml",
+            "change_classifier": "scripts/ci/classify_changes.ps1",
+            "change_groups": "scripts/ci/change_groups.json",
+        }.items():
+            if values.get(key) != expected:
+                errors.append(f"POLICY-008 FAIL: manifest vibecoding.{key} must be {expected!r}")
+            elif not (root / expected).exists():
+                errors.append(f"POLICY-008 FAIL: manifest vibecoding.{key} target is missing: {expected}")
 
     if not registry_path.is_file():
         errors.append(f"POLICY-009 FAIL: missing {REGISTRY_REL}")
@@ -177,6 +202,9 @@ def validate(root: Path) -> list[str]:
         entries = registry_entries(registry_text)
         if not entries:
             errors.append(f"POLICY-009 FAIL: {REGISTRY_REL} contains no tool entries")
+        for profile in PROFILE_NAMES:
+            if not re.search(rf"^  {re.escape(profile)}:\s*$", registry_text, re.MULTILINE):
+                errors.append(f"POLICY-017 FAIL: registry profile is missing: {profile}")
         seen: set[str] = set()
         for entry in entries:
             missing = sorted(REQUIRED_REGISTRY_FIELDS - set(entry))
@@ -191,6 +219,9 @@ def validate(root: Path) -> list[str]:
                 errors.append(
                     f"POLICY-012 FAIL: registry entry {entry_id} has invalid availability {availability!r}"
                 )
+        github_actions = next((entry for entry in entries if entry.get("id") == "github_actions"), None)
+        if github_actions is None:
+            errors.append("POLICY-018 FAIL: registry github_actions entry is missing")
 
     return errors
 

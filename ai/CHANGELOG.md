@@ -920,6 +920,14 @@ rewritten.
 - No product behavior, UI, API, database, mail data, runtime, dependency or
   quarantine changes were made. Acceptance and remote publication remain open.
 
+## 2026-09-01T19:45:15Z — TASK-VIBECODING-CI-V1.1-20260901
+
+- Audited the existing SupplyDesk commands and real path structure; no
+  duplicate test runner was introduced.
+- Started a dedicated CI governance branch and added the V1.1 profile/risk
+  model, deterministic path mapping/classifier and single Windows-first
+  workflow. Remote execution and closeout remain pending.
+
 ## 2026-09-01T19:13:54Z — TASK-VIBECODING-CONTROL-POLICY-V1-20260901 CLOSEOUT
 
 - VibeCoding validator, 30 diagnostic tests, documentation/state/traceability

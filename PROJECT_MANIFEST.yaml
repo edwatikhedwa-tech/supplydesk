@@ -37,6 +37,9 @@ vibecoding:
   policy: ai/VIBECODING_RULES.md
   tool_registry: ai/VIBECODING_TOOL_REGISTRY.yaml
   validator: ai/tools/validate_vibecoding.py
+  ci_workflow: .github/workflows/ci.yml
+  change_classifier: scripts/ci/classify_changes.ps1
+  change_groups: scripts/ci/change_groups.json
 
 diagnostics:
   version: 1.1

@@ -1,0 +1,84 @@
+{
+  "documentation_control": [
+    "^ai/",
+    "^docs/",
+    "^(AGENTS|CLAUDE)\\.md$",
+    "^PROJECT_MANIFEST\\.yaml$",
+    "^README\\.md$"
+  ],
+  "backend": [
+    "^api/",
+    "^mail/",
+    "^supplier_discovery_v2/",
+    "^supplier_app\\.py$",
+    "^[^/]+\\.py$",
+    "^tests/"
+  ],
+  "frontend": [
+    "^frontend/"
+  ],
+  "browser": [
+    "^frontend/src/",
+    "^frontend/tests/",
+    "^frontend/playwright[^/]*\\.(ts|js)$",
+    "^frontend/lighthouserc\\.[^/]+$"
+  ],
+  "mail": [
+    "^mail/",
+    "^tests/test_mail",
+    "^tests/test_outgoing_safety\\.py$"
+  ],
+  "auth": [
+    "^api/",
+    "^supplier_app\\.py$",
+    "^mail/auth\\.py$"
+  ],
+  "database": [
+    "^migrations/",
+    "^mail/(repository|runtime|service)\\.py$",
+    "^tests/test_(canonical_runtime|mail_integrity|mail_integration)\\.py$"
+  ],
+  "api_shared_runtime": [
+    "^api/",
+    "^supplier_app\\.py$",
+    "^scripts/(doctor|start_test_runtime|stop_test_runtime)\\.ps1$"
+  ],
+  "security": [
+    "^\\.github/",
+    "^scripts/ci/",
+    "^\\.gitignore$",
+    "^tests/test_outgoing_safety\\.py$",
+    "^vercel\\.json$"
+  ],
+  "ci": [
+    "^\\.github/",
+    "^scripts/ci/"
+  ],
+  "dependency": [
+    "^requirements[^/]*\\.txt$",
+    "^frontend/package(-lock)?\\.json$"
+  ],
+  "control": [
+    "^ai/",
+    "^docs/",
+    "^scripts/ci/",
+    "^(AGENTS|CLAUDE)\\.md$",
+    "^PROJECT_MANIFEST\\.yaml$",
+    "^\\.github/"
+  ],
+  "high_risk": [
+    "^mail/",
+    "^tests/test_mail",
+    "^tests/test_outgoing_safety\\.py$",
+    "^api/",
+    "^supplier_app\\.py$",
+    "^migrations/",
+    "^scripts/(doctor|start_test_runtime|stop_test_runtime)\\.ps1$",
+    "^scripts/diagnostics/",
+    "^\\.github/",
+    "^scripts/ci/",
+    "^requirements[^/]*\\.txt$",
+    "^frontend/package(-lock)?\\.json$",
+    "^vercel\\.json$"
+  ]
+}

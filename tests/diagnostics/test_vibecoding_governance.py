@@ -14,6 +14,9 @@ FIXTURE_FILES = (
     "PROJECT_MANIFEST.yaml",
     "ai/VIBECODING_RULES.md",
     "ai/VIBECODING_TOOL_REGISTRY.yaml",
+    ".github/workflows/ci.yml",
+    "scripts/ci/classify_changes.ps1",
+    "scripts/ci/change_groups.json",
 )
 
 

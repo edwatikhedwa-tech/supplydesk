@@ -3,12 +3,12 @@ document_id: VIBECODING-001
 status: CURRENT
 canonical: true
 owner: project-control
-version: 1.0
+version: 1.1
 last_corrected: 2026-09-01
 based_on_commit: f13dad6dc2461ef6dc50242f7fc075895f2a4603
 ---
 
-# SupplyDesk VibeCoding Rules V1
+# SupplyDesk VibeCoding Rules V1.1
 
 This file is the one canonical source for the SupplyDesk VibeCoding control
 policy. `VibeCoding` here means using AI for interpretation and reasoning while
@@ -114,6 +114,56 @@ Before changing code, classify the task as one or more of:
 The classification determines the minimum relevant checks. A task can be
 control-plane-only even when the repository contains a product.
 
+## Verification profiles and risk model
+
+Every task selects one or more profiles. Profiles are cost-and-risk levels, not
+claims that every job ran:
+
+- `FAST` — the cheap first line of deterministic protection: policy,
+  documentation/state/traceability validators, diagnostic/control tests and Git
+  safety. Target duration is roughly 1–5 minutes, but this is an engineering
+  target, not an artificial pass gate. When Phase 1 tools are configured,
+  selective Ruff, Pyright, Gitleaks and pre-commit checks may join it.
+- `FOCUSED` — the smallest checks that answer the changed-behavior question:
+  focused backend tests, a relevant frontend check or a real browser scenario.
+  It is normally run locally by the agent and is not a synonym for full CI.
+- `FULL` — independent deep acceptance for pull requests, high-risk changes,
+  releases, large refactors, shared/CI infrastructure, uncertain blast radius
+  or explicit final acceptance. Relevant backend, frontend, browser and Doctor
+  jobs may run in parallel after `FAST` passes.
+- `PERIODIC` — expensive analysis such as Vulture, Knip, deep coverage,
+  duplicate/repository hygiene audits, extended Semgrep/CodeQL and dependency
+  health review. Typical triggers are weekly, scheduled, manual, release or a
+  large refactor. Periodic tools are not blocking FAST CI V1.1.
+
+The risk levels are:
+
+- `LOW` — docs, copy/text, comments, non-runtime metadata, isolated styling or
+  small governance changes. Usually `FAST` plus a minimal focused check; `FULL`
+  is normally `NOT_NEEDED`.
+- `NORMAL` — isolated backend features, frontend logic, local API behavior,
+  component changes and ordinary bug fixes. Usually `FAST` + `FOCUSED` plus the
+  relevant backend/frontend/browser job.
+- `HIGH` — mail sending or eligibility, auth, database/migration, shared API or
+  runtime, security, dependencies, CI infrastructure, provider integration or
+  cross-cutting refactors. Usually `FAST` + `FOCUSED` + relevant `FULL`; use
+  `FULL` when the blast radius is unclear.
+
+`FAST FEEDBACK FIRST` is mandatory: do not start a more expensive check after a
+cheap deterministic check has already proved a meaningful failure. Fix the
+first failure, then restart the required flow. `DO NOT RUN A CHECK MERELY FOR
+CEREMONY`: every check must name the real risk it answers; otherwise it is
+`NOT_NEEDED`.
+
+Most ordinary development iterations should use the FAST/FOCUSED path. The
+90% figure is an operational target, not an automated gate. `FULL` remains the
+exception for high risk, pull requests, releases, uncertain blast radius and
+explicit final acceptance.
+
+`NOT_NEEDED` means the policy says the check is irrelevant to this task.
+`NOT_VERIFIED` means the check would be useful or required but evidence is
+missing. They must never be interchanged to hide missing verification.
+
 ## Minimum tool selection
 
 Select the smallest sufficient set and record it as `REQUIRED`, `CONDITIONAL`,
@@ -182,6 +232,34 @@ Important responsibilities:
   must not receive secrets or sensitive email content without privacy review.
 - An independent AI reviewer is optional and can never replace deterministic
   tests, CI, browser acceptance or security checks.
+
+## CI control model
+
+The canonical V1.1 remote workflow is `.github/workflows/ci.yml`. It has stable
+job names `SupplyDesk / Fast Control`, `SupplyDesk / Change Classification`,
+`SupplyDesk / Backend`, `SupplyDesk / Frontend`, `SupplyDesk / Browser` and
+`SupplyDesk / Full Control`. `FAST` runs first; relevant expensive jobs wait
+for its success and run in parallel where possible. Pushes normally use FAST
+and only the classifier-selected relevant jobs; pull requests run FAST plus
+relevant FULL jobs; `workflow_dispatch` can explicitly request FULL.
+
+The deterministic path mapping is recorded in
+`scripts/ci/change_groups.json`, and `scripts/ci/classify_changes.ps1` emits
+`docs_only`, `backend`, `frontend`, `browser`, `high_risk`, `control`,
+`full_required` and `unknown`. No LLM participates in CI classification.
+
+CI uses a clean `windows-latest` checkout, least-privilege `contents: read`,
+official pinned-major actions, explicit timeouts, safe pip/npm caches and
+`concurrency` cancellation for obsolete runs. It must not depend on a local
+OneDrive path, private `.env`, developer venv/node_modules, database,
+mail-data, quarantine or globally installed tools. CI never sends real mail,
+connects to SMTP/IMAP, writes the canonical database or requires production
+secrets. `continue-on-error` is forbidden for a blocking check.
+
+The workflow itself is high risk. After it is pushed, one explicit remote FULL
+run is required for this task. Local YAML inspection alone is not evidence of
+remote CI correctness. GitHub Actions becomes `CONFIGURED` in the registry
+only after that remote run succeeds and its result is independently verified.
 
 ## Canonical workflow
 
@@ -281,14 +359,19 @@ commands actually run; the acknowledgement phrase alone is not evidence.
 ```text
 [VIBECODING CHECK]
 Rules: <last_corrected>
+Risk: <LOW | NORMAL | HIGH>
+Profile: <FAST | FOCUSED | FULL | PERIODIC>
 Task class: <classes>
 Tools used: <actual tools and commands>
-Focused verification: <result or NOT_NEEDED>
-Regression: <result or NOT_NEEDED with reason>
+FAST: PASS | FAIL | NOT_NEEDED
+Focused: PASS | NOT_NEEDED | NOT_VERIFIED
+Backend: PASS | NOT_NEEDED | NOT_VERIFIED
+Frontend: PASS | NOT_NEEDED | NOT_VERIFIED
 Browser: PASS | NOT_NEEDED | NOT_VERIFIED
 Security: PASS | NOT_NEEDED | NOT_VERIFIED
 Doctor: PASS | NOT_NEEDED | NOT_VERIFIED
 CI: PASS | NOT_CONFIGURED | NOT_RUN | FAIL
+Periodic tooling: NOT_NEEDED unless explicitly requested
 Not verified: <explicit unknowns>
 Final status: PASS | PASS_WITH_LIMITATIONS | BLOCKED | FAIL
 [/VIBECODING CHECK]

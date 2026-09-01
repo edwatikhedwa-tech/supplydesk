@@ -2,6 +2,19 @@ version: 1
 registry_id: VIBECODING-TOOLS-001
 policy: ai/VIBECODING_RULES.md
 last_audited: 2026-09-01
+profiles:
+  FAST:
+    purpose: cheap first-line deterministic feedback before expensive jobs
+    tools: validate_vibecoding, validate_docs, validate_state, validate_traceability, diagnostic_tests, git
+  FOCUSED:
+    purpose: checks for the changed behavior and its nearest risk surface
+    tools: rg, backend_tests, typescript, eslint, frontend_build, playwright
+  FULL:
+    purpose: independent deep acceptance for pull requests, high-risk changes and explicit manual runs
+    tools: backend_tests, npm_ci, typescript, eslint, frontend_build, playwright, doctor
+  PERIODIC:
+    purpose: scheduled or manual expensive analysis outside blocking FAST CI
+    tools: vulture, knip, coverage, semgrep, codeql, dependency_updates
 tools:
   - id: git
     name: Git
@@ -202,7 +215,7 @@ tools:
     blocking: true
     availability: CONFIGURED
     evidence_required: diagnostic test runner output
-    notes: current reference is 26/26 PASS and may increase
+    notes: current reference is 30/30 PASS and may increase
   - id: validate_docs
     name: Documentation validator
     purpose: canonical documentation structure and links
@@ -243,6 +256,16 @@ tools:
     availability: CONFIGURED
     evidence_required: python ai/tools/validate_vibecoding.py output
     notes: read-only standard-library validator with disposable fixture tests
+  - id: change_classifier
+    name: Deterministic change classifier
+    purpose: map changed repository paths to risk and required CI jobs
+    category: CHANGE_CLASSIFICATION
+    required_for: CI_PUSH_OR_PULL_REQUEST
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: classifier output and mapping tests
+    notes: scripts/ci/classify_changes.ps1 reads scripts/ci/change_groups.json; no LLM is used
   - id: pre_commit
     name: pre-commit
     purpose: cheap deterministic local gates before commit
@@ -310,9 +333,9 @@ tools:
     required_for: PUSH_OR_PR_ACCEPTANCE
     execution_frequency: PR
     blocking: true
-    availability: PLANNED
+    availability: NOT_VERIFIED
     evidence_required: remote workflow run result
-    notes: no .github/workflows directory is present in this checkout
+    notes: .github/workflows/ci.yml is present; remote execution and conclusion are required before CONFIGURED
   - id: branch_protection
     name: GitHub branch protection or ruleset
     purpose: enforce required checks at merge
