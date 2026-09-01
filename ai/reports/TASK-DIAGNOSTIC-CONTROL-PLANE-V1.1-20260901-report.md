@@ -76,7 +76,7 @@ MIGRATIONS:
 NO.
 
 REMOTE PUSH:
-YES. `origin/control/diagnostic-plane-v1.1-20260901` resolves to commit `f2e707ac9988223dc87f242d53df837d70ddca5f`.
+YES. The dedicated remote branch was verified at closing state commit `042a8e20e9615b1d67d30e51094845e21e5ca0f5`; the functional V1.1 changes are in ancestor commit `f2e707ac9988223dc87f242d53df837d70ddca5f`. The final evidence-report correction is pushed as a descendant.
 
 ## Evidence and limitations
 
