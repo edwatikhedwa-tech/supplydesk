@@ -109,6 +109,11 @@ checks:
     component: COMP-APP
     evidence_level: RUNTIME
     mode: read-only
+  - id: DOC-022
+    name: gitignore_source_safe_matrix
+    component: COMP-DOCTOR
+    evidence_level: STRUCTURAL
+    mode: read-only
 profiles:
   OFFLINE_TEST:
     disposable_database: REQUIRED

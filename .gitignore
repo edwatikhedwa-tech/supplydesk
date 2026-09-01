@@ -1,15 +1,12 @@
 # Доступы к XMLRiver — в репозиторий не попадают
+# `.env.example` remains ignored until the publish policy confirms a
+# placeholder-only template and explicitly admits it.
 .env*
 .env.backup-*
-!.env.example
 
-# Выгрузки и рабочие данные
+# Выгрузки и рабочие данные: ignored by directory, not by generic extension.
+# Project-owned JSON/CSV fixtures, manifests and configuration remain visible.
 results/
-*.csv
-*.json
-!vercel.json
-!skills-lock.json
-!fixtures/*.json
 
 # Скриншоты и визуальные QA-артефакты — не источник истины, не коммитим
 artifacts/
@@ -33,8 +30,6 @@ mail-data/
 # Единственное место для временных/рабочих файлов сессии — см. корневой CLAUDE.md
 tmp/
 
-.vercel
-.env*
 runtime/*.json
 runtime/*.log
 runtime/test-data/

@@ -136,6 +136,69 @@ def git_check(root: Path) -> CheckResult:
     return CheckResult("DOC-001", "COMP-DOCTOR", status, evidence, ["REQ-DIAG-001"], ["FM-DIAGNOSTIC-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md")
 
 
+GITIGNORE_IGNORED_PATHS = (
+    ".env",
+    ".env.local",
+    ".env.production.local",
+    ".env.example",
+    "mail-data/supplier.sqlite3",
+    "runtime/test-runtime.json",
+    "runtime/test-data/supplier.sqlite3",
+    "results/example.csv",
+    "results/example.json",
+    "frontend/dist/test.js",
+    "frontend/test-results/result.json",
+)
+GITIGNORE_ALLOWED_PATHS = (
+    "fixtures/example.json",
+    "benchmarks/example.json",
+    "docs/example.csv",
+    "docs/example.json",
+    "PROJECT_MANIFEST.yaml",
+    "skills-lock.json",
+    "vercel.json",
+    "docs/requirements/TRACEABILITY_MATRIX.csv",
+)
+
+
+def gitignore_contract_check(root: Path) -> CheckResult:
+    """Check path-pattern semantics without reading candidate file contents."""
+    mismatches: list[str] = []
+    for path in GITIGNORE_IGNORED_PATHS:
+        completed = subprocess.run(["git", "check-ignore", "-q", "--", path], cwd=str(root), check=False)
+        if completed.returncode != 0:
+            mismatches.append(f"expected_ignored:{path}")
+    for path in GITIGNORE_ALLOWED_PATHS:
+        completed = subprocess.run(["git", "check-ignore", "-q", "--", path], cwd=str(root), check=False)
+        if completed.returncode == 0:
+            mismatches.append(f"expected_allowed:{path}")
+    if mismatches:
+        return CheckResult(
+            "DOC-022",
+            "COMP-DOCTOR",
+            "PRODUCT_FAILURE",
+            "gitignore matrix mismatch: " + ", ".join(mismatches),
+            ["REQ-DIAG-001"],
+            ["FM-DIAGNOSTIC-001"],
+            "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md",
+            "GITIGNORE_MATRIX_FAIL",
+            evidence_level="STRUCTURAL",
+            safe_next_action="RUN_TEST",
+        )
+    return CheckResult(
+        "DOC-022",
+        "COMP-DOCTOR",
+        "PASS",
+        "gitignore matrix passed; secrets/data/generated paths ignored and project JSON/CSV/config paths allowed",
+        ["REQ-DIAG-001"],
+        ["FM-DIAGNOSTIC-001"],
+        "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md",
+        "GITIGNORE_MATRIX_PASS",
+        evidence_level="STRUCTURAL",
+        safe_next_action="READ_ONLY_CHECK",
+    )
+
+
 def read_manifest(root: Path) -> tuple[dict[str, Any] | None, str]:
     path = root / "PROJECT_MANIFEST.yaml"
     if not path.is_file():
@@ -538,7 +601,7 @@ def overall_status(results: Iterable[CheckResult]) -> tuple[str, int]:
 
 def profile_requirement(profile: str, check_id: str) -> str:
     if profile == "OFFLINE_TEST":
-        if check_id in {"DOC-019", "DOC-020", "DOC-021", "DOC-001", "DOC-002", "DOC-003", "DOC-004", "DOC-005", "DOC-006", "DOC-007", "DOC-008", "DOC-009", "DOC-010"}:
+        if check_id in {"DOC-019", "DOC-020", "DOC-021", "DOC-022", "DOC-001", "DOC-002", "DOC-003", "DOC-004", "DOC-005", "DOC-006", "DOC-007", "DOC-008", "DOC-009", "DOC-010"}:
             return "REQUIRED"
         return "OPTIONAL"
     if profile == "LOCAL_CANONICAL":
@@ -557,6 +620,7 @@ def run_diagnostics(root: Path, *, base_url: str, frontend_base_url: str = "http
         profile = "UNKNOWN"
     results = [
         git_check(root),
+        gitignore_contract_check(root),
         manifest_check(root),
         docs_check(root),
         python_backend_check(root),
