@@ -769,3 +769,5 @@ This log records agent work interactions. It is append-only.
   reference search, full offline acceptance and runtime stop were completed.
 - No real mail/provider action, canonical DB write, product-source deletion or
   permanent quarantine purge occurred.
+- Evidence commit `26e779c` was pushed normally after one transient DNS failure;
+  remote ref verification passed and no default branch was changed.

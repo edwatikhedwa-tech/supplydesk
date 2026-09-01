@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-01
-source_commit: d4d2b2ab2457e3aa103f80120642bff4bc72920f
+source_commit: 26e779ccf3ec55c9d7fdf1f54711375183b2035e
 ---
 
 # Current State
@@ -174,8 +174,8 @@ on this task's dedicated branch:
 
 ## Current next step
 
-`TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901` is complete pending normal
-security-gate commit/push closeout. Review of retained quarantine and the three
+`TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901` is complete and its evidence
+branch is pushed at `26e779c`. Review of retained quarantine and the three
 unknown items is a separate owner decision.
 
 ## Canonical references

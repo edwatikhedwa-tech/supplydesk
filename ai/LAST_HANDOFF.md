@@ -37,6 +37,9 @@ source_commit: d4d2b2ab2457e3aa103f80120642bff4bc72920f
   SQLite and was stopped by its marker-aware stop script.
 - Physical delete/move targets and quarantine destinations were verified;
   no application source, database, migration, env or mail data was changed.
+- Cleanup evidence commit `26e779c` was pushed normally to
+  `origin/control/safe-cleanup-batch1-20260901` after one transient DNS failure;
+  the remote ref was verified.
 
 ## Что не прошло
 

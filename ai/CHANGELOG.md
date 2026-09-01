@@ -856,3 +856,6 @@ rewritten.
   local mail evidence, product source and the three unknown-review items.
 - Verified 411 backend tests, 25 diagnostics, frontend gates, 8/8 Playwright,
   safe HTTP smoke, Doctor OFFLINE_TEST Full, validators and diff check.
+- Evidence commit `26e779c` was pushed normally to the dedicated cleanup branch
+  after one transient DNS failure; the remote ref was verified. No merge or
+  permanent quarantine purge was performed.

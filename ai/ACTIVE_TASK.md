@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: d4d2b2ab2457e3aa103f80120642bff4bc72920f
+source_commit: 26e779ccf3ec55c9d7fdf1f54711375183b2035e
 ---
 
 # Active Task
@@ -16,8 +16,8 @@ Started: `2026-09-01`
 Scope: `safe physical cleanup Batch 1, legacy workspace isolation, quarantine and acceptance evidence`
 Allowed files: `ai/**` only in the Git branch; physical actions were limited to
 the explicit external quarantine/delete allowlist
-Status: `IDLE — TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901 complete; push closeout pending`
-Last update: `2026-09-01T19:10:00Z`
+Status: `IDLE — TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901 complete and branch pushed`
+Last update: `2026-09-01T19:20:00Z`
 
 ## Цель
 

@@ -157,9 +157,10 @@ legacy workspace:
 The cleanup branch contains only the cleanup report and state/log updates; no
 quarantine content, `.env`, database, credentials or real mail data is staged.
 The legacy marker and quarantine are outside Git. Normal branch push and the
-final remote ref are recorded at closeout after the security gate.
+final remote ref were verified after the security gate.
 
-REMOTE REPORT PUSH: `PENDING AT REPORT AUTHORING`
+REMOTE REPORT PUSH: `YES` — `origin/control/safe-cleanup-batch1-20260901`
+verified at commit `26e779ccf3ec55c9d7fdf1f54711375183b2035e`
 PERMANENT PURGE: `NO`
 CANONICAL DB DELETED: `NO`
 CANONICAL DB MODIFIED: `NO`
