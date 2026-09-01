@@ -9,7 +9,7 @@ class DiagnosticFrontendTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         result = frontend_check(root, run_frontend=False)
         self.assertIn(result.status, {"NOT_VERIFIED", "ENVIRONMENT_GAP", "PRODUCT_FAILURE"})
-        self.assertTrue(result.diagnostic_code in {"NOT_RUN", "INSTALL_FAIL", "TYPECHECK_FAIL", "LINT_FAIL", "BUILD_FAIL"})
+        self.assertTrue(result.diagnostic_code in {"NOT_RUN", "BROWSER_CONTRACT_PRESENT", "INSTALL_FAIL", "NPM_MISSING", "DEPENDENCIES_NOT_INSTALLED", "TYPECHECK_FAIL", "LINT_FAIL", "BUILD_FAIL"})
 
 
 if __name__ == "__main__":

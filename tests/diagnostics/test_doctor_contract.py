@@ -10,6 +10,7 @@ class DoctorContractTests(unittest.TestCase):
             self.assertIn(switch, text)
         self.assertIn("diagnostic_runner.py", text)
         self.assertIn("latest-doctor.json", text)
+        self.assertIn("No recovery actions are implemented", text)
         self.assertNotIn("Invoke-Expression", text)
 
 

@@ -12,9 +12,12 @@ source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
 ## Observe
 
 Run `powershell -ExecutionPolicy Bypass -File .\scripts\doctor.ps1 -DryRun`.
-The V1 runner opens the configured SQLite path with `file:...?mode=ro` and
+The V1.1 runner opens the configured SQLite path with `file:...?mode=ro` and
 reads `quick_check`, `integrity_check`, `journal_mode`, `user_version` and
 table names. An absent `mail-data/supplier.sqlite3` is `ENVIRONMENT_GAP`.
+A corrupt or unreadable database is `PRODUCT_FAILURE/FM-DATA-001`; the
+negative fixture test exercises that classification against a disposable
+SQLite file.
 
 ## Do not do
 

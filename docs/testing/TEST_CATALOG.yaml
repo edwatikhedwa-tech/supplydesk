@@ -8,6 +8,10 @@ test_catalog:
     path: tests/diagnostics/test_doctor_contract.py
     kind: contract
     scope: PowerShell doctor modes and manifest
+  - id: TEST-DIAG-003
+    path: tests/diagnostics/test_diagnostic_negative_fixtures.py
+    kind: negative
+    scope: controlled diagnostic failures, secret classification and machine-output safety
   - id: TEST-BACKEND-001
     path: tests/
     kind: regression

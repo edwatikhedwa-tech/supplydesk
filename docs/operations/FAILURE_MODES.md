@@ -10,9 +10,11 @@ source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
 # Failure Modes
 
 The machine-readable catalog is [`failure_modes.yaml`](failure_modes.yaml).
-Each mode names a symptom, a diagnostic check, a runbook and whether automatic
-recovery is allowed. V1 allows no automatic recovery for product, data, mail,
-credential or deployment failures.
+Each mode names a symptom, possible causes, confirming checks, excluding
+checks, evidence level, root-cause confidence, runbook and repair eligibility.
+The default confidence is `UNCONFIRMED`; doctor reports a symptom and possible
+failure modes, not a proven root cause. V1.1 allows no automatic recovery for
+product, data, mail, credential or deployment failures.
 
 ## Safety levels
 
@@ -22,6 +24,16 @@ credential or deployment failures.
 - `L3_SANDBOX_REPAIR`: patch only a disposable branch/worktree after scope confirmation.
 - `L4_HUMAN_APPROVAL_REQUIRED`: a human must approve the exact irreversible scope.
 - `L5_FORBIDDEN_AUTOMATIC`: never perform automatically.
+
+Repair eligibility is separate from evidence level:
+
+- `DIAGNOSE_ONLY` — collect evidence; no patch is eligible.
+- `SANDBOX_REPAIR_ELIGIBLE` — patch may be proposed only in an isolated branch
+  after a behavioral reproduction and scope confirmation.
+- `SAFE_RECOVERY_ELIGIBLE` — a reversible local recovery is proven and
+  separately authorized.
+- `HUMAN_ONLY` — human approval is required. All V1.1 failure modes default to
+  this value.
 
 Database migrations, production deletion, auth changes, credential rotation,
 mass email, real provider sends, permission changes, force-push and deployment
@@ -33,4 +45,6 @@ also human-gated and never part of doctor.
 An absent local database or dependency is an `ENVIRONMENT_GAP`. A broken
 manifest, failing test, invalid route contract or malformed schema is a
 `PRODUCT_FAILURE`. A requested provider/migration/production mutation is a
-`SAFETY_BLOCK`; it is not retried or downgraded to a warning.
+`SAFETY_BLOCK`; it is not retried or downgraded to a warning. A static contract
+check can identify missing surface, but cannot prove behavior; the matrix must
+retain the corresponding `diagnostic_gap`.

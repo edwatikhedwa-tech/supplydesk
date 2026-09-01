@@ -20,9 +20,15 @@ $runner = Join-Path $root 'scripts\diagnostics\diagnostic_runner.py'
 
 if ($Plan) {
     Write-Output '[PASS] Doctor plan is read-only.'
-    Write-Output '[PASS] DOC-001..DOC-010: Git, manifest, documentation, Python/backend, safe HTTP, frontend, SQLite, tests, browser and secret-path checks.'
+    Write-Output '[PASS] DOC-001..DOC-018: Git, manifest, documentation, backend, safe HTTP, frontend, SQLite, tests, browser, secret-path and specialized static contract checks.'
     Write-Output '[PASS] No server, provider, migration, database write, email, Git mutation or secret-value read is planned.'
     exit 0
+}
+
+if ($Apply) {
+    Write-Output '[SAFETY_BLOCK] No recovery actions are implemented in Diagnostic Plane V1.1.'
+    Write-Output '[SAFETY_BLOCK] Use -Plan or -DryRun for observation; no database, mail, migration, credential or Git action was performed.'
+    exit 3
 }
 
 if (-not (Test-Path -LiteralPath $runner)) {
@@ -57,11 +63,7 @@ $outputRoot = Join-Path ([IO.Path]::GetTempPath()) 'supplydesk-diagnostics'
 $outputPath = Join-Path $outputRoot 'latest-doctor.json'
 $commandArgs = @($pythonArgs + @($runner, '--root', $root, '--output', $outputPath, '--base-url', 'http://127.0.0.1:8000'))
 
-if ($Apply) {
-    Write-Output '[WARNING] Apply mode is a compatibility label in V1; only the same read-only diagnostics are run.'
-} else {
-    Write-Output '[PASS] DryRun mode: diagnostics are read-only; machine output is outside the repository.'
-}
+Write-Output '[PASS] DryRun mode: diagnostics are read-only; machine output is outside the repository.'
 
 & $pythonPath @commandArgs
 $exitCode = $LASTEXITCODE

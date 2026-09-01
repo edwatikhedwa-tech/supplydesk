@@ -707,3 +707,15 @@ This log records agent work interactions. It is append-only.
   application, database, migration and provider boundaries preserved.
 - Validation target: traceability, docs/state validators, diagnostic unit
   tests, doctor Plan/DryRun and changed-file allowlist.
+
+## 2026-09-01T14:58:07Z — TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901
+
+- State change: V1.1 validation opened on dedicated branch
+  `control/diagnostic-plane-v1.1-20260901` from V1 HEAD
+  `98f4a370e2bf223aea6550630ce49ed05f12a8af`.
+- State change: semantic traceability, diagnostic levels, failure-mode
+  catalog, negative fixtures and explicit Apply safety semantics are being
+  hardened without touching product code.
+- Validation target: TRACE-001..013, diagnostic unittest suite, doctor
+  Plan/DryRun/Apply, docs/state validators, full available regression attempt,
+  diff check and allowed-file boundary.

@@ -4,28 +4,28 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: 0c7417c
+source_commit: 98f4a370e2bf223aea6550630ce49ed05f12a8af
 ---
 
 # Active Task
 
-Task ID: `NONE`
+Task ID: `TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901`
 Agent: `Codex`
-Mode: `CLOSE`
+Mode: `IMPLEMENT`
 Started: `2026-09-01`
-Scope: `diagnostic control plane v1`
-Allowed files: `docs/**`, `ai/**`, `tests/**`, `frontend/tests/**`, `scripts/doctor.ps1`, `scripts/diagnostics/**`, `PROJECT_MANIFEST.yaml`, `AGENTS.md`
-Status: `IDLE — TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901 completed locally`
-Last update: `2026-09-01T14:20:25Z`
+Scope: `diagnostic control plane v1.1 validation and hardening`
+Allowed files: `docs/**`, `ai/**`, `scripts/doctor.ps1`, `scripts/diagnostics/**`, `tests/diagnostics/**`, `PROJECT_MANIFEST.yaml`
+Status: `IN PROGRESS — semantic audit, negative fixtures and doctor hardening`
+Last update: `2026-09-01T14:58:07Z`
 
-## Current task closed
+## Current task
 
-The task extended the canonical governance branch with an evidence-based,
-read-only diagnostic control plane. Application code, data and mail transport
-remain unchanged.
+The task validates and hardens the V1 evidence-based, read-only diagnostic
+control plane. Application code, data and mail transport remain unchanged.
 
 ## Next handoff
 
-The task report and append-only logs are preserved. Any merge or further
-runtime verification is a separate explicit human action.
+Complete the validators and controlled fixture checks, write the V1.1 report,
+then commit and push only this dedicated branch. Any merge or live runtime
+verification remains a separate explicit human action.
 

@@ -21,29 +21,76 @@ checks:
     mode: read-only
   - id: DOC-004
     name: python_and_backend_import_surface
-    component: COMP-DOCTOR
+    component: COMP-APP
+    evidence_level: STATIC
     mode: read-only
   - id: DOC-005
-    name: backend_http_and_mail_runtime
-    component: COMP-DOCTOR
+    name: backend_http_contract
+    component: COMP-APP
+    evidence_level: RUNTIME
     mode: safe-probe
   - id: DOC-006
     name: frontend_install_typecheck_lint_build
     component: COMP-FRONTEND
+    evidence_level: STRUCTURAL
     mode: opt-in
   - id: DOC-007
     name: database_read_only
     component: COMP-DATABASE
+    evidence_level: STRUCTURAL
     mode: read-only
   - id: DOC-008
     name: backend_regression_baseline
     component: COMP-DOCTOR
+    evidence_level: BEHAVIORAL
     mode: opt-in
   - id: DOC-009
     name: browser_safe_acceptance
     component: COMP-FRONTEND
+    evidence_level: RUNTIME
     mode: opt-in
   - id: DOC-010
     name: secret_paths_and_staged_names
     component: COMP-DOCTOR
+    evidence_level: STRUCTURAL
+    mode: read-only
+  - id: DOC-011
+    name: mail_runtime_contract_static
+    component: COMP-RUNTIME
+    evidence_level: STATIC
+    mode: read-only
+  - id: DOC-012
+    name: discovery_contract_static
+    component: COMP-DISCOVERY
+    evidence_level: STATIC
+    mode: read-only
+  - id: DOC-013
+    name: content_contract_static
+    component: COMP-CONTENT
+    evidence_level: STATIC
+    mode: read-only
+  - id: DOC-014
+    name: deliverability_policy_contract_static
+    component: COMP-DELIVERY
+    evidence_level: STATIC
+    mode: read-only
+  - id: DOC-015
+    name: queue_deduplication_contract_static
+    component: COMP-QUEUE
+    evidence_level: STATIC
+    mode: read-only
+  - id: DOC-016
+    name: pacing_contract_static
+    component: COMP-PACING
+    evidence_level: STATIC
+    mode: read-only
+  - id: DOC-017
+    name: bounce_contract_static
+    component: COMP-BOUNCE
+    evidence_level: STATIC
+    mode: read-only
+  - id: DOC-018
+    name: campaign_contract_static
+    component: COMP-CAMPAIGN
+    evidence_level: STATIC
     mode: read-only

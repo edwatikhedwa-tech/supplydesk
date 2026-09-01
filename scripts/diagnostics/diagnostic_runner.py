@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import argparse
 import ast
-import csv
 import hashlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -35,6 +35,7 @@ STATUSES = {
     "NOT_VERIFIED",
     "WARNING",
 }
+EVIDENCE_LEVELS = {"NONE", "STATIC", "STRUCTURAL", "BEHAVIORAL", "RUNTIME", "LIVE_EXTERNAL"}
 FRONTEND_FAILURE_CODES = {
     "INSTALL_FAIL",
     "TYPECHECK_FAIL",
@@ -45,6 +46,7 @@ FRONTEND_FAILURE_CODES = {
     "OVERFLOW_FAIL",
 }
 EXIT_CODES = {"PASS": 0, "WARNING": 0, "PRODUCT_FAILURE": 1, "ENVIRONMENT_GAP": 2, "NOT_VERIFIED": 2, "SAFETY_BLOCK": 3}
+SAFE_NEXT_ACTIONS = {"READ_ONLY_CHECK", "RUN_TEST", "OPEN_RUNBOOK", "CREATE_SANDBOX", "REQUEST_HUMAN"}
 
 
 @dataclass
@@ -57,10 +59,22 @@ class CheckResult:
     failure_mode_ids: list[str] = field(default_factory=list)
     runbook: str = ""
     diagnostic_code: str = ""
+    symptom: str = ""
+    possible_failure_modes: list[str] = field(default_factory=list)
+    evidence_level: str = "STRUCTURAL"
+    safe_next_action: str = "OPEN_RUNBOOK"
 
     def __post_init__(self) -> None:
         if self.status not in STATUSES:
             raise ValueError(f"unknown diagnostic status: {self.status}")
+        if self.evidence_level not in EVIDENCE_LEVELS:
+            raise ValueError(f"unknown evidence level: {self.evidence_level}")
+        if not self.symptom:
+            self.symptom = self.evidence
+        if not self.possible_failure_modes:
+            self.possible_failure_modes = list(self.failure_mode_ids)
+        if self.safe_next_action not in SAFE_NEXT_ACTIONS:
+            raise ValueError(f"unsafe or unknown next action: {self.safe_next_action}")
 
 
 def utc_now() -> str:
@@ -71,7 +85,7 @@ def safe_hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
 
 
-def run_process(command: list[str], cwd: Path, timeout: int = 120) -> tuple[int, str]:
+def run_process(command: list[str], cwd: Path, timeout: int = 120, env: dict[str, str] | None = None) -> tuple[int, str]:
     """Run a bounded command and return code plus non-sensitive metadata only."""
     try:
         completed = subprocess.run(
@@ -84,6 +98,7 @@ def run_process(command: list[str], cwd: Path, timeout: int = 120) -> tuple[int,
             errors="replace",
             timeout=timeout,
             check=False,
+            env=env,
         )
     except FileNotFoundError:
         return 127, "executable not found"
@@ -181,10 +196,10 @@ def python_backend_check(root: Path) -> CheckResult:
         except (OSError, SyntaxError):
             syntax_errors.append(path.name + " failed static parse")
     if syntax_errors:
-        return CheckResult("DOC-004", "COMP-DOCTOR", "PRODUCT_FAILURE", "backend static import surface invalid", ["REQ-DIAG-001"], ["FM-BACKEND-001"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", "BACKEND_IMPORT_FAIL")
+        return CheckResult("DOC-004", "COMP-APP", "PRODUCT_FAILURE", "backend static import surface invalid", ["REQ-DIAG-001"], ["FM-BACKEND-001"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", "BACKEND_IMPORT_FAIL", evidence_level="STATIC", safe_next_action="RUN_TEST")
     if missing:
-        return CheckResult("DOC-004", "COMP-DOCTOR", "ENVIRONMENT_GAP", "Python is available; required import set is incomplete", ["REQ-DIAG-001"], ["FM-DIAGNOSTIC-001"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", "IMPORT_GAP")
-    return CheckResult("DOC-004", "COMP-DOCTOR", "PASS", "Python imports and backend static parse passed; application was not started", ["REQ-DIAG-001"], ["FM-DIAGNOSTIC-001"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md")
+        return CheckResult("DOC-004", "COMP-APP", "ENVIRONMENT_GAP", "Python is available; required import set is incomplete", ["REQ-DIAG-001"], ["FM-DIAGNOSTIC-001"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", "IMPORT_GAP", evidence_level="STATIC", safe_next_action="OPEN_RUNBOOK")
+    return CheckResult("DOC-004", "COMP-APP", "PASS", "Python imports and backend static parse passed; application was not started", ["REQ-DIAG-001"], ["FM-DIAGNOSTIC-001"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", evidence_level="STATIC", safe_next_action="READ_ONLY_CHECK")
 
 
 def http_status(url: str, timeout: int = 5) -> tuple[int | None, str]:
@@ -209,47 +224,99 @@ def backend_http_check(base_url: str) -> CheckResult:
         elif status not in expected:
             unexpected.append(f"{path}:{status}")
     if unexpected:
-        return CheckResult("DOC-005", "COMP-DOCTOR", "PRODUCT_FAILURE", "HTTP contract mismatch: " + ", ".join(unexpected), ["REQ-DIAG-001"], ["FM-BACKEND-001"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", "BACKEND_HTTP_FAIL")
+        return CheckResult("DOC-005", "COMP-APP", "PRODUCT_FAILURE", "HTTP contract mismatch: " + ", ".join(unexpected), ["REQ-DIAG-001"], ["FM-BACKEND-001"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", "BACKEND_HTTP_FAIL", evidence_level="RUNTIME", safe_next_action="RUN_TEST")
     if unavailable:
-        return CheckResult("DOC-005", "COMP-DOCTOR", "ENVIRONMENT_GAP", "safe backend HTTP probes unavailable; no provider action attempted", ["REQ-DIAG-001"], ["FM-BACKEND-001", "FM-MAIL-002"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", "HTTP_ENVIRONMENT_GAP")
-    return CheckResult("DOC-005", "COMP-DOCTOR", "PASS", "root 200, auth/me 200, protected mail 401 and unknown route 404; provider boundary untouched", ["REQ-DIAG-001"], ["FM-BACKEND-001", "FM-MAIL-002"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md")
+        return CheckResult("DOC-005", "COMP-APP", "ENVIRONMENT_GAP", "safe backend HTTP probes unavailable; no provider action attempted", ["REQ-DIAG-001"], ["FM-BACKEND-001", "FM-MAIL-002"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", "HTTP_ENVIRONMENT_GAP", evidence_level="RUNTIME", safe_next_action="OPEN_RUNBOOK")
+    return CheckResult("DOC-005", "COMP-APP", "PASS", "root 200, auth/me 200, protected mail 401 and unknown route 404; provider boundary untouched", ["REQ-DIAG-001"], ["FM-BACKEND-001", "FM-MAIL-002"], "docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md", evidence_level="RUNTIME", safe_next_action="READ_ONLY_CHECK")
 
 
-def mail_runtime_check(root: Path) -> CheckResult:
+def mail_runtime_contract_static(root: Path) -> CheckResult:
     runtime = root / "mail/runtime.py"
     service = root / "mail/service.py"
     if not runtime.is_file() or not service.is_file():
-        return CheckResult("DOC-005", "COMP-RUNTIME", "PRODUCT_FAILURE", "mail runtime component is missing", ["REQ-RUNTIME-001"], ["FM-RUNTIME-001"], "docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md")
+        return CheckResult("DOC-011", "COMP-RUNTIME", "PRODUCT_FAILURE", "mail runtime component is missing", ["REQ-RUNTIME-001"], ["FM-RUNTIME-001"], "docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md", "MAIL_RUNTIME_CONTRACT_FAIL", evidence_level="STATIC", safe_next_action="RUN_TEST")
     text = runtime.read_text(encoding="utf-8") + service.read_text(encoding="utf-8")
-    unsafe_markers = ("smtplib.SMTP(", "imaplib.IMAP4(", "repository.ensure_schema()")
-    if any(marker in text for marker in unsafe_markers):
-        return CheckResult("DOC-005", "COMP-RUNTIME", "PASS", "runtime transport symbols are present only behind the application boundary; diagnostic did not invoke them", ["REQ-RUNTIME-001"], ["FM-RUNTIME-001", "FM-MAIL-002"], "docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md")
-    return CheckResult("DOC-005", "COMP-RUNTIME", "NOT_VERIFIED", "runtime files present; provider/runtime parity requires an authorized running environment; diagnostic did not invoke provider transport", ["REQ-RUNTIME-001"], ["FM-RUNTIME-001"], "docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md")
+    required_markers = ("LiveMailLock", "RuntimeSession", "sync_incoming", "preflight_bulk", "send_claimed_job")
+    missing = [marker for marker in required_markers if marker not in text]
+    if not missing:
+        return CheckResult("DOC-011", "COMP-RUNTIME", "PASS", "mail runtime contract symbols are present; this is static evidence, not runtime health; provider transport was not invoked", ["REQ-RUNTIME-001"], ["FM-RUNTIME-001"], "docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md", "MAIL_RUNTIME_CONTRACT_STATIC", evidence_level="STATIC", safe_next_action="READ_ONLY_CHECK")
+    return CheckResult("DOC-011", "COMP-RUNTIME", "PRODUCT_FAILURE", "mail runtime contract symbols are incomplete: " + ", ".join(missing) + "; provider transport was not invoked", ["REQ-RUNTIME-001"], ["FM-RUNTIME-001"], "docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md", "MAIL_RUNTIME_CONTRACT_FAIL", evidence_level="STATIC", safe_next_action="RUN_TEST")
+
+
+def source_surface_check(
+    root: Path,
+    check_id: str,
+    component: str,
+    name: str,
+    paths: tuple[str, ...],
+    markers: tuple[str, ...],
+    requirement_ids: list[str],
+    failure_mode_ids: list[str],
+    runbook: str,
+) -> CheckResult:
+    missing_paths = [path for path in paths if not (root / path).is_file()]
+    text = "\n".join((root / path).read_text(encoding="utf-8") for path in paths if (root / path).is_file())
+    missing_markers = [marker for marker in markers if marker not in text]
+    if missing_paths or missing_markers:
+        missing = ", ".join(missing_paths + missing_markers)
+        return CheckResult(check_id, component, "PRODUCT_FAILURE", f"{name} static contract surface is incomplete: {missing}", requirement_ids, failure_mode_ids, runbook, f"{name.upper()}_CONTRACT_FAIL", evidence_level="STATIC", safe_next_action="RUN_TEST")
+    return CheckResult(check_id, component, "PASS", f"{name} static contract surface is present; behavior requires focused tests or runtime evidence", requirement_ids, failure_mode_ids, runbook, f"{name.upper()}_CONTRACT_STATIC", evidence_level="STATIC", safe_next_action="READ_ONLY_CHECK")
+
+
+def discovery_contract_static(root: Path) -> CheckResult:
+    return source_surface_check(root, "DOC-012", "COMP-DISCOVERY", "discovery", ("supplier_discovery_v2/query_planner.py", "supplier_discovery_v2/pipeline.py", "supplier_discovery_v2/storage.py"), ("QueryPlanner", "run_pipeline", "DiscoveryStore"), ["REQ-DISCOVERY-001"], ["FM-DISCOVERY-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md")
+
+
+def content_contract_static(root: Path) -> CheckResult:
+    return source_surface_check(root, "DOC-013", "COMP-CONTENT", "content", ("mail/content.py",), ("html", "sanitize", "remote"), ["REQ-MAIL-004"], ["FM-CONTENT-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md")
+
+
+def deliverability_contract_static(root: Path) -> CheckResult:
+    return source_surface_check(root, "DOC-014", "COMP-DELIVERY", "deliverability", ("mail/deliverability.py",), ("DeliverabilityPreflightError", "campaign_max_recipients_from_env", "classify_provider_error", "blocks_stage_advancement"), ["REQ-MAIL-002", "REQ-MAIL-005"], ["FM-MAIL-002"], "docs/operations/runbooks/RUNBOOK-MAIL-PROVIDER.md")
+
+
+def queue_deduplication_contract_static(root: Path) -> CheckResult:
+    return source_surface_check(root, "DOC-015", "COMP-QUEUE", "queue_deduplication", ("mail/queue.py", "mail/service.py", "mail/repository.py"), ("idempot", "recipient", "queue_one"), ["REQ-MAIL-003"], ["FM-MAIL-003"], "docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md")
+
+
+def pacing_contract_static(root: Path) -> CheckResult:
+    return source_surface_check(root, "DOC-016", "COMP-PACING", "pacing", ("mail/pacing.py",), ("reservation", "budget", "cooldown"), ["REQ-MAIL-006"], ["FM-MAIL-004"], "docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md")
+
+
+def bounce_contract_static(root: Path) -> CheckResult:
+    return source_surface_check(root, "DOC-017", "COMP-BOUNCE", "bounce", ("mail/bounce.py",), ("BounceKind", "failed_recipients", "classify_bounce", "hard"), ["REQ-MAIL-007"], ["FM-MAIL-005"], "docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md")
+
+
+def campaign_contract_static(root: Path) -> CheckResult:
+    return source_surface_check(root, "DOC-018", "COMP-CAMPAIGN", "campaign", ("supplier_app.py", "mail/service.py"), ("campaign", "pause", "stop"), ["REQ-MAIL-008"], ["FM-CAMPAIGN-001"], "docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md")
 
 
 def frontend_check(root: Path, run_frontend: bool) -> CheckResult:
     package = root / "frontend/package.json"
     if not package.is_file():
-        return CheckResult("DOC-006", "COMP-FRONTEND", "ENVIRONMENT_GAP", "frontend/package.json is missing", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "INSTALL_FAIL")
+        return CheckResult("DOC-006", "COMP-FRONTEND", "ENVIRONMENT_GAP", "frontend/package.json is missing", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "INSTALL_FAIL", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
     try:
         package_data = json.loads(package.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return CheckResult("DOC-006", "COMP-FRONTEND", "PRODUCT_FAILURE", "frontend/package.json is not valid JSON", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "INSTALL_FAIL")
+        return CheckResult("DOC-006", "COMP-FRONTEND", "PRODUCT_FAILURE", "frontend/package.json is not valid JSON", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "INSTALL_FAIL", evidence_level="STRUCTURAL", safe_next_action="RUN_TEST")
     scripts = package_data.get("scripts", {})
     required = ["typecheck", "lint", "build"]
     absent = [name for name in required if name not in scripts]
     if absent:
-        return CheckResult("DOC-006", "COMP-FRONTEND", "PRODUCT_FAILURE", "frontend scripts missing: " + ", ".join(absent), ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "INSTALL_FAIL")
+        return CheckResult("DOC-006", "COMP-FRONTEND", "PRODUCT_FAILURE", "frontend scripts missing: " + ", ".join(absent), ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "INSTALL_FAIL", evidence_level="STRUCTURAL", safe_next_action="RUN_TEST")
     if not run_frontend:
-        return CheckResult("DOC-006", "COMP-FRONTEND", "NOT_VERIFIED", "package manifest checked; typecheck/lint/build are opt-in and were not run", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "NOT_RUN")
+        return CheckResult("DOC-006", "COMP-FRONTEND", "NOT_VERIFIED", "package manifest checked; typecheck/lint/build are opt-in and were not run", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "NOT_RUN", evidence_level="STRUCTURAL", safe_next_action="RUN_TEST")
     npm = shutil.which("npm")
-    if not npm or not (root / "frontend/node_modules").is_dir():
-        return CheckResult("DOC-006", "COMP-FRONTEND", "ENVIRONMENT_GAP", "npm or frontend/node_modules is unavailable", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "INSTALL_FAIL")
+    node = shutil.which("node")
+    if not npm or not node:
+        return CheckResult("DOC-006", "COMP-FRONTEND", "ENVIRONMENT_GAP", "npm or node is unavailable", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "NPM_MISSING", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
+    if not (root / "frontend/node_modules").is_dir():
+        return CheckResult("DOC-006", "COMP-FRONTEND", "ENVIRONMENT_GAP", "frontend/node_modules is unavailable", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "DEPENDENCIES_NOT_INSTALLED", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
     for script, code_name in (("typecheck", "TYPECHECK_FAIL"), ("lint", "LINT_FAIL"), ("build", "BUILD_FAIL")):
         code, _ = run_process([npm, "run", script], root / "frontend", timeout=240)
         if code != 0:
-            return CheckResult("DOC-006", "COMP-FRONTEND", "PRODUCT_FAILURE", f"frontend gate failed: {code_name}", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", code_name)
-    return CheckResult("DOC-006", "COMP-FRONTEND", "PASS", "frontend typecheck, lint and build passed", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md")
+            return CheckResult("DOC-006", "COMP-FRONTEND", "PRODUCT_FAILURE", f"frontend gate failed: {code_name}", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", code_name, evidence_level="RUNTIME", safe_next_action="RUN_TEST")
+    return CheckResult("DOC-006", "COMP-FRONTEND", "PASS", "frontend typecheck, lint and build passed", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", evidence_level="RUNTIME", safe_next_action="READ_ONLY_CHECK")
 
 
 def database_check(root: Path, db_path: str | None) -> CheckResult:
@@ -279,36 +346,103 @@ def database_check(root: Path, db_path: str | None) -> CheckResult:
 def backend_tests_check(root: Path, run_tests: bool) -> CheckResult:
     if not run_tests:
         return CheckResult("DOC-008", "COMP-DOCTOR", "NOT_VERIFIED", "backend regression suite is opt-in; inherited baseline is recorded as 373 passed, 1 skipped", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "NOT_RUN")
+    if importlib.util.find_spec("pytest") is None:
+        return CheckResult("DOC-008", "COMP-DOCTOR", "ENVIRONMENT_GAP", "pytest module is unavailable; backend regression was not started", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "PYTEST_MISSING", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
     code, meta = run_process([sys.executable, "-m", "pytest", "tests", "-q", "--tb=short"], root, timeout=900)
     if code == 0:
-        return CheckResult("DOC-008", "COMP-DOCTOR", "PASS", "backend regression suite passed; output retained only by hash", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md")
+        return CheckResult("DOC-008", "COMP-DOCTOR", "PASS", "backend regression suite passed; output retained only by hash", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", evidence_level="BEHAVIORAL", safe_next_action="READ_ONLY_CHECK")
     if code == 127:
-        return CheckResult("DOC-008", "COMP-DOCTOR", "ENVIRONMENT_GAP", "pytest is unavailable", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "TEST_INSTALL_FAIL")
-    return CheckResult("DOC-008", "COMP-DOCTOR", "PRODUCT_FAILURE", "backend regression suite failed; output retained only by hash", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "TEST_FAIL")
+        return CheckResult("DOC-008", "COMP-DOCTOR", "ENVIRONMENT_GAP", "pytest executable is unavailable", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "TEST_INSTALL_FAIL", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
+    return CheckResult("DOC-008", "COMP-DOCTOR", "PRODUCT_FAILURE", "backend regression suite failed; output retained only by hash", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "TEST_FAIL", evidence_level="BEHAVIORAL", safe_next_action="RUN_TEST")
 
 
-def browser_check(root: Path, run_browser: bool) -> CheckResult:
+def browser_check(root: Path, run_browser: bool, base_url: str = "http://127.0.0.1:5173") -> CheckResult:
     if not run_browser:
-        return CheckResult("DOC-009", "COMP-FRONTEND", "NOT_VERIFIED", "browser safe acceptance is opt-in and was not run", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "BROWSER_FAIL")
+        return CheckResult("DOC-009", "COMP-FRONTEND", "NOT_VERIFIED", "browser acceptance contract is present; Playwright execution was not requested", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "BROWSER_CONTRACT_PRESENT", evidence_level="STRUCTURAL", safe_next_action="RUN_TEST")
     if not (root / "frontend/tests/frontend-audit.spec.ts").is_file():
-        return CheckResult("DOC-009", "COMP-FRONTEND", "PRODUCT_FAILURE", "public-shell browser test is missing", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "BROWSER_FAIL")
-    return CheckResult("DOC-009", "COMP-FRONTEND", "NOT_VERIFIED", "browser test exists but was not started by the standard-library runner", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "BROWSER_FAIL")
+        return CheckResult("DOC-009", "COMP-FRONTEND", "PRODUCT_FAILURE", "public-shell browser test is missing", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "BROWSER_FAIL", evidence_level="STRUCTURAL", safe_next_action="RUN_TEST")
+    if not shutil.which("npx") or not (root / "frontend/node_modules").is_dir():
+        return CheckResult("DOC-009", "COMP-FRONTEND", "ENVIRONMENT_GAP", "Playwright dependencies are not installed", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "DEPENDENCIES_NOT_INSTALLED", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
+    home_status, _ = http_status(base_url.rstrip("/") + "/login")
+    if home_status is None:
+        return CheckResult("DOC-009", "COMP-FRONTEND", "ENVIRONMENT_GAP", "frontend browser base URL is unavailable; Playwright was not started", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "BROWSER_ENVIRONMENT_GAP", evidence_level="RUNTIME", safe_next_action="OPEN_RUNBOOK")
+    env = os.environ.copy()
+    env["AUDIT_BASE_URL"] = base_url
+    command = [shutil.which("npx"), "playwright", "test", "tests/frontend-audit.spec.ts", "-g", "public shell", "--workers=1"]
+    try:
+        completed = subprocess.run(command, cwd=str(root / "frontend"), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300, env=env, check=False)
+    except subprocess.TimeoutExpired:
+        return CheckResult("DOC-009", "COMP-FRONTEND", "ENVIRONMENT_GAP", "Playwright acceptance timed out; output was not emitted", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "BROWSER_ENVIRONMENT_GAP", evidence_level="RUNTIME", safe_next_action="OPEN_RUNBOOK")
+    if completed.returncode == 0:
+        return CheckResult("DOC-009", "COMP-FRONTEND", "PASS", "public-shell Playwright acceptance passed; output was retained only by hash", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", evidence_level="RUNTIME", safe_next_action="READ_ONLY_CHECK")
+    lowered = completed.stdout.lower()
+    code = "OVERFLOW_FAIL" if "overflow" in lowered else "ACCESSIBILITY_FAIL" if "accessibility" in lowered or "axe" in lowered else "BROWSER_FAIL"
+    return CheckResult("DOC-009", "COMP-FRONTEND", "PRODUCT_FAILURE", f"public-shell Playwright acceptance failed: {code}; output was retained only by hash", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", code, evidence_level="RUNTIME", safe_next_action="RUN_TEST")
 
 
-def secret_path_check(root: Path) -> CheckResult:
-    code, metadata = git_value(root, ["diff", "--cached", "--name-only"])
-    if code != 0:
-        return CheckResult("DOC-010", "COMP-DOCTOR", "NOT_VERIFIED", "staged path list could not be inspected", ["REQ-DIAG-001", "REQ-DIAG-002"], ["FM-DIAGNOSTIC-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md")
-    # Inspect only names through a second command; values and diff contents are never read.
-    listed = subprocess.run(["git", "diff", "--cached", "--name-only"], cwd=str(root), capture_output=True, text=True, check=False).stdout.splitlines()
-    tracked = subprocess.run(["git", "ls-files"], cwd=str(root), capture_output=True, text=True, check=False).stdout.splitlines()
-    untracked = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], cwd=str(root), capture_output=True, text=True, check=False).stdout.splitlines()
-    known_local = [str(path.relative_to(root)) for pattern in (".env*", ".vercel/.env.*") for path in root.glob(pattern)]
-    names = listed + tracked + untracked + known_local
-    high_signal = [name for name in names if any(token in Path(name).name.lower() for token in (".env", "secret", "credential", "token", "private-key", "password"))]
-    if high_signal:
-        return CheckResult("DOC-010", "COMP-DOCTOR", "SAFETY_BLOCK", f"high-signal staged secret path names found: {len(high_signal)}; values were not read", ["REQ-DIAG-001", "REQ-DIAG-002"], ["FM-SECURITY-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "SECRET_PATH_BLOCK")
-    return CheckResult("DOC-010", "COMP-DOCTOR", "PASS", "staged path names checked; no secret values were read or emitted", ["REQ-DIAG-001", "REQ-DIAG-002"], ["FM-SECURITY-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md")
+SECRET_NAME_TOKENS = ("secret", "credential", "token", "private-key", "password", "cookie")
+SECRET_LITERAL_RE = re.compile(r"(?i)\b(api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password|cookie|private[_-]?key)\b\s*[:=]\s*[\"']?([^\s\"']{12,})")
+
+
+def is_high_signal_name(name: str) -> bool:
+    basename = Path(name).name.lower()
+    if basename in {".env.example", "env.example"}:
+        return False
+    return basename.startswith(".env") or any(token in basename for token in SECRET_NAME_TOKENS)
+
+
+def scan_staged_literal_diff(diff_text: str) -> list[dict[str, str | int]]:
+    """Return redacted locations/types only; never return a matched value."""
+    findings: list[dict[str, str | int]] = []
+    current_file = "UNKNOWN"
+    line_number = 0
+    for line in diff_text.splitlines():
+        if line.startswith("+++ b/"):
+            current_file = line[6:]
+        elif line.startswith("@@"):
+            match = re.search(r"\+(\d+)", line)
+            line_number = int(match.group(1)) if match else 0
+        elif line.startswith("+") and not line.startswith("+++"):
+            match = SECRET_LITERAL_RE.search(line[1:])
+            if match:
+                findings.append({"file": current_file, "line": line_number or 0, "type": match.group(1).lower(), "value": "REDACTED"})
+            if line_number:
+                line_number += 1
+        elif not line.startswith("-") and line_number:
+            line_number += 1
+    return findings
+
+
+def secret_path_check(
+    root: Path,
+    *,
+    staged_names: list[str] | None = None,
+    tracked_names: list[str] | None = None,
+    untracked_names: list[str] | None = None,
+    local_names: list[str] | None = None,
+    staged_diff: str | None = None,
+) -> CheckResult:
+    if staged_names is None:
+        code, _ = git_value(root, ["diff", "--cached", "--name-only"])
+        if code != 0:
+            return CheckResult("DOC-010", "COMP-DOCTOR", "NOT_VERIFIED", "staged path list could not be inspected", ["REQ-DIAG-001", "REQ-DIAG-002"], ["FM-DIAGNOSTIC-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
+        staged_names = subprocess.run(["git", "diff", "--cached", "--name-only"], cwd=str(root), capture_output=True, text=True, check=False).stdout.splitlines()
+    if tracked_names is None:
+        tracked_names = subprocess.run(["git", "ls-files"], cwd=str(root), capture_output=True, text=True, check=False).stdout.splitlines()
+    if untracked_names is None:
+        untracked_names = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], cwd=str(root), capture_output=True, text=True, check=False).stdout.splitlines()
+    if local_names is None:
+        local_names = [str(path.relative_to(root)) for pattern in (".env*", ".vercel/.env.*") for path in root.glob(pattern)]
+    if staged_diff is None:
+        staged_diff = subprocess.run(["git", "diff", "--cached", "--unified=0"], cwd=str(root), capture_output=True, text=True, check=False).stdout
+    staged_or_tracked = [name for name in (staged_names + tracked_names) if is_high_signal_name(name)]
+    findings = scan_staged_literal_diff(staged_diff)
+    if staged_or_tracked or findings:
+        detail = f"high-signal staged/tracked secret paths={len(staged_or_tracked)}, redacted literal findings={len(findings)}; values were not emitted"
+        return CheckResult("DOC-010", "COMP-DOCTOR", "SAFETY_BLOCK", detail, ["REQ-DIAG-001", "REQ-DIAG-002"], ["FM-SECURITY-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "SECRET_PATH_OR_LITERAL_BLOCK", evidence_level="STRUCTURAL", safe_next_action="REQUEST_HUMAN")
+    if any(is_high_signal_name(name) for name in (untracked_names + local_names)):
+        return CheckResult("DOC-010", "COMP-DOCTOR", "PASS", "local secret path is present but untracked and unstaged; values were not read; diagnostic=LOCAL_SECRET_PRESENT", ["REQ-DIAG-001", "REQ-DIAG-002"], ["FM-SECURITY-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "LOCAL_SECRET_PRESENT", evidence_level="STRUCTURAL", safe_next_action="READ_ONLY_CHECK")
+    return CheckResult("DOC-010", "COMP-DOCTOR", "PASS", "secret path names checked; no secret values were read or emitted", ["REQ-DIAG-001", "REQ-DIAG-002"], ["FM-SECURITY-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", evidence_level="STRUCTURAL", safe_next_action="READ_ONLY_CHECK")
 
 
 def overall_status(results: Iterable[CheckResult]) -> tuple[str, int]:
@@ -322,7 +456,7 @@ def overall_status(results: Iterable[CheckResult]) -> tuple[str, int]:
     return ("WARNING", 0) if "WARNING" in statuses else ("PASS", 0)
 
 
-def run_diagnostics(root: Path, *, base_url: str, run_tests: bool = False, run_frontend: bool = False, run_browser: bool = False, db_path: str | None = None) -> dict[str, Any]:
+def run_diagnostics(root: Path, *, base_url: str, frontend_base_url: str = "http://127.0.0.1:5173", run_tests: bool = False, run_frontend: bool = False, run_browser: bool = False, db_path: str | None = None) -> dict[str, Any]:
     results = [
         git_check(root),
         manifest_check(root),
@@ -332,8 +466,16 @@ def run_diagnostics(root: Path, *, base_url: str, run_tests: bool = False, run_f
         frontend_check(root, run_frontend),
         database_check(root, db_path),
         backend_tests_check(root, run_tests),
-        browser_check(root, run_browser),
+        browser_check(root, run_browser, frontend_base_url),
         secret_path_check(root),
+        mail_runtime_contract_static(root),
+        discovery_contract_static(root),
+        content_contract_static(root),
+        deliverability_contract_static(root),
+        queue_deduplication_contract_static(root),
+        pacing_contract_static(root),
+        bounce_contract_static(root),
+        campaign_contract_static(root),
     ]
     status, exit_code = overall_status(results)
     return {
@@ -359,6 +501,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--output", type=Path, default=Path(tempfile.gettempdir()) / "supplydesk-diagnostics" / "latest-doctor.json")
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
+    parser.add_argument("--frontend-base-url", default="http://127.0.0.1:5173")
     parser.add_argument("--db-path")
     parser.add_argument("--run-tests", action="store_true")
     parser.add_argument("--run-frontend", action="store_true")
@@ -366,7 +509,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     root = args.root.resolve()
     try:
-        result = run_diagnostics(root, base_url=args.base_url, run_tests=args.run_tests, run_frontend=args.run_frontend, run_browser=args.run_browser, db_path=args.db_path)
+        result = run_diagnostics(root, base_url=args.base_url, frontend_base_url=args.frontend_base_url, run_tests=args.run_tests, run_frontend=args.run_frontend, run_browser=args.run_browser, db_path=args.db_path)
         output = args.output.resolve()
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

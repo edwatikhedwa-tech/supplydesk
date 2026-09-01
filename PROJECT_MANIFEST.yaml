@@ -31,6 +31,7 @@ documentation:
   current_state_rule: docs/** has no independent current-state source
 
 diagnostics:
+  version: 1.1
   doctor: scripts/doctor.ps1
   requirements: docs/requirements/requirements.yaml
   business_rules: docs/requirements/BUSINESS_RULES.md
@@ -40,6 +41,9 @@ diagnostics:
   runbooks: docs/operations/runbooks/
   incident_schema: ai/incidents/INCIDENT_SCHEMA.yaml
   traceability_validator: ai/tools/validate_traceability.py
+  coverage_model: docs/requirements/TRACEABILITY_MATRIX.csv
+  failure_mode_catalog: docs/operations/failure_modes.yaml
+  negative_fixture_tests: tests/diagnostics/test_diagnostic_negative_fixtures.py
 
 document_lifecycle:
   statuses: [DRAFT, CURRENT, SUPERSEDED, HISTORICAL, ARCHIVED]

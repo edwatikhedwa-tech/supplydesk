@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-01
-source_commit: 0c7417c
+source_commit: 98f4a370e2bf223aea6550630ce49ed05f12a8af
 ---
 
 # Current State
@@ -15,8 +15,9 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T14:20:25Z` — diagnostic control plane V1 implementation on
-`control/diagnostic-plane-v1-20260901`.
+`2026-09-01T14:58:07Z` — diagnostic control plane V1.1 validation and
+hardening on `control/diagnostic-plane-v1.1-20260901`, based on V1 HEAD
+`98f4a370e2bf223aea6550630ce49ed05f12a8af`.
 
 ## Project
 
@@ -25,8 +26,10 @@ preserved under [`ai/history/`](history/).
 - Canonical control baseline: `control/canonical-baseline-20260901` at
   `792f441b4b6099533177e7c1d23d6252670f9309` before this governance branch.
 - Documentation governance branch: `control/documentation-governance-20260901`.
-- Diagnostic branch: `control/diagnostic-plane-v1-20260901` from governance
-  HEAD `6687fa4289d8f65c47a34e8b7124e113cb3201e6`.
+- Diagnostic V1 branch: `control/diagnostic-plane-v1-20260901` at
+  `98f4a370e2bf223aea6550630ce49ed05f12a8af`.
+- Diagnostic V1.1 branch: `control/diagnostic-plane-v1.1-20260901`, created in
+  a separate worktree from the V1 HEAD above.
 - Product behavior is not changed by this control-plane-only task.
 
 ## Runtime
@@ -56,6 +59,14 @@ preserved under [`ai/history/`](history/).
   and [`scripts/diagnostics/diagnostic_contract.yaml`](../scripts/diagnostics/diagnostic_contract.yaml).
 - `scripts/doctor.ps1` now delegates to read-only typed checks and emits
   machine-readable evidence outside the repository.
+- Diagnostic control plane V1.1 separates test-verification, diagnostic and
+  live-acceptance levels; adds semantic TRACE-009..013 validation; maps each
+  failure mode to a responsible component and doctor check; and records
+  symptom, causes, confirming/excluding checks, confidence and repair
+  eligibility.
+- V1.1 adds disposable negative fixtures for database, backend, frontend,
+  secret-path and machine-output classification, and makes `doctor -Apply` an
+  explicit safety block because recovery is not implemented.
 
 ## Verified
 
@@ -71,8 +82,13 @@ verified by this diagnostic task:
 - Remote audit retention: audit branch resolves to
   `b5a454f9b39f3cbf01d640d5b67e4231ca25733a` and its retained tree includes the
   audit index, summary, final report, functional baseline, and security findings.
-- Diagnostic tests: `12 passed` with `python -m unittest discover -s
-  tests/diagnostics -v`.
+- Diagnostic tests: `19 passed` with `python -m unittest discover -s
+  tests/diagnostics -v`, including controlled negative fixtures.
+- Traceability validator: `PASS`; 21 active requirements, 21/21 behavioral
+  test links, 21/21 distinctly diagnosable failure modes, and TRACE-001..013.
+- Doctor `-Plan`: exit `0`; doctor `-DryRun`: exit `2` with no product failure;
+  opt-in frontend/browser diagnostics: explicit environment gaps because
+  `frontend/node_modules` is absent; doctor `-Apply`: `SAFETY_BLOCK`, exit `3`.
 - Documentation, state and traceability validators: `PASS`; `git diff --check`:
   `PASS`.
 - Doctor `-Plan`: exit `0`; doctor `-DryRun`: exit `2` with explicit
@@ -81,11 +97,14 @@ verified by this diagnostic task:
 
 ## Not verified
 
-- New backend-backed live routes were not rerun in this governance worktree.
-- Full backend regression was not rerun: `pytest` is unavailable in this
-  environment and `tests/run-tests.ps1` is absent.
-- Frontend typecheck/lint/build and browser acceptance were not rerun in this
-  worktree; inherited frontend evidence remains the latest confirmed baseline.
+- Backend-backed live routes were not rerun in this V1.1 worktree; HTTP probes
+  remain an explicit environment gap because no backend process was started.
+- Full backend regression was attempted with system Python and an isolated
+  environment containing only `requirements.txt`; `pytest` is not declared or
+  installed, and `tests/run-tests.ps1` is absent.
+- Frontend typecheck/lint/build and browser acceptance were not executed in
+  this worktree because `frontend/node_modules` is absent; the opt-in runner
+  reports `DEPENDENCIES_NOT_INSTALLED` without installing dependencies.
 - Same-environment parity between the source checkout and the control worktree
   was not re-established.
 - `knip` status remains `NOT VERIFIED`.
@@ -111,8 +130,8 @@ verified by this diagnostic task:
 
 ## Current next step
 
-`SUPPLYDESK DIAGNOSTIC CONTROL PLANE V1` is complete on its dedicated branch;
-review and merge, if desired, remain an explicit human action.
+`SUPPLYDESK DIAGNOSTIC CONTROL PLANE V1.1` is being completed on its dedicated
+branch; review and merge, if desired, remain an explicit human action.
 
 ## Canonical references
 
@@ -123,5 +142,6 @@ review and merge, if desired, remain an explicit human action.
 - Deferred findings: [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
 - Latest governance report: [`ai/reports/TASK-DOCUMENTATION-GOVERNANCE-20260901-report.md`](reports/TASK-DOCUMENTATION-GOVERNANCE-20260901-report.md).
 - Diagnostic report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md).
+- Diagnostic V1.1 report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).
 

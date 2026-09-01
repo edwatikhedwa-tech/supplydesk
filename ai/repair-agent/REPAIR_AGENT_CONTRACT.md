@@ -17,6 +17,19 @@ autonomy, scheduler or production access.
 `Detect → Diagnose → Confirm scope → Create sandbox branch → Reproduce →
 Patch → focused tests → regression → doctor → evidence → await approval`.
 
+## Repair eligibility
+
+The Repair Agent may not trust a single doctor check. A repair proposal requires
+all four evidence items: one reproducible symptom, one mapped requirement, one
+failing behavioral verification, and a confirmed repair scope. If the available
+diagnostic evidence is only `STATIC` or `STRUCTURAL`, the agent is
+`DIAGNOSE_ONLY` and must not patch. `RUNTIME` evidence still requires the
+behavioral reproduction before a sandbox repair can be proposed.
+
+Failure modes use one of `DIAGNOSE_ONLY`, `SANDBOX_REPAIR_ELIGIBLE`,
+`SAFE_RECOVERY_ELIGIBLE` or `HUMAN_ONLY`; V1.1 keeps every catalogued mode at
+`HUMAN_ONLY` and automatic recovery at zero.
+
 ## Non-negotiable boundaries
 
 The agent must never directly access production, send real mail, delete a

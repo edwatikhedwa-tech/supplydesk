@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-TASK_ID = "TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901"
+TASK_ID = "TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901"
 
 REQUIRED_FILES = [
     "AGENTS.md",

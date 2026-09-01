@@ -38,11 +38,19 @@ probes respectively.
 
 ## Coverage metrics
 
-Diagnostic coverage is separate from code coverage:
+Diagnostic coverage is separate from code coverage and from test verification:
 
-- requirement → test evidence;
-- business rule → test evidence;
-- capability → diagnostic check;
-- failure mode → runbook.
+- `TEST_VERIFICATION_LEVEL`: the strongest existing fixture/fake/runtime test
+  evidence for the requirement.
+- `DIAGNOSTIC_LEVEL`: what the doctor can prove without pretending that a
+  static or structural check is behavioral.
+- `LIVE_ACCEPTANCE_LEVEL`: whether real external evidence is required; V1.1
+  records `NOT_REQUIRED` or `NOT_VERIFIED` explicitly.
 
-The traceability validator reports these counts without modifying the tree.
+Levels are `NONE`, `STATIC`, `STRUCTURAL`, `BEHAVIORAL`, `RUNTIME` and
+`LIVE_EXTERNAL`. A static check proves code/config/contract presence only; it
+does not prove a mail send, sync, deduplication, pacing, suppression or
+delivery outcome.
+
+The traceability validator reports requirement/test/rule/diagnostic counts and
+rejects inconsistent doctor/failure-mode mappings without modifying the tree.

@@ -2,134 +2,316 @@ schema_version: 1
 failure_modes:
   - id: FM-AUTH-001
     area: auth
+    component: COMP-APP
+    product_component: COMP-AUTH
     symptom: unauthorized or cross-workspace access
+    possible_causes: [route_auth_missing, workspace_scope_regression, csrf_or_session_mismatch]
+    confirming_checks: [DOC-004, DOC-005]
+    excluding_checks: [DOC-007, DOC-010]
+    diagnostic: DOC-004
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
+    runbook: docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-AUTH-002
+    area: auth_runtime
+    component: COMP-APP
+    product_component: COMP-AUTH
+    symptom: protected endpoint or session gate has an unexpected runtime status
+    possible_causes: [missing_auth_gate, session_cookie_mismatch, csrf_runtime_gap]
+    confirming_checks: [DOC-005]
+    excluding_checks: [DOC-004, DOC-007, DOC-010]
     diagnostic: DOC-005
+    evidence_level: RUNTIME
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md
     automatic_recovery: false
     human_approval: true
   - id: FM-REQUEST-001
     area: request
+    component: COMP-APP
+    product_component: COMP-REQUEST
     symptom: request/search/enrichment state is missing or inconsistent
+    possible_causes: [route_regression, persistence_contract_mismatch, worker_state_gap]
+    confirming_checks: [DOC-004]
+    excluding_checks: [DOC-007, DOC-005]
     diagnostic: DOC-004
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
     automatic_recovery: false
     human_approval: true
   - id: FM-SUPPLIER-001
     area: supplier
+    component: COMP-APP
+    product_component: COMP-SUPPLIER
     symptom: identity grouping, filter or enrichment mismatch
+    possible_causes: [identity_key_regression, filter_state_mismatch, enrichment_stage_gap]
+    confirming_checks: [DOC-004]
+    excluding_checks: [DOC-007, DOC-012]
     diagnostic: DOC-004
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
     automatic_recovery: false
     human_approval: true
   - id: FM-DISCOVERY-001
     area: discovery
+    component: COMP-DISCOVERY
+    product_component: COMP-DISCOVERY
     symptom: query plan, matching or evidence qualification regression
-    diagnostic: DOC-004
+    possible_causes: [planner_contract_gap, matcher_regression, evidence_store_gap]
+    confirming_checks: [DOC-012]
+    excluding_checks: [DOC-004, DOC-007]
+    diagnostic: DOC-012
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
     automatic_recovery: false
     human_approval: true
   - id: FM-MESSAGE-001
     area: messages
+    component: COMP-APP
+    product_component: COMP-MESSAGE
     symptom: queue, sent/failed or incoming visibility mismatch
-    diagnostic: DOC-005
+    possible_causes: [visibility_filter_regression, thread_state_gap, unread_state_gap]
+    confirming_checks: [DOC-004]
+    excluding_checks: [DOC-007, DOC-005]
+    diagnostic: DOC-004
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md
     automatic_recovery: false
     human_approval: true
   - id: FM-MAIL-001
     area: incoming_mail
+    component: COMP-RUNTIME
+    product_component: COMP-INCOMING
     symptom: incoming sync, parsing or deduplication mismatch
-    diagnostic: DOC-005
+    possible_causes: [sync_failure, parser_regression, inbound_dedup_gap]
+    confirming_checks: [DOC-011]
+    excluding_checks: [DOC-005, DOC-007]
+    diagnostic: DOC-011
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md
     automatic_recovery: false
     human_approval: true
   - id: FM-MAIL-002
-    area: provider_boundary
-    symptom: provider unavailable, rejected or uncertain acceptance
-    diagnostic: DOC-005
+    area: delivery
+    component: COMP-DELIVERY
+    product_component: COMP-DELIVERY
+    symptom: preflight, provider error classification or delivery uncertainty mismatch
+    possible_causes: [policy_regression, provider_refusal, acceptance_uncertainty]
+    confirming_checks: [DOC-014]
+    excluding_checks: [DOC-005, DOC-007]
+    diagnostic: DOC-014
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-MAIL-PROVIDER.md
     automatic_recovery: false
     human_approval: true
   - id: FM-MAIL-003
     area: deduplication
+    component: COMP-QUEUE
+    product_component: COMP-QUEUE
     symptom: duplicate recipient, job or idempotency conflict
-    diagnostic: DOC-005
+    possible_causes: [idempotency_key_gap, recipient_history_gap, concurrent_claim_race]
+    confirming_checks: [DOC-015]
+    excluding_checks: [DOC-014, DOC-007]
+    diagnostic: DOC-015
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md
     automatic_recovery: false
     human_approval: true
   - id: FM-MAIL-004
-    area: pacing_campaign
-    symptom: pacing, reservation, budget or campaign gate mismatch
-    diagnostic: DOC-005
+    area: pacing
+    component: COMP-PACING
+    product_component: COMP-PACING
+    symptom: pacing, reservation or budget gate mismatch
+    possible_causes: [reservation_leak, pacing_calculation_gap, budget_or_kill_switch_race]
+    confirming_checks: [DOC-016]
+    excluding_checks: [DOC-015, DOC-007]
+    diagnostic: DOC-016
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md
     automatic_recovery: false
     human_approval: true
   - id: FM-MAIL-005
     area: bounce
+    component: COMP-BOUNCE
+    product_component: COMP-BOUNCE
     symptom: hard/soft bounce or suppression state mismatch
-    diagnostic: DOC-005
+    possible_causes: [bounce_classifier_gap, suppression_state_gap, provider_bounce_format]
+    confirming_checks: [DOC-017]
+    excluding_checks: [DOC-014, DOC-007]
+    diagnostic: DOC-017
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md
     automatic_recovery: false
     human_approval: true
   - id: FM-CONTENT-001
     area: content
+    component: COMP-CONTENT
+    product_component: COMP-CONTENT
     symptom: HTML, plain, CID, remote-image or overflow rendering mismatch
-    diagnostic: DOC-006
+    possible_causes: [sanitizer_regression, cid_parser_gap, responsive_reader_overflow]
+    confirming_checks: [DOC-013, DOC-009]
+    excluding_checks: [DOC-007, DOC-015]
+    diagnostic: DOC-013
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-FRONTEND.md
     automatic_recovery: false
     human_approval: true
   - id: FM-DATA-001
     area: database
+    component: COMP-DATABASE
+    product_component: COMP-DATABASE
     symptom: database absent, unreadable or integrity check fails
+    possible_causes: [missing_local_data, corruption, schema_or_journal_problem]
+    confirming_checks: [DOC-007]
+    excluding_checks: [DOC-005, DOC-010]
     diagnostic: DOC-007
+    evidence_level: STRUCTURAL
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-DATABASE.md
     automatic_recovery: false
     human_approval: true
   - id: FM-RUNTIME-001
     area: runtime
+    component: COMP-RUNTIME
+    product_component: COMP-RUNTIME
     symptom: canonical lock, provenance or session parity mismatch
-    diagnostic: DOC-005
+    possible_causes: [lock_conflict, stale_session_manifest, runtime_parity_gap]
+    confirming_checks: [DOC-011]
+    excluding_checks: [DOC-007, DOC-005]
+    diagnostic: DOC-011
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md
     automatic_recovery: false
     human_approval: true
   - id: FM-BACKEND-001
     area: backend
+    component: COMP-APP
+    product_component: COMP-APP
     symptom: backend cannot import, start or satisfy safe HTTP contract
-    diagnostic: DOC-004
+    possible_causes: [python_import_gap, port_or_process_issue, missing_runtime_configuration, database_initialization_failure]
+    confirming_checks: [DOC-004, DOC-005]
+    excluding_checks: [DOC-006, DOC-007, DOC-010]
+    diagnostic: DOC-005
+    evidence_level: RUNTIME
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md
     automatic_recovery: false
     human_approval: true
   - id: FM-FRONTEND-001
     area: frontend
+    component: COMP-FRONTEND
+    product_component: COMP-FRONTEND
     symptom: install, typecheck, lint, build, browser, accessibility or overflow gate fails
+    possible_causes: [npm_missing, dependencies_not_installed, type_or_lint_regression, browser_a11y_or_overflow_regression]
+    confirming_checks: [DOC-006, DOC-009]
+    excluding_checks: [DOC-007, DOC-005]
     diagnostic: DOC-006
+    evidence_level: STRUCTURAL
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-FRONTEND.md
     automatic_recovery: false
     human_approval: true
   - id: FM-DIAGNOSTIC-001
     area: control_plane
+    component: COMP-DOCTOR
+    product_component: COMP-DOCTOR
     symptom: doctor, manifest, documentation or evidence contract is incomplete
-    diagnostic: DOC-001
+    possible_causes: [missing_pointer, validator_regression, stale_contract]
+    confirming_checks: [DOC-001, DOC-002, DOC-003]
+    excluding_checks: [DOC-007, DOC-010]
+    diagnostic: DOC-002
+    evidence_level: STRUCTURAL
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
     automatic_recovery: false
     human_approval: true
   - id: FM-SECURITY-001
     area: security
-    symptom: high-signal secret path is staged or a forbidden boundary is requested
+    component: COMP-DOCTOR
+    product_component: COMP-DOCTOR
+    symptom: high-signal secret path is staged or a secret literal is found in staged content
+    possible_causes: [accidental_stage, credential_file_tracking, unsafe_literal_commit]
+    confirming_checks: [DOC-010]
+    excluding_checks: [DOC-001, DOC-007]
     diagnostic: DOC-010
+    evidence_level: STRUCTURAL
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
     automatic_recovery: false
     human_approval: true
   - id: FM-TEST-001
     area: tests
+    component: COMP-DOCTOR
+    product_component: COMP-DOCTOR
     symptom: baseline or focused test fails
+    possible_causes: [product_regression, dependency_gap, fixture_or_environment_mismatch]
+    confirming_checks: [DOC-008]
+    excluding_checks: [DOC-007, DOC-010]
     diagnostic: DOC-008
+    evidence_level: BEHAVIORAL
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
     automatic_recovery: false
     human_approval: true
   - id: FM-REPAIR-001
     area: repair_agent
+    component: COMP-DOCTOR
+    product_component: COMP-REPAIR
     symptom: proposed repair would leave the sandbox or exceed confirmed scope
-    diagnostic: DOC-001
+    possible_causes: [missing_behavioral_reproduction, scope_drift, insufficient_evidence]
+    confirming_checks: [DOC-002, DOC-003]
+    excluding_checks: [DOC-005, DOC-007]
+    diagnostic: DOC-002
+    evidence_level: STRUCTURAL
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
     runbook: docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md
+    automatic_recovery: false
+    human_approval: true
+  - id: FM-CAMPAIGN-001
+    area: campaign
+    component: COMP-CAMPAIGN
+    product_component: COMP-CAMPAIGN
+    symptom: campaign stage, pause or stop state mismatch
+    possible_causes: [stage_transition_gap, pause_state_race, stop_gate_regression]
+    confirming_checks: [DOC-018]
+    excluding_checks: [DOC-016, DOC-007]
+    diagnostic: DOC-018
+    evidence_level: STATIC
+    confidence: UNCONFIRMED
+    eligibility: HUMAN_ONLY
+    runbook: docs/operations/runbooks/RUNBOOK-MAIL-RUNTIME.md
     automatic_recovery: false
     human_approval: true

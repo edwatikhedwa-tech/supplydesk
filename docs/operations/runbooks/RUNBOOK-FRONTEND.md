@@ -18,11 +18,18 @@ by default and runs these gates only with explicit opt-in.
 
 ## Failure labels
 
-Keep `INSTALL_FAIL`, `TYPECHECK_FAIL`, `LINT_FAIL`, `BUILD_FAIL`,
-`BROWSER_FAIL`, `ACCESSIBILITY_FAIL` and `OVERFLOW_FAIL` distinct. A missing
-Node installation or `node_modules` is an environment gap; a failing script is
-a product/test failure. The V1 doctor does not edit source or snapshots to
-make a gate pass.
+Keep `NPM_MISSING`, `DEPENDENCIES_NOT_INSTALLED`, `INSTALL_FAIL`,
+`TYPECHECK_FAIL`, `LINT_FAIL`, `BUILD_FAIL`, `BROWSER_FAIL`,
+`ACCESSIBILITY_FAIL` and `OVERFLOW_FAIL` distinct. `NPM_MISSING` means the
+toolchain is unavailable; `DEPENDENCIES_NOT_INSTALLED` means the declared
+frontend dependencies are absent. A failing script or browser assertion is a
+product/test failure. The V1.1 doctor does not edit source or snapshots to make
+a gate pass.
+
+The default doctor run validates only the frontend manifest and reports the
+typecheck/lint/build/browser checks as not verified. Runtime gates require the
+explicit `--run-frontend` or `--run-browser` opt-in and a disposable local
+server; no remote browser session is implied.
 
 ## Safety
 

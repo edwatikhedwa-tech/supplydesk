@@ -787,3 +787,12 @@ rewritten.
 - Expanded `scripts/doctor.ps1` while preserving Plan/DryRun/Apply; no Apply,
   migration, canonical database write, provider connection or real email was
   performed.
+
+## 2026-09-01T14:58:07Z — TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901
+
+- Task ID: `TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901`; Status: IN PROGRESS.
+- Hardened traceability semantics, diagnostic evidence levels, failure-mode
+  discrimination and frontend/runtime classifications.
+- Added controlled negative fixtures with redacted secret evidence and made
+  `doctor -Apply` an explicit safety block; no product code, database, mail,
+  migration or provider state was changed.
