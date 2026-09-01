@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: 26e779ccf3ec55c9d7fdf1f54711375183b2035e
+source_commit: e36942926fc4e9a5c31bdd015b3abdd25480c8fa
 ---
 
 # Active Task
