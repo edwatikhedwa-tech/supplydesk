@@ -259,7 +259,7 @@ jobs:
               Push-Location frontend
               try {
                 $env:AUDIT_BASE_URL = 'http://127.0.0.1:18000'
-                npx playwright test tests/frontend-audit.spec.ts -g 'public shell' --workers=1
+                npx playwright test tests/frontend-audit.spec.ts -g 'public shell' --reporter=line
                 $exitCode = $LASTEXITCODE
               } finally {
                 Pop-Location
