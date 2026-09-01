@@ -15,8 +15,8 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T19:09:33Z` — VibeCoding Control Policy V1 implementation is in
-progress on the dedicated governance branch. The verified starting point is
+`2026-09-01T19:13:54Z` — VibeCoding Control Policy V1 was completed on the
+dedicated governance branch. The verified starting point is
 `f13dad6dc2461ef6dc50242f7fc075895f2a4603`; the publication commit is
 intentionally left to Git history rather than duplicated here.
 
@@ -179,9 +179,12 @@ on this task's dedicated branch:
   `200/200/401/404`, Playwright `8/8` and Doctor Full exit `0`.
 - Final branch was pushed normally and `git ls-remote` independently confirmed
   its remote HEAD; no force-push, merge or default-branch change occurred.
-- VibeCoding policy validator and four governance diagnostic tests passed during
-  implementation; final acceptance and remote publication for this task remain
-  pending.
+- VibeCoding policy validator and four governance diagnostic tests passed; the
+  full diagnostic set is `30/30` and the required documentation/state/
+  traceability validators also pass.
+- The governance commit `1bdda8a` was pushed to
+  `origin/control/vibecoding-policy-v1-20260901`; its remote ref was verified
+  after normal publication.
 
 ## Not verified
 
@@ -220,9 +223,9 @@ on this task's dedicated branch:
 
 ## Current next step
 
-`TASK-VIBECODING-CONTROL-POLICY-V1-20260901` is in progress on its dedicated
-branch. Complete risk-based acceptance, publish the branch and verify its
-remote ref; no product or local-data work is part of this task.
+`TASK-VIBECODING-CONTROL-POLICY-V1-20260901` is complete and published on its
+dedicated branch. Start future work from the canonical checkout, read the
+canonical policy first and select checks by task class.
 
 ## Canonical references
 

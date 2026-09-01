@@ -9,16 +9,16 @@ based_on_commit: f13dad6dc2461ef6dc50242f7fc075895f2a4603
 
 # Active Task
 
-Task ID: `TASK-VIBECODING-CONTROL-POLICY-V1-20260901`
+Task ID: `NONE`
 Agent: `Codex`
-Mode: `IMPLEMENT`
+Mode: `IDLE`
 Started: `2026-09-01`
 Scope: `VibeCoding control policy, tool registry, validator and diagnostics`
 Allowed files: `AGENTS.md`, `CLAUDE.md`, `PROJECT_MANIFEST.yaml`, `ai/**`,
 `tests/diagnostics/test_vibecoding_governance.py`,
 `ai/tools/validate_docs.py`; no product/data/runtime changes
-Status: `IN_PROGRESS — governance-only implementation`
-Last update: `2026-09-01T19:09:33Z`
+Status: `IDLE — TASK-VIBECODING-CONTROL-POLICY-V1-20260901 complete and branch pushed`
+Last update: `2026-09-01T19:13:54Z`
 
 ## Цель
 
@@ -39,6 +39,6 @@ regression is not required unless runtime or test-runner behavior changes.
 
 ## Следующий шаг
 
-Complete the governance acceptance, write the report, commit with this Task ID,
-push the task branch and verify its remote ref.
+Активной задачи нет. Policy V1 опубликована; следующая работа должна
+начинаться из canonical checkout с чтения policy и registry.
 

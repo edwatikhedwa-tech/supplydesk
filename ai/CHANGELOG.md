@@ -919,3 +919,12 @@ rewritten.
   `PROJECT_MANIFEST.yaml` and the AI state entrypoint.
 - No product behavior, UI, API, database, mail data, runtime, dependency or
   quarantine changes were made. Acceptance and remote publication remain open.
+
+## 2026-09-01T19:13:54Z — TASK-VIBECODING-CONTROL-POLICY-V1-20260901 CLOSEOUT
+
+- VibeCoding validator, 30 diagnostic tests, documentation/state/traceability
+  validators, Doctor Plan, diff check and staging security audit passed.
+- Commit `1bdda8a` was pushed normally to
+  `origin/control/vibecoding-policy-v1-20260901`; the remote ref was verified.
+- `ACTIVE_TASK` is now `IDLE`. No product/data/runtime change, dependency
+  installation, external provider action or quarantine change occurred.

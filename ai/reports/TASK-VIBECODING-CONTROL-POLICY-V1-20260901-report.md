@@ -10,7 +10,9 @@ Task ID: `TASK-VIBECODING-CONTROL-POLICY-V1-20260901`
   self-referential commit value is stored in this report
 - POLICY VERSION: `1.0`
 - LAST_CORRECTED: `2026-09-01`
-- REMOTE PUSH: pending until the Task-ID commit is created
+- IMPLEMENTATION COMMIT: `1bdda8a` (`TASK-VIBECODING-CONTROL-POLICY-V1-20260901`)
+- REMOTE PUSH: `YES` — `origin/control/vibecoding-policy-v1-20260901` was
+  pushed and its ref was verified after the implementation commit
 
 The policy is governance/control-plane only. Product behavior, frontend UI,
 API, database, migrations, runtime, mail data, secrets, dependencies, legacy
