@@ -1,0 +1,44 @@
+schema_version: 1
+test_catalog:
+  - id: TEST-DIAG-001
+    path: tests/diagnostics/test_diagnostic_runner.py
+    kind: unit
+    scope: diagnostic status and safe probes
+  - id: TEST-DIAG-002
+    path: tests/diagnostics/test_doctor_contract.py
+    kind: contract
+    scope: PowerShell doctor modes and manifest
+  - id: TEST-BACKEND-001
+    path: tests/
+    kind: regression
+    scope: inherited backend and mail suite
+    baseline: 373 passed, 1 skipped
+  - id: TEST-DISCOVERY-001
+    path: supplier_discovery_v2/tests/
+    kind: unit
+    scope: query planning, matching, fixture pipeline and storage
+  - id: TEST-FRONTEND-001
+    path: frontend/tests/frontend-audit.spec.ts
+    kind: browser
+    scope: public shell
+    inherited_evidence: 8 passed
+  - id: TEST-FRONTEND-002
+    path: frontend/tests/email-renderer-responsive.spec.ts
+    kind: browser
+    scope: content rendering at responsive widths
+  - id: TEST-MAIL-001
+    path: tests/test_mail_deliverability.py
+    kind: integration
+    scope: preflight, suppression, pacing and provider-gate semantics
+  - id: TEST-MAIL-002
+    path: tests/test_mail_integrity.py
+    kind: integration
+    scope: idempotency, authorization, atomicity and queue claims
+  - id: TEST-MAIL-003
+    path: tests/test_mail_status_semantics.py
+    kind: integration
+    scope: delivery axes and retry safety
+  - id: TEST-RUNTIME-001
+    path: tests/test_canonical_runtime.py
+    kind: unit
+    scope: canonical lock and provenance

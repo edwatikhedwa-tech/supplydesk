@@ -1,0 +1,49 @@
+schema_version: 1
+status_vocabulary: [PASS, PRODUCT_FAILURE, ENVIRONMENT_GAP, SAFETY_BLOCK, NOT_VERIFIED, WARNING]
+exit_codes:
+  pass: 0
+  product_failure: 1
+  environment_gap_or_incomplete: 2
+  safety_block: 3
+  internal_error: 4
+checks:
+  - id: DOC-001
+    name: git_repository_state
+    component: COMP-DOCTOR
+    mode: read-only
+  - id: DOC-002
+    name: manifest_and_canonical_paths
+    component: COMP-DOCTOR
+    mode: read-only
+  - id: DOC-003
+    name: documentation_validators
+    component: COMP-DOCTOR
+    mode: read-only
+  - id: DOC-004
+    name: python_and_backend_import_surface
+    component: COMP-DOCTOR
+    mode: read-only
+  - id: DOC-005
+    name: backend_http_and_mail_runtime
+    component: COMP-DOCTOR
+    mode: safe-probe
+  - id: DOC-006
+    name: frontend_install_typecheck_lint_build
+    component: COMP-FRONTEND
+    mode: opt-in
+  - id: DOC-007
+    name: database_read_only
+    component: COMP-DATABASE
+    mode: read-only
+  - id: DOC-008
+    name: backend_regression_baseline
+    component: COMP-DOCTOR
+    mode: opt-in
+  - id: DOC-009
+    name: browser_safe_acceptance
+    component: COMP-FRONTEND
+    mode: opt-in
+  - id: DOC-010
+    name: secret_paths_and_staged_names
+    component: COMP-DOCTOR
+    mode: read-only
