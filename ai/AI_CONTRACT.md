@@ -67,9 +67,13 @@ keep it brief. Start with these three short sections:
 Explain each unavoidable technical term the first time it appears, in the
 same sentence and in ordinary language. Do not report only raw commands,
 `PASS`/`FAIL` values, commit hashes or English names: add one short sentence
-explaining what the check means for the user. Keep the mandatory instruction
-check at the end when required, but introduce it as a short technical
-compliance summary rather than using it as the main explanation.
+explaining what the check means for the user. Keep the mandatory rule check at
+the end when required, but render it as a short Russian block named
+`ПРОВЕРКА ПРАВИЛ`. Show only the actual value for each line; never print a
+template containing alternatives separated by `/`, empty placeholders or
+unexplained English statuses. If something was not checked or was blocked,
+state that fact and give the short reason. The check is a technical appendix,
+not a replacement for the plain-language result at the start.
 
 For every recommendation, use a client-readable structure: what it is, why it
 matters, what happens if it is postponed, priority and urgency, what will

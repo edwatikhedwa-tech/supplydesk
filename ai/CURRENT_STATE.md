@@ -1,5 +1,23 @@
 # Current State
 
+## Current task update — понятная проверка правил
+
+- Timestamp UTC: `2026-09-01T06:38:31Z`
+  (`TASK-INSTRUCTION-CHECK-UX-20260901`, completed locally).
+- The final response check now uses the Russian heading
+  `[ПРОВЕРКА ПРАВИЛ]` and requires one actual value per line with a short
+  explanation. The old slash-separated English template is no longer the
+  required output format.
+- Updated the rule sources `AGENTS.md` and `ai/AI_CONTRACT.md`, plus the
+  required state/report chronology; application code, frontend, API, database,
+  mail, runtime settings and existing unrelated worktree files were not
+  changed.
+- Backups of both instruction files were saved before editing at
+  `C:\Users\edwat\AppData\Local\Temp\supplydesk-instructions-backup-20260901\`.
+- The state validator, relevant source search, HTTP smoke and final diff are
+  the acceptance evidence for this documentation task.
+- Report: `ai/reports/TASK-INSTRUCTION-CHECK-UX-20260901-report.md`.
+
 ## Current task update — historical mail queue reconciled
 
 - Timestamp UTC: `2026-09-01T06:13:09Z`
@@ -399,16 +417,15 @@
 
 ## Current task
 
-- `TASK-MAIL-INCOMING-CONTINUATION-20260831` — `STOPPED — SAFETY STOP`.
-- Incoming IMAP is independent of outgoing state for connected accounts 1 and
-  23; both live syncs passed with outgoing disabled.
-- Mail.ru continuation accepted `17` supplier messages. One Unicode-address
-  job is `delivery_unknown` with `UnicodeEncodeError` before SMTP DATA;
-  outgoing was disabled immediately, and no automatic retry or later batch was
-  started.
-- Prepared jobs after the stop remain queued; campaign 2 remains
-  `paused_for_health` and Yandex queued jobs were not claimed.
-- Report: `ai/reports/TASK-MAIL-INCOMING-CONTINUATION-20260831-report.md`.
+- `TASK-INSTRUCTION-CHECK-UX-20260901` — `COMPLETE LOCALLY`.
+- The owner-facing response contract is now Russian and factual: it explains
+  what was checked, what was not checked, and why, without printing all
+  possible status choices at once.
+- This is a documentation/state change only. No application, mail, database,
+  runtime or external-service action was performed.
+- The pre-existing mail/runtime history below remains historical evidence and
+  was not rewritten.
+- Report: `ai/reports/TASK-INSTRUCTION-CHECK-UX-20260901-report.md`.
 
 - Previous completed task: `TASK-MESSAGES-UX-FIX-20260831` — `COMPLETE`.
 - Queue-only request threads are excluded from correspondence and available in

@@ -5,8 +5,22 @@
 Task ID: `NONE`
 Agent: `Codex`
 Mode: `IDLE`
-Status: `IDLE — TASK-MAIL-STATUS-RECONCILIATION-20260901 completed locally`
-Last update: `2026-09-01T06:13:09Z`
+Status: `IDLE — TASK-INSTRUCTION-CHECK-UX-20260901 completed locally`
+Last update: `2026-09-01T06:38:31Z`
+
+## Latest completed task — понятная проверка правил
+
+Task ID: `TASK-INSTRUCTION-CHECK-UX-20260901`
+Mode: `AUDIT → DESIGN DECISION → IMPLEMENT → ACCEPTANCE → CLOSE`
+Status: `COMPLETE LOCALLY — owner-facing check rewritten in Russian`
+
+- Replaced the confusing slash-separated English instruction-check template
+  with `[ПРОВЕРКА ПРАВИЛ]`, one factual value per line and a short explanation.
+- Updated `AGENTS.md`, `ai/AI_CONTRACT.md`, and the required state/report
+  chronology; no application or data files were changed.
+- Saved instruction backups before editing in the system temporary directory.
+- The old mail/runtime entries below remain historical and were not rewritten.
+- Report: `ai/reports/TASK-INSTRUCTION-CHECK-UX-20260901-report.md`.
 
 ## Latest completed task — historical queue reconciliation and contact badges
 

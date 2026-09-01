@@ -3,6 +3,19 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-01T06:38:31Z — ПОНЯТНАЯ ПРОВЕРКА ПРАВИЛ — TASK-INSTRUCTION-CHECK-UX-20260901
+
+- Заменён непонятный английский шаблон `[INSTRUCTION CHECK]` с несколькими
+  вариантами через `/` на русскую проверку `[ПРОВЕРКА ПРАВИЛ]`.
+- В готовом ответе теперь должны быть только фактические значения и короткое
+  объяснение простыми словами; пустые варианты и необъяснённые статусы
+  запрещены.
+- Основные правила изменены в `AGENTS.md` и `ai/AI_CONTRACT.md`; обязательные
+  state-документы и отчёт обновлены отдельно для сохранения истории.
+  Код, база, сервер, письма и пользовательские рабочие файлы не менялись.
+- Перед правкой сохранены резервные копии инструкций во временной папке;
+  проверены state-валидатор и итоговый diff.
+
 ## 2026-09-01T06:13:09Z — HISTORICAL QUEUE RECONCILIATION COMPLETE — TASK-MAIL-STATUS-RECONCILIATION-20260901
 
 - Applied an allowlisted, evidence-gated and idempotent local reconciliation:
