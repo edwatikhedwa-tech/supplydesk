@@ -14,7 +14,7 @@ profiles:
     tools: backend_full, npm_ci, typescript, eslint, frontend_build, browser_full, doctor
   PERIODIC:
     purpose: scheduled or manual expensive analysis outside blocking FAST CI
-    tools: vulture, knip, coverage, semgrep, codeql, dependency_updates, skill_doctor
+    tools: vulture, knip, coverage, semgrep, codeql, dependency_updates, code_rot_cleaner, skill_doctor
 tools:
   - id: git
     name: Git
@@ -116,6 +116,18 @@ tools:
     availability: PLANNED
     evidence_required: candidate report plus manual reference/test review
     notes: no vulture executable was found; candidates never authorize deletion
+  - id: code_rot_cleaner
+    name: Codex Code Rot Cleaner
+    purpose: conservative code-rot candidate discovery and disposable-copy removal proof
+    category: REPOSITORY_HYGIENE
+    required_for: CLEANUP_OR_STRUCTURAL_REFACTOR_WHEN_SELECTED
+    execution_frequency: PERIODIC
+    mode: PERIODIC_NON_BLOCKING
+    default_mode: REPORT_ONLY
+    blocking: false
+    availability: CONFIGURED
+    evidence_required: SKILL.md, bundled analyzer/proof scripts and report-only output when used
+    notes: candidate generator plus removal-proof tool; no automatic deletion; Knip remains primary for frontend; static findings alone are insufficient
   - id: backend_tests
     name: SupplyDesk backend test suite
     purpose: backend behavior regression
@@ -206,6 +218,18 @@ tools:
     availability: CONFIGURED
     evidence_required: agent-browser version, skill/help output and focused command evidence when used
     notes: primary local exploratory path; verified 2026-09-02 with agent-browser 0.36.0 and installed system Chrome; not a replacement for Playwright or a CI gate
+  - id: bug_reproducer
+    name: Codex Bug Reproducer
+    purpose: prove or reject software bug hypotheses using deterministic reproduction and red-to-green evidence
+    category: BUG_DIAGNOSTICS
+    required_for: AMBIGUOUS_RECURRING_OR_HIGH_RISK_BUG_WHEN_SELECTED
+    execution_frequency: ON_DEMAND
+    mode: ON_DEMAND_NON_BLOCKING
+    default_workflow: REPRODUCE_AND_PROVE
+    blocking: false
+    availability: CONFIGURED
+    evidence_required: SKILL.md, evidence scripts and the same targeted command before and after a fix when used
+    notes: code inspection alone is not bug proof; FIX_PROVEN requires red-to-green plus relevant regression; not mandatory for trivial fixes; hunt-and-prove is explicit-task-only
   - id: playwright_mcp
     name: Playwright MCP or browser connector
     purpose: optional agent-driven browser inspection

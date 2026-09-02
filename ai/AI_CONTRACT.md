@@ -129,7 +129,12 @@ verification.
   installation; install only the named `skill-doctor` skill (never all Warp
   skills). If CLI syntax differs, a duplicate layout exists, the Codex target
   is unsupported or the source is unavailable, record `SKILL_DOCTOR: BLOCKED`
-  with the exact reason. This task does not authorize history analysis.
+  with the exact reason. Installation/configuration alone does not authorize
+  history analysis.
+- `SKILL_DOCTOR_CONNECTION`: future reviews may compare actual skill use,
+  missed triggers, redundant tools and iteration waste. Tool-usage summaries
+  are supplementary human-readable evidence only and never replace local
+  session transcripts.
 - `SKILL_DOCTOR_SAFETY`: keep transcripts local and never upload them; write
   reports and proposed edits outside the repository; never automatically edit a
   real `SKILL.md` during analysis. The required order is
@@ -146,6 +151,70 @@ verification.
   the tracked `ACTIVE_TASK.md` remains an `IN_PROGRESS` blocking sentinel;
   otherwise include required state/report evidence in the single
   implementation/configuration commit.
+
+## Repository hygiene and bug evidence
+
+- `CODE_ROT_CLEANER`: `MODE: PERIODIC_NON_BLOCKING`,
+  `DEFAULT_MODE: REPORT_ONLY`, role `CANDIDATE_GENERATOR + REMOVAL_PROOF_TOOL`.
+  Use it only for periodic or explicitly selected dead-code, orphan-file,
+  repository-hygiene, root/structural-refactor, duplicate-implementation or
+  pre-removal review. It is not a per-feature, per-commit or CI gate, is never
+  automatic cleanup, and is never the sole deletion authority.
+- `CODE_ROT_AUTHORITY`: a static finding is never `SAFE_TO_DELETE`. Combine
+  reference/import/string/config search; framework and dynamic-usage review;
+  project-native analyzers; entrypoints, routes, migrations, scripts and
+  deployment references; disposable-copy proof when applicable; relevant
+  regression checks; and explicit approval of exact candidate IDs.
+  `AUTOMATIC_DELETE: FORBIDDEN`.
+- `CODE_ROT_TOOL_RELATIONSHIP`: Knip remains the primary frontend unused
+  file/export/dependency analyzer; Ruff provides Python lint and safe static
+  findings; Vulture provides Python unused-code candidates; and `rg` supplies
+  reference/string/config/route evidence. Code Rot Cleaner adds an independent
+  candidate and removal-proof layer; no deletion rests on one tool.
+  `FRONTEND_PRIMARY_UNUSED_TOOL: KNIP` and
+  `PYTHON_UNUSED_EVIDENCE: RUFF_VULTURE_RG_PLUS_CODE_ROT_CLEANER`.
+- `CODE_ROT_DISPOSABLE_PROOF`: prove removal only in a disposable copy. Keep
+  the real tree unchanged, require a green baseline, run the smallest relevant
+  checks, and never weaken tests, disable assertions or hide failures. A failed
+  baseline cannot produce `SAFE_TO_REMOVE` from that proof.
+- `BUG_REPRODUCER`: `MODE: ON_DEMAND_NON_BLOCKING`,
+  `DEFAULT_WORKFLOW: REPRODUCE_AND_PROVE`. For a known or suspected bug use
+  `REPRODUCE -> ROOT CAUSE -> RED -> FIX -> GREEN -> REGRESSION`; use
+  `HUNT_AND_PROVE` only by explicit owner request or in a separate justified
+  correctness audit. It is not mandatory for trivial fixes or an existing
+  exact failing regression test.
+- `BUG_EVIDENCE_CONTRACT`: `CODE_INSPECTION_EQUALS_BUG_PROOF: NO`. Use only these
+  statuses: `REPRODUCED`, `NOT_REPRODUCED`, `NO_BUG_PROVEN`, `INCONCLUSIVE`,
+  `STILL_FAILING`, `FIX_UNVERIFIED`, `FIX_REGRESSION` and `FIX_PROVEN`.
+  `FIX_PROVEN` requires the same concrete reproducer to fail before the fix for
+  the predicted reason, pass after the fix, and pass relevant broader checks.
+  `BUG_PROOF_STANDARD: RED_TO_GREEN`.
+- `BUG_TOOL_SELECTION`: use agent-browser for exploratory UI state,
+  network/console inspection, screenshots, quick interaction and local auth;
+  Bug Reproducer for deterministic reproduction, root-cause isolation and
+  red-to-green evidence; and Playwright for permanent UI regression, viewport
+  suites and CI gates. The preferred flow is
+  `USER BUG -> agent-browser -> bug-reproducer when proof is needed -> minimal
+  fix -> permanent Playwright regression when recurrence risk justifies -> CI`.
+  Do not create a temporary Playwright spec solely for exploratory debugging.
+- `BUG_APPROVAL_MODEL`: preserve the upstream two gates: one approval before
+  reproduction files/commands and a separate approval before production fixes.
+  This extra rigor is on-demand, not a general SupplyDesk workflow. Combine
+  all decisions for one gate into one question, do not re-ask an already
+  approved exact scope, and require fresh approval whenever files, commands or
+  scope change.
+- `HUNT_AND_PROVE_SAFETY`: an ordinary feature task must not become a global bug
+  hunt. A reproducer must use a real production path, minimal fixture and
+  contract assertion without arbitrary sleeps; setup, dependency, syntax,
+  environment or unrelated failures are `INCONCLUSIVE` or
+  `NOT_REPRODUCED`, not product bugs.
+- `SKILL_OUTPUT_LOCATION`: keep both skills' analysis, proof, evidence and
+  temporary repro outputs in external temporary scratch such as
+  `%TEMP%\SupplyDesk-code-rot-*` or `%TEMP%\SupplyDesk-bug-reproducer-*` when
+  possible. Keep only approved permanent regression tests, a necessary
+  canonical/task report or traceability-required evidence in the repository;
+  do not leave `analysis.json`, `proof.json`, `evidence.json`, cleanup CSVs or
+  temporary repro files as unexplained project or root artifacts.
 
 ## Architecture placement and component lifecycle
 
@@ -247,6 +316,23 @@ helps. Explain P0/P1 as a user-blocking or serious-risk issue, P2 as a
 noticeable quality issue, and P3 as a non-urgent polish improvement. Avoid
 vague recommendations such as “optimize” or “look into it” without a concrete
 outcome and an acceptance criterion.
+
+- `TOOL_USAGE_REPORTING: FINAL_RESPONSES_ENABLED`: every substantive final
+  response includes one short `[ИНСТРУМЕНТЫ И SKILLS]` block listing only tools
+  and skills actually used.
+  For each, state why it was selected, what concrete result/evidence it gave,
+  and the qualitative practical benefit. Do not list merely available,
+  planned or irrelevant tools, and do not invent time or cost savings.
+- `INTERMEDIATE_TOOL_SPAM: FORBIDDEN`: do not repeat the full tool/skill block
+  in progress updates. Mention a tool there only for new material evidence, a
+  blocker, an unexpected result or an owner decision; if a complete log is
+  explicitly requested, use at most one concise line.
+- `NO_GENERIC_PROFIT_CLAIMS`: connect every claimed benefit to a concrete
+  outcome such as excluding a false hypothesis, confirming live UI, finding a
+  reference, avoiding a product-code change or proving red-to-green evidence.
+- `MINIMUM_SUFFICIENT_TOOLSET`: use the smallest set of tools that supplies the
+  required evidence. The number of tools listed is not a quality metric and
+  must not create pressure to use more tools.
 
 ## Security and data boundary
 
