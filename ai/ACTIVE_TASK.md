@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: 9977d56ddac51b2bbccbacbcd04a26957d8b77c2
+based_on_commit: f969b769a43b41849c8e996de856ebf85a344a46
 ---
 
 # Active Task
@@ -13,31 +13,35 @@ Task ID: `NONE`
 Agent: `Codex`
 Mode: `CLOSE`
 Started: `2026-09-02`
-Scope: `canonical value-free local secret hygiene review and Finding-009 evidence`
+Scope: `controlled content-level review of Finding-009 allowlisted retained files`
 Allowed files: `ai/**`; no product/data/runtime/legacy changes
-Status: `IDLE — canonical value-free review complete; Finding-009 remains REVIEW_REQUIRED`
+Status: `IDLE — controlled review complete; Finding-009 is SECURITY_REVIEW_REQUIRED`
 Last update: `2026-09-02`
 
 ## Цель
 
-Корректно проверить canonical local secret hygiene value-free и определить
-статус `FINDING-009` без чтения секретных значений.
+Проверить содержимое только allowlisted retained files локально, не выводя и
+не сохраняя секретные значения, и определить окончательный статус
+`FINDING-009`.
 
 ## Границы
 
 Product behavior, frontend UI, API, database schema/data, migrations, mail
 data, secret values, quarantine, legacy checkout, dependencies, governance
-policy, Workspace Guard behavior and CI architecture are not changed. Backend,
-frontend and Playwright acceptance are not run.
+policy, Workspace Guard behavior and CI architecture are not changed. Candidate
+files are read only in memory for classification; values are not output,
+copied, saved, deleted or rotated. Backend, frontend, CI and Playwright are not
+run.
 
 ## Acceptance
 
-Canonical candidate inventory, Git ignore rules, Git path history and
-filename-level exposure are recorded without reading file contents; Finding-009
-receives an evidence-backed status; product code is unchanged.
+The previous filename-level evidence is reused; only the exact allowlist is
+read for content classification; Git exposure is separated from local archive
+retention; Finding-009 receives an evidence-backed status; product code is
+unchanged.
 
 ## Следующий шаг
 
-Complete the minimal finding evidence update, run relevant validators and
-report `REVIEW_REQUIRED` unless the existing evidence supports closure.
+Owner approval is required before any retained secret-bearing copy is deleted
+or credentials are rotated; no Git history rewrite is authorized by this task.
 

@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: 68afe6100685bbcae1c02c8fd2564b01cebcc37a
+based_on_commit: f969b769a43b41849c8e996de856ebf85a344a46
 ---
 
 # Current State
@@ -15,7 +15,7 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-02` — Canonical value-free local secret hygiene review completed.
+`2026-09-02` — Controlled content-level Finding-009 review completed.
 Finding-009 remains `REVIEW_REQUIRED`: no operational env file is present or
 tracked in the canonical checkout/history, but retained external snapshot and
 quarantine filename copies require separate owner review.
@@ -243,9 +243,15 @@ on this task's dedicated branch:
   `python ai/tools/validate_vibecoding.py` passed with `36` registered tools.
 - Canonical Finding-009 review: no current operational `.env`/`.env.*` files,
   no tracked operational secret paths and no operational env path in Git
-  history; `.env.example` is history-only and content-unverified.
-- Filename-only review found 12 `.env*` names in retained snapshots and 12
-  token/auth-named artifact names in retained quarantine; no values were read.
+  history. Three unique historical `.env.example` blobs were classified as
+  `SAFE_TEMPLATE`.
+- Controlled allowlist review covered 27 items: 5 `SAFE_TEMPLATE`, 6
+  `EMPTY_OR_NON_SECRET`, 8 `REAL_SECRET_PRESENT`, 4 `MIXED` and 4
+  `UNDETERMINED`. Real or mixed material is retained only in external
+  snapshots/quarantine; Git exposure is `NO`.
+- Five paired snapshot paths are identical copies across the two baseline
+  containers. No candidate values were output or saved, and no retained file
+  was changed.
 
 ## Not verified
 
@@ -265,6 +271,9 @@ on this task's dedicated branch:
   committed workflow.
 - Remote CI proof for the V1.2 execution-overhead policy revision is not
   verified; this task does not publish the branch unless explicitly requested.
+- Current validity, ownership and required retention period for the detected
+  local archive credentials are not verified. Four binary/image artifacts
+  remain `UNDETERMINED` and require owner-approved follow-up.
 - Finding-009 retained-artifact contents are not verified by design; no content
   review, deletion, movement, rotation or history rewrite was authorized.
 

@@ -58,21 +58,31 @@ this current register. Resolved findings and full chronology are preserved in
 - ID: `FINDING-009`
 - Severity: `HIGH`
 - Status: `OPEN`
-- Evidence: The canonical value-free review found no current operational
-  `.env`/`.env.*` files, no tracked operational secret paths, and no operational
-  `.env` path in Git history. Git history contains `.env.example` only; its
-  contents were not read. Retained external snapshots contain 12 `.env*`
-  filename copies and the retained quarantine contains 12 token/auth-named
-  artifact filenames.
+- Evidence: The canonical checkout still has no current operational
+  `.env`/`.env.*` files, no tracked operational secret paths and no operational
+  `.env` path in Git history. Three unique historical `.env.example` blobs were
+  classified as `SAFE_TEMPLATE`. The controlled allowlist review covered 12
+  snapshot `.env*` files and 12 quarantine token/auth-named artifacts: 8 were
+  `REAL_SECRET_PRESENT`, 4 were `MIXED`, 6 were `EMPTY_OR_NON_SECRET`, 5 were
+  `SAFE_TEMPLATE`, and 4 were `UNDETERMINED`.
+- Git exposure: `NO`. The real or mixed files are retained in external
+  snapshots/quarantine, outside the canonical Git repository. Five paired
+  snapshot paths are identical copies across the two baseline containers;
+  quarantine production OAuth state files are distinct.
 - Impact: Accidental staging or publication could disclose credentials or enable external actions.
-- Review result: `REVIEW_REQUIRED` — the filename-level retained copies were
-  not treated as leaks, but they cannot be classified as safe without a
-  separately approved content-level owner review.
-- Why deferred: This task is value-free and does not read, copy, rotate, delete
-  or move secret-bearing files or retained artifacts.
-- Next verification: Owner approves a separate retained-artifact review and
-  classifies the 12 snapshot `.env*` names and 12 quarantine token/auth names;
-  no Git history rewrite is authorized by this finding review.
+- Review result: `SECURITY_REVIEW_REQUIRED` — real and mixed secret-bearing
+  material was found in local archive retention, and four binary/image artifacts
+  remain `UNDETERMINED`.
+- Why deferred: The review did not alter the retained files. No deletion,
+  rotation, copying, external transmission or Git history rewrite was
+  performed.
+- Required action: `KEEP_PROTECTED` until owner approval; then
+  `DELETE_AFTER_OWNER_APPROVAL` for unneeded retained copies and
+  `ROTATE_CREDENTIAL` only where the owner confirms a credential is current or
+  may have been exposed. `HISTORY_REWRITE_REVIEW` is not indicated because Git
+  secret exposure is `NO`.
+- Next verification: Owner approves retention cleanup and confirms credential
+  ownership/validity; separately resolve the four `UNDETERMINED` artifacts.
 
 ## FINDING-015 — Residual repository-hygiene audit drift
 

@@ -907,3 +907,17 @@ state/docs and the durable workspace-boundary decision.
 State change: backend, frontend and Playwright were not started; protected
 local data, legacy files, product code, database, mail, secrets and quarantine
 were not changed.
+
+## 2026-09-02 — TASK-FINDING-009-CONTENT-REVIEW-20260902
+
+State change: reused the previous filename-level evidence, reviewed the exact
+allowlist in memory, and classified 27 historical/snapshot/quarantine items
+without outputting or saving secret values.
+
+State change: three historical `.env.example` blobs were `SAFE_TEMPLATE`; the
+aggregate was 5 safe templates, 6 empty/non-secret, 8 real, 4 mixed and 4
+undetermined. Git exposure is `NO`; local archive secret retention is `YES`.
+
+State change: Finding-009 is `SECURITY_REVIEW_REQUIRED`; no product, runtime,
+quarantine or snapshot file changed, and no deletion, rotation or Git history
+rewrite was performed.
