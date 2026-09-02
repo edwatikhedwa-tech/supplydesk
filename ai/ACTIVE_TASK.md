@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: cc3cd3bea7e4f53a2e25a6ba208d7e94b0859e30
+based_on_commit: 68afe6100685bbcae1c02c8fd2564b01cebcc37a
 ---
 
 # Active Task
@@ -13,33 +13,34 @@ Task ID: `NONE`
 Agent: `Codex`
 Mode: `CLOSE`
 Started: `2026-09-02`
-Scope: `canonical workspace guard, control-tooling integration and governance tests`
-Allowed files: `scripts/**`, `tests/run-tests.ps1`, `tests/diagnostics/**`,
-`.github/workflows/ci.yml`, `AGENTS.md`, `CLAUDE.md`, `ai/**`,
-`PROJECT_MANIFEST.yaml`, `docs/architecture/**`, `docs/operations/**`,
-`docs/testing/**`; no product/data/runtime changes
-Status: `IDLE — closed with remote CI proof not verified`
-Last update: `2026-09-02T08:34:24Z`
+Scope: `VibeCoding execution overhead policy, adapters, shared contract and governance tests`
+Allowed files: `AGENTS.md`, `CLAUDE.md`, `ai/**`,
+`tests/diagnostics/test_vibecoding_governance.py`; no product/data/runtime changes
+Status: `IDLE — V1.2 policy implementation and focused governance checks complete`
+Last update: `2026-09-02T09:17:45Z`
 
 ## Цель
 
-Защитить Codex/project tooling от работы в неправильном checkout, сохранить
-explicit Git worktree/CI support и остановить подтверждённый legacy backend.
+Сократить повторный governance/environment overhead между последовательными
+задачами, сохранив workspace guard, risk-based checks и безопасность.
 
 ## Границы
 
 Product behavior, frontend UI, API, database schema/data, migrations, mail
-data, secrets, quarantine and unrelated dependencies are not changed. Backend,
-frontend and Playwright acceptance are not run.
+data, secrets, quarantine, dependencies, Workspace Guard behavior and CI
+architecture are not changed. Backend, frontend and Playwright acceptance are
+not run.
 
 ## Acceptance
 
-Canonical and legacy guard cases, explicit worktree cases, control-tooling
-integration, state/documentation validators and Git safety checks pass. The
-confirmed PID 15912 is stopped without touching legacy files.
+The canonical policy defines Session Preflight, Task Preflight and
+Continuation/Action checks; lazy loading, verification budget, Repeat-Error
+Rule, Change Budget, scope-based state updates and parallel-work preparation
+are explicit; the semantic validator and governance tests pass; product code
+is unchanged.
 
 ## Следующий шаг
 
-Local guard/governance acceptance is complete. Commit the closeout state on the
-task branch; push remains an explicit owner action.
+Targeted governance checks and relevant control-plane evidence are complete;
+create the Task-ID commit and report the exact result.
 

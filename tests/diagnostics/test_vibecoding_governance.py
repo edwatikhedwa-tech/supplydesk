@@ -15,6 +15,7 @@ FIXTURE_FILES = (
     "AGENTS.md",
     "CLAUDE.md",
     "PROJECT_MANIFEST.yaml",
+    "ai/AI_CONTRACT.md",
     "ai/VIBECODING_RULES.md",
     "ai/VIBECODING_TOOL_REGISTRY.yaml",
     ".github/workflows/ci.yml",
@@ -119,6 +120,48 @@ class VibeCodingGovernanceTests(unittest.TestCase):
             self.assertIn("POLICY-022 FAIL", result.stdout)
         finally:
             shutil.rmtree(root)
+
+    def test_execution_overhead_policy_is_required(self):
+        root = self.make_fixture()
+        try:
+            path = root / "ai/VIBECODING_RULES.md"
+            text = path.read_text(encoding="utf-8").replace(
+                "## Execution overhead model",
+                "## Removed execution overhead model",
+                1,
+            )
+            path.write_text(text, encoding="utf-8")
+            result = self.run_validator(root)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("POLICY-025 FAIL", result.stdout)
+        finally:
+            shutil.rmtree(root)
+
+    def test_adapter_overhead_preflight_is_required(self):
+        root = self.make_fixture()
+        try:
+            path = root / "CLAUDE.md"
+            text = path.read_text(encoding="utf-8").replace("Task Preflight", "Removed Preflight", 1)
+            path.write_text(text, encoding="utf-8")
+            result = self.run_validator(root)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("POLICY-026 FAIL", result.stdout)
+        finally:
+            shutil.rmtree(root)
+
+    def test_required_overhead_scenarios_are_declared(self):
+        policy = (ROOT / "ai/VIBECODING_RULES.md").read_text(encoding="utf-8")
+        for marker in (
+            "CASE A — NEW SESSION",
+            "CASE B — NEW TASK / SAME SESSION",
+            "CASE C — CONTINUATION / SAME TASK",
+            "CASE D — WORKSPACE CHANGED",
+            "CASE E — RELEVANT INSTRUCTION FILE CHANGED",
+            "CASE F — SMALL PYTHON TASK",
+            "CASE G — MICRO TASK",
+            "CASE H — HIGH RISK",
+        ):
+            self.assertIn(marker, policy)
 
     def test_final_status_case_a_required_pass_other_not_needed(self):
         self.assertEqual(

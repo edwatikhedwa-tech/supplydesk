@@ -4,70 +4,65 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: cc3cd3bea7e4f53a2e25a6ba208d7e94b0859e30
+based_on_commit: 68afe6100685bbcae1c02c8fd2564b01cebcc37a
 ---
 
 # Last Handoff
 
-This handoff records the canonical workspace guard V1 implementation. The
+This handoff records the VibeCoding execution-overhead optimization V1. The
 publication commit is recorded by Git history, not copied into this metadata.
 
 ## Цель
 
-Закрепить техническую защиту от работы Codex/project tooling в неправильном
-checkout, остановить подтверждённый legacy backend и сохранить explicit Git
-worktree/CI support.
+Сократить повторный governance/environment overhead между последовательными
+задачами, сохранив workspace guard, risk-based checks и безопасность.
 
 ## Что изменено
 
-- Added `scripts/assert_workspace.ps1` with canonical default and exact
-  `-ExpectedRoot` override support; it never changes directory, branch or files.
-- Integrated the guard into Doctor, bootstrap/recovery, test setup/runner and
-  safe-runtime start/stop wrappers; CI supplies `$env:GITHUB_WORKSPACE`.
-- Added three focused governance tests covering canonical/default behavior,
-  legacy rejection and explicit worktree acceptance/mismatch.
-- Replaced local-state placeholders with the confirmed canonical and legacy
-  paths; added the durable workspace-boundary decision.
-- Confirmed PID 15912 belonged to the legacy OneDrive checkout and stopped only
-  that process. No legacy file, database, lock or session file was changed.
+- Added VibeCoding policy V1.2 semantics for Session Preflight, Task Preflight
+  and Continuation/Action checks with explicit revalidation exceptions.
+- Added lazy skill/tool loading, verification budgets, Repeat-Error Rule,
+  Change Budget, scope-based state updates, parallel-work preparation and
+  status-noise control.
+- Aligned `AGENTS.md`, `CLAUDE.md`, `ai/AI_CONTRACT.md` and `ai/WORKFLOW.md`;
+  extended the read-only policy validator and focused governance tests.
+- Added a concise task report and durable decision/evidence entries. Product
+  code, runtime, database, mail data and Workspace Guard behavior were not
+  changed.
 
 ## Что проверено
 
-- Canonical workspace guard: `WORKSPACE_GUARD: PASS`, exit `0`.
-- Legacy workspace: `BLOCKED_WRONG_WORKSPACE`, exit `1`.
-- Explicit matching worktree: `WORKSPACE_GUARD: PASS`; wrong explicit root:
-  `BLOCKED_WRONG_WORKSPACE`.
-- Governance tests: `3/3 PASS`.
-- Doctor, bootstrap, test setup, safe-runtime start/stop `Plan` modes passed;
-  no backend/frontend/Playwright process was started.
-- PID 15912 was stopped and was absent on post-stop verification.
+- Workspace Guard: `PASS`, exit `0`.
+- Focused governance tests: `14/14 PASS`.
+- `python ai/tools/validate_vibecoding.py`: `PASS`, `36` tool entries.
+- `git diff --check`: `PASS`; changed-path review found no product, data or
+  runtime path.
 
 ## Что не прошло
 
-Nothing failed in the focused guard/control scope. Backend, frontend and
+Nothing failed in the focused governance scope. Backend, frontend and
 Playwright acceptance were intentionally not run; they are `NOT_NEEDED` for
-this control-only task and are not evidence about product behavior.
+this policy-only task and are not evidence about product behavior.
 
 ## Что не проверено
 
-NOT VERIFIED: remote CI proof for this new revision, live external providers,
-real mail, production database behavior, branch protection and unlisted CI
-tools remain outside this task. The guard tests exercise local PowerShell/Git
-behavior, not remote runner execution.
+NOT VERIFIED: remote CI and branch protection for this policy revision, live
+external providers, real mail and production database behavior. No remote
+publication was requested.
 
 ## Текущее состояние runtime
 
-No canonical or live runtime was left running. The previously confirmed old
-legacy backend PID 15912 is stopped; no test runtime was started in this task.
+No canonical or live runtime was started or left running.
 
 ## Следующий рациональный шаг
 
-Local acceptance and final validators are complete; create the Task-ID commit
-on the isolated branch. Leave push unperformed unless explicitly requested.
+Create the Task-ID commit on the current task branch. Leave push unperformed
+unless explicitly requested.
 
 ## Не повторять
 
 Do not use the legacy OneDrive checkout for development, do not run real mail,
 do not modify protected local data, do not run backend/frontend/Playwright for
 this task, do not force-push, and do not add a second acknowledgement to an
-intermediate message.
+intermediate message. Do not repeat the full Session Preflight for a healthy
+continuation or unrelated task.

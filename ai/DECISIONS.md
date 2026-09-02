@@ -13,6 +13,26 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-010 — Reuse verified session context with cheap task checks
+
+- Decision ID: `DECISION-010`
+- Date: `2026-09-02`
+- Status: `ACTIVE`
+- Context: Sequential agent tasks were repeating full governance and
+  environment discovery even when the workspace and instructions were
+  unchanged.
+- Decision: Run one `SESSION PREFLIGHT` per healthy agent session, a cheap
+  `TASK PREFLIGHT` for each new independent task, and only action-specific
+  checks for a continuation. Revalidate on workspace, Git-root, environment,
+  instruction or context changes. Load skills lazily, apply a change budget,
+  and update state documents only when their facts are affected.
+- Reason: Deterministic safeguards remain in place while avoidable repeated
+  reading and unrelated checks stop consuming task time.
+- Consequences: No persistent session database or orchestration service is
+  introduced. The workspace guard and existing high-risk controls remain
+  mandatory and available.
+- Related task: `TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902`.
+
 ## DECISION-009 — Enforce an explicit workspace boundary
 
 - Decision ID: `DECISION-009`

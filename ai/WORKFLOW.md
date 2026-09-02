@@ -7,12 +7,32 @@ The mandatory lifecycle is:
 Skipping a stage requires an explicit `NOT NEEDED` or `BLOCKED` reason in the
 handoff.
 
+## Preflight levels
+
+The first step is selected by session state, not repeated by every message:
+
+- A new agent session performs `SESSION PREFLIGHT` once: project identity,
+  instructions, policy, relevant state, required environment facts and
+  available tools.
+- A new independent task in a healthy session performs a cheap `TASK
+  PREFLIGHT`: workspace guard, branch, HEAD, status, active-task/conflict,
+  classification and verification profile.
+- A continuation of the current task performs only the next
+  action-specific check.
+
+Revalidate the session only after a workspace or Git-root change, material
+environment change, relevant instruction change, explicit context reset or
+loss of trustworthy session state. The canonical details and exception cases
+are in [`ai/VIBECODING_RULES.md`](VIBECODING_RULES.md).
+
 ## AUDIT
 
-Read the state files and inspect the actual checkout without editing it. Check
-the branch, commit, working tree, relevant files, runtime, commands, tests and
-known constraints. Find the root cause for diagnostic tasks, identify unknowns,
-and list the smallest set of affected files.
+Inspect the actual checkout without editing it. Use the existing Session
+Preflight or cheap Task Preflight according to session state, then check the
+branch, commit, working tree, relevant files, runtime, commands, tests and
+known constraints. Read only the relevant state files when the session context
+is already trusted. Find the root cause for diagnostic tasks, identify
+unknowns, and list the smallest set of affected files.
 
 ## DESIGN DECISION
 

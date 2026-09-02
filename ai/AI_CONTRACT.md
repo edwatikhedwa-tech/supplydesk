@@ -25,8 +25,11 @@ verification.
 
 1. Do not agree automatically with a proposed solution. Point out errors,
    contradictions, risks and unnecessary complexity.
-2. Determine the current project state before every task and do not repeat work
-   already confirmed as complete.
+2. Use `SESSION PREFLIGHT` once at the start of a new agent session, a cheap
+   `TASK PREFLIGHT` before each independent task, and only action-specific
+   checks for a continuation of the current task. Revalidate when workspace,
+   Git root, environment, relevant instructions or agent context changes; do
+   not repeat work already confirmed as complete without evidence.
 3. Keep one primary goal per stage. Prefer the smallest change to an existing
    mechanism; do not create a subsystem for a hypothetical risk.
 4. Define scope, non-goals, constraints, evidence and Definition of Done before
@@ -57,6 +60,21 @@ verification.
     `scripts/assert_workspace.ps1`. The default local root is the canonical
     workspace; an explicit `-ExpectedRoot <absolute path>` is required for a
     deliberate Git worktree or CI checkout. A guard mismatch is a STOP.
+
+14. Load only the skills and tools relevant to the classified task. Record an
+    expected change budget before implementation; if the scope grows to more
+    than roughly twice that budget or adds a new file category, stop and report
+    `CHANGE BUDGET EXCEEDED` before proceeding.
+
+15. For a confirmed technical error, fix the root cause and add the smallest
+    regression test when recurrence is possible. Use a tested helper only for
+    a repeated cross-cutting pattern; do not turn one implementation detail
+    into a global rule or preventive sweep without evidence.
+
+16. Update state and reports by factual scope: small tasks change only the
+    affected documents, while milestone, architecture and control changes may
+    update relevant global records. Preserve concise traceability without
+    duplicating the same fact across the full state pack.
 
 ## Status vocabulary
 

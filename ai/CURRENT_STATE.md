@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: cc3cd3bea7e4f53a2e25a6ba208d7e94b0859e30
+based_on_commit: 68afe6100685bbcae1c02c8fd2564b01cebcc37a
 ---
 
 # Current State
@@ -15,10 +15,10 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-02T08:34:24Z` — canonical workspace guard V1 is implemented on the
-dedicated task branch. The confirmed legacy backend PID 15912 was stopped after
-its process working-directory metadata matched the legacy OneDrive checkout;
-legacy files were not changed.
+`2026-09-02T09:17:45Z` — VibeCoding execution-overhead policy V1.2 is
+implemented on the dedicated task branch. The policy separates one Session
+Preflight from cheap Task Preflight and continuation checks while preserving
+the workspace guard and risk-based controls.
 
 ## Project
 
@@ -114,9 +114,13 @@ legacy files were not changed.
   tracked in `.github/workflows/ci.yml`; classifier mapping is in
   `scripts/ci/change_groups.json`.
 - CI Performance Fix V1 adds risk-based FAST/FOCUSED/FULL/PERIODIC workflow
- routing, a real-route one-viewport Browser Smoke, concurrency cancellation,
+  routing, a real-route one-viewport Browser Smoke, concurrency cancellation,
   explicit job budgets and a CI Summary. Normal focused pushes do not start
   Backend Full or Browser Full.
+- VibeCoding Control Policy V1.2 adds Session/Task/Continuation preflight
+  levels, lazy skill loading, verification budgets, Repeat-Error Rule, Change
+  Budget, scope-based state updates, parallel-work preparation and status-noise
+  control. Its validator checks policy semantics rather than agent cognition.
 - Workspace Guard V1 adds `scripts/assert_workspace.ps1`, which compares the
   real Git root with the canonical local default or an explicit absolute
   `-ExpectedRoot` for CI and intentional worktrees without changing directory,
@@ -235,6 +239,8 @@ on this task's dedicated branch:
   start/stop and the guard passed without starting backend/frontend/Playwright.
 - Confirmed old backend PID `15912` was stopped; the process was verified as
   absent afterwards and no legacy checkout file was changed.
+- V1.2 focused governance checks: `14` tests passed and
+  `python ai/tools/validate_vibecoding.py` passed with `36` registered tools.
 
 ## Not verified
 
@@ -252,6 +258,8 @@ on this task's dedicated branch:
 - Remote CI proof for this new guard/workflow revision was not run in this
   local-only iteration; CI receives an explicit checkout-root override in the
   committed workflow.
+- Remote CI proof for the V1.2 execution-overhead policy revision is not
+  verified; this task does not publish the branch unless explicitly requested.
 
 ## Blockers
 
@@ -282,10 +290,10 @@ on this task's dedicated branch:
 
 ## Current next step
 
-`TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902` is complete locally. The final
-report records the guard cases, control-tool integration, PID stop evidence and
-unverified remote CI proof. Do not repeat forensic cleanup or start product
-acceptance in this task.
+`TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902` is complete in
+the local control-plane scope. Its focused governance evidence is recorded in
+the task report; product acceptance is `NOT_NEEDED`. Do not repeat forensic
+cleanup or start product acceptance.
 
 ## Canonical references
 
@@ -302,6 +310,7 @@ acceptance in this task.
 - Safe cleanup Batch 2 report: [`ai/reports/TASK-SAFE-CLEANUP-BATCH2-20260901-report.md`](reports/TASK-SAFE-CLEANUP-BATCH2-20260901-report.md).
 - CI performance fix report: [`ai/reports/TASK-CI-PERFORMANCE-FIX-V1-20260902-report.md`](reports/TASK-CI-PERFORMANCE-FIX-V1-20260902-report.md).
 - Workspace guard report: [`ai/reports/TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902-report.md`](reports/TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902-report.md).
+- Execution-overhead policy report: [`ai/reports/TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902-report.md`](reports/TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902-report.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).

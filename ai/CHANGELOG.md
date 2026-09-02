@@ -3,6 +3,17 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-02T09:14:44Z — VIBECODING EXECUTION OVERHEAD OPTIMIZATION V1 — TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902
+
+- Added canonical VibeCoding V1.2 semantics for Session Preflight, Task
+  Preflight and Continuation/Action checks with explicit revalidation reasons.
+- Added lazy skill loading, verification budgets, Repeat-Error Rule, Change
+  Budget, scope-based state updates, parallel-work preparation and status-noise
+  control; aligned the shared AI contract, adapters and workflow.
+- Added semantic validator markers and focused governance coverage; `14` tests
+  and the VibeCoding validator passed. No product/runtime/database behavior
+  changed; backend/frontend/Playwright were not needed.
+
 ## 2026-09-02T05:35:37Z — VIBECODING FINAL STATUS SEMANTICS FIX — TASK-VIBECODING-FINAL-STATUS-SEMANTICS-FIX-20260902
 
 - Added canonical final-status semantics: `NOT_NEEDED` is not a limitation;

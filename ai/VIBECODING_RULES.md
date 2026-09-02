@@ -3,7 +3,7 @@ document_id: VIBECODING-001
 status: CURRENT
 canonical: true
 owner: project-control
-version: 1.1
+version: 1.2
 last_corrected: 2026-09-02
 based_on_commit: f13dad6dc2461ef6dc50242f7fc075895f2a4603
 ---
@@ -51,6 +51,136 @@ the agent must use this fallback exactly once in the final response:
 `VIBECODING POLICY: NOT VERIFIED`
 
 and must not modify the project until the ambiguity is resolved.
+
+## Execution overhead model
+
+The default execution model is:
+
+`SESSION PREFLIGHT → TASK PREFLIGHT → ACTION-SPECIFIC CHECKS`
+
+It replaces repeating a full project preflight for every task or message. The
+agent reuses verified context while preserving the cheap workspace boundary and
+the checks required by the actual change.
+
+### Session preflight
+
+`SESSION PREFLIGHT` runs once at the start of a new agent or Codex session. It
+loads the project instructions, canonical project identity, this VibeCoding
+policy, the manifest, relevant current state, environment facts that are
+actually required (including Git, PowerShell, Python and Node when applicable),
+and the available project tools and skills. A successful session preflight is
+reused for later tasks in the same healthy session; no persistent session
+database or cache service is created.
+
+Repeat session preflight only when the user changes workspace, the Git root
+changes, the environment materially changes, project instructions change, the
+agent context is explicitly reset or restarted, or the existing session state
+cannot be trusted.
+
+### Task preflight
+
+`TASK PREFLIGHT` runs before each new independent task and stays short. It
+checks the workspace guard, current branch, HEAD, working-tree status, active
+task or conflict, a brief task classification and the required verification
+profile. It does not reread the full governance/context pack when that context
+was already loaded in this session and there is no evidence that it changed.
+
+### Continuation / action level
+
+`CONTINUATION / ACTION LEVEL` applies when the user says continue, confirms a
+choice, asks to fix the current finding, clarifies the current task or answers
+the agent's question. These messages do not create a new task automatically.
+Run only the check needed for the next action, such as a targeted browser
+check for a UI change, migration safety for a database change, or remote and
+staging checks for a push. Do not repeat session preflight, task preflight,
+full instruction reading or full environment discovery without a revalidation
+reason.
+
+## Lazy skill and tool loading
+
+Load skills and tools only for the classified task and its selected checks. A
+Python backend task does not load unrelated browser or mail skills; a frontend
+task does not load provider skills; a governance task does not load product
+runtime skills. A relevant skill may be loaded later when the task actually
+requires it. Never load the complete skill library speculatively.
+
+## Verification budget
+
+Select checks from the real change set and risk. A small or micro change uses
+targeted tests, the relevant validator, `git diff --check`, and a security
+check only when sensitive paths changed. Browser checks are needed only for UI
+changes, and backend acceptance only for changed backend behavior. A medium
+change adds the nearest relevant integration check. High-risk or release work
+may use the existing broad controls. Do not run full project acceptance merely
+for ceremony.
+
+`NOT_NEEDED` means a check is irrelevant to the selected task and is not a
+limitation. `NOT_VERIFIED` means a useful or required check lacks evidence.
+
+## Repeat-error rule
+
+When a technical error is confirmed:
+
+1. Fix the root cause.
+2. Add the smallest regression test when the error can recur.
+3. If the same pattern appears in several places, consider a tested helper.
+4. Do not put implementation-specific detail into global instructions by
+   default.
+5. Add a global governance rule only for a cross-cutting or high-risk problem.
+6. Do not broaden the current task into preventive repair of every similar
+   place without evidence.
+
+## Change budget
+
+Before implementation, record `EXPECTED CHANGE AREAS` as a short list of
+categories such as scripts, one validator, one test or one governance
+document. If the actual scope grows to more than roughly twice the expected
+scope or introduces a new file category, stop and report:
+
+`CHANGE BUDGET EXCEEDED`
+
+Then state whether the extra work is necessary for the current goal or is a
+separate task. This is a review threshold, not a rigid file-count limit.
+
+## Scope-based state updates
+
+For a `MICRO / SMALL TASK`, update only state or documentation whose factual
+content changed. Do not rewrite `CURRENT_STATE.md`, `LAST_HANDOFF.md`,
+`DECISIONS.md` or the full state pack merely to record a small edit. A
+`MILESTONE / ARCHITECTURE / CONTROL CHANGE` may update the relevant global
+state and durable decision records. A task report should be brief unless
+traceability or security requires more evidence. Preserve an adequate audit
+trail without duplicating the same fact across five to seven files.
+
+## Parallel-work preparation
+
+The canonical workspace is the default for ordinary tasks. An explicit Git
+worktree may be assigned for an isolated or parallel task. Each parallel task
+performs its own cheap Task Preflight, while Session Preflight belongs to the
+specific agent session and worktree. Do not create worktrees or a parallel
+orchestration system as part of this policy.
+
+## Status-noise control
+
+Intermediate responses contain only useful progress, decisions, failures or
+next-action evidence. Do not repeat acknowledgement, rule-read, workspace or
+generic continuation messages after every tool call. The VibeCoding
+acknowledgement remains exactly once in the final response and never in an
+intermediate response.
+
+## Required overhead-policy scenarios
+
+The validator checks these policy semantics without attempting to simulate
+agent memory or cognition:
+
+- `CASE A — NEW SESSION`: full Session Preflight is required.
+- `CASE B — NEW TASK / SAME SESSION`: only Task Preflight is required.
+- `CASE C — CONTINUATION / SAME TASK`: only the next action check is required.
+- `CASE D — WORKSPACE CHANGED`: session and environment revalidation is required.
+- `CASE E — RELEVANT INSTRUCTION FILE CHANGED`: reread the relevant instructions.
+- `CASE F — SMALL PYTHON TASK`: unrelated frontend, mail and browser skills are not mandatory.
+- `CASE G — MICRO TASK`: the full global state pack is not mandatory unless project state changed.
+- `CASE H — HIGH RISK`: existing full controls remain available.
 
 ## Scope and safety boundary
 

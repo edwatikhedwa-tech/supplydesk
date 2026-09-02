@@ -52,6 +52,33 @@ FINAL_STATUS_MARKERS = (
     "PASS + required NOT_VERIFIED => PASS_WITH_LIMITATIONS",
     "required FAIL => FAIL",
 )
+OVERHEAD_POLICY_MARKERS = (
+    "## Execution overhead model",
+    "`SESSION PREFLIGHT`",
+    "`TASK PREFLIGHT`",
+    "`CONTINUATION / ACTION LEVEL`",
+    "## Lazy skill and tool loading",
+    "## Verification budget",
+    "## Repeat-error rule",
+    "## Change budget",
+    "`CHANGE BUDGET EXCEEDED`",
+    "## Scope-based state updates",
+    "## Parallel-work preparation",
+    "## Status-noise control",
+)
+OVERHEAD_SCENARIO_MARKERS = tuple(
+    f"`CASE {letter} — {label}`"
+    for letter, label in (
+        ("A", "NEW SESSION"),
+        ("B", "NEW TASK / SAME SESSION"),
+        ("C", "CONTINUATION / SAME TASK"),
+        ("D", "WORKSPACE CHANGED"),
+        ("E", "RELEVANT INSTRUCTION FILE CHANGED"),
+        ("F", "SMALL PYTHON TASK"),
+        ("G", "MICRO TASK"),
+        ("H", "HIGH RISK"),
+    )
+)
 REGISTRY_ENTRY_RE = re.compile(r"^\s{2}-\s+id:\s*([^\s#]+)\s*$", re.MULTILINE)
 REGISTRY_FIELD_RE = re.compile(r"^\s{4}([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$", re.MULTILINE)
 
@@ -219,6 +246,12 @@ def validate(root: Path) -> list[str]:
         ):
             if phrase not in policy_text:
                 errors.append(f"POLICY-019 FAIL: performance policy phrase is missing: {phrase}")
+        for marker in OVERHEAD_POLICY_MARKERS:
+            if marker not in policy_text:
+                errors.append(f"POLICY-025 FAIL: execution-overhead policy marker is missing: {marker}")
+        for marker in OVERHEAD_SCENARIO_MARKERS:
+            if marker not in policy_text:
+                errors.append(f"POLICY-025 FAIL: execution-overhead scenario is missing: {marker}")
 
     for instruction in (root / "AGENTS.md", root / "CLAUDE.md"):
         if not instruction.is_file():
@@ -234,6 +267,18 @@ def validate(root: Path) -> list[str]:
             errors.append(f"POLICY-022 FAIL: {instruction.name} still requires acknowledgement as a response prefix")
         if ACK_LITERAL_RE.search(text):
             errors.append(f"POLICY-023 FAIL: {instruction.name} contains a hardcoded acknowledgement date")
+        for marker in ("Task Preflight", "action-specific check", "new session"):
+            if marker.lower() not in lowered:
+                errors.append(f"POLICY-026 FAIL: {instruction.name} is missing overhead-preflight marker: {marker}")
+
+    contract = root / "ai/AI_CONTRACT.md"
+    if not contract.is_file():
+        errors.append("POLICY-027 FAIL: shared AI contract is missing")
+    else:
+        contract_text = read_text(contract).lower()
+        for marker in ("session preflight", "task preflight", "action-specific", "change budget"):
+            if marker not in contract_text:
+                errors.append(f"POLICY-027 FAIL: ai/AI_CONTRACT.md is missing overhead marker: {marker}")
 
     manifest = root / "PROJECT_MANIFEST.yaml"
     if not manifest.is_file():

@@ -6,7 +6,7 @@ entrypoint and links to the state documents.
 
 ## Before work
 
-Read, in this order:
+At the start of a new agent session, read, in this order:
 
 1. [`AGENTS.md`](AGENTS.md) and the shared rules in [`ai/AI_CONTRACT.md`](ai/AI_CONTRACT.md)
 2. [`PROJECT_MANIFEST.yaml`](PROJECT_MANIFEST.yaml) — repository map and protected boundaries
@@ -21,6 +21,21 @@ Verify the current branch, commit, working tree, URL, port, database and build
 before changing anything. If the task is not sufficiently defined, start with
 an AUDIT that makes no changes. Do not trust a previous agent's report without
 checking its primary evidence.
+
+## Session, task and continuation preflight
+
+At the start of a new agent/Codex session, perform the full bootstrap listed
+above once. In a healthy session, reuse that verified context unless the
+workspace, Git root, environment, relevant instructions or agent context
+changes. Before each new independent task, run only the cheap Task Preflight:
+workspace guard, branch, HEAD, working-tree status, active-task/conflict check,
+brief classification and required verification profile.
+
+Messages that continue the current task do not start a new task automatically.
+For those messages, perform only the action-specific check required next. Do
+not repeat the full instruction pack or environment discovery without a
+revalidation reason. The canonical policy in `ai/VIBECODING_RULES.md` defines
+the three levels and the required exception cases.
 
 ## Workspace guard
 
@@ -45,10 +60,12 @@ Recovery or read-only audit of that root requires an explicit task instruction.
 
 ## VibeCoding bootstrap (mandatory)
 
-Before any project task, read `PROJECT_MANIFEST.yaml`,
+At the start of a new session, read `PROJECT_MANIFEST.yaml`,
 `ai/CURRENT_STATE.md`, `ai/VIBECODING_RULES.md` and
 `ai/VIBECODING_TOOL_REGISTRY.yaml`; read `last_corrected` from the canonical
-policy, classify the task and select only the required checks. Emit the
+policy. Reuse these files for later tasks in the same healthy session unless
+the policy's revalidation exceptions apply. For each new task, classify it and
+select only the required checks. Emit the
 VibeCoding acknowledgement exactly once in the final response after the task
 is completed or stopped; never emit it in intermediate updates. If the policy
 is missing, ambiguous or its date is unreadable, use
@@ -63,15 +80,17 @@ not modify the project. Detailed rules live only in
   settings for a documentation/state task.
 - Do not fix unrelated findings; record them in
   [`ai/DEFERRED_FINDINGS.md`](ai/DEFERRED_FINDINGS.md).
-- Update [`ai/CHANGELOG.md`](ai/CHANGELOG.md) after each substantial action,
-  [`ai/INTERACTION_LOG.md`](ai/INTERACTION_LOG.md) after each interaction, and
-  [`ai/CURRENT_STATE.md`](ai/CURRENT_STATE.md) when project state changes.
+- For substantial work, append [`ai/CHANGELOG.md`](ai/CHANGELOG.md) and
+  [`ai/INTERACTION_LOG.md`](ai/INTERACTION_LOG.md); update
+  [`ai/CURRENT_STATE.md`](ai/CURRENT_STATE.md) when project facts change.
+  For micro/small tasks, update only documents whose factual content changed.
 - Keep documentation current in the same task as the change it describes:
   [`ai/CURRENT_STATE.md`](ai/CURRENT_STATE.md) is the only current-state source;
   `docs/**` owns product documentation, while `ai/**` owns operational control;
   dated snapshots must be marked `HISTORICAL — NOT CURRENT` and link back to it.
 - At stage close, update [`ai/LAST_HANDOFF.md`](ai/LAST_HANDOFF.md), save a
-  report under [`ai/reports/`](ai/reports/), and run
+  concise report under [`ai/reports/`](ai/reports/) when traceability requires
+  it, and run
   `python ai/tools/validate_state.py`.
 - Create a commit containing the Task ID when the iteration is complete. Never
   force-push or merge into `main`/`master` automatically. Report the exact

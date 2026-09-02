@@ -6,7 +6,7 @@ This file is the Claude Code adapter. The shared project contract is in
 [`ai/CURRENT_STATE.md`](ai/CURRENT_STATE.md) and
 [`ai/LAST_HANDOFF.md`](ai/LAST_HANDOFF.md).
 
-Before implementation, read those files plus
+At the start of a new session, read those files plus
 [`ai/DECISIONS.md`](ai/DECISIONS.md),
 [`ai/DEFERRED_FINDINGS.md`](ai/DEFERRED_FINDINGS.md) and
 [`ai/ACTIVE_TASK.md`](ai/ACTIVE_TASK.md). Use AUDIT, DESIGN DECISION,
@@ -15,9 +15,21 @@ cause and the allowed scope are understood. Do not trust a self-report from a
 previous agent without checking evidence. Do not expand scope or repair
 unrelated findings.
 
-Update the state files and append-only chronology during the iteration. Create
-a Task-ID commit after a completed iteration when possible. Always disclose
-NOT VERIFIED, FAIL and BLOCKED, and report commit, branch and push status. Do
+At the start of a new agent session, perform the full bootstrap once. For a
+new independent task in the same healthy session, use the short Task Preflight:
+workspace guard, branch, HEAD, working-tree status, active-task/conflict,
+classification and verification profile. A continuation of the current task
+uses only the next action-specific check and does not repeat the full
+bootstrap. Revalidate only when the workspace, Git root, environment,
+relevant instructions or agent context changed. The canonical details are in
+`ai/VIBECODING_RULES.md`.
+
+Update only the state files whose factual content changed; a milestone,
+architecture or control change may update the relevant global state and
+decision records. Append chronology for substantial work, not every
+continuation message. Create a Task-ID commit after a completed iteration when
+possible. Always disclose NOT VERIFIED, FAIL and BLOCKED, and report commit,
+branch and push status. Do
 not claim that ChatGPT Project or Claude Project has repository access unless
 the relevant files were actually connected or read.
 
@@ -44,10 +56,12 @@ Recovery or read-only audit of that root requires an explicit task instruction.
 
 ## VibeCoding bootstrap (mandatory)
 
-Before any project task, read `PROJECT_MANIFEST.yaml`,
+At the start of a new session, read `PROJECT_MANIFEST.yaml`,
 `ai/CURRENT_STATE.md`, `ai/VIBECODING_RULES.md` and
 `ai/VIBECODING_TOOL_REGISTRY.yaml`; read `last_corrected` from the canonical
-policy, classify the task and select only the required checks. Emit the
+policy. Reuse them for later tasks in the same healthy session unless a
+revalidation exception applies. For each new task, classify it and select only
+the required checks. Emit the
 VibeCoding acknowledgement exactly once in the final response after the task
 is completed or stopped; never emit it in intermediate updates. If the policy
 is missing, ambiguous or its date is unreadable, use
