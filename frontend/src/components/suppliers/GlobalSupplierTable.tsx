@@ -5,7 +5,7 @@ import { RelationshipBadge, issueReasonLabels } from './StatusBits';
 import { AgeCell, CheckoLinkCell, ProfitCell, RegistryStatusCell, RevenueCell } from './RegistryFinanceRow';
 import type { GlobalSupplierSummary } from '@/lib/types';
 
-export type GlobalSupplierTableView = 'all' | 'blacklist';
+type GlobalSupplierTableView = 'all' | 'blacklist';
 
 interface GlobalSupplierTableProps {
   view: GlobalSupplierTableView;

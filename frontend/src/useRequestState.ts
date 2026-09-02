@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
-import type { RequestDetail, Supplier, SupplierDeliveryCounts, SupplierDeliveryStatus, SupplierMailStatus } from '@/lib/types';
+import type { RequestDetail, Supplier, SupplierDeliveryCounts, SupplierDeliveryStatus } from '@/lib/types';
 
 export type FilterKey = 'all' | 'with_contacts' | 'without_contacts' | 'not_sent' | 'selected' | 'queued' | 'accepted' | 'waiting' | 'answered' | 'error' | 'bounce' | 'delivery_unknown';
 export const FILTERS: { key: FilterKey; label: string }[] = [
@@ -26,15 +26,6 @@ export const SORTS: { key: SortKey; label: string }[] = [
 ];
 
 const STATUS_ORDER: Record<SupplierDeliveryStatus, number> = { bounced: 0, failed: 1, delivery_unknown: 2, queued: 3, accepted: 4, cancelled: 5, not_sent: 6, mixed: 7 };
-
-export const STATUS_META: Record<SupplierMailStatus, { label: string; icon: string; dot: string; badge: string }> = {
-  not_sent: { label: 'Ещё не отправляли', icon: '○', dot: 'text-ink-400', badge: 'bg-ink-100 text-ink-600 ring-ink-200' },
-  sent: { label: 'Отправлено', icon: '↗', dot: 'text-accent-600', badge: 'bg-accent-50 text-accent-700 ring-accent-200' },
-  waiting: { label: 'Ждём ответа', icon: '◷', dot: 'text-amber-600', badge: 'bg-amber-50 text-amber-700 ring-amber-200' },
-  answered: { label: 'Получен ответ', icon: '●', dot: 'text-emerald-600', badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
-  error: { label: 'Ошибка отправки', icon: '!', dot: 'text-rose-600', badge: 'bg-rose-50 text-rose-700 ring-rose-200' },
-  delivery_unknown: { label: 'Статус неизвестен', icon: '?', dot: 'text-orange-600', badge: 'bg-orange-50 text-orange-800 ring-orange-200' },
-};
 
 export const DELIVERY_META: Record<Exclude<SupplierDeliveryStatus, 'mixed'>, { label: string; icon: string; badge: string; title?: string }> = {
   not_sent: { label: 'Ещё не отправляли', icon: '○', badge: 'bg-ink-100 text-ink-600 ring-ink-200' },

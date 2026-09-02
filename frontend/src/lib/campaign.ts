@@ -1,6 +1,6 @@
 import type { CampaignStatus } from '@/lib/types';
 
-export const CAMPAIGN_STATUS_META: Record<string, { label: string; tone: 'blue' | 'amber' | 'rose' | 'green' | 'ink'; description: string }> = {
+const CAMPAIGN_STATUS_META: Record<string, { label: string; tone: 'blue' | 'amber' | 'rose' | 'green' | 'ink'; description: string }> = {
   active: { label: 'Выполняется', tone: 'blue', description: 'SupplyDesk постепенно обрабатывает разрешённые письма.' },
   paused_for_review: { label: 'Ожидает подтверждения', tone: 'amber', description: 'Этап завершён — проверьте результат перед продолжением.' },
   paused_for_health: { label: 'Приостановлена из-за проблем', tone: 'rose', description: 'Система остановила новые отправки после сигнала о качестве или политике провайдера.' },
@@ -8,7 +8,7 @@ export const CAMPAIGN_STATUS_META: Record<string, { label: string; tone: 'blue' 
   completed: { label: 'Завершена', tone: 'green', description: 'Для этой кампании больше нет ожидающих писем.' },
 };
 
-export const CAMPAIGN_PAUSE_REASONS: Record<string, string> = {
+const CAMPAIGN_PAUSE_REASONS: Record<string, string> = {
   stage_review: 'Этап завершён и ждёт вашего подтверждения.',
   provider_spam_or_policy_rejection: 'Провайдер сообщил об ограничении политики или подозрении на нежелательную рассылку.',
   hard_bounce_detected: 'Обнаружен постоянный отказ по адресу поставщика.',

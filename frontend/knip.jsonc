@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "lighthouserc.cjs",
+    "playwright.live-email.config.ts"
+  ],
+  "ignore": [
+    "playwright.real-email.config.ts"
+  ]
+}

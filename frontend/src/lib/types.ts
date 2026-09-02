@@ -1,6 +1,6 @@
-export type SupplierMailStatus = 'not_sent' | 'sent' | 'waiting' | 'answered' | 'error' | 'delivery_unknown';
+type SupplierMailStatus = 'not_sent' | 'sent' | 'waiting' | 'answered' | 'error' | 'delivery_unknown';
 export type SupplierDeliveryStatus = 'not_sent' | 'queued' | 'accepted' | 'failed' | 'delivery_unknown' | 'bounced' | 'cancelled' | 'mixed';
-export type SupplierResponseStatus = 'none' | 'waiting' | 'answered';
+type SupplierResponseStatus = 'none' | 'waiting' | 'answered';
 
 export interface SupplierDeliveryCounts {
   not_sent: number;
@@ -12,7 +12,7 @@ export interface SupplierDeliveryCounts {
   cancelled: number;
 }
 
-export interface SupplierContact {
+interface SupplierContact {
   supplier_id: number;
   email: string;
   host: string;
@@ -110,7 +110,7 @@ export interface RequestListItem {
   mail_metrics?: RequestMailMetrics;
 }
 
-export interface RequestPosition {
+interface RequestPosition {
   id: number;
   request_id: number;
   position_key: string;
@@ -126,7 +126,7 @@ export interface RequestDetail {
   mail_metrics?: RequestMailMetrics;
 }
 
-export interface RequestMailMetrics {
+interface RequestMailMetrics {
   outbound_total: number;
   queued: number;
   /** Historical count of SMTP-accepted messages; it may include later bounces. */
@@ -191,7 +191,7 @@ export interface ThreadSummary {
   manual_inbox_id?: number | null;
 }
 
-export type MailDirection = 'outbound' | 'inbound';
+type MailDirection = 'outbound' | 'inbound';
 
 export interface MailMessage {
   id: number;
@@ -252,8 +252,8 @@ export interface MailAccount {
 }
 
 export type CampaignStatus = 'active' | 'paused_for_review' | 'paused_for_health' | 'stopped' | 'completed';
-export type PreflightStatus = 'PASS' | 'WARNING' | 'BLOCK';
-export type ExclusionReason =
+type PreflightStatus = 'PASS' | 'WARNING' | 'BLOCK';
+type ExclusionReason =
   | 'duplicate'
   | 'invalid_email'
   | 'suppressed'
@@ -289,36 +289,36 @@ export interface PreviewTarget {
   personalization_level: number;
 }
 
-export interface RolloutConfig {
+interface RolloutConfig {
   stage_1: number;
   stage_2: number;
   stage_3: number;
   manual_stage_approval: boolean;
 }
 
-export interface PreviewContract {
+interface PreviewContract {
   frozen: boolean;
   renderer: string;
   snapshot_frozen_on: string;
   rerun_if_source_data_changed: boolean;
 }
 
-export interface EstimatedDuration {
+interface EstimatedDuration {
   minimum: number;
   average: number;
   maximum: number;
 }
 
-export interface CampaignLimits {
+interface CampaignLimits {
   max_recipients: number;
 }
 
-export interface AccountBudget {
+interface AccountBudget {
   max_per_hour: number;
   max_per_day: number;
 }
 
-export interface PacingMetadata {
+interface PacingMetadata {
   min_interval_seconds: number;
   max_interval_seconds: number;
 }
@@ -362,7 +362,7 @@ export interface PreflightResult {
   attachment_error?: string;
 }
 
-export interface CampaignHealth {
+interface CampaignHealth {
   permanent_failure_rate: number;
   transient_failure_rate: number;
   unknown_rate: number;
@@ -370,7 +370,7 @@ export interface CampaignHealth {
   hard_bounces: number;
 }
 
-export interface CampaignExcludedTarget {
+interface CampaignExcludedTarget {
   email: string;
   supplier_id: number | null;
   supplier_name?: string | null;
@@ -575,7 +575,7 @@ export interface InboxMessage {
   has_remote_images?: boolean;
 }
 
-export interface InboxReply {
+interface InboxReply {
   id: number;
   from_email: string;
   to_email: string;
@@ -662,7 +662,7 @@ export interface GlobalSupplierSummary {
   risks: string[] | null;
 }
 
-export interface GlobalSupplierHistoryEntry {
+interface GlobalSupplierHistoryEntry {
   request_id: number;
   supplier_id: number;
   request_title: string;
@@ -671,7 +671,7 @@ export interface GlobalSupplierHistoryEntry {
   rating: number | null;
 }
 
-export interface GlobalSupplierIssue {
+interface GlobalSupplierIssue {
   reason: string;
   comment: string;
   correct_inn: string | null;

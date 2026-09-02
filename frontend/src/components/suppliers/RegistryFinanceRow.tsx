@@ -3,7 +3,7 @@ import { formatFullDate, pluralize } from '@/lib/utils';
 import type { GlobalSupplierFinances, GlobalSupplierRegistry } from '@/lib/types';
 import checkoIcon from '@/assets/checko-icon.png';
 
-export function companyAgeYears(registeredAt: string): number | null {
+function companyAgeYears(registeredAt: string): number | null {
   const parsed = Date.parse(registeredAt);
   if (Number.isNaN(parsed)) return null;
   const years = (Date.now() - parsed) / (365.25 * 24 * 60 * 60 * 1000);
@@ -18,7 +18,7 @@ function pluralYears(n: number): string {
  * live 26.08.2026: /company/{ОГРН} → 200, /entrepreneur/{ОГРНИП} → 200, and
  * /company/{ОГРНИП} → 404. An ОГРНИП is 15 digits, an ОГРН 13, so the number
  * itself says which page to open — no extra field needed from the API. */
-export const checkoProfileUrl = (ogrn: string) =>
+const checkoProfileUrl = (ogrn: string) =>
   `https://checko.ru/${ogrn.replace(/\D/g, '').length === 15 ? 'entrepreneur' : 'company'}/${ogrn}`;
 
 function formatRegDate(iso: string): string {
@@ -54,7 +54,7 @@ function compactRegistryStatus(status: string): string {
  * condition as an amber warning. Inactive records have their own explicit
  * red label below.
  */
-export function registryNeedsAttention(
+function registryNeedsAttention(
   registry: GlobalSupplierRegistry | null | undefined,
   risks?: string[] | null,
 ): boolean {

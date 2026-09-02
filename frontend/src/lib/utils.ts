@@ -108,7 +108,7 @@ const LEGAL_FORM_ABBREVIATIONS: [RegExp, string][] = [
 /** "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ "АТЛАНТ"" -> "ООО "АТЛАНТ"" — full
  * form is still the real legal name, so keep it available for a `title` tooltip
  * rather than throwing it away. */
-export function shortCompanyName(name: string): string {
+function shortCompanyName(name: string): string {
   const trimmed = name.trim();
   for (const [pattern, short] of LEGAL_FORM_ABBREVIATIONS) {
     if (pattern.test(trimmed)) return trimmed.replace(pattern, short);
@@ -118,7 +118,7 @@ export function shortCompanyName(name: string): string {
 
 /** A 12-digit ИНН belongs to a person — a sole trader (ИП) or a self-employed
  * individual. Organisations always have 10. */
-export function isSoleTrader(inn: string): boolean {
+function isSoleTrader(inn: string): boolean {
   return inn.replace(/\D/g, '').length === 12;
 }
 
