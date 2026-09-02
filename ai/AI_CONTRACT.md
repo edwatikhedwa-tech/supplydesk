@@ -76,6 +76,77 @@ verification.
     update relevant global records. Preserve concise traceability without
     duplicating the same fact across the full state pack.
 
+## Browser tool selection and verification
+
+- `BROWSER_TOOL_SELECTION`: use `agent-browser` as the primary local tool for
+  exploratory UI inspection, interactive defect reproduction, DOM/accessibility
+  snapshots, screenshots, targeted network/console/browser-error inspection,
+  quick exploratory verification and local human-assisted authentication.
+  Keep Playwright as the deterministic regression and acceptance path for
+  repeatable assertions, viewport matrices, recurrence protection and CI browser
+  gates.
+- `AGENT_BROWSER_WORKFLOW`: verify the executable, version, basic help, target
+  URL and a named session; open the target; take a semantic snapshot; reproduce
+  the issue; inspect only relevant network, console and browser errors; capture
+  a screenshot when useful; state the evidence-backed hypothesis; then run the
+  smallest focused exploratory check after a change. Use current semantic refs,
+  not stale refs or raw telemetry dumps. The installed agent-browser skill is a
+  discovery skill: load it with `agent-browser skills get core --full` when
+  needed; load `dogfood` only for systematic QA and never load every skill. Do
+  not copy the full runtime guide into repository instructions.
+- Do not replace existing Playwright coverage with agent-browser or create a
+  temporary Playwright spec solely for investigation. Add a permanent
+  Playwright regression only when recurrence risk justifies it.
+- `HUMAN_AUTH_HANDOFF`: LOCAL ONLY. Use a dedicated headed agent-browser
+  session; the owner authenticates manually and never pastes secrets into the
+  agent or shell. Continue in the same session only after the owner says it is
+  ready. Keep auth state ignored and outside the repository, never use everyday
+  personal Chrome, and never make remote CI wait for owner login.
+- `VERIFICATION_BUDGET`: `FAST <= 15m`, `NORMAL <= 25m` and
+  `BROWSER_HEAVY/FULL <= 40m`. These are warning thresholds, not permission to
+  skip a required check. If a run materially exceeds its budget, record
+  `TIME_BUDGET_EXCEEDED: YES`, classify the failure domain, choose the smallest
+  next experiment and do not start a broad loop.
+- `NO_REPEATED_FULL_WITHOUT_NEW_EVIDENCE`: after a FULL or Browser Full FAIL,
+  do not repeat the same expensive check unless relevant code/config changed,
+  the invalid environment was corrected, the prior run was invalid, new direct
+  evidence exists, or the owner explicitly requests it. Before any allowed
+  rerun record `NEW_EVIDENCE_FOR_RERUN: ...`; without new evidence, do not rerun.
+- `FAILURE_DOMAIN` is one of `PRODUCT`, `TEST_IMPLEMENTATION`, `CI_INFRA`,
+  `LOCAL_ENVIRONMENT`, `EXTERNAL_DEPENDENCY` or `UNKNOWN`. Do not call a product
+  defect CI flakiness without direct evidence.
+
+## Agent-process review and instruction maintenance
+
+- `SKILL_DOCTOR`: `SKILL_DOCTOR_MODE: PERIODIC_NON_BLOCKING`. It reviews
+  completed Codex, Claude or Warp agent sessions after roughly 10–15 sessions,
+  recurring excessive iterations, false passes, unnecessary checks, missed
+  skill activation, skill growth or an owner request—not on every task,
+  pre-commit, push, FAST, acceptance or release check. Prefer
+  current-repository conversations.
+- Inspect the current official CLI with
+  `npx skills@latest add warpdotdev/common-skills --list` and its help before
+  installation; install only the named `skill-doctor` skill (never all Warp
+  skills). If CLI syntax differs, a duplicate layout exists, the Codex target
+  is unsupported or the source is unavailable, record `SKILL_DOCTOR: BLOCKED`
+  with the exact reason. This task does not authorize history analysis.
+- `SKILL_DOCTOR_SAFETY`: keep transcripts local and never upload them; write
+  reports and proposed edits outside the repository; never automatically edit a
+  real `SKILL.md` during analysis. The required order is
+  analyze → evidence → proposed diff → explicit REVIEW/ACCEPT/REJECT → approved
+  edit. `analyze → edit real skill → commit` is forbidden.
+- `INSTRUCTION_COMPACTION_RULE`: before adding a rule, find its owning surface
+  and overlap; replace, merge, shorten or delete obsolete text instead of
+  appending an addendum. Record `OWNING_SURFACE`,
+  `EXISTING_RULE_REPLACED_OR_EXTENDED` and
+  `NET_INSTRUCTION_GROWTH: REDUCED/NONE/SMALL`. Keep adapters as short pointers
+  and do not duplicate canonical behavior.
+- `NO_REPORT_ONLY_CLOSEOUT_COMMIT`: do not create a second commit only for CI
+  or report wording. A minimal state-only closeout commit is allowed only when
+  the tracked `ACTIVE_TASK.md` remains an `IN_PROGRESS` blocking sentinel;
+  otherwise include required state/report evidence in the single
+  implementation/configuration commit.
+
 ## Architecture placement and component lifecycle
 
 These rules apply before creating a source file, directory, service,

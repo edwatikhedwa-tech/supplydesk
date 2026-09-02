@@ -8,13 +8,13 @@ profiles:
     tools: validate_vibecoding, validate_docs, validate_state, validate_traceability, diagnostic_tests, workspace_guard, git, change_classifier
   FOCUSED:
     purpose: checks for the changed behavior and its nearest risk surface
-    tools: rg, backend_fast, typescript, eslint, frontend_build, browser_smoke
+    tools: rg, backend_fast, typescript, eslint, frontend_build, browser_smoke, agent_browser
   FULL:
     purpose: independent deep acceptance for pull requests, high-risk changes and explicit manual runs
     tools: backend_full, npm_ci, typescript, eslint, frontend_build, browser_full, doctor
   PERIODIC:
     purpose: scheduled or manual expensive analysis outside blocking FAST CI
-    tools: vulture, knip, coverage, semgrep, codeql, dependency_updates
+    tools: vulture, knip, coverage, semgrep, codeql, dependency_updates, skill_doctor
 tools:
   - id: git
     name: Git
@@ -195,7 +195,17 @@ tools:
     blocking: true
     availability: CONFIGURED
     evidence_required: actual running route and Playwright result
-    notes: live-route claims must not use route mocks
+    notes: deterministic regression, viewport-matrix and CI gate; live-route claims must not use route mocks
+  - id: agent_browser
+    name: agent-browser CLI
+    purpose: exploratory UI inspection, interactive defect reproduction and focused browser diagnostics
+    category: EXPLORATORY_BROWSER
+    required_for: OPTIONAL_UI_INSPECTION_OR_BROWSER_INVESTIGATION
+    execution_frequency: ON_DEMAND
+    blocking: false
+    availability: CONFIGURED
+    evidence_required: agent-browser version, skill/help output and focused command evidence when used
+    notes: primary local exploratory path; verified 2026-09-02 with agent-browser 0.36.0 and installed system Chrome; not a replacement for Playwright or a CI gate
   - id: playwright_mcp
     name: Playwright MCP or browser connector
     purpose: optional agent-driven browser inspection
@@ -216,6 +226,16 @@ tools:
     availability: CONFIGURED
     evidence_required: scripts/doctor.ps1 profile output and exit code
     notes: OFFLINE_TEST, LOCAL_CANONICAL and LIVE_EXTERNAL profiles are distinct
+  - id: skill_doctor
+    name: Skill Doctor
+    purpose: periodic review of agent skills using local completed-session evidence
+    category: AGENT_PROCESS_REVIEW
+    required_for: PERIODIC_AGENT_PROCESS_REVIEW_OR_OWNER_REQUEST
+    execution_frequency: PERIODIC
+    blocking: false
+    availability: CONFIGURED
+    evidence_required: local inventory, rubric findings and proposed diff outside the repository
+    notes: skill-doctor installed globally for Codex on 2026-09-02; history analysis was not run in this task; real SKILL.md editing requires explicit review and acceptance
   - id: diagnostic_tests
     name: Diagnostic/control tests
     purpose: verify diagnostic control-plane behavior
