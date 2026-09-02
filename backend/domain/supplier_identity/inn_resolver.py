@@ -40,8 +40,13 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
-from email_extractor import root_domain
-from inn_extractor import LegalIdHit, inn_kind, validate_inn_checksum, validate_legal_id_checksum
+from backend.domain.supplier_identity.email_extractor import root_domain
+from backend.domain.supplier_identity.inn_extractor import (
+    LegalIdHit,
+    inn_kind,
+    validate_inn_checksum,
+    validate_legal_id_checksum,
+)
 
 log = logging.getLogger("inn_resolver")
 

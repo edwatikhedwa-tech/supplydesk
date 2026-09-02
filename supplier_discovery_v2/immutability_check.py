@@ -13,7 +13,7 @@ def protected_paths(root: Path) -> list[Path]:
         candidate = root / name
         if candidate.is_file():
             paths.append(candidate)
-    for name in ("serp_parser.py", "xmlriver_client.py", "supplier_app.py", "contact_crawler.py", "email_extractor.py", "inn_extractor.py", "verify.py", "web_lookup.py", "collect_inn.py"):
+    for name in ("serp_parser.py", "xmlriver_client.py", "supplier_app.py", "contact_crawler.py", "web_lookup.py", "collect_inn.py"):
         candidate = root / name
         if candidate.is_file():
             paths.append(candidate)
@@ -21,6 +21,14 @@ def protected_paths(root: Path) -> list[Path]:
     checko_client = root / "backend" / "integrations" / "registry" / "checko_client.py"
     if checko_client.is_file():
         paths.append(checko_client)
+    # Moved out of the flat root package by TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902.
+    # inn_resolver.py deliberately stays unprotected — it was never in the
+    # protected set before this move, and moving beside these three files is
+    # not itself evidence for adding it.
+    for name in ("email_extractor.py", "inn_extractor.py", "verify.py"):
+        candidate = root / "backend" / "domain" / "supplier_identity" / name
+        if candidate.is_file():
+            paths.append(candidate)
     repository = root / "mail" / "repository.py"
     if repository.is_file():
         paths.append(repository)

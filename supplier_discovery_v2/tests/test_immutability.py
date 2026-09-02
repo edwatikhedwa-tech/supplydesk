@@ -41,6 +41,42 @@ class ImmutabilityTests(unittest.TestCase):
                 ["backend/integrations/registry/checko_client.py"],
             )
 
+    def test_supplier_identity_modules_are_protected_at_their_new_canonical_paths(self):
+        root = Path(__file__).resolve().parents[2]
+        protected = {
+            str(path.relative_to(root)).replace("\\", "/") for path in protected_paths(root)
+        }
+        for name in ("email_extractor.py", "inn_extractor.py", "verify.py"):
+            self.assertIn(f"backend/domain/supplier_identity/{name}", protected)
+            self.assertNotIn(name, protected)
+        # inn_resolver.py was never protected before this move and sitting
+        # beside the other three is not itself evidence for adding it.
+        self.assertNotIn("backend/domain/supplier_identity/inn_resolver.py", protected)
+
+    def test_disposable_mutation_of_supplier_identity_modules_is_detected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            synthetic_root = Path(directory) / "synthetic_root"
+            pkg_dir = synthetic_root / "backend" / "domain" / "supplier_identity"
+            pkg_dir.mkdir(parents=True)
+            names = ("email_extractor.py", "inn_extractor.py", "verify.py")
+            paths = {}
+            for name in names:
+                path = pkg_dir / name
+                path.write_text(f"# disposable {name} stand-in\n", encoding="utf-8")
+                paths[name] = path
+
+            manifest = Path(directory) / "manifest.json"
+            write_baseline(synthetic_root, manifest)
+            self.assertEqual(verify(synthetic_root, manifest), [])
+
+            for name, path in paths.items():
+                path.write_text(f"# mutated {name}\n", encoding="utf-8")
+                self.assertEqual(
+                    verify(synthetic_root, manifest),
+                    [f"backend/domain/supplier_identity/{name}"],
+                )
+                path.write_text(f"# disposable {name} stand-in\n", encoding="utf-8")
+
 
 if __name__ == "__main__":
     unittest.main()

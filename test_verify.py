@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import sys
 
-from email_extractor import EmailHit
-from inn_extractor import InnHit
-from verify import (
+from backend.domain.supplier_identity.email_extractor import EmailHit
+from backend.domain.supplier_identity.inn_extractor import InnHit
+from backend.domain.supplier_identity.verify import (
     domain_hints_name, names_match, normalize_company_name,
     verify_email, verify_inn,
 )

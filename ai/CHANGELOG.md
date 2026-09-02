@@ -3,6 +3,36 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-02 — BOUNDED ROOT REFACTOR: SUPPLIER IDENTITY DOMAIN — TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902
+
+- Moved `email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, and
+  `verify.py` to `backend/domain/supplier_identity/`. `git diff -M`
+  confirmed `email_extractor.py`/`inn_extractor.py` as 0-diff pure moves;
+  `inn_resolver.py`/`verify.py` changed only their internal import lines
+  (2 module-level imports each). No extraction, scoring, validation,
+  checksum, registry-ownership, or SMTP/MX semantics changed.
+- Updated all 15 confirmed consumers, including 4 not named in the task's
+  own known-dependency list and found only by a fresh full-tree scan:
+  `web_lookup.py`, `mail/repository.py` (a single import line — the rest
+  of the mail domain's business logic was not touched),
+  `backend/integrations/registry/dadata_client.py`, and
+  `benchmarks/benchmark_models.py` (initially missed in a partial check,
+  caught by the full diagnostics run before publish).
+- Migrated `supplier_discovery_v2/immutability_check.py`'s protected-path
+  list for the three already-protected files
+  (`email_extractor.py`/`inn_extractor.py`/`verify.py`) to their new
+  canonical location; `inn_resolver.py` was deliberately left unprotected
+  — it was never protected before, and sitting beside the other three is
+  not evidence for adding it. Proved with a fresh baseline round-trip and
+  a disposable synthetic-copy mutation test for all three paths, added as
+  permanent regression coverage.
+- This task's own numeric `CHANGE_BUDGET_EXCEEDED` threshold (">22 tracked
+  files") was hit at 24. All work was fully applied and tested first; the
+  publish step (commit/push) was paused, concrete evidence was presented,
+  and the owner explicitly approved continuing without a rollback, since
+  the overage was 4 legitimate discovered dependents rather than scope
+  creep into an unrelated subsystem.
+
 ## 2026-09-02 — CROSS-AGENT SKILL AVAILABILITY — TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902
 
 - Made `bug-reproducer`, `code-rot-cleaner`, and `skill-doctor` actually

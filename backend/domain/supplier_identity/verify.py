@@ -39,8 +39,8 @@ from typing import Iterable
 from urllib.parse import urlsplit
 from dataclasses import dataclass, field
 
-from email_extractor import EmailHit, FREE_MAIL_DOMAINS, root_domain
-from inn_extractor import InnHit
+from backend.domain.supplier_identity.email_extractor import EmailHit, FREE_MAIL_DOMAINS, root_domain
+from backend.domain.supplier_identity.inn_extractor import InnHit
 
 log = logging.getLogger("verify")
 

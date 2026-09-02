@@ -41,15 +41,24 @@ from collect_inn import (
     page_text,
 )
 from contact_crawler import ContactCrawler, SiteResult
-from email_extractor import is_contact_url, root_domain
-from inn_extractor import InnHit, LegalIdHit, is_requisites_url, validate_inn_checksum
-from inn_resolver import (
+from backend.domain.supplier_identity.email_extractor import is_contact_url, root_domain
+from backend.domain.supplier_identity.inn_extractor import (
+    InnHit,
+    LegalIdHit,
+    is_requisites_url,
+    validate_inn_checksum,
+)
+from backend.domain.supplier_identity.inn_resolver import (
     collect_name_hints_from_pages,
     resolve_inn_by_legal_ids,
     resolve_inn_by_registry,
 )
 from backend.integrations.llm.llm_fallback import LlmExtractor, api_key_present
-from verify import registry_owns_site, registry_ownership_unknown, verify_email
+from backend.domain.supplier_identity.verify import (
+    registry_owns_site,
+    registry_ownership_unknown,
+    verify_email,
+)
 from web_lookup import WebLookup
 
 log = logging.getLogger("supplier_app")

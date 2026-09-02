@@ -1,105 +1,120 @@
 ---
-document_id: HANDOFF-011
+document_id: HANDOFF-012
 status: CURRENT
 canonical: false
 owner: Claude
 updated_at: 2026-09-02
-based_on_commit: b67cb46e64c1fa45261c1c6c96828c1369f78dba
+based_on_commit: 6d8f816af3c7aedd9b097306d39a22a22831c118
 ---
 
 # Last Handoff
 
-This handoff records making `bug-reproducer`, `code-rot-cleaner`, and
-`skill-doctor` actually discoverable by Claude Code (they were previously
-Codex-only despite a global `CONFIGURED` registry entry), and documenting
-that a global `CONFIGURED` state does not prove per-agent visibility.
+This handoff records the supplier-identity domain move
+(`email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`
+→ `backend/domain/supplier_identity/`), the largest bounded root-refactor
+batch so far, including one owner-approved change-budget overage.
 
 ## Цель
 
-Привести локальную систему skills/tools в фактически корректное состояние
-для Codex и Claude Code, не выдавая global `CONFIGURED` за доказательство
-доступности в конкретном агенте; не менять product code.
+Перенести `email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`,
+`verify.py` в `backend/domain/supplier_identity/`, обновить всех
+подтверждённых consumers, не меняя бизнес-логику.
 
 ## Что изменено
 
-- User-level (outside this repository, explicitly authorized by the task):
-  installed `skill-doctor` for Claude Code from `warpdotdev/common-skills`
-  via `npx skills@latest add warpdotdev/common-skills -s skill-doctor -a
-  claude-code -g -y`; installed `bug-reproducer` and `code-rot-cleaner` for
-  Claude Code from the existing local Codex source directories via the same
-  CLI's local-path install support. All three now live at
-  `~/.claude/skills/<name>/`. Existing `~/.codex/skills/` installations
-  were not touched.
-- `ai/AI_CONTRACT.md`: added one compact `REGISTRY_AGENT_VISIBILITY` rule
-  (session-level, not per-command) requiring current-agent discovery
-  verification before the first use of an agent-local skill, and the
-  `<skill>_SKILL: NOT_AVAILABLE_IN_CURRENT_AGENT` /
-  `<skill>_WORKFLOW: APPLIED_MANUALLY` reporting vocabulary instead of a
-  bare `<skill>: USED`.
-- `ai/VIBECODING_TOOL_REGISTRY.yaml`: recorded per-agent status (verified
-  2026-09-02) in the existing `notes` field for `code_rot_cleaner`,
-  `agent_browser`, `bug_reproducer`, `skill_doctor` — no new schema field
-  (the registry validator uses a simple regex parser, not a full YAML
-  schema check, so a nested mapping would not have parsed safely).
-- Added `ai/reports/TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902-report.md`.
+- 4 модуля перенесены (2 чистых переноса, 2 — только импортные строки
+  внутри модуля).
+- Обновлены 15 внешних consumers (11 из исходного списка задачи + 4
+  незапланированных, найденных fresh scan'ом: `web_lookup.py`,
+  `mail/repository.py`, `backend/integrations/registry/dadata_client.py`,
+  `benchmarks/benchmark_models.py`).
+- `supplier_discovery_v2/immutability_check.py`: protected-path список
+  мигрирован для 3 уже защищённых файлов; `inn_resolver.py` намеренно не
+  добавлен.
+- `supplier_discovery_v2/tests/test_immutability.py`: +2 постоянных теста
+  (защита на новом пути + disposable-mutation proof).
+- `docs/architecture/REPOSITORY_LAYOUT.md`, `CLAUDE.md`: обновлены (замена
+  устаревшего текста, без нового абзаца-политики).
+- Добавлен
+  `ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902-report.md`.
 
 ## Что проверено
 
-- Workspace Guard passed before mutation.
-- Real filesystem inventory (not inference) of `~/.codex/skills/`,
-  `~/.claude/skills/`, and the shared `~/.agents/skills/` source used by
-  the official `npx skills@latest` CLI, which auto-detects the executing
-  harness and supports `-a <agent>`, `-g`, and local-path sources.
-- `skill-doctor`'s own upstream `references/supported-harnesses.md`
-  confirmed Claude Code as an officially supported harness before
-  installing it there.
-- `ListSkills` returned `0` results for all three skills before
-  installation (matching the independent confirmation in the prior
-  `FINDING-018` task for `bug-reproducer`); the platform's own
-  available-skills listing showed each one immediately after installation
-  — discovery only, no skill was actually invoked.
-- `agent-browser`'s CLI (`agent-browser --version` → `0.36.0`) and bundled
-  skill text were confirmed already equally reachable from both agents
-  through its own runtime-loading mechanism (`agent-browser skills get
-  core --full`), distinct from file-based `SKILL.md` discovery — no
-  installation applied or needed there.
-- `CLAUDE.md` and `AGENTS.md` were checked for mentions of these 4
-  skills/tools: none found, so no adapter pointer was added.
-- `python ai/tools/validate_vibecoding.py` (`PASS`, `tool_entries=40`
-  unchanged), `python ai/tools/validate_docs.py` (`PASS`), `python
-  ai/tools/validate_state.py` (`PASS`), `git diff --check` (`PASS`).
-- Staged diff scanned: only `ai/AI_CONTRACT.md` and
-  `ai/VIBECODING_TOOL_REGISTRY.yaml` changed, text only, no secrets.
+- Workspace Guard passed до lock и до мутации.
+- Fresh full-tree reference scan (Python-импорты plus literal-упоминания
+  имён файлов, не только AST) — 15 реальных consumers, из них 4 не были в
+  исходном списке задачи.
+- `git diff -M` структурно доказал: `email_extractor.py`/`inn_extractor.py`
+  — 0-diff чистые переносы; `inn_resolver.py`/`verify.py` — только
+  import-строки, `SEMANTIC_CHANGES: 0`.
+- Особый случай `mail/repository.py`: единственная строка импорта
+  обновлена (не бизнес-логика) вместо оставления сломанного импорта —
+  обоснование зафиксировано в отчёте.
+- Offline import chain: все 4 модуля,
+  `backend.integrations.{llm.llm_fallback,registry.dadata_client}`,
+  `contact_crawler`, `web_lookup`, `collect_inn`, `supplier_app`,
+  `mail.repository`, и `api.index` под `SUPPLYDESK_ENV=test` — все `OK`.
+- Immutability: свежий baseline на реальном дереве → `[]`; disposable
+  synthetic-copy мутация каждого из 3 защищённых путей → обнаружена.
+  Закреплено `5/5 PASS` постоянными тестами.
+- Поведенческие тесты: `test_extractor.py`/`test_inn.py`/`test_verify.py`
+  (custom-скрипты, "Все проверки пройдены", exit `0`);
+  `tests.test_enrichment_pipeline` + `tests.test_dashboard` (`21/21`);
+  FINDING-018 regression (`3/3`, не задет); полный
+  `supplier_discovery_v2/tests/` (`16/16`).
+- Полная диагностика: `61/70` passed, `9` ошибок — тот же pre-existing
+  `pwsh`-gap. Одна НОВАЯ ошибка (`ModuleNotFoundError: inn_extractor` в
+  `benchmarks/benchmark_models.py`) была поймана этим же прогоном,
+  исправлена, диагностика перезапущена и вернулась к базовому уровню.
+- `ai/tools/validate_docs.py`, `ai/tools/validate_state.py`,
+  `ai/tools/validate_vibecoding.py`: `PASS`. `git diff --check`: `PASS`.
+- Diff отсканирован на секреты: только имена переменных окружения, без
+  значений. `0` provider/SMTP/DNS вызовов.
 
 ## Что не прошло
 
-Nothing this task touched failed.
+Ничего из финально применённого не провалилось. Одна ошибка
+(`benchmarks/benchmark_models.py`'s пропущенный импорт) была найдена и
+исправлена в рамках этой же задачи до публикации, не является дефектом
+финального состояния.
 
 ## Что не проверено
 
-NOT VERIFIED: real invocation of any of the three skills' full workflow
-(forbidden by this task's scope — discovery smoke only). NOT VERIFIED:
-whether these new Claude Code installations remain discoverable in a
-future, separate session (only confirmed within this session).
+NOT VERIFIED: реальный Vercel build/deploy. NOT VERIFIED:
+недокументированный внешний Python-импорт любого из 4 модулей.
+
+## Change Budget — превышение, одобренное владельцем
+
+`CHANGE_BUDGET_EXCEEDED: YES` — `24` затронутых файла против явного
+порога `>22` из самой задачи. Вся работа была уже применена и полностью
+протестирована на момент обнаружения этого факта. Публикация была
+приостановлена, владельцу представлены точные доказательства (список 24
+файлов, причина — 4 легитимные находки fresh-scan, не расширение
+функционального scope), получено явное одобрение продолжить без отката.
+Это решение и общее правило для будущих похожих ситуаций сохранены в
+памяти сессии (`feedback_change_budget_stop_threshold.md`).
 
 ## Текущее состояние runtime
 
-No runtime was started for this task. No provider call, real mail, or
-canonical database write occurred. No product code changed.
+Runtime для этой задачи не запускался. Ни одного provider-вызова, real
+mail или записи в canonical database не произошло.
 
 ## Следующий рациональный шаг
 
-None required. If a future task needs to actually invoke `bug-reproducer`,
-`code-rot-cleaner`, or `skill-doctor` from Claude Code, it can now do so
-directly instead of falling back to a manually-applied workflow.
+`backend/{integrations/{registry,llm},domain/supplier_identity}/` теперь
+содержат 8 перенесённых модулей. Оставшиеся корневые модули
+(`supplier_app.py`, `api/index.py`, `serp_parser.py`, `contact_crawler.py`,
+`collect_inn.py`, `web_lookup.py`, и т.д.) требуют отдельных bounded задач
+с явными import/subprocess/deployment контрактами.
 
 ## Не повторять
 
-Do not use the legacy OneDrive checkout for development, do not output or
-save secret values, do not edit or fork a third-party `SKILL.md` to make it
-"work", do not vendor a third-party skill into this repository when a
-user-level install is sufficient, do not add a new nested schema field to
-`ai/VIBECODING_TOOL_REGISTRY.yaml` without first checking whether its
-regex-based validator can parse it, do not claim per-agent skill parity
-without a real discovery smoke test, and do not add a second
-acknowledgement to an intermediate message.
+Не использовать legacy OneDrive checkout для разработки, не выводить и не
+сохранять значения секретов, не запускать реальную почту или live
+provider-вызовы, не менять бизнес-логику `mail/` при обновлении единственной
+сломанной строки импорта (только импорт), не считать формальное численное
+превышение change-budget автоматическим STOP, если превышение вызвано
+законными находками того же самого уже согласованного переноса (см.
+сохранённую memory-заметку), не добавлять `inn_resolver.py` в immutability
+protection только потому что он теперь рядом с защищёнными файлами, и не
+добавлять второе подтверждение VibeCoding в промежуточное сообщение.

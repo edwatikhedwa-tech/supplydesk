@@ -27,7 +27,7 @@ from collections import Counter
 from pathlib import Path
 
 from contact_crawler import ContactCrawler, SiteResult
-from inn_extractor import (
+from backend.domain.supplier_identity.inn_extractor import (
     InnHit,
     LegalIdHit,
     extract_inn_from_html,

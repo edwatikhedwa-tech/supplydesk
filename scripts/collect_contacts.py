@@ -26,7 +26,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 from contact_crawler import ContactCrawler, SiteResult
-from email_extractor import root_domain, score_hit
+from backend.domain.supplier_identity.email_extractor import root_domain, score_hit
 from serp_parser import host_of, load_dotenv, read_lines
 
 log = logging.getLogger("contacts")

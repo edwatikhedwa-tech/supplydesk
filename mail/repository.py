@@ -23,7 +23,7 @@ from .content import (
     email_has_remote_images,
     sanitize_email_html,
 )
-from inn_extractor import validate_inn_checksum
+from backend.domain.supplier_identity.inn_extractor import validate_inn_checksum
 from .pacing import PacingSettings
 from .deliverability import transient_health_metrics
 

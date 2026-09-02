@@ -25,8 +25,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from email_extractor import EmailHit, normalize_email, validate_email
-from inn_extractor import InnHit, inn_kind, normalize_inn, validate_inn_checksum
+from backend.domain.supplier_identity.email_extractor import EmailHit, normalize_email, validate_email
+from backend.domain.supplier_identity.inn_extractor import InnHit, inn_kind, normalize_inn, validate_inn_checksum
 
 log = logging.getLogger("llm")
 

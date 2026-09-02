@@ -15,6 +15,28 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-02` — `TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902`
+moved `email_extractor.py`, `inn_extractor.py`, `inn_resolver.py` and
+`verify.py` to
+[`backend/domain/supplier_identity/`](../backend/domain/supplier_identity/)
+(`git diff -M`: `email_extractor.py`/`inn_extractor.py` are 0-diff pure
+moves; `inn_resolver.py`/`verify.py` changed only their internal import
+lines). All 15 confirmed consumers were updated, including 4 not named in
+the task's own known-dependency list and found only by a fresh full-tree
+scan: `web_lookup.py`, `mail/repository.py`,
+`backend/integrations/registry/dadata_client.py`, and
+`benchmarks/benchmark_models.py` (the last one initially missed in a
+partial check and caught by the full diagnostics run before publish).
+`supplier_discovery_v2/immutability_check.py`'s protected-path list was
+migrated for the three already-protected files
+(`email_extractor.py`/`inn_extractor.py`/`verify.py`); `inn_resolver.py`
+was deliberately left unprotected. This task's own `CHANGE_BUDGET_EXCEEDED`
+threshold (">22 tracked files") was hit at 24 — the overage was 4
+legitimate discovered dependents, not scope creep; work was fully applied
+and tested, publish was paused, and the owner explicitly approved
+continuing. The task report is
+[`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902-report.md).
+
 `2026-09-02` — `TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902` made
 `bug-reproducer`, `code-rot-cleaner` and `skill-doctor` actually
 discoverable by Claude Code (previously only Codex-visible despite a global
@@ -520,14 +542,16 @@ on this task's dedicated branch:
 ## Current next step
 
 Pass 2 (CLI compatibility), Pass 3 (`dadata_client.py`), Pass 4
-(`checko_client.py` + immutability migration) and Pass 5 (LLM integrations)
-are complete; `backend/integrations/{registry,llm}/` now hold 4 moved
-modules and `FINDING-017` is resolved. `FINDING-018` (`collect_inn.py --llm`
-broken-symbol bug found during Pass 5) is also resolved. Any further root moves — `supplier_app.py`,
-`api/index.py`, `serp_parser.py`, or the remaining runtime modules named in
-the root diagnostic — require their own bounded task with explicit import,
-subprocess and deployment contracts; none is authorized by this change. Keep
-the Browser Full `FAIL` and Finding-009 as separate recorded limitations.
+(`checko_client.py` + immutability migration), Pass 5 (LLM integrations)
+and Pass 6 (supplier identity domain) are complete; `backend/{integrations/
+{registry,llm},domain/supplier_identity}/` now hold 8 moved modules and
+`FINDING-017`/`FINDING-018` are both resolved. Any further root moves —
+`supplier_app.py`, `api/index.py`, `serp_parser.py`, `contact_crawler.py`,
+`collect_inn.py`, `web_lookup.py`, or the remaining runtime modules named
+in the root diagnostic — require their own bounded task with explicit
+import, subprocess and deployment contracts; none is authorized by this
+change. Keep the Browser Full `FAIL` and Finding-009 as separate recorded
+limitations.
 
 ## Canonical references
 
@@ -553,8 +577,23 @@ the Browser Full `FAIL` and Finding-009 as separate recorded limitations.
 - Bounded root refactor (registry integrations) report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md).
 - Checko registry move + immutability migration report: [`ai/reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md`](reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md).
 - LLM integrations move report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902-report.md).
+- Bounded root refactor Pass 6 (supplier identity domain):
+  `backend/domain/supplier_identity/{email_extractor,inn_extractor,
+  inn_resolver,verify}.py` are now the canonical implementations; all root
+  copies are gone. `supplier_app`, `contact_crawler`, `collect_inn`,
+  `web_lookup`, `mail.repository`, and both LLM/registry integration
+  modules all import successfully offline; `api.index.handler`/`_APP`
+  imports under `SUPPLYDESK_ENV=test`. Behavioral evidence: the three
+  custom root test scripts (`test_extractor.py`/`test_inn.py`/
+  `test_verify.py`) all print "Все проверки пройдены" with exit `0`;
+  `tests/test_enrichment_pipeline.py` + `tests/test_dashboard.py` (21/21
+  PASS); the FINDING-018 LLM-path regression (3/3 PASS, unaffected);
+  `supplier_discovery_v2/tests/` full suite (16/16 PASS, including 2 new
+  immutability tests); diagnostics suite `61/70` PASS with the same 9
+  pre-existing `pwsh`-gap errors as before.
 - FINDING-018 fix report: [`ai/reports/TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902-report.md`](reports/TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902-report.md).
 - Cross-agent skill availability report: [`ai/reports/TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902-report.md`](reports/TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902-report.md).
+- Supplier identity domain move report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902-report.md).
 - Repository layout map: [`docs/architecture/REPOSITORY_LAYOUT.md`](../docs/architecture/REPOSITORY_LAYOUT.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).

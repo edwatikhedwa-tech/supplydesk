@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import sys
 
-from inn_extractor import (
+from backend.domain.supplier_identity.inn_extractor import (
     InnHit, extract_inn_from_html, extract_inn_from_text, inn_kind,
     normalize_inn, score_inn, validate_inn_checksum,
 )

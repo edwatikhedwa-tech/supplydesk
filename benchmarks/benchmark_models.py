@@ -34,7 +34,7 @@ from bs4 import BeautifulSoup
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 from contact_crawler import ContactCrawler
-from inn_extractor import extract_inn_from_html, is_requisites_url, validate_inn_checksum
+from backend.domain.supplier_identity.inn_extractor import extract_inn_from_html, is_requisites_url, validate_inn_checksum
 from serp_parser import host_of, load_dotenv
 
 log = logging.getLogger("bench")

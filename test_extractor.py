@@ -13,7 +13,7 @@ from __future__ import annotations
 import sys
 from types import SimpleNamespace
 
-from email_extractor import (
+from backend.domain.supplier_identity.email_extractor import (
     EmailHit, decode_cfemail, deobfuscate, extract_from_html, merge_hits,
     normalize_email, repair_email_candidate, score_hit, split_mailto_addresses,
     validate_email, is_contact_url,

@@ -16,9 +16,9 @@ not a target structure. For behavioral component ownership, see
 
 | Path | Contains |
 |---|---|
-| root composition entrypoints | `supplier_app.py` (local backend entrypoint), plus a shrinking flat package of supplier-discovery/extraction modules still at root (e.g. `serp_parser.py`, `contact_crawler.py`, `email_extractor.py`, `inn_extractor.py`, `collect_inn.py`, `web_lookup.py`, `xmlriver_client.py`, `verify.py`) and the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
+| root composition entrypoints | `supplier_app.py` (local backend entrypoint), plus a shrinking flat package of supplier-discovery/extraction modules still at root (e.g. `serp_parser.py`, `contact_crawler.py`, `collect_inn.py`, `web_lookup.py`, `xmlriver_client.py`) and the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
 | `api/` | `api/index.py` — the Vercel serverless adapter around `supplier_app.py` |
-| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — LLM/provider transport moved out of the root flat package (`llm_fallback.py`, `routerai_client.py`) |
+| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — LLM/provider transport moved out of the root flat package (`llm_fallback.py`, `routerai_client.py`); `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the root flat package (`email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`) |
 | `mail/` | Real Yandex IMAP/SMTP integration and SQLite-backed mail repository |
 | `migrations/` | Versioned SQL schema DDL |
 | `frontend/` | React/Vite SPA (TypeScript, Tailwind) |
@@ -45,6 +45,22 @@ not a target structure. For behavioral component ownership, see
   wrapper. `supplier_app.py`, `collect_inn.py`,
   `scripts/collect_contacts.py` and `benchmarks/benchmark_models.py` updated
   to the canonical import path.
+- `TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902`:
+  `email_extractor.py`, `inn_extractor.py`, `inn_resolver.py` and `verify.py`
+  moved to `backend/domain/supplier_identity/`, no root wrapper. 14 known
+  consumers updated (`supplier_app.py`, `contact_crawler.py`, `collect_inn.py`,
+  `web_lookup.py`, `scripts/collect_contacts.py`, `scripts/verify_enrichment_live.py`,
+  `benchmarks/benchmark_models.py`, `backend/integrations/llm/llm_fallback.py`,
+  `backend/integrations/registry/dadata_client.py`, `mail/repository.py`, root
+  tests, and `tests/test_enrichment_pipeline.py`), including two not named in
+  the original diagnostic (`web_lookup.py`, `mail/repository.py`) found by a
+  fresh full-tree scan rather than assumed from the prior evidence.
+  `supplier_discovery_v2/immutability_check.py`'s protected-path list was
+  migrated for the three already-protected files
+  (`email_extractor.py`/`inn_extractor.py`/`verify.py`) in the same change;
+  `inn_resolver.py` was deliberately left unprotected — it was never
+  protected before, and moving beside the other three is not evidence for
+  adding it.
 - Remaining root modules named in
   `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md` (including
   `supplier_app.py`, `api/index.py`, `serp_parser.py`) are unmoved and

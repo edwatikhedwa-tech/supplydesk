@@ -25,7 +25,7 @@ from urllib.robotparser import RobotFileParser
 import requests
 from bs4 import BeautifulSoup, UnicodeDammit
 
-from email_extractor import (
+from backend.domain.supplier_identity.email_extractor import (
     EmailHit, Rejected, extract_from_html, is_contact_url, merge_hits,
     root_domain, score_hit,
 )

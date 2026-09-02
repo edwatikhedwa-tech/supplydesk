@@ -9,8 +9,8 @@ from pathlib import Path
 from backend.integrations.registry.checko_client import Company
 from collect_inn import extract_for_site, extract_legal_ids_for_site
 from contact_crawler import ContactCrawler, SiteResult
-from inn_extractor import extract_inn_from_html, extract_legal_ids_from_html
-from inn_resolver import collect_name_hints_from_pages, resolve_inn_by_legal_ids
+from backend.domain.supplier_identity.inn_extractor import extract_inn_from_html, extract_legal_ids_from_html
+from backend.domain.supplier_identity.inn_resolver import collect_name_hints_from_pages, resolve_inn_by_legal_ids
 from mail.repository import MailRepository
 
 

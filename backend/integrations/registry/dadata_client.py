@@ -15,7 +15,7 @@ from typing import Any
 
 import requests
 
-from inn_extractor import InnHit
+from backend.domain.supplier_identity.inn_extractor import InnHit
 
 log = logging.getLogger("dadata")
 

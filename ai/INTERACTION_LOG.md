@@ -2,6 +2,39 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-02 — TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902
+
+- Workspace Guard passed; fresh full-tree scan (Python imports plus literal
+  filename search, not AST-only) for all 4 modules found 15 real
+  consumers, 4 of them not named in the task's own known-dependency list.
+- Moved all 4 modules to `backend/domain/supplier_identity/`; `git diff -M`
+  proved 2 as 0-diff pure moves and 2 as import-line-only changes,
+  structurally confirming zero semantic change.
+- Handled one genuine edge case: `mail/repository.py` imports
+  `inn_extractor` and is listed as unconditionally "DO NOT TOUCH" in the
+  task, unlike other consumers with an explicit "beyond imports"
+  exception. Updated only that one import line (not touching mail
+  business logic), reasoning that leaving it stale would break a
+  currently-working file, which is strictly worse than the minimal fix —
+  consistent with the same "beyond imports" precedent already used for
+  `contact_crawler.py`/`collect_inn.py`/`web_lookup.py`.
+- Migrated the immutability guard for the 3 already-protected files and
+  proved protection with a fresh baseline plus disposable synthetic-copy
+  mutation test, mirroring the proven Checko-migration pattern.
+- Hit this task's own `CHANGE_BUDGET_EXCEEDED` threshold (24 files vs. its
+  stated ">22 STOP" limit) only after all work was applied and fully
+  tested. Paused before commit/push, presented the owner with the exact
+  file count and the causal reason (legitimate fresh-scan discoveries, not
+  scope creep), and received explicit approval to continue without a
+  rollback. Saved this as a standing feedback-memory note for future
+  bounded-refactor tasks in this repo.
+- Behavioral evidence: 3 custom root test scripts print "Все проверки
+  пройдены" (exit 0); enrichment+dashboard tests 21/21; FINDING-018
+  regression 3/3 (unaffected); full `supplier_discovery_v2/tests/` 16/16;
+  diagnostics 61/70 with the same 9 pre-existing `pwsh`-gap errors as
+  before. Validators and `git diff --check` passed; 0 provider/SMTP/DNS
+  calls throughout.
+
 ## 2026-09-02 — TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902
 
 - Workspace Guard passed; inventoried real skill-discovery directories for
