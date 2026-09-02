@@ -97,6 +97,42 @@ this current register. Resolved findings and full chronology are preserved in
 - Why deferred: This task only establishes documentation ownership and retention; it must not broaden into cleanup or application repair.
 - Next verification: Triage each retained audit finding in a separate task with an explicit allowlist and rollback plan.
 
+## FINDING-017 — `checko_client.py` move blocked by an immutability protected-path list
+
+- ID: `FINDING-017`
+- Severity: `LOW`
+- Status: `OPEN`
+- Evidence: `TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902`'s fresh reference
+  scan found `supplier_discovery_v2/immutability_check.py:16` hardcodes a
+  repository-root-relative `"checko_client.py"` entry in its
+  `protected_paths()` tuple, used to hash-verify that named files have not
+  drifted. No committed/tracked `protected_manifest.json` baseline exists in
+  this checkout, so nothing currently breaks, but moving `checko_client.py`
+  out of root would silently drop it from future `--write-baseline` snapshots
+  (the function guards each candidate with `.is_file()`) and would make any
+  externally held baseline report it as `changed` on next `verify()`. This
+  was not in the prior `TASK-PYTHON-ROOT-DIAGNOSTIC-20260902` reference list.
+  `CLAUDE.md`'s Project layout section also names `checko_client.py` as an
+  intentional root example, consistent with this being live structure, not
+  an oversight.
+- Impact: Moving `checko_client.py` to
+  `backend/integrations/registry/checko_client.py` (the diagnostic's
+  `MOVE_INTEGRATIONS` recommendation) requires either updating
+  `supplier_discovery_v2/immutability_check.py`'s protected-path list or an
+  explicit decision that Checko is no longer immutability-protected —
+  `supplier_discovery_v2/` is out of scope for a bounded CLI/registry-move
+  task, per that task's own "DO NOT TOUCH" boundary.
+- Why deferred: The registry-move task moved only `dadata_client.py` (not
+  referenced anywhere in `immutability_check.py`) and left `checko_client.py`
+  at root rather than silently weakening an existing safety mechanism or
+  reaching into a directory explicitly marked out of scope.
+- Next verification: A separate task scoped to touch both
+  `checko_client.py` and `supplier_discovery_v2/immutability_check.py`
+  together — updating the protected-path entry to the new location (or
+  regenerating a baseline) in the same change as the move — then completing
+  the `checko_client.py` move per
+  `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`.
+
 ## FINDING-016 — Frontend candidates remain review-required
 
 - ID: `FINDING-016`

@@ -15,6 +15,22 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-02` — `TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902` moved
+`dadata_client.py` to
+[`backend/integrations/registry/dadata_client.py`](../backend/integrations/registry/dadata_client.py)
+(no root wrapper; no confirmed external consumer) and updated its one known
+consumer, `collect_inn.py`'s lazy import. `checko_client.py` was **not**
+moved: a fresh reference scan found
+`supplier_discovery_v2/immutability_check.py:16` hardcodes a root-relative
+`"checko_client.py"` path in its protected-files hash list, and
+`supplier_discovery_v2/` was out of this task's scope to touch. This is
+recorded as [`FINDING-017`](DEFERRED_FINDINGS.md) rather than silently
+worked around. The full offline import chain (`api.index → supplier_app →
+collect_inn → backend.integrations.registry.dadata_client`) was verified
+under `SUPPLYDESK_ENV=test`; `backend/**` is structurally confirmed not
+excluded by `vercel.json`. The task report is
+[`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md).
+
 `2026-09-02` — `TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902` moved the
 implementation of two confirmed `MOVE_SCRIPTS` candidates from the root
 diagnostic: `collect_contacts.py` now lives at
@@ -318,6 +334,15 @@ on this task's dedicated branch:
   deprecated-review root test surfaces are recorded in the dated report.
 - Code Rot Cleaner was used in report-only mode with external scratch output;
   Ruff and Vulture were not available without installation and were not added.
+- Bounded root refactor Pass 3 (registry): `backend/integrations/registry/dadata_client.py`
+  is the canonical implementation; the root copy is gone and no wrapper was
+  needed. `collect_inn.py`'s lazy import, `supplier_app`, and
+  `api.index.handler`/`_APP` all import successfully offline under
+  `SUPPLYDESK_ENV=test`. `checko_client.py` stays at root — see
+  `FINDING-017` in `ai/DEFERRED_FINDINGS.md`. New regression coverage:
+  `tests/diagnostics/test_registry_integration_move.py` (3/3 PASS); targeted
+  `tests/test_enrichment_pipeline.py` (8/8 PASS); the diagnostics suite
+  passed `52/61` with the same 9 pre-existing `pwsh`-gap errors as before.
 - Bounded root refactor Pass 2: `scripts/collect_contacts.py` and
   `benchmarks/benchmark_models.py` are now the single canonical
   implementations; root `collect_contacts.py`/`benchmark_models.py` are
@@ -397,9 +422,11 @@ on this task's dedicated branch:
 
 ## Current next step
 
-Pass 2 (CLI compatibility for `benchmark_models.py`/`collect_contacts.py`) is
-complete. Any further root moves — `supplier_app.py`, `api/index.py`,
-`serp_parser.py`, or the remaining 12+ runtime modules named in the root
+Pass 2 (CLI compatibility) and Pass 3 (registry `dadata_client.py`) are
+complete. `checko_client.py` needs a task scoped to touch both it and
+`supplier_discovery_v2/immutability_check.py`'s protected-path list together
+(`FINDING-017`). Any further root moves — `supplier_app.py`, `api/index.py`,
+`serp_parser.py`, or the remaining runtime modules named in the root
 diagnostic — require their own bounded task with explicit import, subprocess
 and deployment contracts; none is authorized by this change. Keep the Browser
 Full `FAIL` and Finding-009 as separate recorded limitations.
@@ -425,6 +452,8 @@ Full `FAIL` and Finding-009 as separate recorded limitations.
 - Finding-009 review report: [`ai/reports/TASK-FINDING-009-CANONICAL-REVIEW-20260902-report.md`](reports/TASK-FINDING-009-CANONICAL-REVIEW-20260902-report.md).
 - Python/root diagnostic report: [`ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`](reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md).
 - Bounded root refactor (CLI surfaces) report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902-report.md).
+- Bounded root refactor (registry integrations) report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md).
+- Repository layout map: [`docs/architecture/REPOSITORY_LAYOUT.md`](../docs/architecture/REPOSITORY_LAYOUT.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).

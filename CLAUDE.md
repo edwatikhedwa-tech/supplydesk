@@ -101,10 +101,15 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
   frontend has no independent backend of its own (any future prototype/scaffold that ships with
   its own Supabase/Firebase project must be rewired to this API before it's kept).
 - `mail/` — the real Yandex IMAP/SMTP integration and SQLite-backed mail repository.
+- `backend/integrations/registry/` — provider adapters being moved out of the root flat package
+  (currently `dadata_client.py`; `checko_client.py` is still at root pending a separate task —
+  see `ai/DEFERRED_FINDINGS.md`).
 - Root-level `*.py` files besides `supplier_app.py`/`api/` (e.g. `serp_parser.py`,
   `checko_client.py`, `email_extractor.py`) are a flat package of supplier-discovery/extraction
   modules genuinely imported by the backend — this is deliberate structure, not clutter; don't
-  move them without checking what imports them first.
+  move them without checking what imports them first. Two operator CLIs already moved to
+  `scripts/collect_contacts.py` and `benchmarks/benchmark_models.py`, with thin root
+  compatibility wrappers; see `docs/architecture/REPOSITORY_LAYOUT.md` for the current map.
 
 At the end of every response, include the instruction-check block required by
 [`ai/adapters/CLAUDE_PROJECT_INSTRUCTIONS.md`](ai/adapters/CLAUDE_PROJECT_INSTRUCTIONS.md).

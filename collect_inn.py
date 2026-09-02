@@ -268,7 +268,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Ступень 4: подтверждение в реестре.
     if os.getenv("DADATA_TOKEN"):
-        from dadata_client import DadataClient
+        from backend.integrations.registry.dadata_client import DadataClient
 
         dadata = DadataClient(os.getenv("DADATA_TOKEN", ""))
         for site, hit in results:

@@ -2,6 +2,29 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-02 — TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902
+
+- Workspace Guard passed; cheap Task Preflight reused prior session context.
+- Fresh reference scan (not just the diagnostic's stale list) found
+  `supplier_discovery_v2/immutability_check.py` hardcodes a root-relative
+  `checko_client.py` path in a protected-file hash list — an operational
+  contract the prior diagnostic did not surface. Per this task's own "STOP
+  that module and report" rule, and because `supplier_discovery_v2/` was
+  explicitly out of scope, `checko_client.py` was left at root and the
+  finding was recorded (`FINDING-017`) instead of silently worked around or
+  the boundary quietly crossed.
+- Moved only `dadata_client.py` (no such conflict found) to
+  `backend/integrations/registry/`, updated its one lazy-import consumer in
+  `collect_inn.py`, and verified the full offline import chain including
+  `api.index` under `SUPPLYDESK_ENV=test` — no provider calls, no database
+  writes.
+- Added `tests/diagnostics/test_registry_integration_move.py` (3/3 PASS);
+  targeted `tests/test_enrichment_pipeline.py` (8/8 PASS); the immutability
+  self-test (1/1 PASS, self-consistent baseline unaffected); full diagnostics
+  `52/61` passed with the same 9 pre-existing `pwsh`-gap errors documented in
+  the prior task (not re-investigated, per policy). Validators and `git diff
+  --check` passed.
+
 ## 2026-09-02 — TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902
 
 - Workspace Guard passed; cheap Task Preflight reused the

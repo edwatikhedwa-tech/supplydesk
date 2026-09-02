@@ -3,6 +3,24 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-02 — BOUNDED ROOT REFACTOR: REGISTRY INTEGRATIONS — TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902
+
+- Moved `dadata_client.py` to `backend/integrations/registry/dadata_client.py`
+  (new `backend/` product-code area) and updated its one known consumer,
+  `collect_inn.py`'s lazy import. No root compatibility wrapper: no confirmed
+  external consumer of the root import path was found.
+- `checko_client.py` was intentionally **not** moved: a fresh reference scan
+  found `supplier_discovery_v2/immutability_check.py:16` hardcodes a
+  root-relative `"checko_client.py"` path in its protected-files hash list,
+  and updating it would require touching `supplier_discovery_v2/`, which was
+  out of this task's declared scope. Recorded as `FINDING-017` in
+  `ai/DEFERRED_FINDINGS.md` for a follow-up task.
+- Verified the full offline import chain
+  (`api.index → supplier_app → collect_inn → backend.integrations.registry.dadata_client`)
+  under `SUPPLYDESK_ENV=test`, with no live provider calls. Added
+  `tests/diagnostics/test_registry_integration_move.py` (3 tests) and
+  `docs/architecture/REPOSITORY_LAYOUT.md`.
+
 ## 2026-09-02 — BOUNDED ROOT REFACTOR: MANUAL CLI SURFACES — TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902
 
 - Moved the `collect_contacts.py` implementation to `scripts/collect_contacts.py`
