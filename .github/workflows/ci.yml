@@ -194,6 +194,24 @@ jobs:
         shell: pwsh
         run: pwsh -NoProfile -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\scripts\assert_workspace.ps1" -ExpectedRoot "$env:GITHUB_WORKSPACE"
 
+      # This suite creates a disposable SQLite tempfile.TemporaryDirectory() per
+      # test. On GitHub-hosted Windows runners, Defender's real-time scan of
+      # every such file write/read is a well-known, well-documented cause of
+      # large slowdowns for I/O-heavy suites; excluding the ephemeral runner's
+      # own workspace/temp paths is a standard, no-risk mitigation (the VM is
+      # destroyed after the job). Best-effort only: never fails the job.
+      - name: Exclude workspace and temp from Windows Defender scanning
+        shell: pwsh
+        run: |
+          try {
+            Add-MpPreference -ExclusionPath "$env:GITHUB_WORKSPACE" -ErrorAction Stop
+            Add-MpPreference -ExclusionPath "$env:RUNNER_TEMP" -ErrorAction Stop
+            Add-MpPreference -ExclusionPath "$env:TEMP" -ErrorAction Stop
+            Write-Host "Defender exclusions added for workspace and temp paths."
+          } catch {
+            Write-Host "Defender exclusion step skipped (not available on this runner): $_"
+          }
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:

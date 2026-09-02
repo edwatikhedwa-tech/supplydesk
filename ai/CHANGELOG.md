@@ -3,6 +3,26 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-03 — CI CAPACITY REAL FIX: WINDOWS DEFENDER EXCLUSION FOR BACKEND FULL
+
+- Root-caused the `Backend Full` `CI_INFRA` timeout (previous entry):
+  extracted per-test start timestamps from the CI logs of all three prior
+  failed attempts and found the slowdown is not uniform across the suite —
+  a concentrated set of tests in `tests/test_mail_deliverability.py` and
+  `tests/test_mail_integrity.py` (heavy `MailRepository`/SQLite users, each
+  creating a `tempfile.TemporaryDirectory()`) individually took 7–60
+  seconds on the CI runner versus a sub-second average locally.
+- No Windows Defender exclusion existed for the runner's workspace/temp
+  paths in `.github/workflows/ci.yml`. Real-time Defender scanning of every
+  small SQLite file write/read is a well-documented cause of large
+  slowdowns for I/O-heavy suites on GitHub-hosted Windows runners. Added a
+  best-effort `Add-MpPreference -ExclusionPath` step (workspace + both temp
+  env vars) to the `backend_full` job only, right after the workspace
+  guard — a standard, no-risk mitigation on an ephemeral, destroyed-after-job
+  VM. No test logic, other job, or timeout changed in this step; the prior
+  owner-approved `timeout-minutes: 35` was left as a safety margin, not
+  reverted.
+
 ## 2026-09-03 — CI CAPACITY FIX: BACKEND FULL TIMEOUT — TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902 (follow-up)
 
 - `SupplyDesk / Backend Full` failed twice in a row on push, both times
