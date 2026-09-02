@@ -3,6 +3,23 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-03 — CI CAPACITY FIX: BACKEND FULL TIMEOUT — TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902 (follow-up)
+
+- `SupplyDesk / Backend Full` failed twice in a row on push, both times
+  cancelled by its own `timeout-minutes: 25` at `25m10s`
+  (`KeyboardInterrupt`/`The operation was canceled`, not an assertion or
+  import failure), each time at a different test inside the same slow
+  `tests/test_mail_pacing.py` suite. Local evidence with the exact same
+  official runner (`scripts/run_test_suite.py --suite full`): `460` tests,
+  `failures=0`, `errors=9` (the same pre-existing `pwsh`-gap already proven
+  unrelated), `skipped=1`, in `3m46s` — confirming `FAILURE_DOMAIN: CI_INFRA`
+  (the 25-minute cap had become too tight for the current suite size on the
+  shared Windows runner), not a product regression from the supplier-identity
+  move.
+- Owner explicitly authorized a minimal, narrow scope extension: raised
+  `.github/workflows/ci.yml`'s `backend_full` job `timeout-minutes` from
+  `25` to `35` — one line, no other job/timeout/test changed.
+
 ## 2026-09-02 — BOUNDED ROOT REFACTOR: SUPPLIER IDENTITY DOMAIN — TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902
 
 - Moved `email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, and
