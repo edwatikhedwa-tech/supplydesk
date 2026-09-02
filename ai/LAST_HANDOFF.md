@@ -1,75 +1,70 @@
 ---
-document_id: HANDOFF-004
+document_id: HANDOFF-005
 status: CURRENT
 canonical: false
 owner: Codex
 updated_at: 2026-09-02
-based_on_commit: e7e1873160f26faaa9a6385c1b8b14c6c96a540c
+based_on_commit: a6916769ea4b55eefc725a59bfc0e25474368737
 ---
 
 # Last Handoff
 
-This handoff records the completed Browser Full public-shell stability
-remediation. Commit `647128ece1196f3400c41ef1fce637eba56574e2` is published with
-remote SHA match `YES`; FAST CI is `PASS` and Browser Full is `FAIL`. The failure
-cause is not confirmed.
+This handoff records the completed report-only Python/root architecture
+diagnostic. No product code was moved, deleted, refactored, or dependency-changed.
 
 ## Цель
 
-Исправить нестабильность Browser Full public shell без auth handoff: убрать
-зависимость от `networkidle`, добавить reduced-motion lifecycle для
-`MagicRings`, сохранить normal animation и подтвердить результат на CI.
+Собрать decision-ready map корневых Python-файлов и директорий, защищённых
+entrypoint-границ, импортов, CLI, тестов, дубликатов и lifecycle-статусов.
 
 ## Что изменено
 
-- `frontend/src/components/MagicRings.tsx` now reads
-  `prefers-reduced-motion`, renders a stable frame without continuous RAF in
-  reduced mode, resumes normal animation on media-query changes and removes
-  the media-query listener during cleanup.
-- The public-shell case in `frontend/tests/frontend-audit.spec.ts` now uses
-  `domcontentloaded` plus the visible `Вход в рабочее пространство` heading and
-  scopes Playwright `reducedMotion: 'reduce'` to that case only.
-- `frontend/playwright.config.ts` and `workers: 4` remain unchanged; auth/OAuth,
-  backend/API, unrelated tests, Knip and product visual design were not changed.
+- Added `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md` with the
+  root map, protected entrypoint review, static import graph, operator/test
+  classification, duplicate-responsibility review, lifecycle result and
+  bounded Pass 2 proposal.
+- Updated this handoff plus `ai/CURRENT_STATE.md`, `ai/CHANGELOG.md`,
+  `ai/INTERACTION_LOG.md` and closed the active-task lock.
+- Reviewed 20 root Python files and 16 tracked root directories: 14 move
+  candidates, 0 deletion candidates, 4 deprecated-review candidates and 1
+  deferred parser boundary.
 
 ## Что проверено
 
-- Typecheck, lint, build and `git diff --check`: `PASS`; lint retained five
-  pre-existing warnings and zero errors.
-- Public shell: `1/1` single viewport and `8/8` configured projects passed with
-  four workers; screenshots and Axe passed.
-- Focused browser probe: reduced RAF delta `0`, normal RAF active, runtime
-  media-query switch passed, and WebGL unsupported fallback passed.
-- No auth handoff, credentials, cookies, real mail, backend or canonical data
-  were accessed.
+- Workspace Guard passed before task-lock and report/state writes.
+- Branch, HEAD, working tree, tracked/untracked/ignored inventory, protected
+  paths, local processes and relevant listeners were checked.
+- AST parsing covered 107 tracked Python files: 0 parse errors, 243 resolved
+  local import edges and no statically resolved cycles.
+- Code Rot Cleaner ran in external report-only mode; relevant candidates were
+  manually filtered. Ruff and Vulture were not available and were not installed.
+- No auth handoff, credentials, cookies, real mail, backend runtime or
+  canonical database was accessed.
 
 ## Что не прошло
 
-No blocking local check failed. Remote SHA match is confirmed and FAST CI
-passed; Browser Full failed. The failure cause is not confirmed, and no Browser
-Full rerun or remediation is part of this closeout. The local archive security
-action remains open and is not a cleanup blocker.
+No product check was required for this report-only diagnostic. The Code Rot
+scan was broad and included `.venv-test`; its output was not treated as a
+deletion authorization. Ruff and Vulture were unavailable.
 
 ## Что не проверено
 
-NOT VERIFIED: the root cause of the hosted-runner Browser Full failure; exact
-CPU/GPU profiling is not collected. Branch protection is outside this task. The
-local interactive auth handoff was not exercised by design. Current
-validity/ownership of retained credentials also remains unverified; owner
-approval is required for any retention cleanup or rotation.
+NOT VERIFIED: rare operator reachability, dynamic/reflection/external consumers,
+future deployment behavior after any move, Ruff/Vulture findings, product
+regression, live providers and credential validity. The prior Browser Full
+failure remains outside this task.
 
 ## Текущее состояние runtime
 
-The disposable OFFLINE_TEST runtime was started only after Workspace Guard,
-used for loopback browser checks, and stopped after acceptance; port `18000`
-was freed. The legacy checkout was not used.
+No runtime was started for this report-only task. Ports `8000`, `5173`, `18000`
+and `6006` were not listening at preflight; the legacy checkout was not used.
 
 ## Следующий рациональный шаг
 
-No further action remains for this task. Keep the recorded Browser Full
-`FAIL`; any browser-runtime fix requires a separate task. Future archive
-deletion or credential rotation requires owner approval; no Git history rewrite
-is indicated.
+Use the report as the decision baseline for a separate bounded refactor: start
+with CLI compatibility for `benchmark_models.py` and `collect_contacts.py`;
+leave `supplier_app.py`, `api/index.py`, `mail/`, `migrations/`, v2 isolation
+and `serp_parser.py` boundary unchanged until explicit contracts exist.
 
 ## Не повторять
 

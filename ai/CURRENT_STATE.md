@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: 84083130e3a75eb5a6d4fa83957db6760724379b
+based_on_commit: a6916769ea4b55eefc725a59bfc0e25474368737
 ---
 
 # Current State
@@ -14,6 +14,12 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-02` — `TASK-PYTHON-ROOT-DIAGNOSTIC-20260902` completed as a
+report-only architecture diagnostic: 20 root Python files and 16 tracked root
+directories were reviewed; no product code, files or dependencies changed.
+The decision-ready report is
+[`ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`](reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md).
 
 `2026-09-02` — Cleanup/recovery phase is complete, VibeCoding V1.3 is locally
 verified, and `TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902` is closed with
@@ -284,6 +290,14 @@ on this task's dedicated branch:
   Batch 1, Batch 2 and final hygiene evidence. Finding-009 remains an open
   `DEFERRED_SECURITY_ACTION — LOCAL_ARCHIVE_SECRET_RETENTION` and is not a
   cleanup blocker.
+- Root Python architecture diagnostic: 20 root Python files and 16 tracked
+  top-level directories were independently inventoried on the current branch.
+  `supplier_app.py` remains the protected root backend entrypoint and
+  `api/index.py` remains the protected serverless adapter. No deletion
+  candidate was confirmed; 14 future structural move candidates and 4
+  deprecated-review root test surfaces are recorded in the dated report.
+- Code Rot Cleaner was used in report-only mode with external scratch output;
+  Ruff and Vulture were not available without installation and were not added.
 
 ## Not verified
 
@@ -313,6 +327,9 @@ on this task's dedicated branch:
   credentials remain unverified; owner approval is required for any deletion
   or rotation. No archive deletion, movement, rotation or history rewrite was
   authorized.
+- The root diagnostic did not run product regression, backend/frontend runtime,
+  browser acceptance, live providers, real mail or deployment verification;
+  these remain outside its report-only scope.
 
 ## Blockers
 
@@ -347,10 +364,11 @@ on this task's dedicated branch:
 
 ## Current next step
 
-No further action is required for `TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902`.
-Keep its Browser Full `FAIL` as recorded evidence; any browser-runtime fix
-requires a separate task. Keep Finding-009 as a separate owner-approved
-deferred security action.
+Use the root diagnostic report to scope one separate bounded Pass 2. Start with
+CLI compatibility for `benchmark_models.py` and `collect_contacts.py`; do not
+move `supplier_app.py`, `api/index.py` or `serp_parser.py` until import,
+subprocess and deployment contracts are explicitly accepted. Keep the Browser
+Full `FAIL` and Finding-009 as separate recorded limitations.
 
 ## Canonical references
 
@@ -371,6 +389,7 @@ deferred security action.
 - Execution-overhead policy report: [`ai/reports/TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902-report.md`](reports/TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902-report.md).
 - Cleanup/VibeCoding V1.3 report: [`ai/reports/TASK-CLEANUP-FINAL-CLOSEOUT-VIBECODING-V1.3-20260902-report.md`](reports/TASK-CLEANUP-FINAL-CLOSEOUT-VIBECODING-V1.3-20260902-report.md).
 - Finding-009 review report: [`ai/reports/TASK-FINDING-009-CANONICAL-REVIEW-20260902-report.md`](reports/TASK-FINDING-009-CANONICAL-REVIEW-20260902-report.md).
+- Python/root diagnostic report: [`ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`](reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).

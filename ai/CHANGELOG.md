@@ -1057,3 +1057,19 @@ Status: `DELIVERY_MODE: PUBLISH`
 - Local documentation/state/VibeCoding validators, 16 focused governance tests,
   architecture allowlist checks and diff check passed. Publication gates remain
   the ordinary push, remote SHA and FAST CI proof.
+
+## 2026-09-02 — TASK-PYTHON-ROOT-DIAGNOSTIC-20260902
+
+Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH_REPORT_ONLY`
+
+- Completed one read-only Python/root architecture diagnostic on the current
+  checkout: 20 root Python files and 16 tracked top-level directories reviewed.
+- Confirmed `supplier_app.py` as the protected local backend entrypoint and
+  `api/index.py` as the Vercel adapter; root move safety is `NO` for the app.
+- Built a 107-file AST/import map with 243 local edges and no statically
+  resolved cycles; manually checked string, script, subprocess, docs and
+  deployment references.
+- Used Code Rot Cleaner in external report-only mode. No file deletion, move,
+  import rewrite, dependency change, runtime start or product test occurred.
+- Published the decision-ready report; Ruff/Vulture were not available without
+  installation and remain outside this diagnostic.

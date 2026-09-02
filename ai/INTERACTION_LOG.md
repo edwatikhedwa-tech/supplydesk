@@ -949,3 +949,21 @@ secrets were not changed.
 State change: documentation/state/VibeCoding validators, 16 governance tests,
 architecture checks and `git diff --check` passed. Commit, push, remote SHA and
 FAST CI remain open publication gates.
+
+## 2026-09-02 — TASK-PYTHON-ROOT-DIAGNOSTIC-20260902
+
+State change: performed one bounded read-only PASS 1/PASS 2 audit of the
+current Python root and top-level directories. The workspace guard passed; the
+legacy checkout, runtime, database, mail data, secrets and providers were not
+used.
+
+State change: confirmed the `supplier_app.py` → `api/index.py` dependency and
+Vercel route boundary, built the AST/reference map, reviewed operator scripts,
+manual root tests, lifecycle ambiguity and conceptual overlaps, and ran Code
+Rot Cleaner in external report-only mode.
+
+State change: created the decision-ready report with 14 structural move
+candidates, zero deletion candidates, four deprecated-review root test
+surfaces and one bounded future Pass 2. No product code, imports, dependencies,
+files or directories were changed; Ruff/Vulture were unavailable and not
+installed.
