@@ -934,3 +934,18 @@ focused tests, validators and diff checks passed; product code was unchanged.
 
 State change: delivery mode is `PUBLISH`; commit, push, remote SHA and FAST CI
 remain the same-task publication gates.
+
+## 2026-09-02T11:37:47Z — TASK-ARCHITECTURE-HYGIENE-LIFECYCLE-AUTH-HANDOFF-20260902
+
+State change: the shared AI contract now records architecture placement and
+component lifecycle controls; the frontend runbook records local-only human
+auth handoff and non-interactive CI requirements.
+
+State change: added the canonical component lifecycle registry and recorded the
+deferred manual real-email Playwright configuration without deleting or
+restoring it. Product code, current browser tests, CI, runtime, data and
+secrets were not changed.
+
+State change: documentation/state/VibeCoding validators, 16 governance tests,
+architecture checks and `git diff --check` passed. Commit, push, remote SHA and
+FAST CI remain open publication gates.

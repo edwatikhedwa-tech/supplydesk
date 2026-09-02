@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: a7e780bf61c8263f8921a5cbcc9f5d9d4f89c199
+based_on_commit: 84083130e3a75eb5a6d4fa83957db6760724379b
 ---
 
 # Current State
@@ -15,8 +15,9 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-02` — Cleanup/recovery phase is complete and VibeCoding V1.3 is
-locally verified for same-task publication.
+`2026-09-02` — Cleanup/recovery phase is complete, VibeCoding V1.3 is locally
+verified, and architecture/lifecycle plus browser-auth handoff policy is
+locally verified for the same-task publication.
 Finding-009 remains `REVIEW_REQUIRED`: no operational env file is present or
 tracked in the canonical checkout/history, but retained external snapshot and
 quarantine filename copies require separate owner review.
@@ -34,8 +35,8 @@ quarantine filename copies require separate owner review.
   verified VibeCoding policy HEAD `9d3e58232230b276396f3bc127e2d937bed8482d`.
 - Cleanup Batch 2 branch: `control/safe-cleanup-batch2-20260901`, retained as
   the immediately preceding evidence branch.
-- Current task branch: `codex/canonical-workspace-guard-v1-20260902` from
-  `cc3cd3bea7e4f53a2e25a6ba208d7e94b0859e30` before this task's changes.
+- Current task branch: `audit/frontend-knip-20260902`; this task's publication
+  evidence is recorded in its dated report.
 - Canonical development checkout: `C:\Users\edwat\SupplyDesk`.
 - Historical legacy checkout: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`, marked
   `LEGACY_WORKSPACE_DO_NOT_DEVELOP_HERE.txt`.
@@ -130,6 +131,14 @@ quarantine filename copies require separate owner review.
 - Doctor, bootstrap, recovery, test-environment, test-runner and safe-runtime
   control entry points invoke the workspace guard before their actions; CI
   passes its checkout root explicitly.
+- Architecture placement, root-growth, versioned-garbage, component lifecycle,
+  deprecation, disabled-feature and temporary-file rules are shared in
+  [`ai/AI_CONTRACT.md`](AI_CONTRACT.md), with retained non-active components
+  recorded in [`docs/architecture/COMPONENT_LIFECYCLE.md`](../docs/architecture/COMPONENT_LIFECYCLE.md).
+- Local human-in-the-loop browser authentication and public `/login` failure
+  classification are documented in
+  [`RUNBOOK-FRONTEND.md`](../docs/operations/runbooks/RUNBOOK-FRONTEND.md);
+  remote CI is explicitly non-interactive.
 
 ## Verified
 
@@ -280,6 +289,8 @@ on this task's dedicated branch:
   committed workflow.
 - Remote SHA confirmation and FAST CI are the remaining same-task publication
   gates for the declared `DELIVERY_MODE: PUBLISH`.
+- The local interactive browser auth handoff was not exercised; no personal
+  browser, credentials, cookies or authentication state were accessed.
 - Current validity, ownership and required retention period for the detected
   local archive credentials are not verified. Four binary/image artifacts
   remain `UNDETERMINED` and require owner-approved follow-up.
@@ -317,10 +328,10 @@ on this task's dedicated branch:
 
 ## Current next step
 
-Complete the declared `DELIVERY_MODE: PUBLISH` by pushing the verified V1.3
-commit, confirming remote SHA and waiting for FAST CI. Then keep Finding-009 as
-an owner-approved deferred security action and do not use the legacy checkout
-or start product acceptance for this governance task.
+Complete the declared `DELIVERY_MODE: PUBLISH` by committing and pushing this
+policy change, confirming the remote SHA and waiting for FAST CI. FULL CI and
+product acceptance are not needed; keep Finding-009 as a separate
+owner-approved deferred security action.
 
 ## Canonical references
 

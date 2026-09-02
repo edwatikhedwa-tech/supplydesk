@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: a7e780bf61c8263f8921a5cbcc9f5d9d4f89c199
+based_on_commit: 84083130e3a75eb5a6d4fa83957db6760724379b
 ---
 
 # Active Task
@@ -13,16 +13,16 @@ Task ID: `NONE`
 Agent: `Codex`
 Mode: `CLOSE`
 Started: `2026-09-02`
-Scope: `cleanup closeout and VibeCoding V1.3 governance delivery`
-Allowed files: `ai/**`, `tests/diagnostics/test_vibecoding_governance.py`, `ai/tools/validate_vibecoding.py`; no product/data/runtime/legacy changes
-Status: `IDLE — V1.3 implementation and local checks PASS; same-task PUBLISH gates pending`
+Scope: `shared architecture/lifecycle contract, browser auth handoff instructions, minimal lifecycle registry; no product/CI/root changes`
+Allowed files: `ai/AI_CONTRACT.md`, `ai/ACTIVE_TASK.md`, `ai/CURRENT_STATE.md`, `ai/DECISIONS.md`, `ai/LAST_HANDOFF.md`, `ai/CHANGELOG.md`, `ai/INTERACTION_LOG.md`, `ai/reports/`, `docs/architecture/`, `docs/operations/runbooks/RUNBOOK-FRONTEND.md`; no product/data/runtime/CI changes
+Status: `IDLE — policy implementation and local checks PASS; same-task PUBLISH gates pending`
 Last update: `2026-09-02`
 
 ## Цель
 
-Формально закрыть recovery/cleanup phase на основании существующих доказательств
-и доставить VibeCoding execution policy V1.3 в одном `DELIVERY_MODE: PUBLISH`
-цикле без изменения product code.
+Добавить минимальные cross-cutting правила размещения, жизненного цикла
+компонентов и безопасной локальной browser-auth handoff в одном
+`DELIVERY_MODE: PUBLISH` цикле без изменения product code.
 
 ## Границы
 
@@ -34,14 +34,15 @@ Backend, frontend, Playwright, FULL CI and forbidden audit tools are not run.
 
 ## Acceptance
 
-Cleanup verdict is based on existing evidence; V1.3 policy markers, validator
-semantics and focused governance tests are added; delivery includes one commit,
-ordinary push, remote SHA confirmation and required FAST CI; product code is
-unchanged.
+Architecture placement/lifecycle rules, the component registry, browser auth
+handoff instructions and public `/login` failure classification are added;
+delivery includes one commit, ordinary push, remote SHA confirmation and FAST
+CI; product code, current browser tests, CI routing, Knip and root structure
+are unchanged.
 
 ## Следующий шаг
 
-After successful FAST CI, record cleanup as complete and keep
+After successful FAST CI, record publication as complete and keep
 `LOCAL_ARCHIVE_SECRET_RETENTION` as a separate deferred security action. Do not
 create another closeout task.
 

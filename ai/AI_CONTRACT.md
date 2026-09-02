@@ -76,6 +76,66 @@ verification.
     update relevant global records. Preserve concise traceability without
     duplicating the same fact across the full state pack.
 
+## Architecture placement and component lifecycle
+
+These rules apply before creating a source file, directory, service,
+subsystem, test, script or tooling surface. They are a placement and
+retirement contract, not a new governance framework.
+
+- `ARCHITECTURE_PLACEMENT_RULE`: declare one `ARCHITECTURE_ROLE` —
+  `PRODUCT_DOMAIN`, `INTEGRATION`, `UI`, `TEST`, `SCRIPT`, `TOOLING`,
+  `CONFIG`, `MIGRATION`, `DOCUMENTATION`, `GENERATED` or
+  `TEMPORARY_DIAGNOSTIC` — and decide the `TARGET_LOCATION` before adding the
+  item. Reuse the existing logical area; product source does not go at the
+  repository root by default.
+- `ROOT_GROWTH_RULE`: integrations, parsers, services, tests, diagnostics and
+  benchmarks belong in their established canonical areas. A new top-level
+  area needs a concrete reason, owner, target location and removal/lifecycle
+  plan; a convenient filename or temporary experiment is not sufficient.
+- `NO_VERSIONED_GARBAGE_RULE`: do not keep permanent implementations named
+  `*_v2`, `*_new`, `*_old`, `*_backup`, `*_final`, `*_fixed` or `copy_*`.
+  This rule targets new migration copies and stale alternates; an existing
+  canonical component is not renamed solely because its historical name has
+  a suffix, and must be reviewed by references and role first.
+  During a staged migration record `OLD_COMPONENT`, `NEW_COMPONENT`,
+  `MIGRATION_STATE` and `REMOVAL_CONDITION` in the task record or the
+  [component lifecycle registry](../docs/architecture/COMPONENT_LIFECYCLE.md).
+- `COMPONENT_LIFECYCLE_RULE`: every retained non-active component uses exactly
+  one status: `ACTIVE`, `DEPRECATED`, `DISABLED`, `SUPERSEDED`,
+  `EXPERIMENTAL` or `DEFERRED`.
+- `DELETE_BY_DEFAULT_AFTER_REPLACEMENT`: after references and behavior prove a
+  component is fully superseded and unused, remove the old implementation
+  from the active tree within the approved destructive-change allowlist. Do
+  not retain `.old`, `.backup`, commented-out old implementations or copied
+  scripts as alternate active implementations. If retention is required,
+  reclassify it explicitly as non-active and record why.
+- `DEPRECATION_RECORD`: keep one canonical component registry at
+  `docs/architecture/COMPONENT_LIFECYCLE.md` with the fields `Path / Component`,
+  `Status`, `Reason`, `Replacement`, `Since`, `Removal/Reenable condition` and
+  `Priority`. It contains no secrets, cookies, runtime state or user data.
+- `DEPRECATED_CODE_VISIBLE`: when deprecated code remains in the tree, put a
+  short `DEPRECATED` comment or annotation beside its declaration and link it
+  to the registry record where practical.
+- `DISABLED_FEATURE_RULE`: a disabled feature must have explicit configuration
+  or feature state plus `WHY_DISABLED`, `HOW_TO_REENABLE` and
+  `REMOVE_OR_REENABLE_CONDITION`. If it will not return, remove it rather than
+  leaving it merely `DISABLED`.
+- `TEMPORARY_FILE_LIFETIME`: a `TEMPORARY_DIAGNOSTIC` records
+  `TEMP_OWNER_TASK`, `TEMP_LOCATION` and `CLEANUP_AT_CLOSEOUT: YES`. At
+  closeout it is removed or reclassified into canonical tooling; it is not
+  left as an unexplained root or source file.
+- `ARCHITECTURE_CHANGE_CHECK`: for a subsystem change, three or more changed
+  files, a new top-level area or a replacement, record before closeout:
+  `DUPLICATE_IMPLEMENTATION: YES/NO`, `NEW_ROOT_SOURCE_FILES: ...`,
+  `TEMP_FILES_LEFT: ...`, `DEPRECATED_COMPONENTS_RECORDED:
+  YES/NO/NOT_NEEDED` and `SUPERSEDED_COMPONENTS_REMOVED:
+  YES/NO/NOT_NEEDED`.
+- `REPOSITORY_STRUCTURE_DOCUMENT`: after a planned root refactor, create or
+  update `docs/architecture/REPOSITORY_LAYOUT.md` with the purpose of each
+  upper-level area and update it when a new major directory is introduced.
+  A task without a root refactor does not create that document merely for
+  ceremony.
+
 ## Status vocabulary
 
 - `PASS` — check completed and passed.

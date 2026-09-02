@@ -3,8 +3,8 @@ document_id: DOCS-ARCHITECTURE-README-001
 status: CURRENT
 canonical: false
 owner: engineering
-updated_at: 2026-09-01
-source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
+updated_at: 2026-09-02
+source_commit: 84083130e3a75eb5a6d4fa83957db6760724379b
 ---
 
 # Architecture documentation
@@ -22,7 +22,13 @@ task decisions remain in `ai/**`.
 ## Expected artifacts
 
 Architecture decision records, system context, component boundaries, and
-deployment notes with source references.
+deployment notes with source references. The component lifecycle registry is
+the canonical record for retained, deprecated, disabled, superseded,
+experimental and deferred components: [`COMPONENT_LIFECYCLE.md`](COMPONENT_LIFECYCLE.md).
+
+Repository placement rules are shared in [`ai/AI_CONTRACT.md`](../../ai/AI_CONTRACT.md).
+`docs/architecture/REPOSITORY_LAYOUT.md` is added only when a planned root
+refactor introduces a new major directory.
 
 ## Status
 

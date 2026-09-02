@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-01
-source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
+source_commit: 84083130e3a75eb5a6d4fa83957db6760724379b
 ---
 
 # Decisions
@@ -12,6 +12,26 @@ source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
+
+## DECISION-011 — Keep architecture lifecycle and browser auth boundaries explicit
+
+- Decision ID: `DECISION-011`
+- Date: `2026-09-02`
+- Status: `ACTIVE`
+- Context: Root growth, stale replacement copies, unclear component retirement
+  and unsafe assumptions about owner login were separate recurring review
+  risks.
+- Decision: Use the shared AI contract for architecture placement and lifecycle
+  rules, one component registry under `docs/architecture/`, and a local-only
+  headed Playwright auth handoff in the frontend runbook. Remote CI must use an
+  isolated account, seeded session or controlled fixture and must not wait for
+  an owner login.
+- Reason: The boundaries address the cross-cutting risks without changing
+  product behavior, current browser tests, CI routing or repository structure.
+- Consequences: New source placement and retained non-active components need
+  explicit records; the existing `/login` public-shell timeout remains a
+  request/network diagnosis item, not an auth handoff request.
+- Related task: `TASK-ARCHITECTURE-HYGIENE-LIFECYCLE-AUTH-HANDOFF-20260902`.
 
 ## DECISION-010 — Reuse verified session context with cheap task checks
 

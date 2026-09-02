@@ -1040,3 +1040,20 @@ Status: `DELIVERY_MODE: PUBLISH`
 - Focused governance tests (`16`), the policy validator (`36` tools), state and
   documentation validators, Workspace Guard and `git diff --check` passed.
   Product code and protected local archives were not changed.
+
+## 2026-09-02T11:37:47Z — TASK-ARCHITECTURE-HYGIENE-LIFECYCLE-AUTH-HANDOFF-20260902
+
+Task ID: `TASK-ARCHITECTURE-HYGIENE-LIFECYCLE-AUTH-HANDOFF-20260902`
+Status: `DELIVERY_MODE: PUBLISH`
+
+- Added the shared architecture placement, root-growth, component lifecycle,
+  deprecation, disabled-feature, temporary-file and architecture-change rules.
+- Added `docs/architecture/COMPONENT_LIFECYCLE.md` with the first deferred
+  manual real-email configuration record and a reusable row template.
+- Added local-only human browser auth handoff and public `/login` failure
+  classification to the frontend runbook; CI remains non-interactive.
+- No product, current browser test, CI, Knip, Python, root, runtime, database,
+  mail or secret-bearing file was changed.
+- Local documentation/state/VibeCoding validators, 16 focused governance tests,
+  architecture allowlist checks and diff check passed. Publication gates remain
+  the ordinary push, remote SHA and FAST CI proof.
