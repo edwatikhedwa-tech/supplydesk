@@ -163,6 +163,37 @@ class VibeCodingGovernanceTests(unittest.TestCase):
         ):
             self.assertIn(marker, policy)
 
+    def test_v13_execution_policy_semantics_are_declared(self):
+        policy = (ROOT / "ai/VIBECODING_RULES.md").read_text(encoding="utf-8")
+        semantic_requirements = {
+            "A": ("## TWO-PASS RULE", "`PASS 1 — AUDIT`", "`PASS 2 — REMEDIATION`"),
+            "B": ("## NO-MICRO-AUDIT-CHAIN", "`DEFERRED_FINDING`"),
+            "C": ("P0/P1 risk", "A third pass is allowed"),
+            "D": ("## DECISION-READY STANDARD", "`DECISION_READY: YES/NO`"),
+            "E": ("## ONE-SHOT DELIVERY MODE", "`DELIVERY_MODE: PUBLISH`", "same task includes"),
+            "F": ("## TOOL AUDIT BATCHING", "one bounded remediation", "Do not create one task per"),
+            "G": ("## GOVERNANCE FREEZE", "real repeated failure", "new global policy"),
+        }
+        for case, markers in semantic_requirements.items():
+            for marker in markers:
+                self.assertIn(marker, policy, f"V1.3 semantic case {case} is incomplete")
+
+    def test_v13_validator_requires_new_policy_sections(self):
+        root = self.make_fixture()
+        try:
+            path = root / "ai/VIBECODING_RULES.md"
+            text = path.read_text(encoding="utf-8").replace(
+                "## ONE-SHOT DELIVERY MODE",
+                "## Removed one-shot delivery mode",
+                1,
+            )
+            path.write_text(text, encoding="utf-8")
+            result = self.run_validator(root)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("POLICY-028 FAIL", result.stdout)
+        finally:
+            shutil.rmtree(root)
+
     def test_final_status_case_a_required_pass_other_not_needed(self):
         self.assertEqual(
             final_task_status(["PASS", "PASS"], ["NOT_NEEDED", "NOT_NEEDED"]),

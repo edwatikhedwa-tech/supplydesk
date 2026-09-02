@@ -3,12 +3,12 @@ document_id: VIBECODING-001
 status: CURRENT
 canonical: true
 owner: project-control
-version: 1.2
+version: 1.3
 last_corrected: 2026-09-02
-based_on_commit: f13dad6dc2461ef6dc50242f7fc075895f2a4603
+based_on_commit: a7e780bf61c8263f8921a5cbcc9f5d9d4f89c199
 ---
 
-# SupplyDesk VibeCoding Rules V1.1
+# SupplyDesk VibeCoding Rules V1.3
 
 This file is the one canonical source for the SupplyDesk VibeCoding control
 policy. `VibeCoding` here means using AI for interpretation and reasoning while
@@ -106,13 +106,15 @@ requires it. Never load the complete skill library speculatively.
 
 ## Verification budget
 
-Select checks from the real change set and risk. A small or micro change uses
+Select checks from the real change set and risk, and record the selected set as
+`REQUIRED_CHECKS` and `NOT_NEEDED_CHECKS` before running them. A small or micro change uses
 targeted tests, the relevant validator, `git diff --check`, and a security
 check only when sensitive paths changed. Browser checks are needed only for UI
 changes, and backend acceptance only for changed backend behavior. A medium
 change adds the nearest relevant integration check. High-risk or release work
 may use the existing broad controls. Do not run full project acceptance merely
-for ceremony.
+for ceremony. If a required check unexpectedly expands into a large unrelated
+suite, stop and explain the scope conflict.
 
 `NOT_NEEDED` means a check is irrelevant to the selected task and is not a
 limitation. `NOT_VERIFIED` means a useful or required check lacks evidence.
@@ -141,6 +143,113 @@ scope or introduces a new file category, stop and report:
 
 Then state whether the extra work is necessary for the current goal or is a
 separate task. This is a review threshold, not a rigid file-count limit.
+
+## COMPREHENSIVE-FIRST
+
+Before starting a sequence of related micro-audits, determine whether all
+information needed for the decision can reasonably be collected in one bounded
+audit. If yes, perform one comprehensive audit. Do not intentionally split
+`inventory → classification → duplicate analysis → content review` into
+separate tasks when they can safely be completed in one bounded task. The goal
+is to reduce chained discovery iterations without widening the safety boundary.
+
+## TWO-PASS RULE
+
+For one technical area, the default maximum is two passes:
+
+`PASS 1 — AUDIT` collects all material findings needed for a decision.
+
+`PASS 2 — REMEDIATION` implements approved fixes, runs targeted verification,
+and commits or publishes when the delivery mode requires it.
+
+Do not create Pass 3, Pass 4 or Pass 5 only because minor uncertainty remains.
+A third pass is allowed only when a P0/P1 risk is discovered, a previous result
+is contradicted, required evidence was technically unavailable, or remediation
+reveals a new material failure. Otherwise move the uncertainty to a
+`DEFERRED_FINDING` and continue the roadmap.
+
+## NO-MICRO-AUDIT-CHAIN
+
+A finding must not automatically create a new task merely because some detail
+remains unknown. Before creating or following a new diagnostic task, ask:
+
+`DOES THIS UNKNOWN BLOCK THE CURRENT BUSINESS/ENGINEERING DECISION?`
+
+If the answer is no, record the uncertainty as a `DEFERRED_FINDING` and stop.
+Low-value historical detail, optional Full metrics for a governance-only task,
+and binary archive artifacts with no canonical impact are deferred unless the
+security priority or another material decision requires them.
+
+## DECISION-READY STANDARD
+
+An audit is complete when enough evidence exists to make the required decision;
+it does not require proving every historical detail. Record:
+
+`DECISION_READY: YES/NO`
+
+Use `YES` when the evidence answers whether development may continue, an item
+may be deleted, owner approval is required, or remediation is required. Use
+`NO` when a missing fact still blocks that decision.
+
+## DEFERRED FINDINGS RULE
+
+Distinguish a `BLOCKER` from a `DEFERRED_FINDING`. A deferred finding remains
+documented, does not downgrade unrelated completed work, does not automatically
+generate a new task, and is revisited by priority, roadmap or new evidence.
+
+Severity is explicit:
+
+- `P0` — immediate blocker.
+- `P1` — fix before continuing the affected area.
+- `P2` — planned engineering or security maintenance.
+- `P3` — optional hygiene or improvement.
+
+Classify actual risk from evidence. Do not raise severity solely because a
+filename contains `secret`, `token` or `env`.
+
+## GOVERNANCE FREEZE
+
+After V1.3 is published, do not create governance improvements automatically.
+A governance change is allowed only when a real repeated failure occurs,
+current code/tests/guard cannot prevent it, the impact is cross-cutting, and
+the expected benefit exceeds execution overhead. Implementation-specific bugs
+should preferably become `fix + regression test`, not a new global policy.
+
+## ONE-SHOT DELIVERY MODE
+
+Every task may declare one delivery mode:
+
+`DELIVERY_MODE: LOCAL_ONLY` means implementation, local verification and a
+commit when required by the task; no push is performed.
+
+`DELIVERY_MODE: PUBLISH` means the same task includes implementation, targeted
+verification, one Task-ID commit, ordinary push, remote SHA confirmation,
+required FAST CI and final status. Do not require a second closeout-push task
+after successful implementation when `DELIVERY_MODE: PUBLISH` was declared.
+FULL CI runs only when the task or risk profile actually requires it.
+
+## TOOL AUDIT BATCHING
+
+For code-cleanliness tools such as Knip, Ruff, Vulture, Pyright and dependency
+analyzers, use two bounded passes:
+
+- `PASS 1` runs the tool in audit/read-only mode and collects all relevant
+  findings for the area, classified as `CONFIRMED`, `FALSE_POSITIVE` or
+  `REVIEW_REQUIRED`.
+- `PASS 2` fixes all approved `CONFIRMED` findings in one bounded remediation
+  batch.
+
+Do not create one task per unused file, export or dependency. Do not delete
+automatically from one tool finding alone.
+
+## REPORT / STATE MINIMIZATION
+
+Preserve scope-based updates. For micro or small tasks, do not duplicate the
+same result in `CURRENT_STATE`, `LAST_HANDOFF`, `CHANGELOG`,
+`INTERACTION_LOG` and a long report unless current policy or traceability
+requires it. Prefer one primary evidence location plus the minimum necessary
+global state update. Milestone, architecture and control changes may update
+the relevant global state and durable decision records.
 
 ## Scope-based state updates
 

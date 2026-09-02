@@ -79,6 +79,26 @@ OVERHEAD_SCENARIO_MARKERS = tuple(
         ("H", "HIGH RISK"),
     )
 )
+V13_POLICY_MARKERS = (
+    "## COMPREHENSIVE-FIRST",
+    "## TWO-PASS RULE",
+    "`PASS 1 — AUDIT`",
+    "`PASS 2 — REMEDIATION`",
+    "## NO-MICRO-AUDIT-CHAIN",
+    "DOES THIS UNKNOWN BLOCK THE CURRENT BUSINESS/ENGINEERING DECISION?",
+    "## DECISION-READY STANDARD",
+    "`DECISION_READY: YES/NO`",
+    "## DEFERRED FINDINGS RULE",
+    "`DEFERRED_FINDING`",
+    "## GOVERNANCE FREEZE",
+    "## ONE-SHOT DELIVERY MODE",
+    "`DELIVERY_MODE: LOCAL_ONLY`",
+    "`DELIVERY_MODE: PUBLISH`",
+    "## TOOL AUDIT BATCHING",
+    "## REPORT / STATE MINIMIZATION",
+    "`REQUIRED_CHECKS`",
+    "`NOT_NEEDED_CHECKS`",
+)
 REGISTRY_ENTRY_RE = re.compile(r"^\s{2}-\s+id:\s*([^\s#]+)\s*$", re.MULTILINE)
 REGISTRY_FIELD_RE = re.compile(r"^\s{4}([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$", re.MULTILINE)
 
@@ -194,6 +214,7 @@ def validate(root: Path) -> list[str]:
             "document_id": "VIBECODING-001",
             "status": "CURRENT",
             "canonical": "true",
+            "version": "1.3",
         }.items():
             if info.get(field, "").lower() != expected.lower():
                 errors.append(f"POLICY-003 FAIL: {POLICY_REL} {field} must be {expected!r}")
@@ -252,6 +273,9 @@ def validate(root: Path) -> list[str]:
         for marker in OVERHEAD_SCENARIO_MARKERS:
             if marker not in policy_text:
                 errors.append(f"POLICY-025 FAIL: execution-overhead scenario is missing: {marker}")
+        for marker in V13_POLICY_MARKERS:
+            if marker not in policy_text:
+                errors.append(f"POLICY-028 FAIL: V1.3 execution-policy marker is missing: {marker}")
 
     for instruction in (root / "AGENTS.md", root / "CLAUDE.md"):
         if not instruction.is_file():

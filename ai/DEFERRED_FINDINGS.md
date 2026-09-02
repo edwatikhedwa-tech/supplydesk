@@ -56,8 +56,11 @@ this current register. Resolved findings and full chronology are preserved in
 ## FINDING-009 — Local credential-bearing environment risk
 
 - ID: `FINDING-009`
-- Severity: `HIGH`
+- Severity: `P2`
 - Status: `OPEN`
+- Lifecycle: `DEFERRED_SECURITY_ACTION — LOCAL_ARCHIVE_SECRET_RETENTION`
+- Cleanup impact: `CLEANUP_PHASE: COMPLETE` — this deferred security action
+  does not keep the recovery/cleanup phase open.
 - Evidence: The canonical checkout still has no current operational
   `.env`/`.env.*` files, no tracked operational secret paths and no operational
   `.env` path in Git history. Three unique historical `.env.example` blobs were

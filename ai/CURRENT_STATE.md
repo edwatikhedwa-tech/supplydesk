@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: f969b769a43b41849c8e996de856ebf85a344a46
+based_on_commit: a7e780bf61c8263f8921a5cbcc9f5d9d4f89c199
 ---
 
 # Current State
@@ -15,7 +15,8 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-02` — Controlled content-level Finding-009 review completed.
+`2026-09-02` — Cleanup/recovery phase is complete and VibeCoding V1.3 is
+locally verified for same-task publication.
 Finding-009 remains `REVIEW_REQUIRED`: no operational env file is present or
 tracked in the canonical checkout/history, but retained external snapshot and
 quarantine filename copies require separate owner review.
@@ -117,10 +118,11 @@ quarantine filename copies require separate owner review.
   routing, a real-route one-viewport Browser Smoke, concurrency cancellation,
   explicit job budgets and a CI Summary. Normal focused pushes do not start
   Backend Full or Browser Full.
-- VibeCoding Control Policy V1.2 adds Session/Task/Continuation preflight
-  levels, lazy skill loading, verification budgets, Repeat-Error Rule, Change
-  Budget, scope-based state updates, parallel-work preparation and status-noise
-  control. Its validator checks policy semantics rather than agent cognition.
+- VibeCoding Control Policy V1.3 extends V1.2 with Comprehensive-First,
+  Two-Pass, No-Micro-Audit-Chain, Decision-Ready, Deferred Findings,
+  Governance Freeze, One-Shot Delivery, Tool Audit Batching and stronger
+  report/state minimization and verification-budget semantics. Its validator
+  checks these policy markers rather than agent cognition.
 - Workspace Guard V1 adds `scripts/assert_workspace.ps1`, which compares the
   real Git root with the canonical local default or an explicit absolute
   `-ExpectedRoot` for CI and intentional worktrees without changing directory,
@@ -241,6 +243,9 @@ on this task's dedicated branch:
   absent afterwards and no legacy checkout file was changed.
 - V1.2 focused governance checks: `14` tests passed and
   `python ai/tools/validate_vibecoding.py` passed with `36` registered tools.
+- V1.3 focused governance checks: `16` tests passed; the policy validator
+  passed with `36` registered tools; state/docs validators and `git diff
+  --check` passed.
 - Canonical Finding-009 review: no current operational `.env`/`.env.*` files,
   no tracked operational secret paths and no operational env path in Git
   history. Three unique historical `.env.example` blobs were classified as
@@ -252,6 +257,10 @@ on this task's dedicated branch:
 - Five paired snapshot paths are identical copies across the two baseline
   containers. No candidate values were output or saved, and no retained file
   was changed.
+- Cleanup/recovery closeout is `CLEANUP_PHASE: COMPLETE` based on the existing
+  Batch 1, Batch 2 and final hygiene evidence. Finding-009 remains an open
+  `DEFERRED_SECURITY_ACTION — LOCAL_ARCHIVE_SECRET_RETENTION` and is not a
+  cleanup blocker.
 
 ## Not verified
 
@@ -269,13 +278,15 @@ on this task's dedicated branch:
 - Remote CI proof for this new guard/workflow revision was not run in this
   local-only iteration; CI receives an explicit checkout-root override in the
   committed workflow.
-- Remote CI proof for the V1.2 execution-overhead policy revision is not
-  verified; this task does not publish the branch unless explicitly requested.
+- Remote SHA confirmation and FAST CI are the remaining same-task publication
+  gates for the declared `DELIVERY_MODE: PUBLISH`.
 - Current validity, ownership and required retention period for the detected
   local archive credentials are not verified. Four binary/image artifacts
   remain `UNDETERMINED` and require owner-approved follow-up.
-- Finding-009 retained-artifact contents are not verified by design; no content
-  review, deletion, movement, rotation or history rewrite was authorized.
+- Current validity, ownership and required retention period for local archive
+  credentials remain unverified; owner approval is required for any deletion
+  or rotation. No archive deletion, movement, rotation or history rewrite was
+  authorized.
 
 ## Blockers
 
@@ -306,10 +317,10 @@ on this task's dedicated branch:
 
 ## Current next step
 
-`TASK-CANONICAL-LOCAL-SECRET-HYGIENE-REVIEW-FINAL-20260902` is complete for
-the value-free canonical review. Finding-009 remains `REVIEW_REQUIRED`; owner
-approval is needed for any content-level retained-artifact review. Do not use
-the legacy checkout or start product acceptance.
+Complete the declared `DELIVERY_MODE: PUBLISH` by pushing the verified V1.3
+commit, confirming remote SHA and waiting for FAST CI. Then keep Finding-009 as
+an owner-approved deferred security action and do not use the legacy checkout
+or start product acceptance for this governance task.
 
 ## Canonical references
 
@@ -327,6 +338,7 @@ the legacy checkout or start product acceptance.
 - CI performance fix report: [`ai/reports/TASK-CI-PERFORMANCE-FIX-V1-20260902-report.md`](reports/TASK-CI-PERFORMANCE-FIX-V1-20260902-report.md).
 - Workspace guard report: [`ai/reports/TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902-report.md`](reports/TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902-report.md).
 - Execution-overhead policy report: [`ai/reports/TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902-report.md`](reports/TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902-report.md).
+- Cleanup/VibeCoding V1.3 report: [`ai/reports/TASK-CLEANUP-FINAL-CLOSEOUT-VIBECODING-V1.3-20260902-report.md`](reports/TASK-CLEANUP-FINAL-CLOSEOUT-VIBECODING-V1.3-20260902-report.md).
 - Finding-009 review report: [`ai/reports/TASK-FINDING-009-CANONICAL-REVIEW-20260902-report.md`](reports/TASK-FINDING-009-CANONICAL-REVIEW-20260902-report.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).
