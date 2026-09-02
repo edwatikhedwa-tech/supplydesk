@@ -110,5 +110,7 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
   `scripts/collect_contacts.py` and `benchmarks/benchmark_models.py`, with thin root
   compatibility wrappers; see `docs/architecture/REPOSITORY_LAYOUT.md` for the current map.
 
-At the end of every response, include the instruction-check block required by
-[`ai/adapters/CLAUDE_PROJECT_INSTRUCTIONS.md`](ai/adapters/CLAUDE_PROJECT_INSTRUCTIONS.md).
+At the end of every substantive final response, include the
+`[ИНСТРУМЕНТЫ И SKILLS]` block required by the `TOOL_USAGE_REPORTING` rule in
+[`ai/AI_CONTRACT.md`](ai/AI_CONTRACT.md), plus the final VibeCoding
+evidence/acknowledgement required by the canonical project rules.

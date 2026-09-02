@@ -3,6 +3,26 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-02 — SKILL DOCTOR SD-001 APPLIED — CLAUDE.md instruction-check pointer fix
+
+- The first Skill Doctor review (read-only, no repository changes) found
+  that `CLAUDE.md`'s closing instruction pointed at
+  `ai/adapters/CLAUDE_PROJECT_INSTRUCTIONS.md` for "the instruction-check
+  block," but that file is the Claude-Project (chat UI) adapter and defines
+  no such block — the real rule is `ai/AI_CONTRACT.md`'s
+  `TOOL_USAGE_REPORTING`.
+- Applied SD-001 only: `CLAUDE.md` now points directly at
+  `ai/AI_CONTRACT.md`'s `TOOL_USAGE_REPORTING` rule for the
+  `[ИНСТРУМЕНТЫ И SKILLS]` block, plus the canonical VibeCoding
+  acknowledgement requirement. No format was copied into `CLAUDE.md`.
+- SD-002 (a proposed `MOVE_REFERENCE_SCAN_RULE` in `ai/AI_CONTRACT.md`) was
+  rejected as a duplicate: existing `rg`-based reference/import/route/config
+  search expectations and `CODE_ROT_AUTHORITY`'s reference/import/string/
+  config search already cover this; the missed literal `"checko_client.py"`
+  path in an earlier diagnostic was incomplete execution of an existing
+  rule, not a proven instruction gap. `ai/AI_CONTRACT.md` and
+  `ai/VIBECODING_RULES.md` were not changed.
+
 ## 2026-09-02 — CHECKO REGISTRY MOVE + IMMUTABILITY GUARD MIGRATION — TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902
 
 - Completed the deferred `checko_client.py` move: it now lives at
