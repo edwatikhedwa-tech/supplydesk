@@ -284,7 +284,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             llm = None
             if args.llm:
-                from llm_fallback import DEFAULT_MODEL, LlmExtractor
+                from backend.integrations.llm.llm_fallback import DEFAULT_MODEL, LlmExtractor
 
                 llm = LlmExtractor(model=args.llm_model or DEFAULT_MODEL)
             lookup = WebLookup(XmlRiverClient(user=user, key=key, engine="yandex"), llm=llm)

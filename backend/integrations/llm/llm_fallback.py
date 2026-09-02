@@ -197,7 +197,7 @@ class LlmExtractor:
     def __init__(self, model: str = DEFAULT_MODEL, client: Any | None = None):
         self.model = model
         if client is None:
-            from routerai_client import RouterAiClient
+            from backend.integrations.llm.routerai_client import RouterAiClient
 
             client = RouterAiClient()
         self.client = client

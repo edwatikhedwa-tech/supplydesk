@@ -16,9 +16,9 @@ not a target structure. For behavioral component ownership, see
 
 | Path | Contains |
 |---|---|
-| root composition entrypoints | `supplier_app.py` (local backend entrypoint), plus a shrinking flat package of supplier-discovery/extraction modules still at root (e.g. `serp_parser.py`, `contact_crawler.py`, `email_extractor.py`, `inn_extractor.py`, `collect_inn.py`, `llm_fallback.py`, `routerai_client.py`, `web_lookup.py`, `xmlriver_client.py`, `verify.py`) and the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
+| root composition entrypoints | `supplier_app.py` (local backend entrypoint), plus a shrinking flat package of supplier-discovery/extraction modules still at root (e.g. `serp_parser.py`, `contact_crawler.py`, `email_extractor.py`, `inn_extractor.py`, `collect_inn.py`, `web_lookup.py`, `xmlriver_client.py`, `verify.py`) and the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
 | `api/` | `api/index.py` — the Vercel serverless adapter around `supplier_app.py` |
-| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`) |
+| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — LLM/provider transport moved out of the root flat package (`llm_fallback.py`, `routerai_client.py`) |
 | `mail/` | Real Yandex IMAP/SMTP integration and SQLite-backed mail repository |
 | `migrations/` | Versioned SQL schema DDL |
 | `frontend/` | React/Vite SPA (TypeScript, Tailwind) |
@@ -40,6 +40,11 @@ not a target structure. For behavioral component ownership, see
   protected-path list was migrated to Checko's new location in the same
   change that moved it, so the existing immutability guard was never
   weakened.
+- `TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902`: `llm_fallback.py` and
+  `routerai_client.py` moved to `backend/integrations/llm/`, no root
+  wrapper. `supplier_app.py`, `collect_inn.py`,
+  `scripts/collect_contacts.py` and `benchmarks/benchmark_models.py` updated
+  to the canonical import path.
 - Remaining root modules named in
   `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md` (including
   `supplier_app.py`, `api/index.py`, `serp_parser.py`) are unmoved and

@@ -13,6 +13,33 @@ Only unresolved, accepted-risk, or explicitly superseded findings belong in
 this current register. Resolved findings and full chronology are preserved in
 [`ai/history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md`](history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md).
 
+## FINDING-018 — `collect_inn.py --llm` imports a nonexistent symbol
+
+- ID: `FINDING-018`
+- Severity: `LOW`
+- Status: `OPEN`
+- Evidence: `TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902`'s fresh reference scan
+  found `collect_inn.py:217` does `from llm_fallback import InnLlmExtractor,
+  api_key_present` (now `from backend.integrations.llm.llm_fallback import
+  InnLlmExtractor, api_key_present`), but `llm_fallback.py` only ever
+  defined `LlmExtractor`, never `InnLlmExtractor`. This predates the move —
+  confirmed by checking the pre-move file content — and the move preserves
+  the identical `ImportError` from the new path. The same code path's error
+  message also tells the operator to set `ANTHROPIC_API_KEY`, while the
+  actual `api_key_present()` checks `ROUTERAI_KEY`.
+- Impact: `python collect_inn.py --llm ...` raises `ImportError` immediately
+  when the `--llm` flag is used; the feature is currently non-functional.
+  No test exercises this path (env/flag-gated), so nothing else would catch
+  it.
+- Why deferred: out of scope for a structural move task
+  (`AI_CONTRACT.md` rule 5 — do not fix unrelated problems); `collect_inn.py`
+  was explicitly limited to an import-line change only.
+- Next verification: a separate task confirms whether `InnLlmExtractor` was
+  meant to be `LlmExtractor` (or a dedicated INN-only wrapper was dropped
+  during earlier work), fixes the symbol reference and the
+  `ANTHROPIC_API_KEY`/`ROUTERAI_KEY` message mismatch, and adds a smoke test
+  for `--llm` argument parsing that does not require a live key.
+
 ## FINDING-003 — Standard helper-script coverage is incomplete
 
 - ID: `FINDING-003`

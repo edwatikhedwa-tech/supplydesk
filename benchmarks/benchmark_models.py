@@ -169,8 +169,8 @@ def best_page(host: str, entry: dict) -> tuple[str, str]:
 
 
 def run(models: list[str], limit: int | None) -> None:
-    from llm_fallback import INN_SCHEMA, INN_SYSTEM_PROMPT, build_inn_user_message
-    from routerai_client import RouterAiClient
+    from backend.integrations.llm.llm_fallback import INN_SCHEMA, INN_SYSTEM_PROMPT, build_inn_user_message
+    from backend.integrations.llm.routerai_client import RouterAiClient
 
     truth = load_truth()
     cases = [(host, entry) for host, entry in truth.items() if entry["inn"]]

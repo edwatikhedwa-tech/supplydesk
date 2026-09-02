@@ -214,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
     llm_used = 0
     llm_cost = 0.0
     if args.llm:
-        from llm_fallback import InnLlmExtractor, api_key_present
+        from backend.integrations.llm.llm_fallback import InnLlmExtractor, api_key_present
 
         if not api_key_present():
             raise SystemExit(

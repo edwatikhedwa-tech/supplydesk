@@ -3,6 +3,24 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-02 — BOUNDED ROOT REFACTOR: LLM INTEGRATIONS — TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902
+
+- Moved `llm_fallback.py` and `routerai_client.py` to
+  `backend/integrations/llm/`. `git diff -M` confirmed `100%`/`99%`
+  similarity (the only change: one internal lazy import updated to the
+  canonical path); prompts, schemas, `DEFAULT_MODEL` and RouterAI request/
+  response behavior are unchanged. Updated the 4 known consumers
+  (`supplier_app.py`, `collect_inn.py`, `scripts/collect_contacts.py`,
+  `benchmarks/benchmark_models.py`); no root compatibility wrapper.
+- Discovered and deferred (not fixed — out of this task's scope) a
+  pre-existing, unrelated bug: `collect_inn.py --llm` imports a nonexistent
+  `InnLlmExtractor` symbol from `llm_fallback`, and its error text names the
+  wrong environment variable. Recorded as `FINDING-018`; the move preserves
+  the identical failure mode.
+- Added `tests/diagnostics/test_llm_integration_move.py` (6 tests) — no
+  prior coverage existed for either module since both are only reached
+  through env/flag-gated lazy imports offline suites never trigger.
+
 ## 2026-09-02 — SKILL DOCTOR SD-001 APPLIED — CLAUDE.md instruction-check pointer fix
 
 - The first Skill Doctor review (read-only, no repository changes) found

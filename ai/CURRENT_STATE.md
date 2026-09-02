@@ -15,6 +15,18 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-02` — `TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902` moved
+`llm_fallback.py` and `routerai_client.py` to
+[`backend/integrations/llm/`](../backend/integrations/llm/) (`git diff -M`
+showed `99%`/`100%` similarity — prompts, schemas, `DEFAULT_MODEL` and
+provider behavior unchanged). All 4 known consumers (`supplier_app.py`,
+`collect_inn.py`, `scripts/collect_contacts.py`,
+`benchmarks/benchmark_models.py`) updated; no root wrapper. Discovered and
+deferred (not fixed, out of scope) a pre-existing unrelated bug:
+`collect_inn.py --llm` imports a nonexistent `InnLlmExtractor` symbol —
+recorded as `FINDING-018`. The task report is
+[`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902-report.md).
+
 `2026-09-02` — `TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902`
 completed the deferred `checko_client.py` move: it now lives at
 [`backend/integrations/registry/checko_client.py`](../backend/integrations/registry/checko_client.py)
@@ -348,6 +360,16 @@ on this task's dedicated branch:
   deprecated-review root test surfaces are recorded in the dated report.
 - Code Rot Cleaner was used in report-only mode with external scratch output;
   Ruff and Vulture were not available without installation and were not added.
+- Bounded root refactor Pass 5 (LLM integrations):
+  `backend/integrations/llm/llm_fallback.py` and
+  `backend/integrations/llm/routerai_client.py` are now the canonical
+  implementations; root copies are gone, no wrapper. `supplier_app`,
+  `collect_inn`, `scripts.collect_contacts` and `benchmarks.benchmark_models`
+  all import successfully offline; `api.index.handler`/`_APP` import under
+  `SUPPLYDESK_ENV=test`. `tests/diagnostics/test_llm_integration_move.py`
+  (6/6 PASS) added; `tests/test_enrichment_pipeline.py` +
+  `tests/test_dashboard.py` (21/21 PASS); diagnostics suite `52/61` PASS
+  with the same 9 pre-existing `pwsh`-gap errors as before.
 - Bounded root refactor Pass 4 (Checko + immutability migration):
   `backend/integrations/registry/checko_client.py` is now the canonical
   implementation alongside `dadata_client.py`; the root copy is gone.
@@ -451,14 +473,16 @@ on this task's dedicated branch:
 
 ## Current next step
 
-Pass 2 (CLI compatibility), Pass 3 (`dadata_client.py`) and Pass 4
-(`checko_client.py` + immutability migration) are complete; both registry
-adapters now live under `backend/integrations/registry/` and `FINDING-017`
-is resolved. Any further root moves — `supplier_app.py`, `api/index.py`,
-`serp_parser.py`, or the remaining runtime modules named in the root
-diagnostic — require their own bounded task with explicit import, subprocess
-and deployment contracts; none is authorized by this change. Keep the Browser
-Full `FAIL` and Finding-009 as separate recorded limitations.
+Pass 2 (CLI compatibility), Pass 3 (`dadata_client.py`), Pass 4
+(`checko_client.py` + immutability migration) and Pass 5 (LLM integrations)
+are complete; `backend/integrations/{registry,llm}/` now hold 4 moved
+modules and `FINDING-017` is resolved. `FINDING-018` (a pre-existing,
+unrelated `collect_inn.py --llm` broken-symbol bug found during Pass 5)
+remains open for a separate task. Any further root moves — `supplier_app.py`,
+`api/index.py`, `serp_parser.py`, or the remaining runtime modules named in
+the root diagnostic — require their own bounded task with explicit import,
+subprocess and deployment contracts; none is authorized by this change. Keep
+the Browser Full `FAIL` and Finding-009 as separate recorded limitations.
 
 ## Canonical references
 
@@ -483,6 +507,7 @@ Full `FAIL` and Finding-009 as separate recorded limitations.
 - Bounded root refactor (CLI surfaces) report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902-report.md).
 - Bounded root refactor (registry integrations) report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md).
 - Checko registry move + immutability migration report: [`ai/reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md`](reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md).
+- LLM integrations move report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902-report.md).
 - Repository layout map: [`docs/architecture/REPOSITORY_LAYOUT.md`](../docs/architecture/REPOSITORY_LAYOUT.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).

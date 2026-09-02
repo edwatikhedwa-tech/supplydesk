@@ -2,6 +2,27 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-02 — TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902
+
+- Workspace Guard passed; cheap Task Preflight reused session context and
+  re-ran the fresh (non-AST-only) reference scan for both modules rather
+  than trusting the prior baseline unchanged.
+- Confirmed the same 4 known consumers, no immutability-protected-path
+  conflict (unlike Checko), and no mock/patch targets referencing either
+  module anywhere in tests.
+- Moved both modules; `git diff -M` proved `100%`/`99%` similarity so
+  prompts/schemas/model defaults/provider behavior are structurally
+  unchanged, not just claimed unchanged.
+- Found a pre-existing, unrelated bug while reading `collect_inn.py`'s
+  import line (`InnLlmExtractor` never existed in `llm_fallback.py`) and
+  deferred it as `FINDING-018` instead of fixing it, since `collect_inn.py`
+  was scoped to an import-line change only; verified the move preserves the
+  identical `ImportError`.
+- Added `tests/diagnostics/test_llm_integration_move.py` (6/6 PASS);
+  targeted suites (`test_enrichment_pipeline` + `test_dashboard`, 21/21) and
+  diagnostics (52/61, same 9 pre-existing `pwsh`-gap errors) passed.
+  Validators and `git diff --check` passed; 0 provider calls.
+
 ## 2026-09-02 — TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902
 
 - Workspace Guard passed; cheap Task Preflight reused session context and

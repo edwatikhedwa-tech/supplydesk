@@ -48,7 +48,7 @@ from inn_resolver import (
     resolve_inn_by_legal_ids,
     resolve_inn_by_registry,
 )
-from llm_fallback import LlmExtractor, api_key_present
+from backend.integrations.llm.llm_fallback import LlmExtractor, api_key_present
 from verify import registry_owns_site, registry_ownership_unknown, verify_email
 from web_lookup import WebLookup
 
