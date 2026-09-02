@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: 68afe6100685bbcae1c02c8fd2564b01cebcc37a
+based_on_commit: 9977d56ddac51b2bbccbacbcd04a26957d8b77c2
 ---
 
 # Active Task
@@ -13,34 +13,31 @@ Task ID: `NONE`
 Agent: `Codex`
 Mode: `CLOSE`
 Started: `2026-09-02`
-Scope: `VibeCoding execution overhead policy, adapters, shared contract and governance tests`
-Allowed files: `AGENTS.md`, `CLAUDE.md`, `ai/**`,
-`tests/diagnostics/test_vibecoding_governance.py`; no product/data/runtime changes
-Status: `IDLE — V1.2 policy implementation and focused governance checks complete`
-Last update: `2026-09-02T09:17:45Z`
+Scope: `canonical value-free local secret hygiene review and Finding-009 evidence`
+Allowed files: `ai/**`; no product/data/runtime/legacy changes
+Status: `IDLE — canonical value-free review complete; Finding-009 remains REVIEW_REQUIRED`
+Last update: `2026-09-02`
 
 ## Цель
 
-Сократить повторный governance/environment overhead между последовательными
-задачами, сохранив workspace guard, risk-based checks и безопасность.
+Корректно проверить canonical local secret hygiene value-free и определить
+статус `FINDING-009` без чтения секретных значений.
 
 ## Границы
 
 Product behavior, frontend UI, API, database schema/data, migrations, mail
-data, secrets, quarantine, dependencies, Workspace Guard behavior and CI
-architecture are not changed. Backend, frontend and Playwright acceptance are
-not run.
+data, secret values, quarantine, legacy checkout, dependencies, governance
+policy, Workspace Guard behavior and CI architecture are not changed. Backend,
+frontend and Playwright acceptance are not run.
 
 ## Acceptance
 
-The canonical policy defines Session Preflight, Task Preflight and
-Continuation/Action checks; lazy loading, verification budget, Repeat-Error
-Rule, Change Budget, scope-based state updates and parallel-work preparation
-are explicit; the semantic validator and governance tests pass; product code
-is unchanged.
+Canonical candidate inventory, Git ignore rules, Git path history and
+filename-level exposure are recorded without reading file contents; Finding-009
+receives an evidence-backed status; product code is unchanged.
 
 ## Следующий шаг
 
-Targeted governance checks and relevant control-plane evidence are complete;
-create the Task-ID commit and report the exact result.
+Complete the minimal finding evidence update, run relevant validators and
+report `REVIEW_REQUIRED` unless the existing evidence supports closure.
 

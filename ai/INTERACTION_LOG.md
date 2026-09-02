@@ -2,6 +2,15 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-02 — TASK-CANONICAL-LOCAL-SECRET-HYGIENE-REVIEW-FINAL-20260902
+
+- Canonical Workspace Guard passed; only cheap V1.2 Task Preflight was used.
+- Completed value-free filename, Git ignore, history and retained-artifact
+  metadata checks without reading secret values or candidate contents.
+- Canonical operational env exposure was not found, but external retained
+  filename copies prevent closing Finding-009; final status is
+  `REVIEW_REQUIRED`.
+
 ## 2026-09-02T09:14:44Z — TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902
 
 - Workspace Guard passed before task work and the existing healthy-session

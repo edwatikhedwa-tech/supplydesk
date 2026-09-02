@@ -58,10 +58,21 @@ this current register. Resolved findings and full chronology are preserved in
 - ID: `FINDING-009`
 - Severity: `HIGH`
 - Status: `OPEN`
-- Evidence: The baseline records local environment files in the source checkout; values were not read or copied.
+- Evidence: The canonical value-free review found no current operational
+  `.env`/`.env.*` files, no tracked operational secret paths, and no operational
+  `.env` path in Git history. Git history contains `.env.example` only; its
+  contents were not read. Retained external snapshots contain 12 `.env*`
+  filename copies and the retained quarantine contains 12 token/auth-named
+  artifact filenames.
 - Impact: Accidental staging or publication could disclose credentials or enable external actions.
-- Why deferred: Reading or changing secret-bearing files is outside this task and prohibited without a separately approved security workflow.
-- Next verification: Owner performs a value-free `git status`/ignore audit and confirms the protected paths remain untracked and unpublished.
+- Review result: `REVIEW_REQUIRED` — the filename-level retained copies were
+  not treated as leaks, but they cannot be classified as safe without a
+  separately approved content-level owner review.
+- Why deferred: This task is value-free and does not read, copy, rotate, delete
+  or move secret-bearing files or retained artifacts.
+- Next verification: Owner approves a separate retained-artifact review and
+  classifies the 12 snapshot `.env*` names and 12 quarantine token/auth names;
+  no Git history rewrite is authorized by this finding review.
 
 ## FINDING-015 — Residual repository-hygiene audit drift
 

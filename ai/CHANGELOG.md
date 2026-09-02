@@ -3,6 +3,17 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-02 — CANONICAL LOCAL SECRET HYGIENE REVIEW — TASK-CANONICAL-LOCAL-SECRET-HYGIENE-REVIEW-FINAL-20260902
+
+- Repeated the local credential hygiene review in the canonical
+  `C:\Users\edwat\SupplyDesk` checkout using filenames and Git metadata only.
+- No current operational env files, tracked operational secret paths or
+  operational env paths in Git history were found; `.env.example` remains
+  history-only and content-unverified.
+- Retained snapshot/quarantine filename copies were found, so `FINDING-009`
+  remains `REVIEW_REQUIRED`. No secret values, files, quarantine contents or
+  Git history were changed.
+
 ## 2026-09-02T09:14:44Z — VIBECODING EXECUTION OVERHEAD OPTIMIZATION V1 — TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902
 
 - Added canonical VibeCoding V1.2 semantics for Session Preflight, Task

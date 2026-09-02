@@ -15,10 +15,10 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-02T09:17:45Z` — VibeCoding execution-overhead policy V1.2 is
-implemented on the dedicated task branch. The policy separates one Session
-Preflight from cheap Task Preflight and continuation checks while preserving
-the workspace guard and risk-based controls.
+`2026-09-02` — Canonical value-free local secret hygiene review completed.
+Finding-009 remains `REVIEW_REQUIRED`: no operational env file is present or
+tracked in the canonical checkout/history, but retained external snapshot and
+quarantine filename copies require separate owner review.
 
 ## Project
 
@@ -241,6 +241,11 @@ on this task's dedicated branch:
   absent afterwards and no legacy checkout file was changed.
 - V1.2 focused governance checks: `14` tests passed and
   `python ai/tools/validate_vibecoding.py` passed with `36` registered tools.
+- Canonical Finding-009 review: no current operational `.env`/`.env.*` files,
+  no tracked operational secret paths and no operational env path in Git
+  history; `.env.example` is history-only and content-unverified.
+- Filename-only review found 12 `.env*` names in retained snapshots and 12
+  token/auth-named artifact names in retained quarantine; no values were read.
 
 ## Not verified
 
@@ -260,6 +265,8 @@ on this task's dedicated branch:
   committed workflow.
 - Remote CI proof for the V1.2 execution-overhead policy revision is not
   verified; this task does not publish the branch unless explicitly requested.
+- Finding-009 retained-artifact contents are not verified by design; no content
+  review, deletion, movement, rotation or history rewrite was authorized.
 
 ## Blockers
 
@@ -290,10 +297,10 @@ on this task's dedicated branch:
 
 ## Current next step
 
-`TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902` is complete in
-the local control-plane scope. Its focused governance evidence is recorded in
-the task report; product acceptance is `NOT_NEEDED`. Do not repeat forensic
-cleanup or start product acceptance.
+`TASK-CANONICAL-LOCAL-SECRET-HYGIENE-REVIEW-FINAL-20260902` is complete for
+the value-free canonical review. Finding-009 remains `REVIEW_REQUIRED`; owner
+approval is needed for any content-level retained-artifact review. Do not use
+the legacy checkout or start product acceptance.
 
 ## Canonical references
 
@@ -311,6 +318,7 @@ cleanup or start product acceptance.
 - CI performance fix report: [`ai/reports/TASK-CI-PERFORMANCE-FIX-V1-20260902-report.md`](reports/TASK-CI-PERFORMANCE-FIX-V1-20260902-report.md).
 - Workspace guard report: [`ai/reports/TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902-report.md`](reports/TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902-report.md).
 - Execution-overhead policy report: [`ai/reports/TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902-report.md`](reports/TASK-VIBECODING-EXECUTION-OVERHEAD-OPTIMIZATION-V1-20260902-report.md).
+- Finding-009 review report: [`ai/reports/TASK-FINDING-009-CANONICAL-REVIEW-20260902-report.md`](reports/TASK-FINDING-009-CANONICAL-REVIEW-20260902-report.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).

@@ -4,65 +4,65 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: 68afe6100685bbcae1c02c8fd2564b01cebcc37a
+based_on_commit: 9977d56ddac51b2bbccbacbcd04a26957d8b77c2
 ---
 
 # Last Handoff
 
-This handoff records the VibeCoding execution-overhead optimization V1. The
+This handoff records the canonical value-free Finding-009 review. The
 publication commit is recorded by Git history, not copied into this metadata.
 
 ## Цель
 
-Сократить повторный governance/environment overhead между последовательными
-задачами, сохранив workspace guard, risk-based checks и безопасность.
+Корректно проверить canonical local secret hygiene и определить статус
+`FINDING-009` без чтения секретных значений.
 
 ## Что изменено
 
-- Added VibeCoding policy V1.2 semantics for Session Preflight, Task Preflight
-  and Continuation/Action checks with explicit revalidation exceptions.
-- Added lazy skill/tool loading, verification budgets, Repeat-Error Rule,
-  Change Budget, scope-based state updates, parallel-work preparation and
-  status-noise control.
-- Aligned `AGENTS.md`, `CLAUDE.md`, `ai/AI_CONTRACT.md` and `ai/WORKFLOW.md`;
-  extended the read-only policy validator and focused governance tests.
-- Added a concise task report and durable decision/evidence entries. Product
-  code, runtime, database, mail data and Workspace Guard behavior were not
-  changed.
+- Reviewed only canonical filenames, Git metadata, ignore rules, path history
+  and retained-artifact names; no candidate contents were read.
+- Found no current operational env files, tracked operational env paths or
+  operational env paths in Git history. `.env.example` is history-only and
+  content-unverified.
+- Found 12 `.env*` names in retained snapshots and 12 token/auth-named
+  artifact names in retained quarantine; no deletion, rotation or history
+  rewrite was performed.
 
 ## Что проверено
 
-- Workspace Guard: `PASS`, exit `0`.
-- Focused governance tests: `14/14 PASS`.
-- `python ai/tools/validate_vibecoding.py`: `PASS`, `36` tool entries.
-- `git diff --check`: `PASS`; changed-path review found no product, data or
-  runtime path.
+- Workspace Guard: `PASS`, exit `0`, canonical root confirmed.
+- Canonical inventory, `.gitignore` review and Git history path check completed
+  value-free; worktree remained clean.
+- `TRACKED_OPERATIONAL_SECRETS=NO`; `SECRET_VALUES_READ=NO`.
 
 ## Что не прошло
 
-Nothing failed in the focused governance scope. Backend, frontend and
-Playwright acceptance were intentionally not run; they are `NOT_NEEDED` for
-this policy-only task and are not evidence about product behavior.
+No command failed in the value-free review. `FINDING-009` is not closed:
+retained snapshot/quarantine filenames require separate owner review before
+they can be classified safe. Backend, frontend and Playwright are
+`NOT_NEEDED`.
 
 ## Что не проверено
 
-NOT VERIFIED: remote CI and branch protection for this policy revision, live
-external providers, real mail and production database behavior. No remote
-publication was requested.
+NOT VERIFIED: contents of retained snapshot/quarantine candidates,
+`.env.example` historical content, remote CI and branch protection. Values
+were intentionally not read.
 
 ## Текущее состояние runtime
 
-No canonical or live runtime was started or left running.
+No canonical or live runtime was started or left running; legacy checkout was
+not used.
 
 ## Следующий рациональный шаг
 
-Create the Task-ID commit on the current task branch. Leave push unperformed
-unless explicitly requested.
+Create the Task-ID commit containing this minimal finding evidence. Do not
+delete, move, rotate or inspect candidate contents without separate owner
+approval.
 
 ## Не повторять
 
-Do not use the legacy OneDrive checkout for development, do not run real mail,
-do not modify protected local data, do not run backend/frontend/Playwright for
-this task, do not force-push, and do not add a second acknowledgement to an
-intermediate message. Do not repeat the full Session Preflight for a healthy
-continuation or unrelated task.
+Do not use the legacy OneDrive checkout for development, do not read secret
+values, do not run real mail, do not modify protected local data, do not run
+backend/frontend/Playwright for this task, do not delete quarantine contents,
+do not force-push, and do not add a second acknowledgement to an intermediate
+message.
