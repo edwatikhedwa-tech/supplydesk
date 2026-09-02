@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from ai.tools.validate_vibecoding import final_task_status
+
 
 ROOT = Path(__file__).resolve().parents[2]
 VALIDATOR = ROOT / "ai/tools/validate_vibecoding.py"
@@ -117,6 +119,29 @@ class VibeCodingGovernanceTests(unittest.TestCase):
             self.assertIn("POLICY-022 FAIL", result.stdout)
         finally:
             shutil.rmtree(root)
+
+    def test_final_status_case_a_required_pass_other_not_needed(self):
+        self.assertEqual(
+            final_task_status(["PASS", "PASS"], ["NOT_NEEDED", "NOT_NEEDED"]),
+            "PASS",
+        )
+
+    def test_final_status_case_b_required_not_verified_is_limitation(self):
+        self.assertEqual(
+            final_task_status(["PASS", "NOT_VERIFIED"], ["NOT_NEEDED"]),
+            "PASS_WITH_LIMITATIONS",
+        )
+
+    def test_final_status_case_c_required_fail(self):
+        self.assertEqual(
+            final_task_status(["FAIL"], ["NOT_NEEDED", "NOT_NEEDED"]),
+            "FAIL",
+        )
+
+    def test_final_status_case_d_product_acceptance_excluded(self):
+        governance_checks = ["PASS", "PASS", "PASS"]
+        product_acceptance = ["NOT_NEEDED", "NOT_NEEDED", "NOT_NEEDED"]
+        self.assertEqual(final_task_status(governance_checks, product_acceptance), "PASS")
 
     def test_valid_policy_passes(self):
         root = self.make_fixture()

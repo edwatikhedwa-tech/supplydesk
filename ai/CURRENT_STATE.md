@@ -204,6 +204,9 @@ on this task's dedicated branch:
   policy, `AGENTS.md`, `CLAUDE.md`, its validator and focused governance tests:
   intermediate responses contain no acknowledgement, while the final response
   contains exactly one rendered from canonical `last_corrected`.
+- Final-status governance correction adds the canonical aggregation rule that
+  required `PASS` plus out-of-scope `NOT_NEEDED` remains final `PASS`; required
+  `NOT_VERIFIED` is a real limitation and required `FAIL` remains `FAIL`.
 - Remote FAST proof `33562406201` passed in 1m22s on final configuration
   commit `2b860a5`; Full Control passed and Backend Full/Browser Full were
   skipped by deterministic classification.

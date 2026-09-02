@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
 
@@ -43,6 +44,13 @@ ACK_LITERAL_RE = re.compile(r"Я использую правила VibeCoding'a 
 ACK_STALE_PREFIX_RE = re.compile(
     r"(?:begin\s+(?:its\s+)?response\s+with\s*:?|emit)\s*`?Я использую правила VibeCoding'a от",
     re.IGNORECASE,
+)
+CHECK_STATUS_NAMES = {"PASS", "FAIL", "NOT_VERIFIED", "NOT_NEEDED", "BLOCKED"}
+FINAL_STATUS_MARKERS = (
+    "## Final status semantics",
+    "PASS + NOT_NEEDED => PASS",
+    "PASS + required NOT_VERIFIED => PASS_WITH_LIMITATIONS",
+    "required FAIL => FAIL",
 )
 REGISTRY_ENTRY_RE = re.compile(r"^\s{2}-\s+id:\s*([^\s#]+)\s*$", re.MULTILINE)
 REGISTRY_FIELD_RE = re.compile(r"^\s{4}([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$", re.MULTILINE)
@@ -105,6 +113,26 @@ def registry_entries(text: str) -> list[dict[str, str]]:
             fields[field] = value.strip().strip("'\"")
         entries.append(fields)
     return entries
+
+
+def final_task_status(required_statuses: Iterable[str], other_statuses: Iterable[str]) -> str:
+    """Aggregate selected check statuses without treating NOT_NEEDED as a limitation."""
+    required = [status.strip().upper() for status in required_statuses]
+    other = [status.strip().upper() for status in other_statuses]
+    unknown = sorted({status for status in required + other if status not in CHECK_STATUS_NAMES})
+    if unknown:
+        raise ValueError(f"unknown check status: {unknown!r}")
+    if "FAIL" in required:
+        return "FAIL"
+    if "BLOCKED" in required:
+        return "BLOCKED"
+    if "NOT_VERIFIED" in required:
+        return "PASS_WITH_LIMITATIONS"
+    if any(status != "PASS" for status in required):
+        raise ValueError("required checks must be PASS, FAIL, NOT_VERIFIED or BLOCKED")
+    if any(status in {"FAIL", "NOT_VERIFIED", "BLOCKED"} for status in other):
+        return "PASS_WITH_LIMITATIONS"
+    return "PASS"
 
 
 def validate(root: Path) -> list[str]:
@@ -176,6 +204,9 @@ def validate(root: Path) -> list[str]:
             errors.append("POLICY-015 FAIL: ceremony-check rule is missing")
         if "`NOT_NEEDED` means" not in policy_text or "`NOT_VERIFIED` means" not in policy_text:
             errors.append("POLICY-016 FAIL: NOT_NEEDED versus NOT_VERIFIED semantics are missing")
+        for marker in FINAL_STATUS_MARKERS:
+            if marker not in policy_text:
+                errors.append(f"POLICY-024 FAIL: final status semantics marker is missing: {marker}")
         for phrase in (
             "## CI performance budgets",
             "SPEED IS PART OF QUALITY",

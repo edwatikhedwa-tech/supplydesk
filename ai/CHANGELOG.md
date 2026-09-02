@@ -3,6 +3,16 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-02T05:35:37Z — VIBECODING FINAL STATUS SEMANTICS FIX — TASK-VIBECODING-FINAL-STATUS-SEMANTICS-FIX-20260902
+
+- Added canonical final-status semantics: `NOT_NEEDED` is not a limitation;
+  required `NOT_VERIFIED` produces `PASS_WITH_LIMITATIONS`; required `FAIL`
+  produces `FAIL`.
+- Added a minimal pure-governance evaluator and focused A–D tests, including a
+  governance-only task with product acceptance classified as `NOT_NEEDED`.
+- No product code, CI architecture, backend/frontend/browser behavior or
+  external service was changed or executed.
+
 ## 2026-09-01T22:16:53Z — VIBECODING ACKNOWLEDGEMENT OUTPUT FIX — TASK-VIBECODING-ACKNOWLEDGEMENT-OUTPUT-FIX-20260902
 
 - Replaced the old response-prefix instruction with a final-response-only

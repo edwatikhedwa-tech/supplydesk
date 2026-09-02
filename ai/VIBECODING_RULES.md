@@ -175,6 +175,36 @@ explicit final acceptance.
 `NOT_VERIFIED` means the check would be useful or required but evidence is
 missing. They must never be interchanged to hide missing verification.
 
+## Final status semantics
+
+Final task status is calculated only after each check has been classified as
+required for the selected task class, risk and profile, or as `NOT_NEEDED`.
+
+- `PASS` means a required check completed successfully.
+- `FAIL` means a required check completed and found an error.
+- `NOT_VERIFIED` means a required check was not completed or its result cannot
+  be confirmed.
+- `NOT_NEEDED` means the check is outside the task scope and is not a result
+  limitation.
+
+The final status rules are:
+
+1. A required `FAIL` produces final `FAIL`.
+2. With no required `FAIL`, a required `NOT_VERIFIED` produces final
+   `PASS_WITH_LIMITATIONS`.
+3. If every required check is `PASS`, and every other selected check is
+   `PASS` or `NOT_NEEDED`, final status is `PASS`.
+4. `NOT_NEEDED` alone never produces `PASS_WITH_LIMITATIONS`.
+5. A selected non-required check with `FAIL`, `NOT_VERIFIED` or `BLOCKED` is a
+   real limitation only when it remains relevant to the stated scope; an
+   irrelevant check must be classified as `NOT_NEEDED` before aggregation.
+
+PASS + NOT_NEEDED => PASS
+
+PASS + required NOT_VERIFIED => PASS_WITH_LIMITATIONS
+
+required FAIL => FAIL
+
 ## CI performance budgets
 
 `SPEED IS PART OF QUALITY`. A pipeline can be functionally correct and still

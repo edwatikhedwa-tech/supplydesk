@@ -9,41 +9,43 @@ based_on_commit: 2b860a54e89c062126f872635ea721537c0594dc
 
 # Last Handoff
 
-This handoff records the VibeCoding acknowledgement-output governance fix.
+This handoff records the VibeCoding final-status semantics governance fix.
 The final documentation commit is recorded by Git history, not copied into
 this metadata.
 
 ## Цель
 
-Запретить повторение VibeCoding acknowledgement в промежуточных сообщениях и
-требовать ровно одно acknowledgement в финальном ответе, с датой из
-канонической политики.
+Разделить `NOT_NEEDED` и `NOT_VERIFIED` в итоговой агрегации: отсутствие
+необязательной проверки не является ограничением успешной governance-задачи.
 
 ## Что изменено
 
-- `ai/VIBECODING_RULES.md` now defines final-response-only acknowledgement
-  semantics and reads its date from canonical `last_corrected`.
-- `AGENTS.md` and `CLAUDE.md` no longer require a response prefix.
-- `ai/tools/validate_vibecoding.py` and focused governance tests reject stale
-  prefix behavior and hardcoded dates.
+- `ai/VIBECODING_RULES.md` now defines final-status semantics for `PASS`, `FAIL`,
+  `NOT_VERIFIED` and `NOT_NEEDED`.
+- `ai/tools/validate_vibecoding.py` exposes the minimal final-status evaluator;
+  focused governance tests cover cases A–D.
+- The prior final-only acknowledgement rule remains unchanged and is inherited
+  from the preceding commit.
 - No product logic, UI, API, CI architecture, database, mail data, credentials,
   environment, runtime or quarantine content changed.
 
 ## Что проверено
 
-- Focused governance tests: `7/7 PASS`.
+- Focused governance tests: `11/11 PASS`.
 - `python ai/tools/validate_vibecoding.py`: `PASS`, 35 registered tools.
 - Repository search found no stale acknowledgement prefix or hardcoded rendered
   date in instruction/policy files; date literals remain only in intentional
   negative-test fixtures.
-- Backend, frontend and Playwright acceptance were not run by explicit task
-  scope.
+- A–D status semantics: `PASS`, `PASS_WITH_LIMITATIONS`, `FAIL` and `PASS`
+  respectively.
+- Backend, frontend, Playwright, FULL CI and remote performance investigation
+  were not run by explicit task scope.
 
 ## Что не прошло
 
 Nothing failed in the focused governance scope. Full product acceptance is
-`NOT_NEEDED` for this governance-only correction and is not evidence about
-backend, frontend or browser behavior.
+`NOT_NEEDED` for this governance-only correction and does not lower the final
+status; it is not evidence about backend, frontend or browser behavior.
 
 ## Что не проверено
 
@@ -60,9 +62,9 @@ OFFLINE_TEST runtime used for Browser Smoke was stopped.
 
 ## Следующий рациональный шаг
 
-Commit and push this isolated governance correction after documentation/state
-validators and `git diff --check` pass. Keep the final user response's
-acknowledgement at exactly one occurrence.
+Commit this isolated governance correction after documentation/state validators
+and `git diff --check` pass. Push only when explicitly requested. Keep the
+final user response's acknowledgement at exactly one occurrence.
 
 ## Не повторять
 
