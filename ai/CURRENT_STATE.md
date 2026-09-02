@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: f13dad6dc2461ef6dc50242f7fc075895f2a4603
+based_on_commit: cc3cd3bea7e4f53a2e25a6ba208d7e94b0859e30
 ---
 
 # Current State
@@ -15,12 +15,10 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-01T22:16:53Z` — VibeCoding acknowledgement-output governance fix is
-implemented on its dedicated branch. VibeCoding CI performance fix V1 remains
-implemented on its dedicated branch; its remote FAST routing passed and the
-explicit FULL proof reproduced the hosted Windows Browser Full performance
-failure without timeout escalation. The acknowledgement correction is
-recorded separately.
+`2026-09-02T08:34:24Z` — canonical workspace guard V1 is implemented on the
+dedicated task branch. The confirmed legacy backend PID 15912 was stopped after
+its process working-directory metadata matched the legacy OneDrive checkout;
+legacy files were not changed.
 
 ## Project
 
@@ -35,8 +33,10 @@ recorded separately.
   verified VibeCoding policy HEAD `9d3e58232230b276396f3bc127e2d937bed8482d`.
 - Cleanup Batch 2 branch: `control/safe-cleanup-batch2-20260901`, retained as
   the immediately preceding evidence branch.
-- Canonical development checkout: `<CANONICAL_WORKSPACE>`.
-- Historical legacy checkout: `<LEGACY_WORKSPACE>`, marked
+- Current task branch: `codex/canonical-workspace-guard-v1-20260902` from
+  `cc3cd3bea7e4f53a2e25a6ba208d7e94b0859e30` before this task's changes.
+- Canonical development checkout: `C:\Users\edwat\SupplyDesk`.
+- Historical legacy checkout: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`, marked
   `LEGACY_WORKSPACE_DO_NOT_DEVELOP_HERE.txt`.
 - External retained quarantine: `<QUARANTINE_ROOT>`; it is outside the Git
   repository and is not a source of truth.
@@ -114,9 +114,16 @@ recorded separately.
   tracked in `.github/workflows/ci.yml`; classifier mapping is in
   `scripts/ci/change_groups.json`.
 - CI Performance Fix V1 adds risk-based FAST/FOCUSED/FULL/PERIODIC workflow
-  routing, a real-route one-viewport Browser Smoke, concurrency cancellation,
+ routing, a real-route one-viewport Browser Smoke, concurrency cancellation,
   explicit job budgets and a CI Summary. Normal focused pushes do not start
   Backend Full or Browser Full.
+- Workspace Guard V1 adds `scripts/assert_workspace.ps1`, which compares the
+  real Git root with the canonical local default or an explicit absolute
+  `-ExpectedRoot` for CI and intentional worktrees without changing directory,
+  branch or files.
+- Doctor, bootstrap, recovery, test-environment, test-runner and safe-runtime
+  control entry points invoke the workspace guard before their actions; CI
+  passes its checkout root explicitly.
 
 ## Verified
 
@@ -221,6 +228,13 @@ on this task's dedicated branch:
   validators PASS, Doctor Plan PASS, and local real-route Browser Smoke `1/1`.
 - The GitHub Actions registry intentionally remains `NOT_VERIFIED`: FAST is
   proven, but the required full remote acceptance is not green.
+- Workspace Guard V1 focused acceptance: canonical default `PASS`, legacy
+  default `BLOCKED_WRONG_WORKSPACE`, explicit matching worktree `PASS`, wrong
+  explicit root `BLOCKED_WRONG_WORKSPACE`; governance tests `3/3 PASS`.
+- Control-tool `Plan` checks for Doctor, bootstrap, test setup, safe runtime
+  start/stop and the guard passed without starting backend/frontend/Playwright.
+- Confirmed old backend PID `15912` was stopped; the process was verified as
+  absent afterwards and no legacy checkout file was changed.
 
 ## Not verified
 
@@ -235,6 +249,9 @@ on this task's dedicated branch:
   manual/operator surfaces could not be ruled out.
 - Current canonical database rows, mailbox state and provider quotas were not
   inspected or exercised.
+- Remote CI proof for this new guard/workflow revision was not run in this
+  local-only iteration; CI receives an explicit checkout-root override in the
+  committed workflow.
 
 ## Blockers
 
@@ -245,7 +262,7 @@ on this task's dedicated branch:
 ## Active constraints
 
 - Do not modify application logic, UI, API, database, migrations, runtime
-  state, mail data, or production settings in this cleanup branch.
+  state, mail data, or production settings in this control branch.
 - Do not send real email, connect to real SMTP/IMAP, write the canonical
   database, force-push, merge, or change the default branch.
 - Keep audit history on the dedicated audit branch; only the documented pointer
@@ -254,6 +271,9 @@ on this task's dedicated branch:
   use `scripts/start_test_runtime.ps1 -Apply` after the test venv exists.
 - Do not use the legacy OneDrive checkout for development. Do not permanently
   purge the external quarantine without a separate owner-approved review.
+- Run `scripts/assert_workspace.ps1` before repository mutation, runtime start,
+  build, artifact-producing tests, commit or push. Use `-ExpectedRoot` only for
+  the exact intentional CI/worktree root.
 - Do not treat planned or unverified tools as configured, and do not claim a
   check passed unless its command actually ran.
 - CI itself is HIGH risk: remote GitHub Actions status must be verified before
@@ -262,9 +282,10 @@ on this task's dedicated branch:
 
 ## Current next step
 
-`TASK-CI-PERFORMANCE-FIX-V1-20260902` is in closeout. The final report records
-the remote FAST proof, explicit FULL limitation, selected jobs and rollback;
-do not start another timeout or runner iteration in this task.
+`TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902` is complete locally. The final
+report records the guard cases, control-tool integration, PID stop evidence and
+unverified remote CI proof. Do not repeat forensic cleanup or start product
+acceptance in this task.
 
 ## Canonical references
 
@@ -280,6 +301,7 @@ do not start another timeout or runner iteration in this task.
 - Safe physical cleanup report: [`ai/reports/TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901-report.md`](reports/TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901-report.md).
 - Safe cleanup Batch 2 report: [`ai/reports/TASK-SAFE-CLEANUP-BATCH2-20260901-report.md`](reports/TASK-SAFE-CLEANUP-BATCH2-20260901-report.md).
 - CI performance fix report: [`ai/reports/TASK-CI-PERFORMANCE-FIX-V1-20260902-report.md`](reports/TASK-CI-PERFORMANCE-FIX-V1-20260902-report.md).
+- Workspace guard report: [`ai/reports/TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902-report.md`](reports/TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902-report.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).

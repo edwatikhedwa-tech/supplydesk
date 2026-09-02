@@ -2,10 +2,19 @@
 param(
     [switch]$Plan,
     [switch]$Apply,
-    [string]$MarkerPath = 'runtime/test-runtime.json'
+    [string]$MarkerPath = 'runtime/test-runtime.json',
+    [string]$ExpectedRoot
 )
 
 $ErrorActionPreference = 'Stop'
+$guard = Join-Path $PSScriptRoot 'assert_workspace.ps1'
+$guardHostName = if ($PSEdition -eq 'Core') { 'pwsh.exe' } else { 'powershell.exe' }
+$guardHost = Join-Path $PSHOME $guardHostName
+$guardArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $guard)
+if (-not [string]::IsNullOrWhiteSpace($ExpectedRoot)) { $guardArgs += @('-ExpectedRoot', $ExpectedRoot) }
+& $guardHost @guardArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $marker = [IO.Path]::GetFullPath((Join-Path $root $MarkerPath))
 if (($Plan -and $Apply) -or (-not $Plan -and -not $Apply)) { throw 'Specify exactly one mode: -Plan or -Apply.' }

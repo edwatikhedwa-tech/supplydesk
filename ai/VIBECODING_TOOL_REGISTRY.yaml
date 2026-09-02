@@ -1,11 +1,11 @@
 version: 1
 registry_id: VIBECODING-TOOLS-001
 policy: ai/VIBECODING_RULES.md
-last_audited: 2026-09-01
+last_audited: 2026-09-02
 profiles:
   FAST:
     purpose: cheap first-line deterministic feedback before expensive jobs
-    tools: validate_vibecoding, validate_docs, validate_state, validate_traceability, diagnostic_tests, git, change_classifier
+    tools: validate_vibecoding, validate_docs, validate_state, validate_traceability, diagnostic_tests, workspace_guard, git, change_classifier
   FOCUSED:
     purpose: checks for the changed behavior and its nearest risk surface
     tools: rg, backend_fast, typescript, eslint, frontend_build, browser_smoke
@@ -36,6 +36,16 @@ tools:
     availability: CONFIGURED
     evidence_required: git worktree list
     notes: supported by Git; use when isolation is needed
+  - id: workspace_guard
+    name: Canonical workspace guard
+    purpose: prevent coding and control tooling from running in an unintended checkout
+    category: SOURCE_CONTROL_ISOLATION
+    required_for: ALL_TASKS
+    execution_frequency: EVERY_RELEVANT_CHANGE
+    blocking: true
+    availability: CONFIGURED
+    evidence_required: scripts/assert_workspace.ps1 output and exit code
+    notes: defaults to the canonical Windows workspace; explicit absolute ExpectedRoot is required for CI or intentional worktrees
   - id: github_remote
     name: GitHub remote
     purpose: remote source of truth, branch publication and ref verification

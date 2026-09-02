@@ -3,10 +3,19 @@ param(
     [switch]$Quick,
     [switch]$Full,
     [switch]$Diagnostics,
-    [string]$PythonPath
+    [string]$PythonPath,
+    [string]$ExpectedRoot
 )
 
 $ErrorActionPreference = 'Stop'
+$guard = Join-Path $PSScriptRoot '..\scripts\assert_workspace.ps1'
+$guardHostName = if ($PSEdition -eq 'Core') { 'pwsh.exe' } else { 'powershell.exe' }
+$guardHost = Join-Path $PSHOME $guardHostName
+$guardArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $guard)
+if (-not [string]::IsNullOrWhiteSpace($ExpectedRoot)) { $guardArgs += @('-ExpectedRoot', $ExpectedRoot) }
+& $guardHost @guardArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
 $modeCount = 0

@@ -3,7 +3,7 @@ document_id: AI-README-001
 status: CURRENT
 canonical: false
 owner: project-control
-updated_at: 2026-09-01
+updated_at: 2026-09-02
 source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 ---
 
@@ -13,6 +13,9 @@ This directory is the repository-local control plane for Codex, Claude Code,
 ChatGPT Project and Claude Project. The repository files are the source of
 truth; an agent's chat history or report is not a substitute for reading the
 current files.
+Before any mutation or runtime/artifact action, run
+`scripts/assert_workspace.ps1`; use `-ExpectedRoot` only for an exact
+intentional worktree or CI checkout.
 
 ## Start here
 

@@ -874,3 +874,17 @@ This log records agent work interactions. It is append-only.
   recorded as `CI_PERFORMANCE_FAILURE`.
 - State change: no product logic, UI, API, database, mail data, secrets,
   runtime or quarantine content changed.
+
+## 2026-09-02T08:30:55Z — TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902
+
+State change: canonical workspace preflight passed, PID 15912 was confirmed in
+the legacy OneDrive checkout and stopped alone, and the canonical checkout
+remained the only development workspace.
+
+State change: added and tested the executable workspace guard, explicit
+worktree/CI override propagation, control-entrypoint gates, governance tests,
+state/docs and the durable workspace-boundary decision.
+
+State change: backend, frontend and Playwright were not started; protected
+local data, legacy files, product code, database, mail, secrets and quarantine
+were not changed.

@@ -3,7 +3,8 @@ param(
     [switch]$Plan,
     [switch]$DryRun,
     [switch]$Apply,
-    [string]$PythonVersion = '3.11'
+    [string]$PythonVersion = '3.11',
+    [string]$ExpectedRoot
 )
 
 $modeCount = 0
@@ -15,6 +16,14 @@ if ($modeCount -ne 1) {
 }
 
 $ErrorActionPreference = 'Stop'
+$guard = Join-Path $PSScriptRoot 'assert_workspace.ps1'
+$guardHostName = if ($PSEdition -eq 'Core') { 'pwsh.exe' } else { 'powershell.exe' }
+$guardHost = Join-Path $PSHOME $guardHostName
+$guardArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $guard)
+if (-not [string]::IsNullOrWhiteSpace($ExpectedRoot)) { $guardArgs += @('-ExpectedRoot', $ExpectedRoot) }
+& $guardHost @guardArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $requirements = Join-Path $root 'requirements.txt'
 $venv = Join-Path $root '.venv'

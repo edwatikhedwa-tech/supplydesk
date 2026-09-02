@@ -5,10 +5,19 @@ param(
     [int]$Port = 18000,
     [string]$DbPath = 'runtime/test-data/supplier.sqlite3',
     [string]$MarkerPath = 'runtime/test-runtime.json',
-    [int]$WaitSeconds = 30
+    [int]$WaitSeconds = 30,
+    [string]$ExpectedRoot
 )
 
 $ErrorActionPreference = 'Stop'
+$guard = Join-Path $PSScriptRoot 'assert_workspace.ps1'
+$guardHostName = if ($PSEdition -eq 'Core') { 'pwsh.exe' } else { 'powershell.exe' }
+$guardHost = Join-Path $PSHOME $guardHostName
+$guardArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $guard)
+if (-not [string]::IsNullOrWhiteSpace($ExpectedRoot)) { $guardArgs += @('-ExpectedRoot', $ExpectedRoot) }
+& $guardHost @guardArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $entry = Join-Path $root 'scripts\test_runtime_entry.py'
 $venvPython = Join-Path $root '.venv-test\Scripts\python.exe'

@@ -41,7 +41,8 @@
   "api_shared_runtime": [
     "^api/",
     "^supplier_app\\.py$",
-    "^scripts/(doctor|start_test_runtime|stop_test_runtime)\\.ps1$"
+    "^scripts/(assert_workspace|bootstrap_supplydesk|doctor|recover_supplydesk|setup_test_env|start_test_runtime|stop_test_runtime)\\.ps1$",
+    "^tests/run-tests\\.ps1$"
   ],
   "security": [
     "^\\.github/",
@@ -62,6 +63,8 @@
     "^ai/",
     "^docs/",
     "^tests/diagnostics/",
+    "^tests/run-tests\\.ps1$",
+    "^scripts/(assert_workspace|bootstrap_supplydesk|doctor|recover_supplydesk|setup_test_env|start_test_runtime|stop_test_runtime)\\.ps1$",
     "^scripts/ci/",
     "^(AGENTS|CLAUDE)\\.md$",
     "^PROJECT_MANIFEST\\.yaml$",
@@ -74,7 +77,8 @@
     "^api/",
     "^supplier_app\\.py$",
     "^migrations/",
-    "^scripts/(doctor|start_test_runtime|stop_test_runtime)\\.ps1$",
+    "^scripts/(assert_workspace|bootstrap_supplydesk|doctor|recover_supplydesk|setup_test_env|start_test_runtime|stop_test_runtime)\\.ps1$",
+    "^tests/run-tests\\.ps1$",
     "^scripts/diagnostics/",
     "^\\.github/",
     "^scripts/ci/",

@@ -21,6 +21,27 @@ NOT VERIFIED, FAIL and BLOCKED, and report commit, branch and push status. Do
 not claim that ChatGPT Project or Claude Project has repository access unless
 the relevant files were actually connected or read.
 
+## Workspace guard
+
+Before any file change, state/report update, backend start, frontend build,
+database write, migration, artifact-producing test, commit or push, run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\assert_workspace.ps1
+```
+
+The default local root is `C:\Users\edwat\SupplyDesk`. A deliberate Git
+worktree or CI checkout must pass its exact absolute root explicitly with
+`-ExpectedRoot <absolute path>`. The guard only compares the real Git root; it
+never changes directory, branch or files. If it prints
+`BLOCKED_WRONG_WORKSPACE`, stop immediately, even when local state files appear
+valid.
+
+The legacy root `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS` is
+recovery-only. Do not run ordinary coding tasks, the backend, frontend builds
+or migrations there, and do not use it to change canonical project state.
+Recovery or read-only audit of that root requires an explicit task instruction.
+
 ## VibeCoding bootstrap (mandatory)
 
 Before any project task, read `PROJECT_MANIFEST.yaml`,

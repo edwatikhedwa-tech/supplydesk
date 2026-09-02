@@ -4,43 +4,42 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: 2b860a54e89c062126f872635ea721537c0594dc
+based_on_commit: cc3cd3bea7e4f53a2e25a6ba208d7e94b0859e30
 ---
 
 # Active Task
 
 Task ID: `NONE`
 Agent: `Codex`
-Mode: `IMPLEMENT`
+Mode: `CLOSE`
 Started: `2026-09-02`
-Scope: `FAST-first CI performance routing, real-route smoke and remote proof`
-Allowed files: `.github/workflows/ci.yml`, `scripts/ci/**`, `ai/**`,
-`PROJECT_MANIFEST.yaml`, `tests/diagnostics/**`; no product/data/runtime changes
-Status: `IDLE — closed with documented FULL runner limitation`
-Last update: `2026-09-01T21:56:03Z`
+Scope: `canonical workspace guard, control-tooling integration and governance tests`
+Allowed files: `scripts/**`, `tests/run-tests.ps1`, `tests/diagnostics/**`,
+`.github/workflows/ci.yml`, `AGENTS.md`, `CLAUDE.md`, `ai/**`,
+`PROJECT_MANIFEST.yaml`, `docs/architecture/**`, `docs/operations/**`,
+`docs/testing/**`; no product/data/runtime changes
+Status: `IDLE — closed with remote CI proof not verified`
+Last update: `2026-09-02T08:34:24Z`
 
 ## Цель
 
-Остановить медленный full-on-push CI, доказать быстрый focused push path,
-сохранить полный acceptance path и зафиксировать фактическое ограничение
-hosted Windows runner.
+Защитить Codex/project tooling от работы в неправильном checkout, сохранить
+explicit Git worktree/CI support и остановить подтверждённый legacy backend.
 
 ## Границы
 
-Product behavior, frontend UI, API, database, migrations, mail data, runtime,
-secrets, quarantine and unrelated dependencies are not changed. Planned tools
-are not installed.
+Product behavior, frontend UI, API, database schema/data, migrations, mail
+data, secrets, quarantine and unrelated dependencies are not changed. Backend,
+frontend and Playwright acceptance are not run.
 
 ## Acceptance
 
-Local validators, diagnostics, classifier tests, Doctor Plan, diff check and
-security staging audit pass. Remote FAST proof passes on the final routing;
-explicit FULL selection is present and its hosted-runner failure is recorded
-honestly as NOT_VERIFIED rather than hidden by timeout escalation.
+Canonical and legacy guard cases, explicit worktree cases, control-tooling
+integration, state/documentation validators and Git safety checks pass. The
+confirmed PID 15912 is stopped without touching legacy files.
 
 ## Следующий шаг
 
-Task is closed after the report/state commit and normal push. A future
-Playwright/Axe runner performance investigation requires a separate task; do
-not increase timeouts or reuse this task for that work.
+Local guard/governance acceptance is complete. Commit the closeout state on the
+task branch; push remains an explicit owner action.
 

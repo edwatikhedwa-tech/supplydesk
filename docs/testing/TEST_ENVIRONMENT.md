@@ -12,6 +12,26 @@
 регрессии backend, frontend-gates и Playwright без приватного `.env`, личной
 почты, production credentials и внешней сети.
 
+## Workspace boundary
+
+Before setup, tests, frontend build, safe runtime start or Doctor, the
+workspace guard must pass:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\assert_workspace.ps1
+```
+
+Without an override it accepts only `C:\Users\edwat\SupplyDesk` and rejects
+the legacy recovery-only root `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
+For an intentional Git worktree or CI checkout, pass its exact absolute path:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\assert_workspace.ps1 -ExpectedRoot 'C:\path\to\worktree'
+```
+
+The guard never changes directory, branch or files. CI supplies its checkout
+root explicitly through `-ExpectedRoot $env:GITHUB_WORKSPACE`.
+
 ## Чистый checkout: последовательность
 
 Команды выполняются из корня репозитория в PowerShell 7. Python 3.11.7

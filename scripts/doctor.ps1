@@ -13,7 +13,8 @@ param(
     [string]$BaseUrl = 'http://127.0.0.1:18000',
     [string]$FrontendBaseUrl = 'http://127.0.0.1:18000',
     [string]$DbPath,
-    [string]$RuntimeMarker = 'runtime/test-runtime.json'
+    [string]$RuntimeMarker = 'runtime/test-runtime.json',
+    [string]$ExpectedRoot
 )
 
 $ErrorActionPreference = 'Stop'
@@ -23,6 +24,14 @@ if ($DryRun) { $modeCount++ }
 if ($Apply) { $modeCount++ }
 if ($modeCount -ne 1) { throw 'Specify exactly one mode: -Plan, -DryRun or -Apply.' }
 if ($Full -and -not $DryRun) { throw '-Full is available only with -DryRun; it runs read-only acceptance checks.' }
+
+$guard = Join-Path $PSScriptRoot 'assert_workspace.ps1'
+$guardHostName = if ($PSEdition -eq 'Core') { 'pwsh.exe' } else { 'powershell.exe' }
+$guardHost = Join-Path $PSHOME $guardHostName
+$guardArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $guard)
+if (-not [string]::IsNullOrWhiteSpace($ExpectedRoot)) { $guardArgs += @('-ExpectedRoot', $ExpectedRoot) }
+& $guardHost @guardArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $runner = Join-Path $root 'scripts\diagnostics\diagnostic_runner.py'

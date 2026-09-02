@@ -3,7 +3,7 @@ document_id: COMPONENT-MAP-001
 status: CURRENT
 canonical: false
 owner: engineering
-updated_at: 2026-09-01
+updated_at: 2026-09-02
 source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
 ---
 
@@ -31,7 +31,8 @@ source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
 | COMP-DISCOVERY | `supplier_discovery_v2/` | Query planning, read-only HTTP, adapters, evidence and qualification | Discovery boundary; no live lookup in diagnostics |
 | COMP-MIGRATION | `migrations/` | Versioned schema DDL | Read-only schema inspection only in diagnostics |
 | COMP-FRONTEND | `frontend/` | Product client and browser tests | `package.json`, `frontend/src/`, `frontend/tests/` |
-| COMP-DOCTOR | `scripts/doctor.ps1` | Windows operator entrypoint | Plan/DryRun/Apply all invoke read-only V1 checks |
+| COMP-WORKSPACE | `scripts/assert_workspace.ps1` | Checkout boundary guard | Compares real Git root with canonical default or explicit absolute worktree root |
+| COMP-DOCTOR | `scripts/doctor.ps1` | Windows operator entrypoint | Plan/DryRun/Apply all invoke read-only V1 checks after the workspace guard |
 | COMP-DIAGNOSTICS | `scripts/diagnostics/` | Standard-library diagnostic contract and runner | No application writes, provider calls or canonical DB writes |
 | COMP-REPAIR | `ai/repair-agent/` | Future repair contract only | No implementation or autonomy in V1 |
 

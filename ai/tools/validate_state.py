@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-TASK_ID = "TASK-VIBECODING-CI-V1.1-20260901"
+TASK_ID = "TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902"
 
 REQUIRED_FILES = [
     "AGENTS.md",

@@ -52,6 +52,11 @@ verification.
     result must carry a date/scope and a checked source. If it cannot be
     rechecked, mark it `REPORTED` or `NOT VERIFIED`; if it is old, mark the
     document `HISTORICAL — NOT CURRENT` and link to the canonical state.
+13. Before any repository mutation, runtime start, database write, migration,
+    artifact-producing test, build, commit or push, run
+    `scripts/assert_workspace.ps1`. The default local root is the canonical
+    workspace; an explicit `-ExpectedRoot <absolute path>` is required for a
+    deliberate Git worktree or CI checkout. A guard mismatch is a STOP.
 
 ## Status vocabulary
 

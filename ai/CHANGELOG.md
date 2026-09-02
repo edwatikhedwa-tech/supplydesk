@@ -972,3 +972,21 @@ rewritten.
   `origin/control/vibecoding-policy-v1-20260901`; the remote ref was verified.
 - `ACTIVE_TASK` is now `IDLE`. No product/data/runtime change, dependency
   installation, external provider action or quarantine change occurred.
+
+## 2026-09-02T08:30:55Z — TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902
+
+Task ID: `TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902`
+Status: `PASS_WITH_LIMITATIONS`
+
+- Reconfirmed the canonical Git root and branch before implementation; the
+  working tree was clean. Confirmed PID 15912's process directory metadata
+  matched the legacy OneDrive checkout and stopped only that PID.
+- Added `scripts/assert_workspace.ps1` with canonical default, exact
+  `-ExpectedRoot` worktree/CI override, path normalization and non-zero mismatch
+  exit. No automatic directory, branch or file changes are performed.
+- Integrated the guard into control/runtime/test wrappers and CI checkout jobs;
+  updated agent instructions, manifest, registry, decision register and
+  operational documentation.
+- Guard cases and control `Plan` modes passed. Backend, frontend and Playwright
+  were not run by explicit scope. No product code, database, mail data, env,
+  quarantine or legacy checkout files were changed.

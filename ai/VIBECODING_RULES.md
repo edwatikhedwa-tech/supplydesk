@@ -280,6 +280,10 @@ Important responsibilities:
 - Git records history, diff, rollback and commit evidence. Git worktree
   isolates parallel work. GitHub/remote refs provide source-of-truth and
   independent publication evidence; GitHub MCP is optional.
+- `scripts/assert_workspace.ps1` is the workspace boundary check. It compares
+  the real Git root with the canonical local default or an explicitly supplied
+  `-ExpectedRoot <absolute path>` for CI or an intentional worktree; it never
+  changes directory, branch or files.
 - `rg` is the standard reference/import/route/config search before moving or
   deleting code.
 - Ruff finds lint and safe static findings; Pyright checks Python types when
@@ -370,9 +374,11 @@ apply:
 
 1. **Rule verification.** Read the four bootstrap files and validate the
    policy date; render the acknowledgement only in the final response.
-2. **Environment fixation.** Verify repository, branch, HEAD, working tree,
-   canonical workspace and relevant runtime/database profile. Do not develop in
-   a legacy checkout.
+2. **Environment fixation.** Verify repository, branch, HEAD and working tree,
+   then run `scripts/assert_workspace.ps1` before any mutation, runtime start,
+   build, artifact-producing test, commit or push. Use an exact
+   `-ExpectedRoot <absolute path>` only for an intentional CI checkout or Git
+   worktree. Do not develop in a legacy checkout.
 3. **Task understanding.** Record goal, scope, acceptance, risk, affected
    components, task class and non-goals. Ask only when missing information
    creates meaningful risk.

@@ -1,74 +1,73 @@
 ---
-document_id: HANDOFF-002
+document_id: HANDOFF-003
 status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-02
-based_on_commit: 2b860a54e89c062126f872635ea721537c0594dc
+based_on_commit: cc3cd3bea7e4f53a2e25a6ba208d7e94b0859e30
 ---
 
 # Last Handoff
 
-This handoff records the VibeCoding final-status semantics governance fix.
-The final documentation commit is recorded by Git history, not copied into
-this metadata.
+This handoff records the canonical workspace guard V1 implementation. The
+publication commit is recorded by Git history, not copied into this metadata.
 
 ## Цель
 
-Разделить `NOT_NEEDED` и `NOT_VERIFIED` в итоговой агрегации: отсутствие
-необязательной проверки не является ограничением успешной governance-задачи.
+Закрепить техническую защиту от работы Codex/project tooling в неправильном
+checkout, остановить подтверждённый legacy backend и сохранить explicit Git
+worktree/CI support.
 
 ## Что изменено
 
-- `ai/VIBECODING_RULES.md` now defines final-status semantics for `PASS`, `FAIL`,
-  `NOT_VERIFIED` and `NOT_NEEDED`.
-- `ai/tools/validate_vibecoding.py` exposes the minimal final-status evaluator;
-  focused governance tests cover cases A–D.
-- The prior final-only acknowledgement rule remains unchanged and is inherited
-  from the preceding commit.
-- No product logic, UI, API, CI architecture, database, mail data, credentials,
-  environment, runtime or quarantine content changed.
+- Added `scripts/assert_workspace.ps1` with canonical default and exact
+  `-ExpectedRoot` override support; it never changes directory, branch or files.
+- Integrated the guard into Doctor, bootstrap/recovery, test setup/runner and
+  safe-runtime start/stop wrappers; CI supplies `$env:GITHUB_WORKSPACE`.
+- Added three focused governance tests covering canonical/default behavior,
+  legacy rejection and explicit worktree acceptance/mismatch.
+- Replaced local-state placeholders with the confirmed canonical and legacy
+  paths; added the durable workspace-boundary decision.
+- Confirmed PID 15912 belonged to the legacy OneDrive checkout and stopped only
+  that process. No legacy file, database, lock or session file was changed.
 
 ## Что проверено
 
-- Focused governance tests: `11/11 PASS`.
-- `python ai/tools/validate_vibecoding.py`: `PASS`, 35 registered tools.
-- Repository search found no stale acknowledgement prefix or hardcoded rendered
-  date in instruction/policy files; date literals remain only in intentional
-  negative-test fixtures.
-- A–D status semantics: `PASS`, `PASS_WITH_LIMITATIONS`, `FAIL` and `PASS`
-  respectively.
-- Backend, frontend, Playwright, FULL CI and remote performance investigation
-  were not run by explicit task scope.
+- Canonical workspace guard: `WORKSPACE_GUARD: PASS`, exit `0`.
+- Legacy workspace: `BLOCKED_WRONG_WORKSPACE`, exit `1`.
+- Explicit matching worktree: `WORKSPACE_GUARD: PASS`; wrong explicit root:
+  `BLOCKED_WRONG_WORKSPACE`.
+- Governance tests: `3/3 PASS`.
+- Doctor, bootstrap, test setup, safe-runtime start/stop `Plan` modes passed;
+  no backend/frontend/Playwright process was started.
+- PID 15912 was stopped and was absent on post-stop verification.
 
 ## Что не прошло
 
-Nothing failed in the focused governance scope. Full product acceptance is
-`NOT_NEEDED` for this governance-only correction and does not lower the final
-status; it is not evidence about backend, frontend or browser behavior.
+Nothing failed in the focused guard/control scope. Backend, frontend and
+Playwright acceptance were intentionally not run; they are `NOT_NEEDED` for
+this control-only task and are not evidence about product behavior.
 
 ## Что не проверено
 
-NOT VERIFIED: live external providers, real mail, production database behavior,
-branch protection and unlisted CI tools remain outside this task and were not
-checked. The validator checks repository contract and stale instruction
-patterns; it cannot measure the agent's actual final response, so the runtime
-must still render exactly one acknowledgement there.
+NOT VERIFIED: remote CI proof for this new revision, live external providers,
+real mail, production database behavior, branch protection and unlisted CI
+tools remain outside this task. The guard tests exercise local PowerShell/Git
+behavior, not remote runner execution.
 
 ## Текущее состояние runtime
 
-No canonical or live runtime was left running. The local disposable
-OFFLINE_TEST runtime used for Browser Smoke was stopped.
+No canonical or live runtime was left running. The previously confirmed old
+legacy backend PID 15912 is stopped; no test runtime was started in this task.
 
 ## Следующий рациональный шаг
 
-Commit this isolated governance correction after documentation/state validators
-and `git diff --check` pass. Push only when explicitly requested. Keep the
-final user response's acknowledgement at exactly one occurrence.
+Local acceptance and final validators are complete; create the Task-ID commit
+on the isolated branch. Leave push unperformed unless explicitly requested.
 
 ## Не повторять
 
-Do not use the legacy OneDrive checkout, do not run real mail, do not modify
-protected local data, do not run backend/frontend/Playwright for this task, do
-not force-push, and do not add a second acknowledgement to an intermediate
-message.
+Do not use the legacy OneDrive checkout for development, do not run real mail,
+do not modify protected local data, do not run backend/frontend/Playwright for
+this task, do not force-push, and do not add a second acknowledgement to an
+intermediate message.

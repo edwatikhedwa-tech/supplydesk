@@ -12,6 +12,15 @@ project:
   audit_branch: audit/repository-hygiene-reports-20260901
   audit_commit: b5a454f9b39f3cbf01d640d5b67e4231ca25733a
 
+workspace_policy:
+  local_default_workspace: C:\Users\edwat\SupplyDesk
+  legacy_root: C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS
+  legacy_usage: RECOVERY_ONLY
+  legacy_forbidden_actions: [development, backend, frontend_build, migrations, canonical_state_changes]
+  legacy_recovery_requires_explicit_task: true
+  explicit_override: scripts/assert_workspace.ps1 -ExpectedRoot <absolute path>
+  automatic_supplydesk_variant_discovery: FORBIDDEN
+
 baseline:
   cleanup_batch2_head: a228321401270b69c9ac2f07f76435e246b6f5c3
   semantics: last verified functional cleanup baseline; document publication commits are tracked by Git history
@@ -92,6 +101,11 @@ database:
   published: false
 
 operator_tools:
+  - path: scripts/assert_workspace.ps1
+    classification: TRACK_TOOLING
+    modes: [check]
+    default_root: C:\Users\edwat\SupplyDesk
+    explicit_worktree_override: -ExpectedRoot <absolute path>
   - path: scripts/doctor.ps1
     classification: TRACK_TOOLING
     modes: [Plan, DryRun, Apply]

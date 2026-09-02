@@ -13,6 +13,25 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-009 — Enforce an explicit workspace boundary
+
+- Decision ID: `DECISION-009`
+- Date: `2026-09-02`
+- Status: `ACTIVE`
+- Context: A backend process was confirmed in the legacy OneDrive checkout,
+  while the canonical checkout had no executable workspace guard.
+- Decision: Default local control tooling accepts only
+  `C:\Users\edwat\SupplyDesk`. CI and intentional Git worktrees must pass the
+  exact absolute root through `-ExpectedRoot`; arbitrary `SupplyDesk_*`
+  discovery is forbidden.
+- Reason: A guard can stop the wrong checkout before files, runtime, tests,
+  databases or Git publication are changed without changing directory or
+  branch automatically.
+- Consequences: Legacy `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS` is
+  recovery-only; portable CI/worktree execution remains available through an
+  explicit override.
+- Related task: `TASK-CANONICAL-WORKSPACE-GUARD-V1-20260902`.
+
 ## DECISION-006 — One canonical current-state source
 
 - Decision ID: `DECISION-006`
