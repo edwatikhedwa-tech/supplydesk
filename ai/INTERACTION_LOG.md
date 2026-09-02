@@ -2,6 +2,23 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-02 — TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902
+
+- Workspace Guard passed; cheap Task Preflight reused the
+  `TASK-PYTHON-ROOT-DIAGNOSTIC-20260902` evidence and re-verified with a fresh
+  reference check before mutation.
+- Moved only the two confirmed `MOVE_SCRIPTS` candidates
+  (`collect_contacts.py`, `benchmark_models.py`) to `scripts/`/`benchmarks/`
+  with thin root compatibility wrappers; no other root module touched.
+- Old and new CLI help output are byte-identical (`diff` clean); exit codes
+  match; `.env`-root lookup structurally proven to resolve to the repository
+  root from both new locations without reading `.env` contents.
+- `tests/diagnostics/test_operator_cli_root_compat.py` (4/4) and the full
+  diagnostics suite (`49/49`, excluding a pre-existing unrelated `pwsh`-missing
+  gap in `test_change_classifier.py` reproduced on the unmodified tree) passed;
+  docs/state/vibecoding validators and `git diff --check` passed. No provider
+  call, real mail, or database write occurred.
+
 ## 2026-09-02 — TASK-CANONICAL-LOCAL-SECRET-HYGIENE-REVIEW-FINAL-20260902
 
 - Canonical Workspace Guard passed; only cheap V1.2 Task Preflight was used.

@@ -15,6 +15,22 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-02` — `TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902` moved the
+implementation of two confirmed `MOVE_SCRIPTS` candidates from the root
+diagnostic: `collect_contacts.py` now lives at
+[`scripts/collect_contacts.py`](../scripts/collect_contacts.py) and
+`benchmark_models.py` now lives at
+[`benchmarks/benchmark_models.py`](../benchmarks/benchmark_models.py). The
+root files are thin compatibility wrappers; both old (`python
+collect_contacts.py ...` / `python benchmark_models.py ...`) and new
+canonical (`python -m scripts.collect_contacts ...` / `python -m
+benchmarks.benchmark_models ...`) invocations were verified to produce
+identical help output and exit codes. Repository-root `.env` lookup and
+CWD-relative `results/`/`cache/` paths were preserved. No other root Python
+module was moved; no provider call, real mail, or database write occurred.
+The task report is
+[`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902-report.md).
+
 `2026-09-02` — `TASK-PYTHON-ROOT-DIAGNOSTIC-20260902` completed as a
 report-only architecture diagnostic: 20 root Python files and 16 tracked root
 directories were reviewed; no product code, files or dependencies changed.
@@ -302,6 +318,19 @@ on this task's dedicated branch:
   deprecated-review root test surfaces are recorded in the dated report.
 - Code Rot Cleaner was used in report-only mode with external scratch output;
   Ruff and Vulture were not available without installation and were not added.
+- Bounded root refactor Pass 2: `scripts/collect_contacts.py` and
+  `benchmarks/benchmark_models.py` are now the single canonical
+  implementations; root `collect_contacts.py`/`benchmark_models.py` are
+  compatibility wrappers with no duplicated logic. Old and new CLI `--help`
+  output is byte-identical, exit codes match, and `.env`-root resolution was
+  proven structurally (`REPO_ROOT` equals the repository root from both new
+  locations) without reading `.env` contents. The new
+  `tests/diagnostics/test_operator_cli_root_compat.py` regression test passed
+  `4/4`; the full diagnostics suite passed `49/49` with the 9 remaining
+  `test_change_classifier.py` errors reproduced identically on the
+  unmodified tree (`pwsh` missing from this environment's `PATH`, unrelated
+  to this task); docs/state/vibecoding validators and `git diff --check`
+  passed.
 
 ## Not verified
 
@@ -368,10 +397,11 @@ on this task's dedicated branch:
 
 ## Current next step
 
-Use the root diagnostic report to scope one separate bounded Pass 2. Start with
-CLI compatibility for `benchmark_models.py` and `collect_contacts.py`; do not
-move `supplier_app.py`, `api/index.py` or `serp_parser.py` until import,
-subprocess and deployment contracts are explicitly accepted. Keep the Browser
+Pass 2 (CLI compatibility for `benchmark_models.py`/`collect_contacts.py`) is
+complete. Any further root moves — `supplier_app.py`, `api/index.py`,
+`serp_parser.py`, or the remaining 12+ runtime modules named in the root
+diagnostic — require their own bounded task with explicit import, subprocess
+and deployment contracts; none is authorized by this change. Keep the Browser
 Full `FAIL` and Finding-009 as separate recorded limitations.
 
 ## Canonical references
@@ -394,6 +424,7 @@ Full `FAIL` and Finding-009 as separate recorded limitations.
 - Cleanup/VibeCoding V1.3 report: [`ai/reports/TASK-CLEANUP-FINAL-CLOSEOUT-VIBECODING-V1.3-20260902-report.md`](reports/TASK-CLEANUP-FINAL-CLOSEOUT-VIBECODING-V1.3-20260902-report.md).
 - Finding-009 review report: [`ai/reports/TASK-FINDING-009-CANONICAL-REVIEW-20260902-report.md`](reports/TASK-FINDING-009-CANONICAL-REVIEW-20260902-report.md).
 - Python/root diagnostic report: [`ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`](reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md).
+- Bounded root refactor (CLI surfaces) report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902-report.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).

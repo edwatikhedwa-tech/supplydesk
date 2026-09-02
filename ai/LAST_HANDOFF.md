@@ -1,81 +1,91 @@
 ---
-document_id: HANDOFF-005
+document_id: HANDOFF-006
 status: CURRENT
 canonical: false
-owner: Codex
+owner: Claude
 updated_at: 2026-09-02
-based_on_commit: dc93a181c85c175863a84ddddb1c71c9172a98bb
+based_on_commit: d7fa86d2456bd7f59a7a6d055acfc6d20a96bbd5
 ---
 
 # Last Handoff
 
-This handoff records the completed report-only Python/root architecture
-diagnostic. No product code was moved, deleted, refactored, or dependency-changed.
+This handoff records the completed bounded root refactor of two standalone
+CLI surfaces. No other root Python module, business logic, or product
+behavior changed.
 
 ## Цель
 
-Собрать decision-ready map корневых Python-файлов и директорий, защищённых
-entrypoint-границ, импортов, CLI, тестов, дубликатов и lifecycle-статусов.
+Перенести реализацию `collect_contacts.py` и `benchmark_models.py` в
+`scripts/` и `benchmarks/` соответственно, сохранив CLI-совместимость через
+тонкие root wrapper'ы, по решению
+`ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`.
 
 ## Что изменено
 
-- Added `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md` with the
-  root map, protected entrypoint review, static import graph, operator/test
-  classification, duplicate-responsibility review, lifecycle result and
-  bounded Pass 2 proposal.
-- Updated this handoff plus `ai/CURRENT_STATE.md`, `ai/CHANGELOG.md`,
-  `ai/INTERACTION_LOG.md` and closed the active-task lock.
-- Reviewed 20 root Python files and 16 tracked root directories: 14 move
-  candidates, 0 deletion candidates, 4 deprecated-review candidates and 1
-  deferred parser boundary.
-- Created commit `dc93a181c85c175863a84ddddb1c71c9172a98bb`. The first push
-  attempt was blocked by DNS, then publication succeeded after DNS recovered;
-  remote SHA matches and FAST Control CI run `33645377974` passed.
+- Added `scripts/collect_contacts.py` and `benchmarks/benchmark_models.py`
+  as the single canonical implementations (identical logic; only the `.env`
+  root-lookup calculation and a couple of doc/help strings changed).
+- Reduced root `collect_contacts.py` and `benchmark_models.py` to thin
+  compatibility wrappers that import and call the moved `main()`.
+- Added `tests/diagnostics/test_operator_cli_root_compat.py` (4 tests)
+  guarding `.env`-root resolution and wrapper delegation.
+- Updated `ai/CURRENT_STATE.md`, `ai/CHANGELOG.md`, `ai/INTERACTION_LOG.md`,
+  this handoff, and added
+  `ai/reports/TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902-report.md`.
 
 ## Что проверено
 
-- Workspace Guard passed before task-lock and report/state writes.
-- Branch, HEAD, working tree, tracked/untracked/ignored inventory, protected
-  paths, local processes and relevant listeners were checked.
-- AST parsing covered 107 tracked Python files: 0 parse errors, 243 resolved
-  local import edges and no statically resolved cycles.
-- Code Rot Cleaner ran in external report-only mode; relevant candidates were
-  manually filtered. Ruff and Vulture were not available and were not installed.
-- No auth handoff, credentials, cookies, real mail, backend runtime or
-  canonical database was accessed.
+- Workspace Guard passed before task-lock and before mutation.
+- Fresh reference check found no Python imports of either module outside
+  their own files, the diagnostic report, and state files.
+- `python collect_contacts.py --help` and `python -m scripts.collect_contacts
+  --help` produce byte-identical output and exit `0`; same for
+  `benchmark_models.py` / `python -m benchmarks.benchmark_models --help`.
+- Exit code without arguments matches (`1`) between old and new
+  `collect_contacts` invocation, with no network/provider action.
+- `scripts.collect_contacts.REPO_ROOT` and `benchmarks.benchmark_models.REPO_ROOT`
+  both resolve to the repository root — proven structurally without reading
+  `.env` contents.
+- `python -m unittest tests.diagnostics.test_operator_cli_root_compat -v`:
+  `4/4` passed. Full `tests/diagnostics` discovery: `49/49` passed.
+- `ai/tools/validate_docs.py`, `ai/tools/validate_state.py`,
+  `ai/tools/validate_vibecoding.py`: all `PASS`. `git diff --check`: `PASS`.
+- Staged diff scanned for secret-like literals: only environment-variable
+  names and code identifiers, no values.
 
 ## Что не прошло
 
-No product check was required for this report-only diagnostic. The Code Rot
-scan was broad and included `.venv-test`; its output was not treated as a
-deletion authorization. Ruff and Vulture were unavailable. Full product suites
-were skipped by report-only classification; FAST Control CI passed.
+`tests/diagnostics/test_change_classifier.py` produced `9 errors`
+(`FileNotFoundError` for `pwsh`). Reproduced identically on the unmodified
+working tree via `git stash`, so this is a pre-existing environment gap
+(PowerShell Core not on `PATH`), not caused by this task.
 
 ## Что не проверено
 
-NOT VERIFIED: rare operator reachability, dynamic/reflection/external consumers,
-future deployment behavior after any move, Ruff/Vulture findings, product
-regression, live providers and credential validity. The prior Browser Full
-failure remains outside this task. Full product CI suites were not run by
-design.
+NOT VERIFIED: undocumented external Python-import compatibility for either
+moved module (explicitly out of scope); direct `python
+scripts/collect_contacts.py` / `python benchmarks/benchmark_models.py`
+invocation without `-m` or the wrapper (not a required entrypoint, and would
+need its own `sys.path` decision); live `--web`/`--llm`/`--verify`/
+`--prepare`/`--run` provider paths (forbidden by this task's "no live
+provider execution" rule).
 
 ## Текущее состояние runtime
 
-No runtime was started for this report-only task. Ports `8000`, `5173`, `18000`
-and `6006` were not listening at preflight; the legacy checkout was not used.
+No runtime was started for this task. No provider call, real mail, or
+canonical database write occurred.
 
 ## Следующий рациональный шаг
 
-Use the report as the decision baseline for a separate bounded refactor: start
-with CLI compatibility for `benchmark_models.py` and `collect_contacts.py`;
-leave `supplier_app.py`, `api/index.py`, `mail/`, `migrations/`, v2 isolation
-and `serp_parser.py` boundary unchanged until explicit contracts exist.
+Any further root moves (`supplier_app.py`, `api/index.py`, `serp_parser.py`,
+or the remaining 12+ runtime modules named in the root diagnostic) need their
+own bounded task with explicit import/subprocess/deployment contracts.
 
 ## Не повторять
 
-Do not use the legacy OneDrive checkout for development, do not output or save
-secret values, do not run real mail, do not modify protected local data, do not
-open auth handoff, do not reduce workers or add test-only product flags, do not
-delete quarantine or snapshot contents, do not rotate credentials, do not
-rewrite Git history, and do not add a second acknowledgement to an
-intermediate message.
+Do not use the legacy OneDrive checkout for development, do not output or
+save secret values, do not run real mail or live provider calls, do not
+modify protected local data, do not move `supplier_app.py`/`api/index.py`/
+`serp_parser.py` or any of the other listed runtime modules without a
+separate task, and do not add a second acknowledgement to an intermediate
+message.

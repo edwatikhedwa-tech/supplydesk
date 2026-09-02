@@ -3,6 +3,23 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-02 — BOUNDED ROOT REFACTOR: MANUAL CLI SURFACES — TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902
+
+- Moved the `collect_contacts.py` implementation to `scripts/collect_contacts.py`
+  and the `benchmark_models.py` implementation to `benchmarks/benchmark_models.py`,
+  per the `MOVE_SCRIPTS` decisions in
+  `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`.
+- Root `collect_contacts.py` and `benchmark_models.py` are now thin
+  compatibility wrappers that delegate to the moved implementations; no
+  business logic was duplicated.
+- Repository-root `.env` lookup was preserved with an explicit
+  `Path(__file__).resolve().parents[1]` calculation (matching the existing
+  convention in `scripts/run_test_suite.py`); relative `results/`/`cache/`
+  paths were left CWD-relative and unchanged.
+- Added `tests/diagnostics/test_operator_cli_root_compat.py` (4 tests) to
+  guard the `.env`-root regression and wrapper-delegation risk. No other
+  root Python module was moved; product behavior did not change.
+
 ## 2026-09-02 — CANONICAL LOCAL SECRET HYGIENE REVIEW — TASK-CANONICAL-LOCAL-SECRET-HYGIENE-REVIEW-FINAL-20260902
 
 - Repeated the local credential hygiene review in the canonical
