@@ -1,10 +1,10 @@
 ---
-document_id: TASK-LOCK-021
+document_id: TASK-LOCK-023
 status: CURRENT
 canonical: false
 owner: Claude
-updated_at: 2026-09-02
-based_on_commit: 6d8f816af3c7aedd9b097306d39a22a22831c118
+updated_at: 2026-09-03
+based_on_commit: 6af2af1822820e996f1126b8a1b26d19be0000f0
 ---
 
 # Active Task
@@ -12,9 +12,8 @@ based_on_commit: 6d8f816af3c7aedd9b097306d39a22a22831c118
 Task ID: `NONE`
 Agent: `Claude`
 Mode: `IDLE`
-Started: `2026-09-02`
-Scope: `No active task; TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902 is closed PASS_WITH_LIMITATIONS (owner-approved CHANGE_BUDGET_EXCEEDED at 24 files, cause: legitimate fresh-scan discoveries)`
+Started: `2026-09-03`
+Scope: `No active task; TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903 is closed (web_lookup.py and xmlriver_client.py moved to backend/integrations/search/, immutability guard migrated and proven)`
 Allowed files: `none — no active task`
-Status: `IDLE — TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902 completed; no active task`
-Last update: `2026-09-02`
-
+Status: `IDLE — TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903 completed; no active task`
+Last update: `2026-09-03`

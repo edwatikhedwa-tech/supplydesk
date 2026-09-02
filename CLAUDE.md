@@ -101,8 +101,9 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
   frontend has no independent backend of its own (any future prototype/scaffold that ships with
   its own Supabase/Firebase project must be rewired to this API before it's kept).
 - `mail/` — the real Yandex IMAP/SMTP integration and SQLite-backed mail repository.
-- `backend/integrations/{registry,llm}/` — provider adapters moved out of the root flat
-  package: `dadata_client.py`, `checko_client.py`, `llm_fallback.py`, `routerai_client.py`.
+- `backend/integrations/{registry,llm,search}/` — provider adapters moved out of the root flat
+  package: `dadata_client.py`, `checko_client.py`, `llm_fallback.py`, `routerai_client.py`,
+  `web_lookup.py`, `xmlriver_client.py`.
 - `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the
   root flat package: `email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`.
 - Root-level `*.py` files besides `supplier_app.py`/`api/` (e.g. `serp_parser.py`,

@@ -3,8 +3,8 @@ document_id: REPOSITORY-LAYOUT-001
 status: CURRENT
 canonical: false
 owner: engineering
-updated_at: 2026-09-02
-source_commit: 4065242519bb55271d82f65198d27236a33915ba
+updated_at: 2026-09-03
+source_commit: 6af2af1822820e996f1126b8a1b26d19be0000f0
 ---
 
 # Repository Layout
@@ -16,9 +16,9 @@ not a target structure. For behavioral component ownership, see
 
 | Path | Contains |
 |---|---|
-| root composition entrypoints | `supplier_app.py` (local backend entrypoint), plus a shrinking flat package of supplier-discovery/extraction modules still at root (e.g. `serp_parser.py`, `contact_crawler.py`, `collect_inn.py`, `web_lookup.py`, `xmlriver_client.py`) and the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
+| root composition entrypoints | `supplier_app.py` (local backend entrypoint), plus a shrinking flat package of supplier-discovery/extraction modules still at root (e.g. `serp_parser.py`, `contact_crawler.py`, `collect_inn.py`) and the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
 | `api/` | `api/index.py` — the Vercel serverless adapter around `supplier_app.py` |
-| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — LLM/provider transport moved out of the root flat package (`llm_fallback.py`, `routerai_client.py`); `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the root flat package (`email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`) |
+| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — LLM/provider transport moved out of the root flat package (`llm_fallback.py`, `routerai_client.py`); `backend/integrations/search/` — SERP/web-lookup integrations moved out of the root flat package (`web_lookup.py`, `xmlriver_client.py`); `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the root flat package (`email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`) |
 | `mail/` | Real Yandex IMAP/SMTP integration and SQLite-backed mail repository |
 | `migrations/` | Versioned SQL schema DDL |
 | `frontend/` | React/Vite SPA (TypeScript, Tailwind) |
@@ -61,7 +61,22 @@ not a target structure. For behavioral component ownership, see
   `inn_resolver.py` was deliberately left unprotected — it was never
   protected before, and moving beside the other three is not evidence for
   adding it.
+- `TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903`: `web_lookup.py`
+  and `xmlriver_client.py` moved to `backend/integrations/search/`, no root
+  wrapper. Both are 0-diff pure moves (`git diff -M --stat`). 6 confirmed
+  consumers updated to the canonical import path (`supplier_app.py`,
+  `collect_inn.py`, `scripts/collect_contacts.py`, `test_extractor.py`,
+  `serp_parser.py`, `test_parser.py`); `serp_parser.py` itself stays
+  `DEFER`red (unmoved) per the diagnostic — only its one internal import line
+  was touched. `supplier_discovery_v2/xmlriver_subprocess.py` is unaffected:
+  it invokes the untouched `serp_parser.py` by absolute path via
+  `subprocess.run(..., cwd=...)`, so `serp_parser.py`'s own updated import
+  resolves normally at that call site.
+  `supplier_discovery_v2/immutability_check.py`'s protected-path list was
+  migrated for both files in the same change, so the existing immutability
+  guard was never weakened.
 - Remaining root modules named in
   `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md` (including
-  `supplier_app.py`, `api/index.py`, `serp_parser.py`) are unmoved and
-  require their own bounded, explicitly-scoped task.
+  `supplier_app.py`, `api/index.py`, `serp_parser.py`, `contact_crawler.py`,
+  `collect_inn.py`) are unmoved and require their own bounded,
+  explicitly-scoped task.

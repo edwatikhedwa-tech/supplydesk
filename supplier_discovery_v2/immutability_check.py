@@ -13,7 +13,7 @@ def protected_paths(root: Path) -> list[Path]:
         candidate = root / name
         if candidate.is_file():
             paths.append(candidate)
-    for name in ("serp_parser.py", "xmlriver_client.py", "supplier_app.py", "contact_crawler.py", "web_lookup.py", "collect_inn.py"):
+    for name in ("serp_parser.py", "supplier_app.py", "contact_crawler.py", "collect_inn.py"):
         candidate = root / name
         if candidate.is_file():
             paths.append(candidate)
@@ -27,6 +27,11 @@ def protected_paths(root: Path) -> list[Path]:
     # not itself evidence for adding it.
     for name in ("email_extractor.py", "inn_extractor.py", "verify.py"):
         candidate = root / "backend" / "domain" / "supplier_identity" / name
+        if candidate.is_file():
+            paths.append(candidate)
+    # Moved out of the flat root package by TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903.
+    for name in ("web_lookup.py", "xmlriver_client.py"):
+        candidate = root / "backend" / "integrations" / "search" / name
         if candidate.is_file():
             paths.append(candidate)
     repository = root / "mail" / "repository.py"

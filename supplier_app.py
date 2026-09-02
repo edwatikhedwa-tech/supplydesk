@@ -28,7 +28,7 @@ from mail.runtime import RuntimeConfigurationError, RuntimeSession
 from mail.service import MailService
 from mail.types import ProviderError
 from serp_parser import SerpCollector, read_lines
-from xmlriver_client import XmlRiverClient
+from backend.integrations.search.xmlriver_client import XmlRiverClient
 
 # Enrichment pipeline (email/INN/company data) — see Documents/28-8/enrichment-and-cache.md.
 # Reused as-is from the already-tested CLI tools; nothing here is new logic.
@@ -59,7 +59,7 @@ from backend.domain.supplier_identity.verify import (
     registry_ownership_unknown,
     verify_email,
 )
-from web_lookup import WebLookup
+from backend.integrations.search.web_lookup import WebLookup
 
 log = logging.getLogger("supplier_app")
 

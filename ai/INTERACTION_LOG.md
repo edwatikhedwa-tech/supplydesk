@@ -2,6 +2,31 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-03 — TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903
+
+- Owner instruction: "почини, а потом продолжи рефакторинг!" — first
+  root-caused and fixed the `Backend Full` `CI_INFRA` timeout (separate
+  entry above/below), then continued the bounded root refactor series per
+  the "продолжи рефакторинг" half, self-selecting the next batch from the
+  root diagnostic report's `MOVE_INTEGRATIONS` candidates
+  (`web_lookup.py`, `xmlriver_client.py`) without asking for confirmation,
+  consistent with the owner's standing autonomous-execution policy.
+- Fresh full-tree reference scan found 6 real consumers; both moved files
+  proved 0-diff pure moves via `git diff --cached -M --stat`.
+- Verified `supplier_discovery_v2/xmlriver_subprocess.py` is unaffected —
+  it calls the untouched `serp_parser.py` by absolute path via
+  `subprocess.run(cwd=...)`, so `serp_parser.py`'s own updated import
+  resolves normally there.
+- Migrated the immutability guard for both already-protected files,
+  following the exact Checko/supplier-identity precedent; proved with a
+  real-tree baseline round-trip and a disposable synthetic-tempfile
+  mutation-detection test; added 2 new permanent regression tests.
+- Applied the lesson from the earlier supplier-identity partial-staging
+  incident: staged all 14 changed files individually (one `git add --
+  <path>` per file) instead of one combined pathspec list, since two paths
+  had already been renamed away and a combined `-A --` list would abort on
+  the first missing pathspec.
+
 ## 2026-09-02 — TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902
 
 - Workspace Guard passed; fresh full-tree scan (Python imports plus literal

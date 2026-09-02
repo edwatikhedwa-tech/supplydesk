@@ -3,8 +3,8 @@ document_id: STATE-001
 status: CURRENT
 canonical: true
 owner: project-control
-updated_at: 2026-09-02
-based_on_commit: dc93a181c85c175863a84ddddb1c71c9172a98bb
+updated_at: 2026-09-03
+based_on_commit: 6af2af1822820e996f1126b8a1b26d19be0000f0
 ---
 
 # Current State
@@ -15,7 +15,43 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-03` — CI capacity follow-up to
+`2026-09-03` — Root-cause fix for the `Backend Full` `CI_INFRA` timeout
+recorded below: per-test timestamp-delta analysis of the failed job logs
+(`gh api .../actions/jobs/<id>/logs`) showed the slowdown was not uniform —
+it concentrated in `tests/test_mail_deliverability.py` and
+`tests/test_mail_integrity.py`, whose many small SQLite/`tempfile`
+operations took `7`-`60s` each on the hosted Windows runner vs sub-second
+locally, matching the documented Windows Defender real-time-scanning
+overhead on GitHub-hosted Windows runners. Added a best-effort
+`Add-MpPreference -ExclusionPath` step (workspace, `RUNNER_TEMP`, `TEMP`)
+to the `backend_full` job only in `.github/workflows/ci.yml` (commit
+`6af2af1`, pushed, remote SHA match confirmed); the timeout itself was left
+at the owner-approved `35` minutes, not raised further. A
+`workflow_dispatch profile=FULL` verification run
+(`33690006924`) was launched to confirm the fix; its `Backend Full` result
+is tracked separately once observed — this entry records the fix that was
+made, not an unconfirmed outcome.
+
+`2026-09-03` — `TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903`
+moved `web_lookup.py` and `xmlriver_client.py` to
+[`backend/integrations/search/`](../backend/integrations/search/)
+(`git diff -M --stat`: both `0 insertions(+), 0 deletions(-)` pure moves).
+6 confirmed consumers were updated to the canonical import path:
+`supplier_app.py`, `collect_inn.py` (lazy import), `scripts/collect_contacts.py`
+(lazy import), `test_extractor.py`, `serp_parser.py`, `test_parser.py`.
+`serp_parser.py` itself stays `DEFER`red (unmoved) per the diagnostic —
+only its one internal import line was touched, matching the established
+"beyond imports" precedent from earlier passes.
+`supplier_discovery_v2/xmlriver_subprocess.py` was confirmed unaffected: it
+invokes the untouched `serp_parser.py` by absolute path via
+`subprocess.run(..., cwd=...)`, so `serp_parser.py`'s own updated import
+resolves normally at that call site.
+`supplier_discovery_v2/immutability_check.py`'s protected-path list was
+migrated for both files in the same change, so the existing immutability
+guard was never weakened. The task report is
+[`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903-report.md).
+
+`2026-09-02` — CI capacity follow-up to
 `TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902`: `Backend Full`
 failed twice at its `25`-minute timeout, then once more at an
 owner-approved `35`-minute timeout, all three times cancelled
@@ -474,6 +510,20 @@ on this task's dedicated branch:
   `tests/diagnostics/test_registry_integration_move.py` (3/3 PASS); targeted
   `tests/test_enrichment_pipeline.py` (8/8 PASS); the diagnostics suite
   passed `52/61` with the same 9 pre-existing `pwsh`-gap errors as before.
+- Bounded root refactor Pass 7 (search integrations):
+  `backend/integrations/search/{web_lookup,xmlriver_client}.py` are now the
+  canonical implementations; root copies are gone, no wrapper.
+  `supplier_app`, `collect_inn`, `scripts.collect_contacts`, `serp_parser`,
+  and `backend.integrations.search.{web_lookup,xmlriver_client}` all import
+  successfully offline; `api.index.handler`/`_APP` imports under
+  `SUPPLYDESK_ENV=test`. Old vs new CLI invocation (`collect_contacts.py
+  --help`, `collect_inn.py --help`) verified byte-identical/exit `0`.
+  Behavioral evidence: `test_extractor.py` and `test_parser.py` (custom root
+  scripts) both print "Все проверки пройдены" with exit `0`;
+  `tests/test_enrichment_pipeline.py` (8/8 PASS);
+  `supplier_discovery_v2/tests/` full suite (18/18 PASS, including 2 new
+  immutability tests); official backend suite `462 tests, failures=0,
+  errors=9` (same pre-existing `pwsh`-gap), `skipped=1`.
 - Bounded root refactor Pass 2: `scripts/collect_contacts.py` and
   `benchmarks/benchmark_models.py` are now the single canonical
   implementations; root `collect_contacts.py`/`benchmark_models.py` are
@@ -525,19 +575,11 @@ on this task's dedicated branch:
 - The task is closed with remote SHA match `YES`, FAST CI `PASS` and Browser
   Full `FAIL`; the failure cause is not confirmed. A browser-runtime fix must
   be a separate task.
-- `TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902`'s `Backend Full`
-  remains `FAIL` on this branch (`CI_INFRA`, confirmed non-product): the
-  official backend regression suite is now consistently exceeding the CI
-  job's timeout on the shared Windows runner — `25m10s` (twice, at
-  `timeout-minutes: 25`) then `35m5s` (once, after an owner-approved raise
-  to `timeout-minutes: 35`), each time `KeyboardInterrupt`/"The operation
-  was canceled" at a different test inside the slow `tests/` mail suites,
-  never an assertion/import failure. Local evidence with the identical
-  official runner: `460 tests, failures=0, errors=9` (pre-existing
-  `pwsh`-gap), `skipped=1`, in under `4` minutes. Per the owner's explicit
-  stop condition, the timeout was not raised further. Root cause of the
-  runner-side slowdown is `NOT VERIFIED` and needs its own separate task
-  (likely suite-runtime profiling or splitting, not another timeout raise).
+- `Backend Full`'s `CI_INFRA` timeout (see the `2026-09-02` entry above) has
+  a root-cause fix applied (`6af2af1`, Windows Defender exclusions for the
+  `backend_full` job) but its `workflow_dispatch profile=FULL` verification
+  run (`33690006924`) result must be checked from actual CI output, not
+  assumed, before this blocker is marked resolved.
 - Product/live-provider follow-up remains bounded by the limitations above and
   the open findings in [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
 
@@ -567,14 +609,17 @@ on this task's dedicated branch:
 ## Current next step
 
 Pass 2 (CLI compatibility), Pass 3 (`dadata_client.py`), Pass 4
-(`checko_client.py` + immutability migration), Pass 5 (LLM integrations)
-and Pass 6 (supplier identity domain) are complete; `backend/{integrations/
-{registry,llm},domain/supplier_identity}/` now hold 8 moved modules and
-`FINDING-017`/`FINDING-018` are both resolved. Any further root moves —
-`supplier_app.py`, `api/index.py`, `serp_parser.py`, `contact_crawler.py`,
-`collect_inn.py`, `web_lookup.py`, or the remaining runtime modules named
-in the root diagnostic — require their own bounded task with explicit
-import, subprocess and deployment contracts; none is authorized by this
+(`checko_client.py` + immutability migration), Pass 5 (LLM integrations),
+Pass 6 (supplier identity domain) and Pass 7 (search integrations) are
+complete; `backend/{integrations/{registry,llm,search},domain/
+supplier_identity}/` now hold 10 moved modules and `FINDING-017`/
+`FINDING-018` are both resolved. Any further root moves — `supplier_app.py`,
+`api/index.py`, `serp_parser.py`, `contact_crawler.py`, `collect_inn.py`, or
+the remaining runtime modules named in the root diagnostic — require their
+own bounded task with explicit import, subprocess and deployment contracts
+(`contact_crawler.py`/`collect_inn.py` are `MOVE_DOMAIN_PACKAGE`/High risk
+per the diagnostic; `serp_parser.py` stays `DEFER`red pending an explicit
+subprocess/deployment contract decision); none is authorized by this
 change. Keep the Browser Full `FAIL` and Finding-009 as separate recorded
 limitations.
 
@@ -619,6 +664,7 @@ limitations.
 - FINDING-018 fix report: [`ai/reports/TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902-report.md`](reports/TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902-report.md).
 - Cross-agent skill availability report: [`ai/reports/TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902-report.md`](reports/TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902-report.md).
 - Supplier identity domain move report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902-report.md).
+- Search integrations move report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903-report.md).
 - Repository layout map: [`docs/architecture/REPOSITORY_LAYOUT.md`](../docs/architecture/REPOSITORY_LAYOUT.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).

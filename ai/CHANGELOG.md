@@ -3,6 +3,29 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-03 — BOUNDED ROOT REFACTOR PASS 7: SEARCH INTEGRATIONS
+
+- Moved `web_lookup.py` and `xmlriver_client.py` (both `MOVE_INTEGRATIONS`
+  in the root diagnostic) to `backend/integrations/search/`; both are
+  0-diff pure moves proven by `git diff --cached -M --stat`.
+- Updated 6 confirmed consumers to the canonical import path:
+  `supplier_app.py`, `collect_inn.py` (lazy import),
+  `scripts/collect_contacts.py` (lazy import), `test_extractor.py`,
+  `serp_parser.py` (import line only — the file itself stays `DEFER`red),
+  `test_parser.py`. Verified `supplier_discovery_v2/xmlriver_subprocess.py`
+  is unaffected (invokes `serp_parser.py` by absolute path via
+  `subprocess.run(..., cwd=...)`).
+- Migrated `supplier_discovery_v2/immutability_check.py`'s protected-path
+  list for both files to their new location in the same change, proven via
+  a real-tree baseline round-trip and a disposable synthetic tempfile-tree
+  mutation-detection test; the guard was never weakened. Added two new
+  permanent tests to `supplier_discovery_v2/tests/test_immutability.py`.
+- Regression evidence: official backend suite `462 tests, failures=0,
+  errors=9 (pre-existing pwsh gap), skipped=1`; `test_extractor.py`/
+  `test_parser.py` both "Все проверки пройдены" exit 0;
+  `tests/test_enrichment_pipeline.py` 8/8; full
+  `supplier_discovery_v2/tests/` 18/18.
+
 ## 2026-09-03 — CI CAPACITY REAL FIX: WINDOWS DEFENDER EXCLUSION FOR BACKEND FULL
 
 - Root-caused the `Backend Full` `CI_INFRA` timeout (previous entry):

@@ -77,6 +77,39 @@ class ImmutabilityTests(unittest.TestCase):
                 )
                 path.write_text(f"# disposable {name} stand-in\n", encoding="utf-8")
 
+    def test_search_integrations_modules_are_protected_at_their_new_canonical_paths(self):
+        root = Path(__file__).resolve().parents[2]
+        protected = {
+            str(path.relative_to(root)).replace("\\", "/") for path in protected_paths(root)
+        }
+        for name in ("web_lookup.py", "xmlriver_client.py"):
+            self.assertIn(f"backend/integrations/search/{name}", protected)
+            self.assertNotIn(name, protected)
+
+    def test_disposable_mutation_of_search_integrations_modules_is_detected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            synthetic_root = Path(directory) / "synthetic_root"
+            pkg_dir = synthetic_root / "backend" / "integrations" / "search"
+            pkg_dir.mkdir(parents=True)
+            names = ("web_lookup.py", "xmlriver_client.py")
+            paths = {}
+            for name in names:
+                path = pkg_dir / name
+                path.write_text(f"# disposable {name} stand-in\n", encoding="utf-8")
+                paths[name] = path
+
+            manifest = Path(directory) / "manifest.json"
+            write_baseline(synthetic_root, manifest)
+            self.assertEqual(verify(synthetic_root, manifest), [])
+
+            for name, path in paths.items():
+                path.write_text(f"# mutated {name}\n", encoding="utf-8")
+                self.assertEqual(
+                    verify(synthetic_root, manifest),
+                    [f"backend/integrations/search/{name}"],
+                )
+                path.write_text(f"# disposable {name} stand-in\n", encoding="utf-8")
+
 
 if __name__ == "__main__":
     unittest.main()

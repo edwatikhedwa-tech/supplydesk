@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any, Iterator
 from urllib.parse import urlsplit
 
-from xmlriver_client import XmlRiverClient, XmlRiverError
+from backend.integrations.search.xmlriver_client import XmlRiverClient, XmlRiverError
 
 log = logging.getLogger("serp")
 

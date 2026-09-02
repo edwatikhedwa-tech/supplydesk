@@ -18,7 +18,7 @@ from backend.domain.supplier_identity.email_extractor import (
     normalize_email, repair_email_candidate, score_hit, split_mailto_addresses,
     validate_email, is_contact_url,
 )
-from web_lookup import WebLookup
+from backend.integrations.search.web_lookup import WebLookup
 
 failures: list[str] = []
 

@@ -272,8 +272,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.web:
         import os
 
-        from xmlriver_client import XmlRiverClient
-        from web_lookup import WebLookup
+        from backend.integrations.search.xmlriver_client import XmlRiverClient
+        from backend.integrations.search.web_lookup import WebLookup
 
         user, key = os.getenv("XMLRIVER_USER", ""), os.getenv("XMLRIVER_KEY", "")
         if not user or not key:
