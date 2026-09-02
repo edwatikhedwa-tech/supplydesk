@@ -195,9 +195,9 @@ tools:
     required_for: FRONTEND_CLEANUP_REFACTOR
     execution_frequency: ON_DEMAND
     blocking: false
-    availability: PLANNED
+    availability: CONFIGURED
     evidence_required: candidate report and manual ownership/reference/test review
-    notes: no knip executable or script was found; candidates never authorize deletion
+    notes: frontend/package.json contains the knip devDependency and npm script, and frontend/knip.jsonc is present; previous successful Knip evidence is historical; candidates never authorize deletion
   - id: playwright
     name: Playwright real-route acceptance
     purpose: real user-visible browser behavior

@@ -320,9 +320,19 @@ outcome and an acceptance criterion.
 - `TOOL_USAGE_REPORTING: FINAL_RESPONSES_ENABLED`: every substantive final
   response includes one short `[ИНСТРУМЕНТЫ И SKILLS]` block listing only tools
   and skills actually used.
+  Every listed item includes exactly one type label: `TYPE: SKILL`,
+  `TYPE: TOOL` or `TYPE: WORKFLOW`. Use `TYPE: SKILL` only when the concrete
+  installed `SKILL.md` was actually loaded or invoked; use `TYPE: TOOL` only
+  when the concrete CLI/MCP/script/tool command actually ran; use
+  `TYPE: WORKFLOW` for an applied procedure such as environment-discovery,
+  contradiction-audit or evidence-first process when reporting the procedure
+  rather than an installed skill. Never present a workflow name as a skill.
   For each, state why it was selected, what concrete result/evidence it gave,
   and the qualitative practical benefit. Do not list merely available,
   planned or irrelevant tools, and do not invent time or cost savings.
+- `WORKFLOW_MASQUERADING_AS_SKILL: FORBIDDEN`: a workflow label must not be
+  reported as an installed skill unless that exact installed skill was actually
+  loaded or invoked.
 - `INTERMEDIATE_TOOL_SPAM: FORBIDDEN`: do not repeat the full tool/skill block
   in progress updates. Mention a tool there only for new material evidence, a
   blocker, an unexpected result or an owner decision; if a complete log is
