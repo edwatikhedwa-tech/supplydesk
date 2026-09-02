@@ -16,8 +16,8 @@ preserved under [`ai/history/`](history/).
 ## Last update
 
 `2026-09-02` — Cleanup/recovery phase is complete, VibeCoding V1.3 is locally
-verified, and architecture/lifecycle plus browser-auth handoff policy is
-locally verified for the same-task publication.
+verified, and the Browser Full public-shell stability remediation is locally
+verified; remote publication gates remain pending for this task.
 Finding-009 remains `REVIEW_REQUIRED`: no operational env file is present or
 tracked in the canonical checkout/history, but retained external snapshot and
 quarantine filename copies require separate owner review.
@@ -238,6 +238,15 @@ on this task's dedicated branch:
   scenarios and Backend Full was cancelled after 11m49s without a final test
   total. This is recorded as `CI_PERFORMANCE_FAILURE`, not as a product
   regression.
+- Browser Full stability remediation is implemented in `MagicRings` and the
+  public-shell test: reduced motion renders one stable WebGL frame without a
+  continuous RAF loop, normal mode remains animated, readiness uses
+  `domcontentloaded` plus the visible login heading, and the Browser Full
+  test emulates `reducedMotion: 'reduce'` only for that public-shell case.
+- Local remediation acceptance passed: public shell `1/1` single viewport and
+  `8/8` configured viewport projects with `workers: 4`; focused reduced-motion,
+  normal-motion, runtime media-query switch and WebGL fallback checks passed;
+  frontend typecheck, lint, build, screenshot and Axe checks passed.
 - Local final control checks after the routing correction: diagnostics
   `39/39`, official quick runner `50/0/0/0`, VibeCoding/docs/state/traceability
   validators PASS, Doctor Plan PASS, and local real-route Browser Smoke `1/1`.
@@ -287,6 +296,9 @@ on this task's dedicated branch:
 - Remote CI proof for this new guard/workflow revision was not run in this
   local-only iteration; CI receives an explicit checkout-root override in the
   committed workflow.
+- Remote SHA, FAST CI and required Browser Full for
+  `TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902` are `NOT VERIFIED` until
+  the task commit is published and its workflows complete.
 - Remote SHA confirmation and FAST CI are the remaining same-task publication
   gates for the declared `DELIVERY_MODE: PUBLISH`.
 - The local interactive browser auth handoff was not exercised; no personal
@@ -301,14 +313,17 @@ on this task's dedicated branch:
 
 ## Blockers
 
-- No reproducible-test-runtime blocker remains for the offline scope.
+- No local implementation blocker remains. Remote publication and Browser Full
+  evidence are pending for the active task.
 - Product/live-provider follow-up remains bounded by the limitations above and
   the open findings in [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
 
 ## Active constraints
 
-- Do not modify application logic, UI, API, database, migrations, runtime
-  state, mail data, or production settings in this control branch.
+- For the active Browser Full stability task, application changes are limited
+  to `MagicRings` reduced-motion lifecycle and the scoped public-shell test.
+- Do not modify auth handoff/OAuth, backend/API, database, migrations, mail
+  data, secrets, Knip, unrelated frontend tests, or the worker count.
 - Do not send real email, connect to real SMTP/IMAP, write the canonical
   database, force-push, merge, or change the default branch.
 - Keep audit history on the dedicated audit branch; only the documented pointer
@@ -328,10 +343,10 @@ on this task's dedicated branch:
 
 ## Current next step
 
-Complete the declared `DELIVERY_MODE: PUBLISH` by committing and pushing this
-policy change, confirming the remote SHA and waiting for FAST CI. FULL CI and
-product acceptance are not needed; keep Finding-009 as a separate
-owner-approved deferred security action.
+Commit and push `TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902`, confirm the
+remote SHA, run FAST CI and the required normal-classifier Browser Full, then
+record the final result and return this sentinel to IDLE. Keep Finding-009 as a
+separate owner-approved deferred security action.
 
 ## Canonical references
 
@@ -342,6 +357,7 @@ owner-approved deferred security action.
 - Deferred findings: [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
 - Latest governance report: [`ai/reports/TASK-DOCUMENTATION-GOVERNANCE-20260901-report.md`](reports/TASK-DOCUMENTATION-GOVERNANCE-20260901-report.md).
 - Diagnostic report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md).
+- Browser Full stability report: [`ai/reports/TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902-report.md`](reports/TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902-report.md).
 - Diagnostic V1.1 report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md).
 - Reproducible test/runtime report: [`ai/reports/TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901-report.md`](reports/TASK-REPRODUCIBLE-TEST-RUNTIME-V1-20260901-report.md).
 - Safe physical cleanup report: [`ai/reports/TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901-report.md`](reports/TASK-SAFE-PHYSICAL-CLEANUP-BATCH1-20260901-report.md).

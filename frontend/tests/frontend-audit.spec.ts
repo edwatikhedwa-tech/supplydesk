@@ -15,57 +15,62 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(geometry.scrollWidth, JSON.stringify(geometry)).toBeLessThanOrEqual(geometry.clientWidth + 1);
 }
 
-test('public shell has no mobile overflow and passes accessibility checks', async ({ page }, testInfo) => {
-  await page.goto('/login', { waitUntil: 'networkidle' });
-  await page.addStyleTag({
-    content: '*, *::before, *::after { animation: none !important; transition: none !important; }',
+test.describe('public shell reduced-motion acceptance', () => {
+  test.use({ reducedMotion: 'reduce' });
+
+  test('public shell has no mobile overflow and passes accessibility checks', async ({ page }, testInfo) => {
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'Вход в рабочее пространство' })).toBeVisible();
+    await page.addStyleTag({
+      content: '*, *::before, *::after { animation: none !important; transition: none !important; }',
+    });
+
+    const geometry = await page.evaluate(() => {
+      const viewportWidth = document.documentElement.clientWidth;
+      const isHidden = (element: Element) => {
+        let current: Element | null = element;
+        while (current) {
+          if (current.getAttribute('aria-hidden') === 'true' || current.getAttribute('data-audit-ignore') === 'true') return true;
+          current = current.parentElement;
+        }
+        return false;
+      };
+      const visible = (element: Element) => {
+        if (isHidden(element)) return false;
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0;
+      };
+      const outside = [...document.body.querySelectorAll('*')]
+        .filter(visible)
+        .map((element) => ({ element, rect: element.getBoundingClientRect() }))
+        .filter(({ rect }) => rect.left < -1 || rect.right > viewportWidth + 1)
+        .slice(0, 20)
+        .map(({ element, rect }) => ({
+          tag: element.tagName.toLowerCase(),
+          className: typeof element.className === 'string' ? element.className.slice(0, 120) : '',
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+        }));
+      return {
+        viewportWidth,
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        outside,
+      };
+    });
+
+    expect(geometry.scrollWidth, JSON.stringify(geometry)).toBeLessThanOrEqual(geometry.clientWidth + 1);
+    expect(geometry.outside, JSON.stringify(geometry)).toEqual([]);
+
+    await page.screenshot({
+      path: testInfo.outputPath(`${testInfo.project.name}-login.png`),
+      fullPage: true,
+    });
+
+    const axeResults = await new AxeBuilder({ page }).analyze();
+    expect(axeResults.violations, formatAxeViolations(axeResults.violations)).toEqual([]);
   });
-
-  const geometry = await page.evaluate(() => {
-    const viewportWidth = document.documentElement.clientWidth;
-    const isHidden = (element: Element) => {
-      let current: Element | null = element;
-      while (current) {
-        if (current.getAttribute('aria-hidden') === 'true' || current.getAttribute('data-audit-ignore') === 'true') return true;
-        current = current.parentElement;
-      }
-      return false;
-    };
-    const visible = (element: Element) => {
-      if (isHidden(element)) return false;
-      const style = getComputedStyle(element);
-      const rect = element.getBoundingClientRect();
-      return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0;
-    };
-    const outside = [...document.body.querySelectorAll('*')]
-      .filter(visible)
-      .map((element) => ({ element, rect: element.getBoundingClientRect() }))
-      .filter(({ rect }) => rect.left < -1 || rect.right > viewportWidth + 1)
-      .slice(0, 20)
-      .map(({ element, rect }) => ({
-        tag: element.tagName.toLowerCase(),
-        className: typeof element.className === 'string' ? element.className.slice(0, 120) : '',
-        left: Math.round(rect.left),
-        right: Math.round(rect.right),
-      }));
-    return {
-      viewportWidth,
-      clientWidth: document.documentElement.clientWidth,
-      scrollWidth: document.documentElement.scrollWidth,
-      outside,
-    };
-  });
-
-  expect(geometry.scrollWidth, JSON.stringify(geometry)).toBeLessThanOrEqual(geometry.clientWidth + 1);
-  expect(geometry.outside, JSON.stringify(geometry)).toEqual([]);
-
-  await page.screenshot({
-    path: testInfo.outputPath(`${testInfo.project.name}-login.png`),
-    fullPage: true,
-  });
-
-  const axeResults = await new AxeBuilder({ page }).analyze();
-  expect(axeResults.violations, formatAxeViolations(axeResults.violations)).toEqual([]);
 });
 
 test('unbound email stays readable after remote images are hidden and reply is immediately usable', async ({ page }, testInfo) => {

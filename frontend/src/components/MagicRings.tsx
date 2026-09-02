@@ -191,8 +191,8 @@ export default function MagicRings({
       renderer.setSize(w, h);
       renderer.setPixelRatio(dpr);
       uniforms.uResolution.value.set(w * dpr, h * dpr);
+      if (prefersReducedMotion && isVisible && isPageVisible) renderFrame(0, false);
     };
-    resize();
     window.addEventListener('resize', resize);
 
     const ro = new ResizeObserver(resize);
@@ -216,18 +216,21 @@ export default function MagicRings({
     mount.addEventListener('mouseleave', onMouseLeave);
     mount.addEventListener('click', onClick);
 
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let prefersReducedMotion = motionQuery.matches;
     let frameId = 0;
     let isVisible = false;
     let isPageVisible = !document.hidden;
     let elapsed = 0;
     let lastT = 0;
-    const animate = (t: number) => {
-      frameId = requestAnimationFrame(animate);
+    const renderFrame = (t: number, advanceTime: boolean) => {
       const p = propsRef.current!;
 
-      const dt = lastT === 0 ? 0 : Math.min(t - lastT, 100);
-      lastT = t;
-      elapsed += dt * 0.001 * p.speed;
+      if (advanceTime) {
+        const dt = lastT === 0 ? 0 : Math.min(t - lastT, 100);
+        lastT = t;
+        elapsed += dt * 0.001 * p.speed;
+      }
 
       smoothMouseRef.current[0] += (mouseRef.current[0] - smoothMouseRef.current[0]) * 0.08;
       smoothMouseRef.current[1] += (mouseRef.current[1] - smoothMouseRef.current[1]) * 0.08;
@@ -259,20 +262,43 @@ export default function MagicRings({
 
       renderer.render(scene, camera);
     };
-    frameId = 0;
 
-    const tryStart = () => {
-      if (isVisible && isPageVisible && frameId === 0) {
-        lastT = 0;
-        frameId = requestAnimationFrame(animate);
-      }
-    };
     const tryStop = () => {
       if (frameId !== 0) {
         cancelAnimationFrame(frameId);
         frameId = 0;
       }
     };
+    const animate = (t: number) => {
+      if (prefersReducedMotion || !isVisible || !isPageVisible) {
+        frameId = 0;
+        return;
+      }
+      renderFrame(t, true);
+      frameId = requestAnimationFrame(animate);
+    };
+    const tryStart = () => {
+      if (!isVisible || !isPageVisible) return;
+      if (prefersReducedMotion) {
+        tryStop();
+        renderFrame(0, false);
+        return;
+      }
+      if (frameId === 0) {
+        lastT = 0;
+        frameId = requestAnimationFrame(animate);
+      }
+    };
+    const onReducedMotionChange = (event: MediaQueryListEvent) => {
+      prefersReducedMotion = event.matches;
+      if (prefersReducedMotion) {
+        tryStop();
+        if (isVisible && isPageVisible) renderFrame(0, false);
+      } else {
+        tryStart();
+      }
+    };
+    motionQuery.addEventListener('change', onReducedMotionChange);
 
     const io = new IntersectionObserver(
       ([entry]) => {
@@ -283,6 +309,7 @@ export default function MagicRings({
       { threshold: 0 }
     );
     io.observe(mount);
+    resize();
 
     const onVisibility = () => {
       isPageVisible = !document.hidden;
@@ -296,6 +323,7 @@ export default function MagicRings({
     return () => {
       tryStop();
       io.disconnect();
+      motionQuery.removeEventListener('change', onReducedMotionChange);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('resize', resize);
       ro.disconnect();

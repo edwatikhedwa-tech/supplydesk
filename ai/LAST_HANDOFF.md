@@ -1,77 +1,79 @@
 ---
-document_id: HANDOFF-003
+document_id: HANDOFF-004
 status: CURRENT
 canonical: false
-owner: project-control
+owner: Codex
 updated_at: 2026-09-02
-based_on_commit: 84083130e3a75eb5a6d4fa83957db6760724379b
+based_on_commit: e7e1873160f26faaa9a6385c1b8b14c6c96a540c
 ---
 
 # Last Handoff
 
-This handoff records the architecture/lifecycle and human browser-auth policy
-delivery. The commit and independent publication evidence are recorded by Git
-history and the delivery task result.
+This handoff records the Browser Full public-shell stability remediation. The
+remote publication result is intentionally pending until the task commit is
+published and the normal CI path completes.
 
 ## Цель
 
-Добавить минимальные cross-cutting правила размещения, жизненного цикла
-компонентов и безопасной локальной browser-auth handoff в одном
-`DELIVERY_MODE: PUBLISH` цикле без изменения product code.
+Исправить нестабильность Browser Full public shell без auth handoff: убрать
+зависимость от `networkidle`, добавить reduced-motion lifecycle для
+`MagicRings`, сохранить normal animation и подтвердить результат на CI.
 
 ## Что изменено
 
-- Added architecture placement, root-growth, versioned-garbage, lifecycle,
-  deprecation, disabled-feature, temporary-file and architecture-change rules
-  to `ai/AI_CONTRACT.md`.
-- Added `docs/architecture/COMPONENT_LIFECYCLE.md` and recorded the retained
-  deferred manual real-email Playwright configuration.
-- Added local-only headed Chromium auth handoff, non-interactive CI rules and
-  public `/login` failure classification to `RUNBOOK-FRONTEND.md`.
-- No product, runtime, database, mail data, environment, current browser
-  test, CI, Knip, Python, root or quarantine file was changed.
+- `frontend/src/components/MagicRings.tsx` now reads
+  `prefers-reduced-motion`, renders a stable frame without continuous RAF in
+  reduced mode, resumes normal animation on media-query changes and removes
+  the media-query listener during cleanup.
+- The public-shell case in `frontend/tests/frontend-audit.spec.ts` now uses
+  `domcontentloaded` plus the visible `Вход в рабочее пространство` heading and
+  scopes Playwright `reducedMotion: 'reduce'` to that case only.
+- `frontend/playwright.config.ts` and `workers: 4` remain unchanged; auth/OAuth,
+  backend/API, unrelated tests, Knip and product visual design were not changed.
 
 ## Что проверено
 
-- Workspace Guard: `PASS`, canonical root confirmed.
-- Focused governance suite: `PASS`, 16 tests.
-- VibeCoding validator: `PASS`, 36 registry tools parsed.
-- State and documentation validators: `PASS`; `GATE-001..009 PASS`.
-- Architecture allowlist and `git diff --check`: `PASS`.
-- `PRODUCT_CODE_CHANGED=NO`; no secret values, cookies or auth state were
-  accessed or staged.
+- Typecheck, lint, build and `git diff --check`: `PASS`; lint retained five
+  pre-existing warnings and zero errors.
+- Public shell: `1/1` single viewport and `8/8` configured projects passed with
+  four workers; screenshots and Axe passed.
+- Focused browser probe: reduced RAF delta `0`, normal RAF active, runtime
+  media-query switch passed, and WebGL unsupported fallback passed.
+- No auth handoff, credentials, cookies, real mail, backend or canonical data
+  were accessed.
 
 ## Что не прошло
 
-No blocking local check failed. Backend, frontend, Playwright, screenshots,
-FULL CI and periodic analyzers are `NOT_NEEDED` for this control-plane
-delivery. The local archive security action remains open and is not a cleanup
-blocker.
+No blocking local check failed. Remote SHA, FAST CI and required Browser Full
+remain pending. The local archive security action remains open and is not a
+cleanup blocker.
 
 ## Что не проверено
 
-NOT VERIFIED: remote SHA and FAST CI until the same-task publish gates finish;
-branch protection is outside this task. The local interactive auth handoff was
-not exercised by design. Current validity/ownership of retained credentials
-also remains unverified; owner approval is required for any retention cleanup
-or rotation.
+NOT VERIFIED: remote SHA, FAST CI and required Browser Full until publication
+finishes; branch protection is outside this task. The local interactive auth
+handoff was not exercised by design. Current validity/ownership of retained
+credentials also remains unverified; owner approval is required for any
+retention cleanup or rotation.
 
 ## Текущее состояние runtime
 
-No canonical or live runtime was started or left running; legacy checkout was
-not used.
+The disposable OFFLINE_TEST runtime was started only after Workspace Guard,
+used for loopback browser checks, and stopped after acceptance; port `18000`
+was freed. The legacy checkout was not used.
 
 ## Следующий рациональный шаг
 
-Finish the ordinary push, verify remote SHA, wait for required FAST CI, then
-stop. Do not create another closeout task. Future archive deletion or
-credential rotation requires owner approval; no Git history rewrite is
-indicated.
+Commit and push the task, verify remote SHA, run FAST CI and the required
+Browser Full through the normal classifier path, then record the exact result
+and return `ACTIVE_TASK` to IDLE. Future archive deletion or credential
+rotation requires owner approval; no Git history rewrite is indicated.
 
 ## Не повторять
 
 Do not use the legacy OneDrive checkout for development, do not output or save
 secret values, do not run real mail, do not modify protected local data, do not
-run backend/frontend/Full CI/periodic analyzers for this task, do not delete
-quarantine or snapshot contents, do not rotate credentials, do not rewrite Git
-history, and do not add a second acknowledgement to an intermediate message.
+open auth handoff, do not reduce workers or add test-only product flags, do not
+delete quarantine or snapshot contents, do not rotate credentials, do not
+rewrite Git history, and do not add a second acknowledgement to an
+intermediate message.
