@@ -15,6 +15,25 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-02` — `TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902` made
+`bug-reproducer`, `code-rot-cleaner` and `skill-doctor` actually
+discoverable by Claude Code (previously only Codex-visible despite a global
+`CONFIGURED` registry entry — confirmed by `ListSkills` returning `0`
+results before, and the platform's own available-skills listing showing
+each one after installation). Installed via the official multi-agent
+`skills` CLI (`npx skills@latest`), using the existing Codex installations
+or the public `warpdotdev/common-skills` upstream as the single source —
+no upstream `SKILL.md` edited, no skill forked or vendored into this
+repository, no Codex installation touched. `agent-browser` was confirmed to
+already reach both agents equally through its own CLI runtime-loading
+mechanism (`agent-browser skills get core --full`), distinct from
+`SKILL.md` discovery — no install was needed or applicable there. Added one
+compact `REGISTRY_AGENT_VISIBILITY` rule to `ai/AI_CONTRACT.md` so a global
+`CONFIGURED` is never read as per-agent proof again, and recorded
+per-agent status in `ai/VIBECODING_TOOL_REGISTRY.yaml`'s existing `notes`
+fields (no new schema). The task report is
+[`ai/reports/TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902-report.md`](reports/TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902-report.md).
+
 `2026-09-02` — `TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902` fixed
 `collect_inn.py --llm` (it imported a nonexistent `InnLlmExtractor` symbol
 and told operators to set `ANTHROPIC_API_KEY`) using a deterministic
@@ -535,6 +554,7 @@ the Browser Full `FAIL` and Finding-009 as separate recorded limitations.
 - Checko registry move + immutability migration report: [`ai/reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md`](reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md).
 - LLM integrations move report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902-report.md).
 - FINDING-018 fix report: [`ai/reports/TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902-report.md`](reports/TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902-report.md).
+- Cross-agent skill availability report: [`ai/reports/TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902-report.md`](reports/TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902-report.md).
 - Repository layout map: [`docs/architecture/REPOSITORY_LAYOUT.md`](../docs/architecture/REPOSITORY_LAYOUT.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).

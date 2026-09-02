@@ -1,68 +1,75 @@
 ---
-document_id: HANDOFF-010
+document_id: HANDOFF-011
 status: CURRENT
 canonical: false
 owner: Claude
 updated_at: 2026-09-02
-based_on_commit: bb6aaf0e9a2a6aec3835fa17475718792b1cde0e
+based_on_commit: b67cb46e64c1fa45261c1c6c96828c1369f78dba
 ---
 
 # Last Handoff
 
-This handoff records the RED→FIX→GREEN fix of `FINDING-018`
-(`collect_inn.py --llm` importing a nonexistent symbol), using two explicit
-owner approval gates and a deterministic behavioral reproducer.
+This handoff records making `bug-reproducer`, `code-rot-cleaner`, and
+`skill-doctor` actually discoverable by Claude Code (they were previously
+Codex-only despite a global `CONFIGURED` registry entry), and documenting
+that a global `CONFIGURED` state does not prove per-agent visibility.
 
 ## Цель
 
-Исправить `FINDING-018` с доказательством через RED→GREEN, не меняя
-prompts/schemas/model selection policy, без реальных provider-вызовов.
+Привести локальную систему skills/tools в фактически корректное состояние
+для Codex и Claude Code, не выдавая global `CONFIGURED` за доказательство
+доступности в конкретном агенте; не менять product code.
 
 ## Что изменено
 
-- `collect_inn.py:217-223` — 3 строки: канонический импорт
-  (`DEFAULT_MODEL, LlmExtractor, api_key_present`), безопасный
-  default-model fallback (`LlmExtractor(model=args.llm_model or
-  DEFAULT_MODEL)`), корректное сообщение про `RouterAI`/`ROUTERAI_KEY`.
-- Added `tests/diagnostics/test_collect_inn_llm_path.py` (3 tests) —
-  поведенческий reproducer через реальный `collect_inn.main()`.
-- Updated `tests/diagnostics/test_llm_integration_move.py` — устаревшее
-  ожидание `InnLlmExtractor` заменено на канонический импорт.
-- Marked `FINDING-018` `RESOLVED` in `ai/DEFERRED_FINDINGS.md` (с
-  историческими доказательствами и resolution report, по тому же формату,
-  что уже использован для `FINDING-017`).
-- Added `ai/reports/TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902-report.md`.
+- User-level (outside this repository, explicitly authorized by the task):
+  installed `skill-doctor` for Claude Code from `warpdotdev/common-skills`
+  via `npx skills@latest add warpdotdev/common-skills -s skill-doctor -a
+  claude-code -g -y`; installed `bug-reproducer` and `code-rot-cleaner` for
+  Claude Code from the existing local Codex source directories via the same
+  CLI's local-path install support. All three now live at
+  `~/.claude/skills/<name>/`. Existing `~/.codex/skills/` installations
+  were not touched.
+- `ai/AI_CONTRACT.md`: added one compact `REGISTRY_AGENT_VISIBILITY` rule
+  (session-level, not per-command) requiring current-agent discovery
+  verification before the first use of an agent-local skill, and the
+  `<skill>_SKILL: NOT_AVAILABLE_IN_CURRENT_AGENT` /
+  `<skill>_WORKFLOW: APPLIED_MANUALLY` reporting vocabulary instead of a
+  bare `<skill>: USED`.
+- `ai/VIBECODING_TOOL_REGISTRY.yaml`: recorded per-agent status (verified
+  2026-09-02) in the existing `notes` field for `code_rot_cleaner`,
+  `agent_browser`, `bug_reproducer`, `skill_doctor` — no new schema field
+  (the registry validator uses a simple regex parser, not a full YAML
+  schema check, so a nested mapping would not have parsed safely).
+- Added `ai/reports/TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902-report.md`.
 
 ## Что проверено
 
-- Workspace Guard passed before task-lock and before mutation.
-- `ListSkills` confirmed no `bug-reproducer` skill is installed in this
-  Claude Code session — the `BUG_REPRODUCER` workflow from
-  `ai/AI_CONTRACT.md` was applied directly with this session's own tools,
-  reported as `TYPE: WORKFLOW`.
-- History check: `git log --all -S "InnLlmExtractor"` matches exactly one
-  commit (the initial bulk import); `Documents/28-8/enrichment-and-cache.md`
-  independently documents it as a leftover from the pre-RouterAI version.
-  `LlmExtractor` confirmed as the intended implementation, not guessed.
-- Gate 1 (reproduction plan) and Gate 2 (fix plan) each presented as one
-  consolidated proposal and explicitly approved by the owner before any file
-  changed.
-- `tests/diagnostics/test_collect_inn_llm_path.py` failed with the exact
-  predicted `ImportError: cannot import name 'InnLlmExtractor'` (at
-  `collect_inn.py:217`, before any network-capable code ran) on unfixed
-  code, then passed `3/3` on the same test after the fix — RED→GREEN with
-  the identical reproducer, `FIX_PROVEN`.
-- `tests/diagnostics/test_llm_integration_move.py`: `6/6` passed.
-  `tests/test_enrichment_pipeline.py` + `tests/test_dashboard.py`: `21/21`
-  passed. Full `tests/diagnostics` discovery: `61/70` passed; the remaining
-  `9` errors are the same pre-existing `pwsh`-missing gap already proven
-  unrelated in an earlier task.
-- `ai/tools/validate_docs.py`, `ai/tools/validate_state.py`: `PASS`.
-  `git diff --check`: `PASS`.
-- Staged diff scanned for secret-like literals: only `ROUTERAI_KEY`/
-  `ANTHROPIC_API_KEY`/`api_key_present` identifiers and message text, no
-  values. `0` external provider calls throughout (RouterAI, OpenAI,
-  Anthropic, Gemini, XMLRiver, Checko, DaData).
+- Workspace Guard passed before mutation.
+- Real filesystem inventory (not inference) of `~/.codex/skills/`,
+  `~/.claude/skills/`, and the shared `~/.agents/skills/` source used by
+  the official `npx skills@latest` CLI, which auto-detects the executing
+  harness and supports `-a <agent>`, `-g`, and local-path sources.
+- `skill-doctor`'s own upstream `references/supported-harnesses.md`
+  confirmed Claude Code as an officially supported harness before
+  installing it there.
+- `ListSkills` returned `0` results for all three skills before
+  installation (matching the independent confirmation in the prior
+  `FINDING-018` task for `bug-reproducer`); the platform's own
+  available-skills listing showed each one immediately after installation
+  — discovery only, no skill was actually invoked.
+- `agent-browser`'s CLI (`agent-browser --version` → `0.36.0`) and bundled
+  skill text were confirmed already equally reachable from both agents
+  through its own runtime-loading mechanism (`agent-browser skills get
+  core --full`), distinct from file-based `SKILL.md` discovery — no
+  installation applied or needed there.
+- `CLAUDE.md` and `AGENTS.md` were checked for mentions of these 4
+  skills/tools: none found, so no adapter pointer was added.
+- `python ai/tools/validate_vibecoding.py` (`PASS`, `tool_entries=40`
+  unchanged), `python ai/tools/validate_docs.py` (`PASS`), `python
+  ai/tools/validate_state.py` (`PASS`), `git diff --check` (`PASS`).
+- Staged diff scanned: only `ai/AI_CONTRACT.md` and
+  `ai/VIBECODING_TOOL_REGISTRY.yaml` changed, text only, no secrets.
 
 ## Что не прошло
 
@@ -70,29 +77,29 @@ Nothing this task touched failed.
 
 ## Что не проверено
 
-NOT VERIFIED: real `ROUTERAI_KEY` / live RouterAI behavior (forbidden by
-this task's scope). NOT VERIFIED: manual terminal invocation of
-`python collect_inn.py --llm ...` by an operator (only exercised via
-`unittest` calling `main()` directly).
+NOT VERIFIED: real invocation of any of the three skills' full workflow
+(forbidden by this task's scope — discovery smoke only). NOT VERIFIED:
+whether these new Claude Code installations remain discoverable in a
+future, separate session (only confirmed within this session).
 
 ## Текущее состояние runtime
 
 No runtime was started for this task. No provider call, real mail, or
-canonical database write occurred.
+canonical database write occurred. No product code changed.
 
 ## Следующий рациональный шаг
 
-None required for this finding. Remaining root moves named in the root
-diagnostic (`supplier_app.py`, `api/index.py`, `serp_parser.py`, and the
-rest of the flat root package) each still need their own bounded,
-explicitly-scoped task.
+None required. If a future task needs to actually invoke `bug-reproducer`,
+`code-rot-cleaner`, or `skill-doctor` from Claude Code, it can now do so
+directly instead of falling back to a manually-applied workflow.
 
 ## Не повторять
 
 Do not use the legacy OneDrive checkout for development, do not output or
-save secret values, do not run real mail or live provider calls, do not
-claim a `bug-reproducer` skill invocation without first confirming via
-`ListSkills` (or equivalent) that it is actually installed in the current
-session, do not skip either approval gate when a task explicitly structures
-itself around them, and do not add a second acknowledgement to an
-intermediate message.
+save secret values, do not edit or fork a third-party `SKILL.md` to make it
+"work", do not vendor a third-party skill into this repository when a
+user-level install is sufficient, do not add a new nested schema field to
+`ai/VIBECODING_TOOL_REGISTRY.yaml` without first checking whether its
+regex-based validator can parse it, do not claim per-agent skill parity
+without a real discovery smoke test, and do not add a second
+acknowledgement to an intermediate message.

@@ -151,6 +151,19 @@ verification.
   the tracked `ACTIVE_TASK.md` remains an `IN_PROGRESS` blocking sentinel;
   otherwise include required state/report evidence in the single
   implementation/configuration commit.
+- `REGISTRY_AGENT_VISIBILITY`: a `CONFIGURED` `availability` in
+  `ai/VIBECODING_TOOL_REGISTRY.yaml` records that a tool/skill is known
+  installed somewhere in the supported local environment; it is not proof
+  that the current coding agent/session can invoke an agent-local skill.
+  Before the first invocation of an agent-local skill (for example
+  `bug-reproducer`, `code-rot-cleaner`, `skill-doctor`) in a session, verify
+  current-agent discovery once through the harness's own mechanism; this is
+  a session-level check, not a per-command gate, and does not repeat before
+  every later use in the same healthy session. If unavailable, report
+  `<skill>_SKILL: NOT_AVAILABLE_IN_CURRENT_AGENT` and
+  `<skill>_WORKFLOW: APPLIED_MANUALLY` rather than a bare `<skill>: USED`;
+  either use an explicitly allowed workflow equivalent or stop if the task
+  requires the real skill.
 
 ## Repository hygiene and bug evidence
 

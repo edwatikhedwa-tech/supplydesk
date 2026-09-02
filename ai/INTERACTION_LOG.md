@@ -2,6 +2,37 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-02 — TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902
+
+- Workspace Guard passed; inventoried real skill-discovery directories for
+  both agents (`~/.codex/skills/`, `~/.claude/skills/`, the shared
+  `~/.agents/skills/` source used by the official `skills` CLI) instead of
+  inferring visibility from the registry's global `CONFIGURED` state.
+- Found the official `npx skills@latest` CLI auto-detects the executing
+  harness (`claude-code_2-1-247_agent Agent detected`) and supports
+  `-a <agent>`/`-g` multi-agent installs, plus local-path sources
+  (`Local path validated`) for skills with no known public package.
+- Installed `skill-doctor` for Claude Code from its real public upstream
+  (`warpdotdev/common-skills`) and `bug-reproducer`/`code-rot-cleaner` from
+  the existing local Codex source, via the CLI's supported install path —
+  no manual copy, no upstream `SKILL.md` edit, existing Codex installs
+  untouched.
+- Smoke-tested discovery before and after: `ListSkills` returned `0` results
+  for all three before installation; the platform's own available-skills
+  listing showed each one immediately after. No bug reproduction, code-rot
+  scan, or skill-doctor history analysis was run — discovery only.
+- Confirmed `agent-browser`'s CLI and bundled skill text are already
+  equally reachable from both agents through its own runtime mechanism, not
+  file-based discovery — documented that distinction rather than forcing a
+  false parity.
+- Added one compact `REGISTRY_AGENT_VISIBILITY` rule to
+  `ai/AI_CONTRACT.md` and recorded per-agent status in
+  `ai/VIBECODING_TOOL_REGISTRY.yaml`'s existing `notes` fields (registry
+  validator uses a simple regex parser, so a new nested schema field was
+  avoided). `2` governance files changed; product code, `CLAUDE.md`, and
+  `AGENTS.md` untouched (no dead pointer or duplicate text found in either
+  adapter). Validators and `git diff --check` passed.
+
 ## 2026-09-02 — TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902
 
 - Workspace Guard passed; confirmed via `ListSkills` that no `bug-reproducer`

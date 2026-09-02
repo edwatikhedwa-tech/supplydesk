@@ -127,7 +127,7 @@ tools:
     blocking: false
     availability: CONFIGURED
     evidence_required: SKILL.md, bundled analyzer/proof scripts and report-only output when used
-    notes: candidate generator plus removal-proof tool; no automatic deletion; Knip remains primary for frontend; static findings alone are insufficient
+    notes: candidate generator plus removal-proof tool; no automatic deletion; Knip remains primary for frontend; static findings alone are insufficient. Agent visibility (2026-09-02, verified per-agent, not inferred from this global CONFIGURED) — Codex: CONFIGURED (~/.codex/skills/code-rot-cleaner); Claude Code: CONFIGURED (~/.claude/skills/code-rot-cleaner, installed from the same local Codex source via the skills CLI, no fork)
   - id: backend_tests
     name: SupplyDesk backend test suite
     purpose: backend behavior regression
@@ -217,7 +217,7 @@ tools:
     blocking: false
     availability: CONFIGURED
     evidence_required: agent-browser version, skill/help output and focused command evidence when used
-    notes: primary local exploratory path; verified 2026-09-02 with agent-browser 0.36.0 and installed system Chrome; not a replacement for Playwright or a CI gate
+    notes: primary local exploratory path; verified 2026-09-02 with agent-browser 0.36.0 and installed system Chrome; not a replacement for Playwright or a CI gate. Visibility model differs from SKILL.md discovery: the CLI is globally npm-installed and its bundled skill text loads at runtime via `agent-browser skills get core --full`, not via each harness's native skill listing — equally reachable from Codex and Claude Code by that mechanism, so no separate per-agent skill install applies here
   - id: bug_reproducer
     name: Codex Bug Reproducer
     purpose: prove or reject software bug hypotheses using deterministic reproduction and red-to-green evidence
@@ -229,7 +229,7 @@ tools:
     blocking: false
     availability: CONFIGURED
     evidence_required: SKILL.md, evidence scripts and the same targeted command before and after a fix when used
-    notes: code inspection alone is not bug proof; FIX_PROVEN requires red-to-green plus relevant regression; not mandatory for trivial fixes; hunt-and-prove is explicit-task-only
+    notes: code inspection alone is not bug proof; FIX_PROVEN requires red-to-green plus relevant regression; not mandatory for trivial fixes; hunt-and-prove is explicit-task-only. Agent visibility (2026-09-02, verified per-agent) — Codex: CONFIGURED (~/.codex/skills/bug-reproducer, source: local); Claude Code: CONFIGURED (~/.claude/skills/bug-reproducer, installed from the same local Codex source via the skills CLI, no fork). Before this date Claude Code sessions correctly reported it NOT_AVAILABLE_IN_CURRENT_AGENT and applied the workflow manually instead
   - id: playwright_mcp
     name: Playwright MCP or browser connector
     purpose: optional agent-driven browser inspection
@@ -259,7 +259,7 @@ tools:
     blocking: false
     availability: CONFIGURED
     evidence_required: local inventory, rubric findings and proposed diff outside the repository
-    notes: skill-doctor installed globally for Codex on 2026-09-02; history analysis was not run in this task; real SKILL.md editing requires explicit review and acceptance
+    notes: skill-doctor installed globally for Codex on 2026-09-02; history analysis was not run in this task; real SKILL.md editing requires explicit review and acceptance. Agent visibility (2026-09-02, verified per-agent) — Codex: CONFIGURED (warpdotdev/common-skills); Claude Code: CONFIGURED (installed 2026-09-02 via `npx skills@latest add warpdotdev/common-skills -s skill-doctor -a claude-code -g`, ~/.claude/skills/skill-doctor, confirmed discoverable in-session)
   - id: diagnostic_tests
     name: Diagnostic/control tests
     purpose: verify diagnostic control-plane behavior

@@ -3,6 +3,32 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-02 — CROSS-AGENT SKILL AVAILABILITY — TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902
+
+- Made `bug-reproducer`, `code-rot-cleaner`, and `skill-doctor` actually
+  discoverable by Claude Code, not just Codex, using the official
+  multi-agent `skills` CLI (`npx skills@latest`). `bug-reproducer` and
+  `code-rot-cleaner` were installed for Claude Code from the existing local
+  Codex source (`Source: local` — no known public upstream); `skill-doctor`
+  was installed for Claude Code from its real public upstream
+  (`warpdotdev/common-skills`) via the same officially supported
+  `-a claude-code` multi-agent flag. Existing Codex installations were left
+  untouched; no upstream `SKILL.md` was edited, forked, or vendored into
+  this repository.
+- Confirmed `agent-browser` already reaches both agents equally through its
+  own CLI runtime-loading mechanism (`agent-browser skills get core
+  --full`), distinct from the `SKILL.md` file-discovery mechanism used by
+  the other three — no installation was needed or applicable there.
+- Added one compact `REGISTRY_AGENT_VISIBILITY` rule to
+  `ai/AI_CONTRACT.md`: a global `CONFIGURED` in
+  `ai/VIBECODING_TOOL_REGISTRY.yaml` records that a tool/skill is known
+  installed somewhere locally, not that the current agent/session can
+  invoke it — verify current-agent discovery once per session before first
+  use. Recorded per-agent status in the registry's existing `notes` fields
+  for the 4 affected entries; no new schema field was added (the
+  registry's regex-based validator would not parse a nested mapping
+  safely).
+
 ## 2026-09-02 — FIX FINDING-018 — TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902
 
 - Fixed `collect_inn.py --llm`: it imported a nonexistent `InnLlmExtractor`
