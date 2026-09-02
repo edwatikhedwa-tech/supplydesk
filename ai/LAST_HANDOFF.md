@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: Codex
 updated_at: 2026-09-02
-based_on_commit: a6916769ea4b55eefc725a59bfc0e25474368737
+based_on_commit: dc93a181c85c175863a84ddddb1c71c9172a98bb
 ---
 
 # Last Handoff
@@ -28,6 +28,8 @@ entrypoint-границ, импортов, CLI, тестов, дубликато
 - Reviewed 20 root Python files and 16 tracked root directories: 14 move
   candidates, 0 deletion candidates, 4 deprecated-review candidates and 1
   deferred parser boundary.
+- Created local commit `dc93a181c85c175863a84ddddb1c71c9172a98bb`; the requested
+  push was blocked by failed `github.com` DNS resolution.
 
 ## Что проверено
 
@@ -45,7 +47,8 @@ entrypoint-границ, импортов, CLI, тестов, дубликато
 
 No product check was required for this report-only diagnostic. The Code Rot
 scan was broad and included `.venv-test`; its output was not treated as a
-deletion authorization. Ruff and Vulture were unavailable.
+deletion authorization. Ruff and Vulture were unavailable. Remote SHA and FAST
+CI were not verified because publication did not complete.
 
 ## Что не проверено
 
@@ -64,7 +67,8 @@ and `6006` were not listening at preflight; the legacy checkout was not used.
 Use the report as the decision baseline for a separate bounded refactor: start
 with CLI compatibility for `benchmark_models.py` and `collect_contacts.py`;
 leave `supplier_app.py`, `api/index.py`, `mail/`, `migrations/`, v2 isolation
-and `serp_parser.py` boundary unchanged until explicit contracts exist.
+and `serp_parser.py` boundary unchanged until explicit contracts exist. Retry
+the ordinary push when DNS/network access to GitHub is restored.
 
 ## Не повторять
 
