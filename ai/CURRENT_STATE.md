@@ -15,6 +15,18 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — CI capacity follow-up to
+`TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902`: `Backend Full`
+failed twice at its `25`-minute timeout, then once more at an
+owner-approved `35`-minute timeout, all three times cancelled
+(`KeyboardInterrupt`) mid-suite rather than failing a test — confirmed
+`CI_INFRA`, not a product regression (local full-suite run: `460 tests,
+failures=0` in under `4` minutes). Per explicit owner instruction the
+timeout was not raised further; the branch's `Backend Full` remains `FAIL`
+until a separate task investigates why the suite now exceeds `35` minutes
+on the shared runner. `ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902-report.md`
+and this file's Blockers section carry the full evidence.
+
 `2026-09-02` — `TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902`
 moved `email_extractor.py`, `inn_extractor.py`, `inn_resolver.py` and
 `verify.py` to
@@ -513,6 +525,19 @@ on this task's dedicated branch:
 - The task is closed with remote SHA match `YES`, FAST CI `PASS` and Browser
   Full `FAIL`; the failure cause is not confirmed. A browser-runtime fix must
   be a separate task.
+- `TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902`'s `Backend Full`
+  remains `FAIL` on this branch (`CI_INFRA`, confirmed non-product): the
+  official backend regression suite is now consistently exceeding the CI
+  job's timeout on the shared Windows runner — `25m10s` (twice, at
+  `timeout-minutes: 25`) then `35m5s` (once, after an owner-approved raise
+  to `timeout-minutes: 35`), each time `KeyboardInterrupt`/"The operation
+  was canceled" at a different test inside the slow `tests/` mail suites,
+  never an assertion/import failure. Local evidence with the identical
+  official runner: `460 tests, failures=0, errors=9` (pre-existing
+  `pwsh`-gap), `skipped=1`, in under `4` minutes. Per the owner's explicit
+  stop condition, the timeout was not raised further. Root cause of the
+  runner-side slowdown is `NOT VERIFIED` and needs its own separate task
+  (likely suite-runtime profiling or splitting, not another timeout raise).
 - Product/live-provider follow-up remains bounded by the limitations above and
   the open findings in [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
 

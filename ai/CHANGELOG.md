@@ -19,6 +19,23 @@ rewritten.
 - Owner explicitly authorized a minimal, narrow scope extension: raised
   `.github/workflows/ci.yml`'s `backend_full` job `timeout-minutes` from
   `25` to `35` — one line, no other job/timeout/test changed.
+- The owner-approved verification (one manual `workflow_dispatch`
+  `profile=FULL` run, since the CI-fix push itself was too narrow to
+  reclassify `backend_full`) showed the same `KeyboardInterrupt`/"The
+  operation was canceled" pattern a third time, now at exactly `35m5s` —
+  the new limit, not a logic failure, and again at a different test
+  (`tests/test_mail_status_semantics.py`) than either prior attempt. Per
+  the owner's explicit stop condition, the timeout was **not** raised
+  further. `FULL_CI` / `Backend Full` for this branch remains `FAIL` on a
+  `CI_INFRA` basis (confirmed non-product: local `scripts/run_test_suite.py
+  --suite full` continues to show `460 tests, failures=0, errors=9
+  (pre-existing pwsh-gap), skipped=1` in under 4 minutes). Root cause of
+  why the suite now needs more than 35 minutes on the shared Windows
+  runner is `NOT VERIFIED` and is out of this task's scope to investigate
+  further. The same `workflow_dispatch` run also exercised `Browser Full`,
+  which failed independently — this matches the already-recorded,
+  unrelated `TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902` limitation
+  (root cause not confirmed) and was not investigated further here.
 
 ## 2026-09-02 — BOUNDED ROOT REFACTOR: SUPPLIER IDENTITY DOMAIN — TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902
 
