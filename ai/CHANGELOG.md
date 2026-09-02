@@ -3,6 +3,32 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-02 — FIX FINDING-018 — TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902
+
+- Fixed `collect_inn.py --llm`: it imported a nonexistent `InnLlmExtractor`
+  symbol and told operators to set `ANTHROPIC_API_KEY`. `git log -S` (one
+  match: the initial bulk-import commit) plus existing product documentation
+  (`Documents/28-8/enrichment-and-cache.md`) confirmed `InnLlmExtractor`
+  never existed and is a documented leftover from the pre-RouterAI version —
+  `LlmExtractor` is the intended implementation, already used correctly in
+  `supplier_app.py`.
+- Used a deterministic RED→FIX→GREEN bug-workflow with two owner approval
+  gates (reproduction plan, then fix plan). The installed `bug-reproducer`
+  skill is not available in this Claude Code session (`ListSkills` returned
+  zero results), so the `BUG_REPRODUCER` methodology from
+  `ai/AI_CONTRACT.md` was applied directly with this session's own tools and
+  reported as `TYPE: WORKFLOW`, not `TYPE: SKILL`.
+- Added `tests/diagnostics/test_collect_inn_llm_path.py`, which exercises
+  the real `collect_inn.main()` CLI path with only the crawler/dotenv
+  boundaries stubbed. It failed with the exact predicted `ImportError`
+  before the fix and passed after it — zero live provider calls throughout.
+- Fix: `collect_inn.py` now imports `DEFAULT_MODEL, LlmExtractor,
+  api_key_present`, constructs `LlmExtractor(model=args.llm_model or
+  DEFAULT_MODEL)` (matching the existing safe pattern in
+  `scripts/collect_contacts.py`), and its missing-key message now names
+  RouterAI/`ROUTERAI_KEY`. No prompts, schemas, `DEFAULT_MODEL` value, or
+  provider behavior changed. `FINDING-018` is now `RESOLVED`.
+
 ## 2026-09-02 — BOUNDED ROOT REFACTOR: LLM INTEGRATIONS — TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902
 
 - Moved `llm_fallback.py` and `routerai_client.py` to

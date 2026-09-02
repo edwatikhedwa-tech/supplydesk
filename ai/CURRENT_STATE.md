@@ -15,6 +15,23 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-02` — `TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902` fixed
+`collect_inn.py --llm` (it imported a nonexistent `InnLlmExtractor` symbol
+and told operators to set `ANTHROPIC_API_KEY`) using a deterministic
+RED→FIX→GREEN bug-workflow — the `bug-reproducer` skill is not installed in
+this Claude Code session (`ListSkills` returned zero results), so the
+`BUG_REPRODUCER` methodology from `ai/AI_CONTRACT.md` was applied directly
+and reported as `TYPE: WORKFLOW`. History (`git log -S`, one match: the
+initial bulk-import commit) plus `Documents/28-8/enrichment-and-cache.md`
+confirmed `InnLlmExtractor` never existed and is a documented leftover from
+the pre-RouterAI version; `LlmExtractor` (already correct in
+`supplier_app.py`) is the intended implementation. A new behavioral
+reproducer (`tests/diagnostics/test_collect_inn_llm_path.py`) failed with
+the exact predicted `ImportError` before the fix and passed after it. Two
+owner approval gates were used (reproduction plan, then fix plan) before any
+change landed. `FINDING-018` is now `RESOLVED`. The task report is
+[`ai/reports/TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902-report.md`](reports/TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902-report.md).
+
 `2026-09-02` — `TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902` moved
 `llm_fallback.py` and `routerai_client.py` to
 [`backend/integrations/llm/`](../backend/integrations/llm/) (`git diff -M`
@@ -360,6 +377,16 @@ on this task's dedicated branch:
   deprecated-review root test surfaces are recorded in the dated report.
 - Code Rot Cleaner was used in report-only mode with external scratch output;
   Ruff and Vulture were not available without installation and were not added.
+- `FINDING-018` fix: `collect_inn.py --llm` now imports `DEFAULT_MODEL,
+  LlmExtractor, api_key_present` and constructs
+  `LlmExtractor(model=args.llm_model or DEFAULT_MODEL)`; the missing-key
+  message names RouterAI/`ROUTERAI_KEY`. Proven `RED→GREEN` with
+  `tests/diagnostics/test_collect_inn_llm_path.py` (3/3 PASS, exercises the
+  real `collect_inn.main()` path, zero provider calls);
+  `tests/diagnostics/test_llm_integration_move.py` updated to stop blessing
+  the stale import (6/6 PASS); `tests/test_enrichment_pipeline.py` +
+  `tests/test_dashboard.py` (21/21 PASS); diagnostics suite `61/70` PASS
+  with the same 9 pre-existing `pwsh`-gap errors as before.
 - Bounded root refactor Pass 5 (LLM integrations):
   `backend/integrations/llm/llm_fallback.py` and
   `backend/integrations/llm/routerai_client.py` are now the canonical
@@ -476,9 +503,8 @@ on this task's dedicated branch:
 Pass 2 (CLI compatibility), Pass 3 (`dadata_client.py`), Pass 4
 (`checko_client.py` + immutability migration) and Pass 5 (LLM integrations)
 are complete; `backend/integrations/{registry,llm}/` now hold 4 moved
-modules and `FINDING-017` is resolved. `FINDING-018` (a pre-existing,
-unrelated `collect_inn.py --llm` broken-symbol bug found during Pass 5)
-remains open for a separate task. Any further root moves — `supplier_app.py`,
+modules and `FINDING-017` is resolved. `FINDING-018` (`collect_inn.py --llm`
+broken-symbol bug found during Pass 5) is also resolved. Any further root moves — `supplier_app.py`,
 `api/index.py`, `serp_parser.py`, or the remaining runtime modules named in
 the root diagnostic — require their own bounded task with explicit import,
 subprocess and deployment contracts; none is authorized by this change. Keep
@@ -508,6 +534,7 @@ the Browser Full `FAIL` and Finding-009 as separate recorded limitations.
 - Bounded root refactor (registry integrations) report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md).
 - Checko registry move + immutability migration report: [`ai/reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md`](reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md).
 - LLM integrations move report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902-report.md).
+- FINDING-018 fix report: [`ai/reports/TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902-report.md`](reports/TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902-report.md).
 - Repository layout map: [`docs/architecture/REPOSITORY_LAYOUT.md`](../docs/architecture/REPOSITORY_LAYOUT.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).

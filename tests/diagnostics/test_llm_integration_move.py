@@ -13,7 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 CONSUMERS = {
     "supplier_app.py": "from backend.integrations.llm.llm_fallback import LlmExtractor, api_key_present",
-    "collect_inn.py": "from backend.integrations.llm.llm_fallback import InnLlmExtractor, api_key_present",
+    "collect_inn.py": "from backend.integrations.llm.llm_fallback import DEFAULT_MODEL, LlmExtractor, api_key_present",
     "scripts/collect_contacts.py": "from backend.integrations.llm.llm_fallback import DEFAULT_MODEL, LlmExtractor",
     "benchmarks/benchmark_models.py": "from backend.integrations.llm.llm_fallback import INN_SCHEMA, INN_SYSTEM_PROMPT, build_inn_user_message",
 }

@@ -214,14 +214,14 @@ def main(argv: list[str] | None = None) -> int:
     llm_used = 0
     llm_cost = 0.0
     if args.llm:
-        from backend.integrations.llm.llm_fallback import InnLlmExtractor, api_key_present
+        from backend.integrations.llm.llm_fallback import DEFAULT_MODEL, LlmExtractor, api_key_present
 
         if not api_key_present():
             raise SystemExit(
-                "Для --llm нужен ключ Anthropic.\n"
-                "Задайте ANTHROPIC_API_KEY в .env рядом со скриптом или в окружении."
+                "Для --llm нужен ключ RouterAI.\n"
+                "Задайте ROUTERAI_KEY в .env рядом со скриптом или в окружении."
             )
-        extractor = InnLlmExtractor(model=args.llm_model)
+        extractor = LlmExtractor(model=args.llm_model or DEFAULT_MODEL)
         candidates = [(s, i) for i, (s, h) in enumerate(results) if not h and s.html_pages]
         log.info("Кандидатов для модели: %s (потолок %s)", len(candidates), args.llm_limit)
 

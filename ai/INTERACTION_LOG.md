@@ -2,6 +2,28 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-02 — TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902
+
+- Workspace Guard passed; confirmed via `ListSkills` that no `bug-reproducer`
+  skill is installed in this Claude Code session before proceeding, and
+  applied `ai/AI_CONTRACT.md`'s `BUG_REPRODUCER` workflow directly instead of
+  fabricating a skill invocation.
+- History check (`git log -S "InnLlmExtractor"`, one match: the initial
+  bulk-import commit) plus `Documents/28-8/enrichment-and-cache.md` (existing
+  product docs) confirmed `InnLlmExtractor` never existed and is a
+  documented leftover from the pre-RouterAI version — no guesswork needed to
+  pick the replacement class.
+- Presented one consolidated Gate 1 (reproduction plan) and, after RED was
+  proven, one consolidated Gate 2 (fix plan); both approved explicitly by the
+  owner before any file changed.
+- Reproducer (`tests/diagnostics/test_collect_inn_llm_path.py`) failed with
+  the exact predicted `ImportError` before the fix and passed after it (RED
+  → GREEN, same test both times). Updated the stale
+  `test_llm_integration_move.py` assertion that had been blessing the broken
+  import. Targeted suites (enrichment + dashboard 21/21) and diagnostics
+  (61/70, same 9 pre-existing `pwsh`-gap errors) passed. Zero provider
+  calls throughout. `FINDING-018` resolved.
+
 ## 2026-09-02 — TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902
 
 - Workspace Guard passed; cheap Task Preflight reused session context and

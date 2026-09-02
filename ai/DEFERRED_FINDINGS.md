@@ -17,7 +17,7 @@ this current register. Resolved findings and full chronology are preserved in
 
 - ID: `FINDING-018`
 - Severity: `LOW`
-- Status: `OPEN`
+- Status: `RESOLVED — fixed with a RED-to-GREEN bug-workflow proof; see resolution below`
 - Evidence: `TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902`'s fresh reference scan
   found `collect_inn.py:217` does `from llm_fallback import InnLlmExtractor,
   api_key_present` (now `from backend.integrations.llm.llm_fallback import
@@ -34,11 +34,34 @@ this current register. Resolved findings and full chronology are preserved in
 - Why deferred: out of scope for a structural move task
   (`AI_CONTRACT.md` rule 5 — do not fix unrelated problems); `collect_inn.py`
   was explicitly limited to an import-line change only.
-- Next verification: a separate task confirms whether `InnLlmExtractor` was
-  meant to be `LlmExtractor` (or a dedicated INN-only wrapper was dropped
-  during earlier work), fixes the symbol reference and the
-  `ANTHROPIC_API_KEY`/`ROUTERAI_KEY` message mismatch, and adds a smoke test
-  for `--llm` argument parsing that does not require a live key.
+- Next verification (superseded by resolution below): a separate task
+  confirms whether `InnLlmExtractor` was meant to be `LlmExtractor`, fixes
+  the symbol reference and the `ANTHROPIC_API_KEY`/`ROUTERAI_KEY` mismatch,
+  and adds coverage for `--llm` that does not require a live key.
+- History/intent check: `git log --all -S InnLlmExtractor` shows exactly one
+  matching commit — the repository's initial bulk import — meaning
+  `InnLlmExtractor` was never a real class anywhere in this repo's tracked
+  history. `Documents/28-8/enrichment-and-cache.md` (existing product
+  documentation, written independently of this finding) already recorded it
+  as "осталось от версии до перехода на RouterAI" (a leftover from the
+  pre-RouterAI version) and confirmed the web pipeline's own
+  `_enrich_suppliers` already correctly uses `LlmExtractor`/`ROUTERAI_KEY`.
+  So `LlmExtractor` is confirmed as the intended current implementation, not
+  a guess.
+- Resolution: `TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902` reproduced the
+  bug deterministically (a behavioral reproducer calling the real
+  `collect_inn.main(["...", "--llm"])` failed with the exact predicted
+  `ImportError: cannot import name 'InnLlmExtractor'`, before any
+  network-capable code ran), then applied the minimal fix: `collect_inn.py`
+  now imports `DEFAULT_MODEL, LlmExtractor, api_key_present`, constructs
+  `LlmExtractor(model=args.llm_model or DEFAULT_MODEL)` (matching the
+  existing safe pattern in `scripts/collect_contacts.py`, so `--llm-model`
+  never resolves to `None`), and the missing-key message now names RouterAI
+  and `ROUTERAI_KEY`. The same reproducer then passed (`GREEN`) —
+  `FIX_PROVEN`. No prompts, schemas, `DEFAULT_MODEL` value, or provider
+  behavior changed; `0` external provider calls throughout.
+- Resolution report:
+  `ai/reports/TASK-FIX-FINDING-018-COLLECT-INN-LLM-20260902-report.md`
 
 ## FINDING-003 — Standard helper-script coverage is incomplete
 
