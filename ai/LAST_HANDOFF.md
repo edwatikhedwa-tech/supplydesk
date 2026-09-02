@@ -9,9 +9,10 @@ based_on_commit: e7e1873160f26faaa9a6385c1b8b14c6c96a540c
 
 # Last Handoff
 
-This handoff records the Browser Full public-shell stability remediation. The
-remote publication result is intentionally pending until the task commit is
-published and the normal CI path completes.
+This handoff records the completed Browser Full public-shell stability
+remediation. Commit `647128ece1196f3400c41ef1fce637eba56574e2` is published with
+remote SHA match `YES`; FAST CI is `PASS` and Browser Full is `FAIL`. The failure
+cause is not confirmed.
 
 ## Цель
 
@@ -44,17 +45,18 @@ published and the normal CI path completes.
 
 ## Что не прошло
 
-No blocking local check failed. Remote SHA, FAST CI and required Browser Full
-remain pending. The local archive security action remains open and is not a
-cleanup blocker.
+No blocking local check failed. Remote SHA match is confirmed and FAST CI
+passed; Browser Full failed. The failure cause is not confirmed, and no Browser
+Full rerun or remediation is part of this closeout. The local archive security
+action remains open and is not a cleanup blocker.
 
 ## Что не проверено
 
-NOT VERIFIED: remote SHA, FAST CI and required Browser Full until publication
-finishes; branch protection is outside this task. The local interactive auth
-handoff was not exercised by design. Current validity/ownership of retained
-credentials also remains unverified; owner approval is required for any
-retention cleanup or rotation.
+NOT VERIFIED: the root cause of the hosted-runner Browser Full failure; exact
+CPU/GPU profiling is not collected. Branch protection is outside this task. The
+local interactive auth handoff was not exercised by design. Current
+validity/ownership of retained credentials also remains unverified; owner
+approval is required for any retention cleanup or rotation.
 
 ## Текущее состояние runtime
 
@@ -64,10 +66,10 @@ was freed. The legacy checkout was not used.
 
 ## Следующий рациональный шаг
 
-Commit and push the task, verify remote SHA, run FAST CI and the required
-Browser Full through the normal classifier path, then record the exact result
-and return `ACTIVE_TASK` to IDLE. Future archive deletion or credential
-rotation requires owner approval; no Git history rewrite is indicated.
+No further action remains for this task. Keep the recorded Browser Full
+`FAIL`; any browser-runtime fix requires a separate task. Future archive
+deletion or credential rotation requires owner approval; no Git history rewrite
+is indicated.
 
 ## Не повторять
 

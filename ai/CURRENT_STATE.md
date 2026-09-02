@@ -16,8 +16,9 @@ preserved under [`ai/history/`](history/).
 ## Last update
 
 `2026-09-02` — Cleanup/recovery phase is complete, VibeCoding V1.3 is locally
-verified, and the Browser Full public-shell stability remediation is locally
-verified; remote publication gates remain pending for this task.
+verified, and `TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902` is closed with
+remote SHA match confirmed, FAST CI `PASS`, and Browser Full `FAIL`. The failure
+cause is not confirmed; any browser-runtime fix requires a separate task.
 Finding-009 remains `REVIEW_REQUIRED`: no operational env file is present or
 tracked in the canonical checkout/history, but retained external snapshot and
 quarantine filename copies require separate owner review.
@@ -250,6 +251,10 @@ on this task's dedicated branch:
 - Local final control checks after the routing correction: diagnostics
   `39/39`, official quick runner `50/0/0/0`, VibeCoding/docs/state/traceability
   validators PASS, Doctor Plan PASS, and local real-route Browser Smoke `1/1`.
+- `TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902` remote closeout: commit
+  `647128ece1196f3400c41ef1fce637eba56574e2` is published with remote SHA
+  match `YES`; FAST CI is `PASS`; Browser Full is `FAIL`. The failure cause is
+  not confirmed and Browser Full was not rerun during closeout.
 - The GitHub Actions registry intentionally remains `NOT_VERIFIED`: FAST is
   proven, but the required full remote acceptance is not green.
 - Workspace Guard V1 focused acceptance: canonical default `PASS`, legacy
@@ -296,11 +301,9 @@ on this task's dedicated branch:
 - Remote CI proof for this new guard/workflow revision was not run in this
   local-only iteration; CI receives an explicit checkout-root override in the
   committed workflow.
-- Remote SHA, FAST CI and required Browser Full for
-  `TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902` are `NOT VERIFIED` until
-  the task commit is published and its workflows complete.
-- Remote SHA confirmation and FAST CI are the remaining same-task publication
-  gates for the declared `DELIVERY_MODE: PUBLISH`.
+- The root cause of the remote Browser Full `FAIL` for
+  `TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902` is `NOT VERIFIED`; no
+  Browser Full rerun or browser-runtime remediation belongs to this closeout.
 - The local interactive browser auth handoff was not exercised; no personal
   browser, credentials, cookies or authentication state were accessed.
 - Current validity, ownership and required retention period for the detected
@@ -313,15 +316,16 @@ on this task's dedicated branch:
 
 ## Blockers
 
-- No local implementation blocker remains. Remote publication and Browser Full
-  evidence are pending for the active task.
+- The task is closed with remote SHA match `YES`, FAST CI `PASS` and Browser
+  Full `FAIL`; the failure cause is not confirmed. A browser-runtime fix must
+  be a separate task.
 - Product/live-provider follow-up remains bounded by the limitations above and
   the open findings in [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
 
 ## Active constraints
 
-- For the active Browser Full stability task, application changes are limited
-  to `MagicRings` reduced-motion lifecycle and the scoped public-shell test.
+- The completed Browser Full stability task was limited to `MagicRings`
+  reduced-motion lifecycle and the scoped public-shell test.
 - Do not modify auth handoff/OAuth, backend/API, database, migrations, mail
   data, secrets, Knip, unrelated frontend tests, or the worker count.
 - Do not send real email, connect to real SMTP/IMAP, write the canonical
@@ -337,16 +341,16 @@ on this task's dedicated branch:
   the exact intentional CI/worktree root.
 - Do not treat planned or unverified tools as configured, and do not claim a
   check passed unless its command actually ran.
-- CI itself is HIGH risk: remote GitHub Actions status must be verified before
-  its registry entry can become `CONFIGURED`; the focused path is proven, but
-  the full path remains NOT_VERIFIED on the hosted runner.
+- CI itself is HIGH risk: for the closed task, remote FAST is `PASS` and
+  Browser Full is `FAIL`; the failure cause remains `NOT VERIFIED` on the
+  hosted runner.
 
 ## Current next step
 
-Commit and push `TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902`, confirm the
-remote SHA, run FAST CI and the required normal-classifier Browser Full, then
-record the final result and return this sentinel to IDLE. Keep Finding-009 as a
-separate owner-approved deferred security action.
+No further action is required for `TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902`.
+Keep its Browser Full `FAIL` as recorded evidence; any browser-runtime fix
+requires a separate task. Keep Finding-009 as a separate owner-approved
+deferred security action.
 
 ## Canonical references
 

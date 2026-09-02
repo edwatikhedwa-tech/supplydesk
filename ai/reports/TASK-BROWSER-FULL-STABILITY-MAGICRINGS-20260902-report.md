@@ -11,7 +11,7 @@ based_on_commit: e7e1873160f26faaa9a6385c1b8b14c6c96a540c
 
 ## Status
 
-`LOCAL_PASS_REMOTE_PENDING`
+`LOCAL_PASS_REMOTE_FAIL`
 
 `DELIVERY_MODE: PUBLISH`
 
@@ -74,12 +74,13 @@ product flag or hidden environment switch was introduced.
 
 ## Remote gates
 
-- Commit: `PENDING`.
-- Push: `PENDING`.
-- Remote SHA match: `PENDING`.
-- FAST CI: `PENDING`.
-- Browser Full: `PENDING`.
-- `MAGICRINGS_STARVATION_CAUSALITY`: `NOT_VERIFIED` until remote Browser Full.
+- Commit: `647128ece1196f3400c41ef1fce637eba56574e2`.
+- Push: `PASS`.
+- Remote SHA match: `YES`.
+- FAST CI: `PASS`.
+- Browser Full: `FAIL`.
+- `MAGICRINGS_STARVATION_CAUSALITY`: `NOT_VERIFIED`; the remote failure does
+  not confirm the cause.
 
 ## Rollback
 
@@ -88,6 +89,8 @@ quarantine or legacy-workspace rollback is required.
 
 ## Not verified
 
-Hosted-runner post-fix Browser Full, remote SHA and FAST CI are pending. Exact
-CPU/GPU profiling is intentionally not collected. Real provider/OAuth flows,
-real mail, canonical database and interactive auth handoff were not exercised.
+The cause of the hosted-runner post-fix Browser Full failure is not confirmed;
+exact CPU/GPU profiling is intentionally not collected. Browser Full was not
+rerun during closeout. Any browser-runtime fix requires a separate task. Real
+provider/OAuth flows, real mail, canonical database and interactive auth handoff
+were not exercised.
