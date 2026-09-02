@@ -101,7 +101,8 @@ this current register. Resolved findings and full chronology are preserved in
 
 - ID: `FINDING-017`
 - Severity: `LOW`
-- Status: `OPEN`
+- Status: `RESOLVED — checko_client.py moved and the immutability guard migrated
+  to the new path in the same change`
 - Evidence: `TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902`'s fresh reference
   scan found `supplier_discovery_v2/immutability_check.py:16` hardcodes a
   repository-root-relative `"checko_client.py"` entry in its
@@ -126,12 +127,20 @@ this current register. Resolved findings and full chronology are preserved in
   referenced anywhere in `immutability_check.py`) and left `checko_client.py`
   at root rather than silently weakening an existing safety mechanism or
   reaching into a directory explicitly marked out of scope.
-- Next verification: A separate task scoped to touch both
-  `checko_client.py` and `supplier_discovery_v2/immutability_check.py`
-  together — updating the protected-path entry to the new location (or
-  regenerating a baseline) in the same change as the move — then completing
-  the `checko_client.py` move per
-  `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`.
+- Next verification (superseded by resolution below): a separate task scoped
+  to touch both `checko_client.py` and
+  `supplier_discovery_v2/immutability_check.py` together.
+- Resolution: `TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902`
+  moved `checko_client.py` to
+  `backend/integrations/registry/checko_client.py` and, in the same change,
+  updated `supplier_discovery_v2/immutability_check.py:protected_paths()` to
+  protect the new path instead of the old root path. A fresh baseline
+  generated against the moved tree verifies clean (`[]`); a disposable
+  synthetic copy of the new path, mutated after baselining, is correctly
+  reported as changed. `checko_client.py` was never dropped from protection
+  at any point in the same commit.
+- Resolution report:
+  `ai/reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md`
 
 ## FINDING-016 — Frontend candidates remain review-required
 

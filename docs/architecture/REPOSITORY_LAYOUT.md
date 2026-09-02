@@ -16,9 +16,9 @@ not a target structure. For behavioral component ownership, see
 
 | Path | Contains |
 |---|---|
-| root composition entrypoints | `supplier_app.py` (local backend entrypoint), plus a shrinking flat package of supplier-discovery/extraction modules still at root (e.g. `checko_client.py`, `serp_parser.py`, `contact_crawler.py`, `email_extractor.py`, `inn_extractor.py`, `collect_inn.py`, `llm_fallback.py`, `routerai_client.py`, `web_lookup.py`, `xmlriver_client.py`, `verify.py`) and the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
+| root composition entrypoints | `supplier_app.py` (local backend entrypoint), plus a shrinking flat package of supplier-discovery/extraction modules still at root (e.g. `serp_parser.py`, `contact_crawler.py`, `email_extractor.py`, `inn_extractor.py`, `collect_inn.py`, `llm_fallback.py`, `routerai_client.py`, `web_lookup.py`, `xmlriver_client.py`, `verify.py`) and the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
 | `api/` | `api/index.py` — the Vercel serverless adapter around `supplier_app.py` |
-| `backend/` | New product-code area. Currently only `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`) |
+| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`) |
 | `mail/` | Real Yandex IMAP/SMTP integration and SQLite-backed mail repository |
 | `migrations/` | Versioned SQL schema DDL |
 | `frontend/` | React/Vite SPA (TypeScript, Tailwind) |
@@ -32,11 +32,15 @@ not a target structure. For behavioral component ownership, see
 - `TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902`: `collect_contacts.py` and
   `benchmark_models.py` implementations moved to `scripts/` and
   `benchmarks/`; root files are thin compatibility wrappers.
-- `TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902`: `dadata_client.py` moved to
+- `TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902` +
+  `TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902`:
+  `dadata_client.py` and `checko_client.py` both moved to
   `backend/integrations/registry/`, no root wrapper (no confirmed external
-  Python-import consumer). `checko_client.py` was **not** moved: see
-  `ai/DEFERRED_FINDINGS.md` for why.
+  Python-import consumer for either). `supplier_discovery_v2/immutability_check.py`'s
+  protected-path list was migrated to Checko's new location in the same
+  change that moved it, so the existing immutability guard was never
+  weakened.
 - Remaining root modules named in
   `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md` (including
-  `checko_client.py`, `supplier_app.py`, `api/index.py`, `serp_parser.py`)
-  are unmoved and require their own bounded, explicitly-scoped task.
+  `supplier_app.py`, `api/index.py`, `serp_parser.py`) are unmoved and
+  require their own bounded, explicitly-scoped task.

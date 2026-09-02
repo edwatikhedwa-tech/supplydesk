@@ -32,7 +32,7 @@ from xmlriver_client import XmlRiverClient
 
 # Enrichment pipeline (email/INN/company data) — see Documents/28-8/enrichment-and-cache.md.
 # Reused as-is from the already-tested CLI tools; nothing here is new logic.
-from checko_client import CheckoClient
+from backend.integrations.registry.checko_client import CheckoClient
 from collect_inn import (
     INN_PATHS,
     INN_URL_HINTS,

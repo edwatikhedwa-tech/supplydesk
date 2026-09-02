@@ -6,7 +6,7 @@ import unittest
 from io import BytesIO
 from pathlib import Path
 
-from checko_client import Company
+from backend.integrations.registry.checko_client import Company
 from collect_inn import extract_for_site, extract_legal_ids_for_site
 from contact_crawler import ContactCrawler, SiteResult
 from inn_extractor import extract_inn_from_html, extract_legal_ids_from_html

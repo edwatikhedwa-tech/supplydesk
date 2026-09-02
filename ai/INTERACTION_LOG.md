@@ -2,6 +2,28 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-02 — TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902
+
+- Workspace Guard passed; cheap Task Preflight reused session context and
+  re-ran the fresh Checko reference scan rather than trusting the prior
+  task's list unchanged.
+- Confirmed the only 3 known code importers were still the only ones, plus
+  the `supplier_discovery_v2/immutability_check.py` path-sensitive reference
+  from `FINDING-017`. Found `tests/test_dashboard.py`'s
+  `patch.object(supplier_app, "CheckoClient", ...)` mock patches a module
+  attribute, not a dotted import string, so it needed no update — verified
+  by running that test suite (13/13 PASS) after the import-path change.
+- Moved `checko_client.py` to `backend/integrations/registry/` and, in the
+  same commit, migrated the immutability guard's protected-path entry so the
+  new canonical location stays protected — proved with a fresh baseline
+  round-trip and a disposable synthetic-copy mutation test, both via
+  `tempfile`, never touching the real project file.
+- Added 2 tests to `supplier_discovery_v2/tests/test_immutability.py`;
+  targeted suites (`test_enrichment_pipeline` 8/8, `test_dashboard` 13/13,
+  full `supplier_discovery_v2/tests` 14/14) and diagnostics (52/61, same 9
+  pre-existing `pwsh`-gap errors) passed. `FINDING-017` resolved in place.
+  Validators and `git diff --check` passed; no provider call occurred.
+
 ## 2026-09-02 — TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902
 
 - Workspace Guard passed; cheap Task Preflight reused prior session context.

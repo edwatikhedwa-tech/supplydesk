@@ -3,6 +3,23 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-02 — CHECKO REGISTRY MOVE + IMMUTABILITY GUARD MIGRATION — TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902
+
+- Completed the deferred `checko_client.py` move: it now lives at
+  `backend/integrations/registry/checko_client.py` (byte-identical), with
+  `supplier_app.py`, `scripts/verify_enrichment_live.py`, and
+  `tests/test_enrichment_pipeline.py` updated to the canonical import path.
+  No root wrapper — no confirmed external consumer of the old path.
+- In the same change, migrated
+  `supplier_discovery_v2/immutability_check.py`'s protected-path entry from
+  the root `checko_client.py` to the new location, so the existing
+  immutability guard was never weakened. Proved this with a fresh baseline
+  round-trip against the moved tree (clean) and a disposable synthetic-copy
+  mutation of the new path (correctly detected as changed), both via
+  temporary paths only — no real project file was mutated to test this.
+- Added 2 tests to the existing `supplier_discovery_v2/tests/test_immutability.py`
+  instead of a new harness. `FINDING-017` is now `RESOLVED`.
+
 ## 2026-09-02 — BOUNDED ROOT REFACTOR: REGISTRY INTEGRATIONS — TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902
 
 - Moved `dadata_client.py` to `backend/integrations/registry/dadata_client.py`

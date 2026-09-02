@@ -15,6 +15,20 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-02` — `TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902`
+completed the deferred `checko_client.py` move: it now lives at
+[`backend/integrations/registry/checko_client.py`](../backend/integrations/registry/checko_client.py)
+(byte-identical, Git-recognized rename), all 3 known consumers
+(`supplier_app.py`, `scripts/verify_enrichment_live.py`,
+`tests/test_enrichment_pipeline.py`) updated, no root wrapper. In the same
+change, `supplier_discovery_v2/immutability_check.py`'s protected-path list
+was migrated to the new location — a fresh baseline generated against the
+moved tree verifies clean, and a disposable synthetic copy of the new path,
+mutated after baselining, is correctly detected as changed; Checko was never
+unprotected at any point in the commit. `FINDING-017` is now `RESOLVED`. The
+task report is
+[`ai/reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md`](reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md).
+
 `2026-09-02` — `TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902` moved
 `dadata_client.py` to
 [`backend/integrations/registry/dadata_client.py`](../backend/integrations/registry/dadata_client.py)
@@ -334,6 +348,21 @@ on this task's dedicated branch:
   deprecated-review root test surfaces are recorded in the dated report.
 - Code Rot Cleaner was used in report-only mode with external scratch output;
   Ruff and Vulture were not available without installation and were not added.
+- Bounded root refactor Pass 4 (Checko + immutability migration):
+  `backend/integrations/registry/checko_client.py` is now the canonical
+  implementation alongside `dadata_client.py`; the root copy is gone.
+  `supplier_discovery_v2/immutability_check.py` protects the new path — the
+  guard was migrated, not weakened, in the same commit. `supplier_app`,
+  `scripts/verify_enrichment_live.py --help`, and `api.index.handler`/`_APP`
+  all import successfully offline under `SUPPLYDESK_ENV=test`.
+  `tests/test_dashboard.py`'s `patch.object(supplier_app, "CheckoClient", ...)`
+  mock still works unchanged (it patches the module attribute, not a dotted
+  import string). New/updated regression coverage:
+  `supplier_discovery_v2/tests/test_immutability.py` (3/3 PASS, 2 new
+  assertions); `tests/test_enrichment_pipeline.py` (8/8 PASS);
+  `tests/test_dashboard.py` (13/13 PASS); full `supplier_discovery_v2/tests`
+  (14/14 PASS); diagnostics suite `52/61` PASS with the same 9 pre-existing
+  `pwsh`-gap errors as before.
 - Bounded root refactor Pass 3 (registry): `backend/integrations/registry/dadata_client.py`
   is the canonical implementation; the root copy is gone and no wrapper was
   needed. `collect_inn.py`'s lazy import, `supplier_app`, and
@@ -422,10 +451,10 @@ on this task's dedicated branch:
 
 ## Current next step
 
-Pass 2 (CLI compatibility) and Pass 3 (registry `dadata_client.py`) are
-complete. `checko_client.py` needs a task scoped to touch both it and
-`supplier_discovery_v2/immutability_check.py`'s protected-path list together
-(`FINDING-017`). Any further root moves — `supplier_app.py`, `api/index.py`,
+Pass 2 (CLI compatibility), Pass 3 (`dadata_client.py`) and Pass 4
+(`checko_client.py` + immutability migration) are complete; both registry
+adapters now live under `backend/integrations/registry/` and `FINDING-017`
+is resolved. Any further root moves — `supplier_app.py`, `api/index.py`,
 `serp_parser.py`, or the remaining runtime modules named in the root
 diagnostic — require their own bounded task with explicit import, subprocess
 and deployment contracts; none is authorized by this change. Keep the Browser
@@ -453,6 +482,7 @@ Full `FAIL` and Finding-009 as separate recorded limitations.
 - Python/root diagnostic report: [`ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`](reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md).
 - Bounded root refactor (CLI surfaces) report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902-report.md).
 - Bounded root refactor (registry integrations) report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md).
+- Checko registry move + immutability migration report: [`ai/reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md`](reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md).
 - Repository layout map: [`docs/architecture/REPOSITORY_LAYOUT.md`](../docs/architecture/REPOSITORY_LAYOUT.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).

@@ -13,10 +13,14 @@ def protected_paths(root: Path) -> list[Path]:
         candidate = root / name
         if candidate.is_file():
             paths.append(candidate)
-    for name in ("serp_parser.py", "xmlriver_client.py", "supplier_app.py", "contact_crawler.py", "email_extractor.py", "inn_extractor.py", "verify.py", "web_lookup.py", "collect_inn.py", "checko_client.py"):
+    for name in ("serp_parser.py", "xmlriver_client.py", "supplier_app.py", "contact_crawler.py", "email_extractor.py", "inn_extractor.py", "verify.py", "web_lookup.py", "collect_inn.py"):
         candidate = root / name
         if candidate.is_file():
             paths.append(candidate)
+    # Moved out of the flat root package by TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902.
+    checko_client = root / "backend" / "integrations" / "registry" / "checko_client.py"
+    if checko_client.is_file():
+        paths.append(checko_client)
     repository = root / "mail" / "repository.py"
     if repository.is_file():
         paths.append(repository)

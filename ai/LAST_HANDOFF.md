@@ -1,81 +1,81 @@
 ---
-document_id: HANDOFF-007
+document_id: HANDOFF-008
 status: CURRENT
 canonical: false
 owner: Claude
 updated_at: 2026-09-02
-based_on_commit: 4065242519bb55271d82f65198d27236a33915ba
+based_on_commit: e8ba5b637b163d38d8d4313f4865f1c4a571e2d3
 ---
 
 # Last Handoff
 
-This handoff records a partial-by-design bounded root refactor: one registry
-provider adapter moved as planned, the other intentionally left in place
-after a fresh reference scan found an out-of-scope operational dependency.
+This handoff records completion of the previously deferred `checko_client.py`
+registry move, done together with a matching migration of the immutability
+protected-path list so the guard was never weakened.
 
 ## Цель
 
-Перенести `checko_client.py` и `dadata_client.py` в
-`backend/integrations/registry/`, обновить только подтверждённые consumers,
-не менять provider-семантику.
+Завершить перенос `checko_client.py` в
+`backend/integrations/registry/checko_client.py`, одновременно перенеся
+защиту `supplier_discovery_v2/immutability_check.py` на новый путь, и
+закрыть `FINDING-017`.
 
 ## Что изменено
 
-- Added `backend/__init__.py`, `backend/integrations/__init__.py`,
-  `backend/integrations/registry/__init__.py`,
-  `backend/integrations/registry/dadata_client.py` (byte-identical move).
-- Removed root `dadata_client.py`; no compatibility wrapper (no confirmed
-  external consumer of the old import path).
-- Updated `collect_inn.py`'s one lazy import to the canonical path.
-- Added `tests/diagnostics/test_registry_integration_move.py` (3 tests) and
-  `docs/architecture/REPOSITORY_LAYOUT.md`.
-- Updated `CLAUDE.md`'s Project layout note and
-  `ai/reports/TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902-report.md`.
-- Added `FINDING-017` to `ai/DEFERRED_FINDINGS.md` for the suspended
-  `checko_client.py` move.
-- `checko_client.py` was **not** moved.
+- Moved `checko_client.py` to `backend/integrations/registry/checko_client.py`
+  (byte-identical, Git-recognized rename).
+- Updated `supplier_app.py`, `scripts/verify_enrichment_live.py`,
+  `tests/test_enrichment_pipeline.py` import lines to the canonical path.
+- Updated `supplier_discovery_v2/immutability_check.py:protected_paths()` to
+  protect the new location instead of the old root path — the only change in
+  that file; nothing else in it was touched.
+- Added 2 tests to `supplier_discovery_v2/tests/test_immutability.py`.
+- Updated `docs/architecture/REPOSITORY_LAYOUT.md` and `CLAUDE.md` to stop
+  claiming Checko is still at root.
+- Marked `FINDING-017` `RESOLVED` in `ai/DEFERRED_FINDINGS.md` (in place,
+  same file/format as `FINDING-006`'s `SUPERSEDED` — not deleted, not moved
+  into the frozen `HISTORICAL` chronicle, which was out of this task's scope).
+- Added `ai/reports/TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902-report.md`.
 
 ## Что проверено
 
 - Workspace Guard passed before task-lock and before mutation.
-- Fresh reference scan (imports, mock.patch/monkeypatch, strings) for both
-  modules, independent of the prior diagnostic's list.
-- `backend.integrations.registry.dadata_client`, `collect_inn`,
-  `supplier_app` import cleanly; `from api.index import handler, _APP`
-  succeeds under `SUPPLYDESK_ENV=test` (full offline chain including the
-  lazy dadata import path), with no provider call.
-- `DadataClient("fake-token-for-import-test")` constructs without a network
-  call.
-- `tests/diagnostics/test_registry_integration_move.py`: `3/3` passed.
-  `tests/test_enrichment_pipeline.py`: `8/8` passed.
-  `supplier_discovery_v2.tests.test_immutability`: `1/1` passed (its
-  self-generated baseline stays self-consistent regardless of the current
-  file list).
+- Fresh reference scan (independent of the prior task's list) confirmed the
+  same 3 code importers and the immutability path dependency; found and
+  verified `tests/test_dashboard.py`'s `patch.object(supplier_app,
+  "CheckoClient", ...)` needed no change (module-attribute patch, not a
+  dotted-path string).
+- `backend.integrations.registry.checko_client`, `supplier_app` import
+  cleanly; `from api.index import handler, _APP` succeeds under
+  `SUPPLYDESK_ENV=test` (full offline chain); `python
+  scripts/verify_enrichment_live.py --help` exits `0`.
+- Fresh baseline generated against the real, moved tree verifies clean
+  (`verify() == []`); `protected_paths()` contains the new path and not the
+  old root path.
+- A disposable synthetic copy of the new Checko path (built only under
+  `tempfile.TemporaryDirectory()`, never the real project file), mutated
+  after baselining, is correctly reported as changed.
+- `supplier_discovery_v2.tests.test_immutability`: `3/3` passed.
+  `tests.test_enrichment_pipeline`: `8/8` passed. `tests.test_dashboard`:
+  `13/13` passed. Full `supplier_discovery_v2/tests`: `14/14` passed.
 - Full `tests/diagnostics` discovery: `52/61` passed; the remaining `9`
-  errors are the same pre-existing `pwsh`-missing gap in
-  `test_change_classifier.py` already proven unrelated to this work
-  (`git stash` reproduction) in the prior task — not re-investigated here.
+  errors are the same pre-existing `pwsh`-missing gap already proven
+  unrelated in an earlier task — not re-investigated here.
 - `ai/tools/validate_docs.py`, `ai/tools/validate_state.py`,
   `ai/tools/validate_vibecoding.py`: all `PASS`. `git diff --check`: `PASS`.
-- `git check-ignore` confirmed the new `backend/**` files are not gitignored;
-  `vercel.json`'s `excludeFiles` list does not match `backend/**`.
-- Staged diff scanned for secret-like literals: only `DADATA_TOKEN` /
-  `self.token` identifiers, no values.
+- Staged diff scanned for secret-like literals: only `CHECKO_KEY`/`self.key`
+  identifiers, no values. `0` external provider calls of any kind.
 
 ## Что не прошло
 
-Nothing this task touched failed. The pre-existing `pwsh`-gap errors in
-`test_change_classifier.py` are unrelated environment noise, documented
-above.
+Nothing this task touched failed.
 
 ## Что не проверено
 
-NOT VERIFIED: whether Vercel's actual Python build/deploy step traces the
-lazy, function-local `dadata_client` import for bundling — not checkable
-without a real deploy, and unchanged by this move (the import was already
-lazy and `DADATA_TOKEN`-gated before). NOT VERIFIED: undocumented external
-Python-import compatibility for `dadata_client`. `checko_client.py`'s move
-itself is not attempted — see `FINDING-017`.
+NOT VERIFIED: real Vercel build/deploy (not re-audited; the `vercel.json`
+structural check from the prior task was reused unchanged since `vercel.json`
+was not touched). NOT VERIFIED: undocumented external Python-import
+compatibility for `checko_client`.
 
 ## Текущее состояние runtime
 
@@ -84,18 +84,21 @@ canonical database write occurred.
 
 ## Следующий рациональный шаг
 
-A separate task scoped to touch both `checko_client.py` and
-`supplier_discovery_v2/immutability_check.py` together (updating the
-protected-path entry to the moved location, or regenerating a baseline) can
-complete the `checko_client.py` move per
-`ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`.
+Both registry provider adapters (`dadata_client.py`, `checko_client.py`) now
+live under `backend/integrations/registry/`. Remaining root modules named in
+`ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md` — `supplier_app.py`,
+`api/index.py`, `serp_parser.py`, and the rest of the flat root package —
+each need their own bounded, explicitly-scoped task before any further move.
 
 ## Не повторять
 
 Do not use the legacy OneDrive checkout for development, do not output or
 save secret values, do not run real mail or live provider calls, do not
-modify protected local data, do not move `checko_client.py` without also
-resolving `supplier_discovery_v2/immutability_check.py`'s protected-path
-list in the same change, do not touch `supplier_discovery_v2/` in a task that
-declares it out of scope, and do not add a second acknowledgement to an
+modify protected local data, do not move a protected file referenced by
+`supplier_discovery_v2/immutability_check.py` without migrating its
+protected-path entry in the same change, do not touch
+`supplier_discovery_v2/` product logic (`pipeline.py`, `contacts.py`,
+`matching.py`, `query_planner.py`, `connectors/`, `direct_site.py`,
+`xmlriver_subprocess.py`, `storage.py`, `run.py`) outside an explicitly
+authorized exception, and do not add a second acknowledgement to an
 intermediate message.
