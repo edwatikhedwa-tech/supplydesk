@@ -1071,8 +1071,9 @@ Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH_REPORT_ONLY`
   deployment references.
 - Used Code Rot Cleaner in external report-only mode. No file deletion, move,
   import rewrite, dependency change, runtime start or product test occurred.
-- Created local commit `dc93a181c85c175863a84ddddb1c71c9172a98bb` containing the
-  report and control-plane updates. Push was attempted but blocked by failed
-  `github.com` DNS resolution; remote SHA and FAST CI remain unverified.
+- Created and published commit `dc93a181c85c175863a84ddddb1c71c9172a98bb`
+  containing the report and control-plane updates. Remote SHA matches, and FAST
+  Control CI run `33645377974` passed; product suites were skipped by the
+  report-only classifier.
 - Ruff/Vulture were not available without installation and remain outside this
   diagnostic.

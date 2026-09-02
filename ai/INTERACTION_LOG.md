@@ -971,3 +971,7 @@ installed.
 State change: created local commit `dc93a181c85c175863a84ddddb1c71c9172a98bb`.
 The requested push was attempted and failed because `github.com` DNS resolution
 was unavailable; remote SHA and FAST CI were not checked.
+
+State change: after DNS access recovered, the same task branch was published;
+remote SHA matches `301934fb0daa1f49cad8c793c9a5acbd30b10152`, and FAST Control CI
+run `33645377974` passed. Full product suites were skipped by report-only scope.
