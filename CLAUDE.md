@@ -101,6 +101,11 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
   frontend has no independent backend of its own (any future prototype/scaffold that ships with
   its own Supabase/Firebase project must be rewired to this API before it's kept).
 - `mail/` — the real Yandex IMAP/SMTP integration and SQLite-backed mail repository.
+  `mail/db_compat.py` — the SQLite/Postgres DB-API compatibility shim
+  (`ManagedConnection`, `CompatRow`, `PostgresCursor`, `PostgresConnection`, SQL dialect
+  adapters) extracted out of `mail/repository.py` (first step of splitting that
+  8800+-line file by responsibility); `mail/repository.py` imports it back, no consumer
+  outside the mail package ever referenced these names directly.
 - `backend/integrations/{registry,llm,search}/` — provider adapters moved out of the root flat
   package: `dadata_client.py`, `checko_client.py`, `llm_fallback.py`, `routerai_client.py`,
   `web_lookup.py`, `xmlriver_client.py`, `serp_parser.py` (the last with a thin root

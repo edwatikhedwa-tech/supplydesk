@@ -15,6 +15,21 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-BOUNDED-MAIL-REPOSITORY-DB-COMPAT-EXTRACT-20260903`
+(Pass 1 of splitting `mail/repository.py` by responsibility, per its own
+read-only structural audit): the SQLite/Postgres DB-API compatibility shim
+(`ManagedConnection`, `CompatRow`, `_postgres_row_factory`,
+`_adapt_postgres_sql`, `PostgresCursor`, `PostgresConnection`,
+`_postgres_migration_sql`) moved to
+[`mail/db_compat.py`](../mail/db_compat.py); `mail/repository.py` shrank
+from `8928` to `8816` lines. No external consumer ever referenced these
+names directly (grep-confirmed), so no re-export was needed.
+`utc_now`/`iso_now`/`iso_after` deliberately stayed in `mail/repository.py`
+— they're generic time helpers, not DB-compat, and `mail/queue.py` plus 3
+test files import them directly. Official suite: `497 tests, failures=0,
+errors=9` (established baseline), `skipped=1`. The task report is
+[`ai/reports/TASK-BOUNDED-MAIL-REPOSITORY-DB-COMPAT-EXTRACT-20260903-report.md`](reports/TASK-BOUNDED-MAIL-REPOSITORY-DB-COMPAT-EXTRACT-20260903-report.md).
+
 `2026-09-03` — `TASK-BOUNDED-SUPPLIER-APP-ENRICHMENT-EXTRACT-20260903`
 (Pass 2 of the composition-entrypoint program): the ~1000-line enrichment
 pipeline (SERP→crawl→registry→web→finance retry stages, `_enrich_one` and
