@@ -13,6 +13,35 @@ Only unresolved, accepted-risk, or explicitly superseded findings belong in
 this current register. Resolved findings and full chronology are preserved in
 [`ai/history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md`](history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md).
 
+## FINDING-020 — No test coverage for `SupplierHandler`'s 404/SPA-fallback routing
+
+- ID: `FINDING-020`
+- Severity: `LOW`
+- Status: `OPEN`
+- Evidence: While extracting `AuthHandlerMixin` from `SupplierHandler`
+  (`TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903`), a search of the
+  official test suite for `404`/unknown-route/SPA-fallback assertions found
+  zero matches (`grep -rn "404" tests/*.py` — no results). Login/session/
+  CSRF/`auth/me` ARE genuinely covered
+  (`tests/test_mail_integrity.py::test_session_renews_on_activity_and_survives_repository_restart`,
+  `tests/test_outgoing_safety.py::test_owner_endpoint_requires_csrf_confirmation_and_explicit_owner`,
+  etc.), but the "unknown `/api/*` path returns 404" and "non-API path falls
+  back to the SPA shell" behaviors in `do_GET`/`send_head`/`_serve_app_shell`
+  have no direct regression test.
+- Impact: A future change to `do_GET`'s fallthrough logic (e.g. reordering
+  branches, changing the final `else`) could silently break the 404/SPA
+  contract with no test catching it.
+- Why deferred: `do_GET`/`do_POST`/`do_DELETE` and their routing logic were
+  explicitly NOT touched by the auth-extraction task that found this — only
+  auth-related sub-methods (`_login`, `_require_session`, etc.) were moved.
+  Writing a route-matrix test for code that wasn't changed is out of that
+  task's scope (`AI_CONTRACT.md` rule 5 — do not fix unrelated problems);
+  the owner's own instruction for that task also explicitly said not to
+  build a large route matrix without necessity.
+- Next verification: A separate task adds a small number of targeted tests
+  (unknown `/api/*` → 404, non-API path → SPA shell, source-like path →
+  404) the next time `do_GET`'s routing is itself the subject of a change.
+
 ## FINDING-019 — `diagnostic_runner.py`'s secret scan crashes on a Cyrillic staged diff
 
 - ID: `FINDING-019`

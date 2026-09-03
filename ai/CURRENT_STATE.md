@@ -15,6 +15,22 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903` (Pass 3
+of the composition-entrypoint program, batch A of `SupplierHandler`
+decomposition): 16 auth/session/OAuth handler methods (`_login`,
+`_auth_me`, `_require_session`, `_require_csrf`, `_oauth_start`,
+`_oauth_callback`, etc.) moved from `SupplierHandler` into
+[`backend/http_auth.py`](../backend/http_auth.py) as `AuthHandlerMixin`;
+`class SupplierHandler(AuthHandlerMixin, SimpleHTTPRequestHandler)`
+composes it in. `do_GET`/`do_POST`/`do_DELETE` and their route ordering
+were deliberately left untouched — no dispatch-table conversion was
+attempted (`DISPATCH_TABLE: DEFERRED`, pending batches B/C). `supplier_app.py`:
+`1364` → `1185` lines. Recorded `FINDING-020` (no test coverage for
+404/SPA-fallback routing, found incidentally, out of this pass's scope
+since `do_GET` wasn't touched). Official suite: `497 tests, failures=0,
+errors=9` (established baseline), `skipped=1`. The task report is
+[`ai/reports/TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903-report.md`](reports/TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903-report.md).
+
 `2026-09-03` — `TASK-BOUNDED-MAIL-REPOSITORY-DB-COMPAT-EXTRACT-20260903`
 (Pass 1 of splitting `mail/repository.py` by responsibility, per its own
 read-only structural audit): the SQLite/Postgres DB-API compatibility shim

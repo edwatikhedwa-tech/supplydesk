@@ -1,10 +1,10 @@
 ---
-document_id: TASK-LOCK-031
+document_id: TASK-LOCK-032
 status: CURRENT
 canonical: false
 owner: Claude
 updated_at: 2026-09-03
-based_on_commit: 1e23aad
+based_on_commit: f180d91
 ---
 
 # Active Task
@@ -13,7 +13,7 @@ Task ID: `NONE`
 Agent: `Claude`
 Mode: `IDLE`
 Started: `2026-09-03`
-Scope: `No active task; TASK-BOUNDED-MAIL-REPOSITORY-DB-COMPAT-EXTRACT-20260903 is closed: SQLite/Postgres DB-API compat shim (ManagedConnection/CompatRow/PostgresCursor/PostgresConnection/adapters) moved from mail/repository.py to mail/db_compat.py, no external consumer affected, 497 tests / 0 failures. supplier_app.py routes/auth mixins (needs a dispatch-table conversion first, flagged higher-risk by its own audit) and the remaining mail/repository.py mixin split (auth/suppliers/messages/campaigns/queue/inbox, medium risk per audit) are the next candidates in the owner-directed cleanup program.`
+Scope: `No active task; TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903 (batch A of SupplierHandler decomposition) is closed: 16 auth/session/OAuth methods moved to backend/http_auth.py as AuthHandlerMixin, composed via inheritance; do_GET/do_POST/do_DELETE and route ordering untouched, no dispatch table introduced; FINDING-020 recorded (no 404/SPA-fallback test coverage, out of scope); 497 tests / 0 failures. Next: batch B (request route helpers), batch C (global-supplier/mail route helpers), then DISPATCH_TABLE decision, then mail/repository.py mixin split.`
 Allowed files: `none — no active task`
-Status: `IDLE — TASK-BOUNDED-MAIL-REPOSITORY-DB-COMPAT-EXTRACT-20260903 completed`
+Status: `IDLE — TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903 completed; batch B not yet started`
 Last update: `2026-09-03`
