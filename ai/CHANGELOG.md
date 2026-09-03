@@ -3,6 +3,31 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-03 — LOGISTICS: DELLIN SHIPPING-COST CALCULATOR MVP
+
+- `TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903`: added a manual shipping-cost
+  calculator for one request/one supplier against the Деловые Линии (Dellin)
+  public calculator API. New `backend/integrations/logistics/dellin_client.py`,
+  `backend/domain/logistics/quote_service.py`, `mail/logistics_quotes.py`
+  (`LogisticsQuotesMixin`), `migrations/033_logistics_quotes.sql` (executed
+  under explicit one-migration owner authorization), a "Логистика" section in
+  `SupplierPanel.tsx`, and `tests/test_logistics_quote.py` (11 tests).
+- Dellin's request/response schema was verified against the official
+  documentation via the public Wayback Machine archive (`dev.dellin.ru`
+  itself blocks direct automated fetches) before writing any code — no field
+  was guessed from memory.
+- A hard gate blocks calculation until every required field is present; a
+  contract/unknown price, provider error or rate limit always resolves to an
+  explicit non-success status with a message, never a `0 ₽` price.
+- Official suite: `515 tests, failures=0, errors=9 (pre-existing, unchanged),
+  skipped=1`. Frontend typecheck/build clean, lint 0 errors/5 warnings (no
+  new errors). Manually verified end-to-end against the safe `OFFLINE_TEST`
+  runtime in a real browser.
+- `NOT VERIFIED`: a real call to `api.dellin.ru` with an actual
+  `DELLIN_API_KEY`, and whether commercial use of the Dellin API in a paid
+  SaaS product is contractually authorized.
+- Report: [`ai/reports/TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903-report.md`](reports/TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903-report.md).
+
 ## 2026-09-03 — REFACTOR SERIES CLOSEOUT + ARCHITECTURE PROGRAM PAUSED
 
 - A read-only recovery audit on `integration/current-architecture-governance-20260903`

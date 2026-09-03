@@ -8,6 +8,7 @@ import type {
   InboxConversation,
   InboxPreview,
   InboxSuggestion,
+  LogisticsQuote,
   ManualLinkRequestOption,
   MailMessage,
   MailTemplate,
@@ -114,6 +115,21 @@ export const api = {
     }>(`/api/requests/${requestId}/suppliers/${supplierId}/inn`, {
       method: 'POST',
       body: JSON.stringify({ inn }),
+    }),
+  getLogisticsQuote: (requestId: number, supplierId: number) =>
+    request<{ quote: LogisticsQuote | null }>(`/api/requests/${requestId}/suppliers/${supplierId}/logistics`),
+  calculateLogistics: (
+    requestId: number,
+    supplierId: number,
+    input: {
+      route_from: string;
+      route_to: string;
+      cargo: { places: number; weight_kg: number; volume_m3: number; max_length_cm: number; max_width_cm: number; max_height_cm: number };
+    },
+  ) =>
+    request<{ quote: LogisticsQuote; message: string }>(`/api/requests/${requestId}/suppliers/${supplierId}/logistics`, {
+      method: 'POST',
+      body: JSON.stringify(input),
     }),
 
   listSuppliers: (params: { requestId?: number; query?: string } = {}) => {

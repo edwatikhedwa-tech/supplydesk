@@ -13,6 +13,48 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-015 — Dellin logistics MVP: address-search routing, no workspace_id on logistics_quotes
+
+- Decision ID: `DECISION-015`
+- Date: `2026-09-03`
+- Status: `ACTIVE`
+- Context: `TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903` added a manual shipping-cost
+  calculator against the Дeловые Линии (Dellin) public calculator API
+  (`https://api.dellin.ru/v2/calculator.json`). The official docs
+  (`dev.dellin.ru`) block direct automated fetches (401/bot-block); the
+  request/response schema was verified through the public Wayback Machine
+  archive of the same official documentation (snapshot `20240221125337`)
+  instead of guessing fields or bypassing the site's own protection.
+- Decision:
+  1. Route input is a free-text city/terminal string per side, sent as
+     `delivery.derival/arrival.address.search` with `variant: "address"`.
+     The separate terminal-search method
+     (`https://api.dellin.ru/v1/public/request_terminals.json`) is
+     deliberately **not** implemented — it needs a KLADR city code from yet
+     another lookup, which the MVP's manual free-text UI does not need.
+  2. `deliveryType.type` is fixed to `"auto"` — the form does not let the
+     user pick a delivery mode in this MVP.
+  3. `migrations/033_logistics_quotes.sql`'s `logistics_quotes` table has no
+     `workspace_id` column; workspace isolation is enforced by joining
+     `requests.workspace_id` in every mixin query, the same pattern already
+     used by `request_supplier_states`.
+  4. `vat_included` is stored as `NULL` (unknown) — the documentation section
+     that was actually read does not expose a VAT field; it must not be
+     assumed `true`/`false`.
+  5. The rate limiter (45/min, 1600/hour) and the input-hash cache both live
+     in one process-lifetime `LogisticsQuoteService` instance held by
+     `SupplierApp`, not a distributed store — matches the single-process
+     local backend and the task's explicit "no Redis/queue" instruction.
+- Reason: keeps the MVP to exactly the calculator call the manual-entry UI
+  needs, avoids inventing undocumented fields, and reuses an established
+  workspace-isolation pattern instead of adding a redundant column.
+- Consequences: adding a terminal picker, a delivery-type selector, or a
+  distributed rate limiter/cache later is a new, separately scoped task, not
+  an extension implied by this one. Commercial authorization to use the
+  Dellin API inside a paid SaaS product is `NOT VERIFIED` and is not implied
+  by this decision.
+- Related task: `TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903`.
+
 ## DECISION-014 — Close the current bounded-refactor series and pause the remaining architecture program
 
 - Decision ID: `DECISION-014`

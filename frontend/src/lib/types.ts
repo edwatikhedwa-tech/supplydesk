@@ -87,6 +87,37 @@ export interface Supplier {
   related_supplier_ids?: number[];
 }
 
+export type LogisticsQuoteStatus = 'success' | 'unavailable' | 'invalid_input' | 'rate_limited' | 'provider_error';
+
+export interface LogisticsQuoteCostBreakdown {
+  intercity: number | null;
+  derival: number | null;
+  arrival: number | null;
+  packages: number | null;
+  insurance: number | null;
+}
+
+export interface LogisticsQuote {
+  id: number;
+  request_id: number;
+  supplier_id: number | null;
+  carrier: string;
+  route_from: string;
+  route_to: string;
+  cargo_places: number;
+  cargo_weight_kg: number;
+  cargo_volume_m3: number;
+  cargo_max_dims_cm: string;
+  price: number | null;
+  currency: string;
+  vat_included: boolean | null;
+  term_days: number | null;
+  cost_breakdown: LogisticsQuoteCostBreakdown;
+  status: LogisticsQuoteStatus;
+  input_hash: string;
+  calculated_at: string;
+}
+
 export type RequestStatus = 'draft' | 'searching' | 'updating' | 'completed' | 'error';
 
 export interface RequestListItem {

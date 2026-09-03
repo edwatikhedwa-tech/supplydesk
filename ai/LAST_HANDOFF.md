@@ -1,15 +1,77 @@
 ---
-document_id: HANDOFF-016
+document_id: HANDOFF-017
 status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-03
-based_on_commit: TASK-ARCHITECTURE-REFACTOR-SERIES-PAUSE-20260903
+based_on_commit: TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903
 ---
 
 # Last Handoff
 
-This current handoff records `TASK-ARCHITECTURE-REFACTOR-SERIES-PAUSE-20260903`.
+This current handoff records `TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903`. The
+older refactor-series-pause handoff is retained below as historical context
+and is not the current task state.
+
+## Текущая задача
+
+Добавить MVP-калькулятор стоимости доставки для одной заявки и одного
+поставщика (ручной ввод маршрута/груза → расчёт через публичный калькулятор
+Деловых Линий → сохранение) — прямое поручение владельца с собственным
+Task ID, скоупом и non-goals; продуктовый код, API, схема БД менялись
+намеренно, документационные ограничения `AI_CONTRACT` на этот пункт не
+распространялись.
+
+## Что изменено
+
+- Новое: `backend/integrations/logistics/dellin_client.py` (транспортный
+  клиент калькулятора Деловых Линий, in-memory rate limiter, ограниченный
+  retry только на 429/5xx), `backend/domain/logistics/quote_service.py`
+  (жёсткий гейт, кэш по хэшу входных данных, разбор ответа),
+  `mail/logistics_quotes.py` (`LogisticsQuotesMixin`),
+  `migrations/033_logistics_quotes.sql`,
+  `tests/test_logistics_quote.py` (11 тестов).
+- Изменено: `mail/repository.py` (композиция `LogisticsQuotesMixin`),
+  `backend/http_requests.py` (`GET`/`POST`
+  `.../suppliers/{id}/logistics`), `supplier_app.py`
+  (`self.logistics_quote_service`), `frontend/src/lib/types.ts`,
+  `frontend/src/lib/api.ts`, `frontend/src/components/SupplierPanel.tsx`
+  (секция «Логистика»).
+- `ai/CURRENT_STATE.md`, `ai/DECISIONS.md` (`DECISION-015`),
+  `ai/CHANGELOG.md`, `ai/INTERACTION_LOG.md`, `ai/ACTIVE_TASK.md`,
+  `ai/reports/TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903-report.md`.
+
+## Доказательства и ограничения
+
+- Workspace Guard: `PASS` до и во время задачи.
+- Схема API Деловых Линий проверена по официальной документации через
+  публичный архив Wayback Machine (сам `dev.dellin.ru` блокирует прямые
+  автоматические запросы) — поля не придуманы по памяти.
+- Официальный backend suite: `tests=515, failures=0, errors=9, skipped=1`
+  (`504` прежний baseline `+ 11` новых тестов; `9` ошибок — тот же
+  доранее задокументированный `pwsh`-gap, не увеличился).
+- Frontend `typecheck`/`build` — чисто; `lint` — `0 errors, 5 warnings`, без
+  новых ошибок.
+- Ручная сквозная проверка в реальном приложении через безопасный
+  `OFFLINE_TEST`-рантайм и браузер: жёсткий гейт в UI, реальный HTTP-путь,
+  реальная одноразовая SQLite, статус `unavailable` вместо цены `0 ₽`,
+  повторное открытие карточки подтягивает сохранённый результат через `GET`.
+- `NOT VERIFIED`: реальный вызов `api.dellin.ru` с настоящим
+  `DELLIN_API_KEY` (ключа и подтверждённого сетевого доступа к live API в
+  этой среде нет); коммерческое разрешение на использование API Деловых
+  Линий в платном SaaS — явно зафиксировано как `NOT VERIFIED`.
+
+## Следующий рациональный шаг
+
+Когда появится реальный `DELLIN_API_KEY`, повторить ручную проверку против
+живого API на реальном маршруте и подтвердить `status="success"` с
+ненулевой ценой end-to-end; отдельно — получить у владельца продукта
+подтверждение коммерческого разрешения на использование API Деловых Линий
+до вывода функции за пределы MVP/пилота.
+
+---
+
+This handoff records `TASK-ARCHITECTURE-REFACTOR-SERIES-PAUSE-20260903`.
 The older workspace-hard-gate handoff is retained below as historical context
 and is not the current task state.
 

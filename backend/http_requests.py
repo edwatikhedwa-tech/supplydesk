@@ -15,6 +15,8 @@ below is moved byte-for-byte.
 
 from __future__ import annotations
 
+from backend.domain.logistics.quote_service import LogisticsQuoteInput
+
 
 class RequestRouteMixin:
     def _thread_messages(self, session: dict, query: dict[str, list[str]]) -> None:
@@ -45,6 +47,15 @@ class RequestRouteMixin:
             return
         if len(parts) == 4 and parts[3] == "suppliers":
             self._json(200, {"items": self.app.repository.list_suppliers(session["workspace_id"], request_id)})
+            return
+        if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "logistics":
+            try:
+                supplier_id = int(parts[4])
+            except ValueError:
+                self._json(400, {"error": "Некорректный идентификатор поставщика."})
+                return
+            quote = self.app.repository.get_latest_logistics_quote(session["workspace_id"], request_id, supplier_id)
+            self._json(200, {"quote": quote})
             return
         self._json(404, {"error": "Маршрут заявки не найден."})
 
@@ -96,6 +107,39 @@ class RequestRouteMixin:
         if len(parts) == 5 and parts[3] == "search" and parts[4] == "step":
             result = self.app.process_search_step(session["workspace_id"], request_id)
             self._json(200, {"ok": True, **result})
+            return
+        if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "logistics":
+            try:
+                supplier_id = int(parts[4])
+            except ValueError:
+                self._json(400, {"error": "Некорректный идентификатор поставщика."})
+                return
+            if not self.app.repository.request_supplier(session["workspace_id"], request_id, supplier_id):
+                self._json(404, {"error": "Поставщик не найден в этой заявке."})
+                return
+            cargo = body.get("cargo") or {}
+            quote_input = LogisticsQuoteInput(
+                route_from=str(body.get("route_from") or ""),
+                route_to=str(body.get("route_to") or ""),
+                cargo_places=int(cargo.get("places") or 0),
+                cargo_weight_kg=float(cargo.get("weight_kg") or 0),
+                cargo_volume_m3=float(cargo.get("volume_m3") or 0),
+                cargo_max_length_cm=float(cargo.get("max_length_cm") or 0),
+                cargo_max_width_cm=float(cargo.get("max_width_cm") or 0),
+                cargo_max_height_cm=float(cargo.get("max_height_cm") or 0),
+            )
+            result = self.app.logistics_quote_service.calculate(quote_input)
+            dims = f"{quote_input.cargo_max_length_cm:g}x{quote_input.cargo_max_width_cm:g}x{quote_input.cargo_max_height_cm:g}"
+            saved = self.app.repository.save_logistics_quote(
+                session["workspace_id"], session["user_id"], request_id, supplier_id,
+                carrier=result.carrier, route_from=quote_input.route_from, route_to=quote_input.route_to,
+                cargo_places=quote_input.cargo_places, cargo_weight_kg=quote_input.cargo_weight_kg,
+                cargo_volume_m3=quote_input.cargo_volume_m3, cargo_max_dims_cm=dims,
+                price=result.price, currency=result.currency, vat_included=None, term_days=result.term_days,
+                cost_breakdown=result.cost_breakdown, status=result.status, input_hash=result.input_hash,
+                raw_response=result.raw_response, calculated_at=result.calculated_at,
+            )
+            self._json(200, {"quote": saved, "message": result.message})
             return
         if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "irrelevant":
             try:

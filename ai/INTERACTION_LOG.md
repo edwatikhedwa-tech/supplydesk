@@ -2,6 +2,54 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-03 — TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903
+
+State change: added a manual, per-request/per-supplier shipping-cost
+calculator against the Деловые Линии (Dellin) public calculator API — real
+product/API/schema change, by explicit owner instruction with its own Task
+ID, scope and non-goals (not a documentation-only task). New backend
+integration/domain modules, a new `LogisticsQuotesMixin` in
+`mail/logistics_quotes.py`, a new migration
+(`migrations/033_logistics_quotes.sql`, executed under explicit one-migration
+owner authorization), new HTTP routes in `backend/http_requests.py`, and a
+new "Логистика" section in `frontend/src/components/SupplierPanel.tsx`.
+
+State change: the Dellin request/response schema was verified against the
+official documentation before writing code. `dev.dellin.ru` itself returns
+401/a bot-block page on direct automated fetches; the same official pages
+were read through the public Wayback Machine archive
+(`web.archive.org/web/20240221125337/...`) instead — a legal public archive
+of the same first-party content, not a bypass of the site's own protection.
+No request/response field was invented from memory.
+
+State change: official backend suite went from the previously recorded
+baseline `tests=504, failures=0, errors=9, skipped=1` to `tests=515,
+failures=0, errors=9, skipped=1` — 11 new tests added by this task, the
+9 pre-existing errors unchanged (not this task's regression, not fixed by
+it either). Frontend `typecheck`/`build` passed clean; `lint` reported
+`0 errors, 5 warnings`, no new lint errors (one pre-existing `useEffect`
+dependency-array warning pattern in `SupplierPanel.tsx`, confirmed present
+before this task via `git show HEAD:...`).
+
+State change: manually verified the full flow in a real browser against the
+safe `OFFLINE_TEST` runtime (`scripts/start_test_runtime.ps1`, disposable
+SQLite, outgoing mail disabled, no real provider keys) — the calculate
+button stayed disabled until all required fields were filled, the request
+round-tripped through the real HTTP route into a real saved
+`logistics_quotes` row with `status='unavailable'` and `price=NULL` (no
+`DELLIN_API_KEY` configured in this environment — the app correctly showed
+an explicit unavailable message, never `0 ₽`), and reopening the same
+supplier panel reloaded that saved quote via the `GET` route without
+recalculating. A real call to the live Dellin API with an actual API key
+was **not** performed (no key, no verified network path) and is recorded as
+`NOT VERIFIED`, together with whether commercial use of the Dellin API in a
+paid SaaS product is contractually authorized (also explicitly
+`NOT VERIFIED`, per the task's own instruction).
+
+Added `DECISION-015` to `ai/DECISIONS.md`, updated `ai/CURRENT_STATE.md` and
+`ai/LAST_HANDOFF.md`, wrote
+`ai/reports/TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903-report.md`.
+
 ## 2026-09-03 — TASK-ARCHITECTURE-REFACTOR-SERIES-PAUSE-20260903
 
 State change: recorded a read-only recovery audit result

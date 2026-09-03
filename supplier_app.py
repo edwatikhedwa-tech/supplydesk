@@ -38,6 +38,7 @@ from backend.http_static import (  # noqa: F401 -- load_fixture_data re-exported
 # Reused as-is from the already-tested CLI tools; nothing here is new logic. The
 # pipeline's own orchestration methods live in EnrichmentOrchestratorMixin,
 # composed into SupplierApp below.
+from backend.domain.logistics.quote_service import LogisticsQuoteService
 from backend.integrations.registry.checko_client import CheckoClient
 from backend.domain.supplier_identity.inn_extractor import validate_inn_checksum
 from backend.domain.supplier_enrichment.orchestrator import EnrichmentOrchestratorMixin
@@ -785,6 +786,10 @@ class SupplierApp(EnrichmentOrchestratorMixin):
         )
         self.rate_lock = threading.Lock()
         self.rate_events: dict[str, list[float]] = {}
+        # Один экземпляр на процесс: держит и ограничитель частоты запросов к
+        # Деловым Линиям (внутри DellinClient), и кэш расчётов по хэшу
+        # входных данных — оба должны переживать отдельные HTTP-запросы.
+        self.logistics_quote_service = LogisticsQuoteService()
         # Фоновая синхронизация входящих. Без неё отбойник (письмо не
         # доставлено) попадал в систему, только когда пользователь сам нажимал
         # «Синхронизировать входящие» на «Настройках»: до этого поставщик

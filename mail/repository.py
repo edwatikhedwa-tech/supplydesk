@@ -16,6 +16,7 @@ from uuid import uuid4
 
 from .auth import new_token
 from .auth_accounts import AuthAccountsMixin
+from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
 from .bounce import classify_bounce, failed_recipients
 from .content import (
@@ -176,7 +177,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-class MailRepository(AuthAccountsMixin, MailTemplatesMixin):
+class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
         self.db_path = Path(db_path).expanduser().resolve()

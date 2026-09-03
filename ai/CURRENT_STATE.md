@@ -15,6 +15,55 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903` added an MVP
+shipping-cost calculator for one request/one supplier, using the public
+Дeловые Линии (Dellin) calculator API — real product code, API and schema
+change, explicitly out of scope for the documentation-only restriction. New:
+`backend/integrations/logistics/dellin_client.py` (transport client — appkey
+auth, in-memory rate limiter at 45/min and 1600/hour, retries only on
+429/5xx, capped at 2, never on other 4xx), `backend/domain/logistics/
+quote_service.py` (hard gate on missing required fields, sha256 input-hash
+cache in process memory, response parsing into `carrier/price/currency/
+term_days/cost_breakdown/status/input_hash/calculated_at`), `mail/
+logistics_quotes.py` (`LogisticsQuotesMixin`, same zero-coupling pattern as
+`mail/mail_templates.py`; `class MailRepository(AuthAccountsMixin,
+MailTemplatesMixin, LogisticsQuotesMixin)`), `migrations/
+033_logistics_quotes.sql` (executed with explicit one-migration owner
+authorization for this task only), `GET`/`POST
+/api/requests/{id}/suppliers/{supplier_id}/logistics` in the existing
+`backend/http_requests.py` sub-router, and a "Логистика" section in
+`frontend/src/components/SupplierPanel.tsx` right after the ИНН block, same
+visual style, calculate button disabled until every required field is
+filled (client-side mirror of the backend hard gate). The Dellin request/
+response schema was verified against the official documentation before
+writing code (`dev.dellin.ru` itself returns 401/bot-block on direct
+fetch — the documentation was read through the public Wayback Machine
+archive of the same official pages, snapshot `20240221125337`, not by
+bypassing the site's own protection); fields were not guessed from memory.
+A contract/unknown price from the provider, a provider error, or a local/
+provider rate limit all resolve to `status="unavailable"`/`"provider_error"`/
+`"rate_limited"` with an explicit message — never a `0 ₽` price. Official
+suite: `tests=515, failures=0, errors=9, skipped=1` (`504` prior baseline +
+`11` new tests in `tests/test_logistics_quote.py`; the `9` errors are the
+same pre-existing `pwsh`-gap, not increased). Frontend `typecheck`/`build`
+clean; `lint`: `0 errors, 5 warnings` (no new lint errors; one pre-existing
+`useEffect` dependency-array warning pattern already present in
+`SupplierPanel.tsx` before this task, confirmed via `git show HEAD:...`).
+Manually verified end-to-end in a real browser against the safe
+`OFFLINE_TEST` runtime (disposable SQLite, outgoing mail disabled, no real
+provider keys): the calculate button stayed disabled until all fields were
+filled, the request round-tripped through the real HTTP route into a real
+saved `logistics_quotes` row (`status='unavailable'`, `price=NULL` — no
+`DELLIN_API_KEY` configured in this environment), and reopening the same
+supplier panel correctly reloaded the saved quote via the `GET` route
+without a new calculation. **NOT VERIFIED**: a real call to
+`api.dellin.ru` with an actual `DELLIN_API_KEY` (no key or verified network
+path to the live API in this environment); and — recorded explicitly, per
+task instruction — whether commercial use of the Dellin API inside a paid
+SaaS product is contractually authorized is **NOT VERIFIED** and must stay
+that way until the product owner confirms it separately. Full report:
+[`ai/reports/TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903-report.md`](reports/TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903-report.md).
+
 `2026-09-03` — `TASK-ARCHITECTURE-REFACTOR-SERIES-PAUSE-20260903` (state-only
 closeout; no product code changed): a read-only recovery audit on this branch
 @ `a88334deb59f32d43f79afca63f71fc7bf263da0` returned `NO_UNFINISHED_REFACTOR_FOUND`
