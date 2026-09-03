@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-03
-based_on_commit: 6af2af1822820e996f1126b8a1b26d19be0000f0
+based_on_commit: a5d50839d62109d364ca97a2f271a14432b38c5d
 ---
 
 # Current State
@@ -15,22 +15,26 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-03` — Root-cause fix for the `Backend Full` `CI_INFRA` timeout
-recorded below: per-test timestamp-delta analysis of the failed job logs
-(`gh api .../actions/jobs/<id>/logs`) showed the slowdown was not uniform —
-it concentrated in `tests/test_mail_deliverability.py` and
-`tests/test_mail_integrity.py`, whose many small SQLite/`tempfile`
-operations took `7`-`60s` each on the hosted Windows runner vs sub-second
-locally, matching the documented Windows Defender real-time-scanning
-overhead on GitHub-hosted Windows runners. Added a best-effort
+`2026-09-03` — `Backend Full` `CI_INFRA` timeout fix `CONFIRMED`: the
+Windows Defender exclusion step (`6af2af1`) was proven on the
+classifier-selected CI run for
+`TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903`
+(`33691773114`) — `Backend Full` completed the real `462`-test suite twice
+in a row (`18m54s`, then `24m0s` on an unmodified rerun), never cancelled,
+well inside the `35`-minute timeout. Root-cause analysis: per-test
+timestamp-delta analysis of the three earlier failed job logs (`gh api
+.../actions/jobs/<id>/logs`) showed the slowdown concentrated in
+`tests/test_mail_deliverability.py`/`tests/test_mail_integrity.py`
+(SQLite/`tempfile`-heavy), matching documented Windows Defender real-time
+scanning overhead on GitHub-hosted Windows runners; a best-effort
 `Add-MpPreference -ExclusionPath` step (workspace, `RUNNER_TEMP`, `TEMP`)
-to the `backend_full` job only in `.github/workflows/ci.yml` (commit
-`6af2af1`, pushed, remote SHA match confirmed); the timeout itself was left
-at the owner-approved `35` minutes, not raised further. A
-`workflow_dispatch profile=FULL` verification run
-(`33690006924`) was launched to confirm the fix; its `Backend Full` result
-is tracked separately once observed — this entry records the fix that was
-made, not an unconfirmed outcome.
+was added to the `backend_full` job only. The `35`-minute timeout was left
+as-is, not raised further. Now that the suite can run to completion, its
+first pass surfaced one previously CI_INFRA-masked, unrelated flaky test
+(`tests.test_mail_integrity...test_35_disabled_wait_preserves_retry_budget_for_real_transport_attempt`)
+— confirmed a genuine race in the test's own polling logic, not a product
+regression; flagged as a separate task, not fixed here. See this file's
+Blockers section for full detail.
 
 `2026-09-03` — `TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903`
 moved `web_lookup.py` and `xmlriver_client.py` to
@@ -575,11 +579,26 @@ on this task's dedicated branch:
 - The task is closed with remote SHA match `YES`, FAST CI `PASS` and Browser
   Full `FAIL`; the failure cause is not confirmed. A browser-runtime fix must
   be a separate task.
-- `Backend Full`'s `CI_INFRA` timeout (see the `2026-09-02` entry above) has
-  a root-cause fix applied (`6af2af1`, Windows Defender exclusions for the
-  `backend_full` job) but its `workflow_dispatch profile=FULL` verification
-  run (`33690006924`) result must be checked from actual CI output, not
-  assumed, before this blocker is marked resolved.
+- `Backend Full`'s `CI_INFRA` timeout is `RESOLVED`: the Windows Defender
+  exclusion fix (`6af2af1`) was confirmed on the classifier-selected CI run
+  for `TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903`
+  (`33691773114`) — `Backend Full` completed the full `462`-test suite twice
+  in a row without being cancelled (`18m54s` then `24m0s`, both well under
+  the `35`-minute timeout). The dedicated `workflow_dispatch profile=FULL`
+  verification run (`33690006924`) launched earlier was inconclusive on its
+  own (cancelled by the branch's concurrency group when the next push
+  started its own CI run), but this later run supersedes it with a clean
+  confirmation. One new, unrelated, non-blocking finding surfaced now that
+  the suite can finally run to completion: the first attempt on
+  `33691773114` failed exactly one test,
+  `tests.test_mail_integrity.MailIntegrityAcceptanceTests.test_35_disabled_wait_preserves_retry_budget_for_real_transport_attempt`
+  (`AssertionError: 'sending' != 'queued'`), which passed clean on an
+  unmodified rerun — a genuine race in the test itself (it polls
+  `provider.send_calls` then immediately asserts DB `status` with no
+  synchronization guaranteeing the background `MailQueue` worker has
+  finished writing the final status), not a product regression and not
+  caused by this branch's changes. Flagged as a separate out-of-scope task
+  (not fixed here); not a DoD blocker for this branch.
 - Product/live-provider follow-up remains bounded by the limitations above and
   the open findings in [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
 

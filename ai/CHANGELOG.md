@@ -3,6 +3,34 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-03 — CI CAPACITY FIX CONFIRMED + NEW FLAKY TEST FOUND
+
+- The Windows Defender exclusion fix (`6af2af1`) is now `CONFIRMED`, not
+  just applied: on the classifier-selected CI run for
+  `TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903`
+  (`33691773114`), `Backend Full` completed the real `462`-test suite twice
+  in a row — `18m54s` then `24m0s` on an unmodified rerun — never
+  cancelled, well inside the `35`-minute timeout. The earlier dedicated
+  `workflow_dispatch profile=FULL` run (`33690006924`) was inconclusive on
+  its own: it got cancelled by the branch's concurrency group when this
+  push's own CI run started, after running ~19 minutes without hitting the
+  timeout or a failure — this later run supersedes it with a clean,
+  uninterrupted confirmation.
+- Now that the suite can finally run to completion instead of being cut off
+  by the old timeout, its first full pass surfaced one previously-masked,
+  unrelated test failure:
+  `tests.test_mail_integrity.MailIntegrityAcceptanceTests.test_35_disabled_wait_preserves_retry_budget_for_real_transport_attempt`
+  (`AssertionError: 'sending' != 'queued'`). Read the test
+  (`tests/test_mail_integrity.py:874-909`): it polls
+  `self.provider.send_calls` until it reaches `1`, then immediately asserts
+  the job row's DB `status`, with no synchronization guaranteeing the
+  background `MailQueue` worker thread has finished writing the final
+  status by that point — a genuine race in the test's own polling logic.
+  Confirmed not caused by this branch: it passed clean on an identical
+  rerun with zero code changes, and it lives in a module unrelated to the
+  search-integrations move. Flagged as a separate, out-of-scope background
+  task rather than fixed here.
+
 ## 2026-09-03 — BOUNDED ROOT REFACTOR PASS 7: SEARCH INTEGRATIONS
 
 - Moved `web_lookup.py` and `xmlriver_client.py` (both `MOVE_INTEGRATIONS`
