@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: Claude
 updated_at: 2026-09-03
-based_on_commit: pending-this-commit
+based_on_commit: c327af8
 ---
 
 # Active Task
