@@ -15,6 +15,28 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903`
+(Pass 9) split `collect_inn.py`'s reusable deterministic ИНН/ОГРН parsing
+(`INN_URL_HINTS`, `INN_PATHS`, `page_text`, `extract_for_site`,
+`extract_legal_ids_for_site`) into
+[`backend/domain/supplier_enrichment/pipeline.py`](../backend/domain/supplier_enrichment/pipeline.py).
+`collect_inn.py` stays at root as the thinned CLI (argument parsing, the
+crawl/LLM/web/DaData orchestration in `main()`, CSV output), importing the
+extracted functions back — verified identical objects (`collect_inn.extract_for_site
+is pipeline.extract_for_site`), not copies. This is the first pass in the
+series that required an actual code split rather than a pure move or
+single-line import edit, per the diagnostic's own `High risk`/"explicit
+split contract" classification. 4 confirmed consumers of those specific
+symbols were updated (`supplier_app.py`, `scripts/verify_enrichment_live.py`,
+`tests/test_enrichment_pipeline.py`, `benchmarks/benchmark_models.py`).
+`supplier_discovery_v2/immutability_check.py`'s protected-path list gained
+the new `pipeline.py` path; `collect_inn.py` stays protected unchanged at
+its root path (the split's deliberate content change does not remove its
+own protection). CLI contract unchanged (`collect_inn.py --help` byte-for-byte
+identical; `build_arg_parser`/`main` untouched beyond the import source).
+The task report is
+[`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903-report.md).
+
 `2026-09-03` — `TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903`
 moved `contact_crawler.py` to
 [`backend/domain/supplier_enrichment/`](../backend/domain/supplier_enrichment/)
@@ -573,6 +595,19 @@ on this task's dedicated branch:
   to this task); docs/state/vibecoding validators and `git diff --check`
   passed.
 
+- Bounded root refactor Pass 9 (collect_inn.py pipeline/CLI split):
+  `backend/domain/supplier_enrichment/pipeline.py` now holds the
+  deterministic ИНН/ОГРН parsing extracted from `collect_inn.py`;
+  `collect_inn.py` is the thinned CLI, importing the extracted functions
+  back (verified as identical objects, not copies). `supplier_app`,
+  `scripts.verify_enrichment_live`, `benchmarks.benchmark_models`,
+  `tests.test_enrichment_pipeline` all import successfully offline;
+  `api.index.handler` imports under `SUPPLYDESK_ENV=test`.
+  `tests/test_enrichment_pipeline.py` + `tests/diagnostics/test_collect_inn_llm_path.py`
+  + `supplier_discovery_v2/tests/test_immutability.py` (22/22 PASS,
+  including 2 new immutability tests); `collect_inn.py --help` byte-for-byte
+  unchanged; official backend suite `466 tests, failures=0, errors=9` (same
+  pre-existing `pwsh`-gap), `skipped=1`.
 - Bounded root refactor Pass 8 (contact_crawler):
   `backend/domain/supplier_enrichment/contact_crawler.py` is now the
   canonical implementation; the root copy is gone, no wrapper.
@@ -672,18 +707,16 @@ on this task's dedicated branch:
 
 Pass 2 (CLI compatibility), Pass 3 (`dadata_client.py`), Pass 4
 (`checko_client.py` + immutability migration), Pass 5 (LLM integrations),
-Pass 6 (supplier identity domain), Pass 7 (search integrations) and Pass 8
-(`contact_crawler.py`) are complete; `backend/{integrations/{registry,llm,
-search},domain/{supplier_identity,supplier_enrichment}}/` now hold 11 moved
+Pass 6 (supplier identity domain), Pass 7 (search integrations), Pass 8
+(`contact_crawler.py`) and Pass 9 (`collect_inn.py` pipeline/CLI split) are
+complete; `backend/{integrations/{registry,llm,search},domain/
+{supplier_identity,supplier_enrichment}}/` now hold 12 moved/extracted
 modules and `FINDING-017`/`FINDING-018` are both resolved. Remaining root
-refactor items each need their own explicit design decision or bounded task
-before implementation, per the diagnostic and the causal-scope rule (no
-silent scope expansion into a new independent subsystem):
+refactor items each need an explicit owner decision before a further
+bounded task, per the diagnostic and the causal-scope rule (no silent scope
+expansion into a new independent subsystem or unresolved architectural
+conflict):
 
-- `collect_inn.py` (`MOVE_DOMAIN_PACKAGE`, High risk): requires splitting the
-  reusable enrichment pipeline out from its CLI entrypoint — a structural
-  change, not a pure move; needs its own bounded task with an explicit
-  split contract.
 - `serp_parser.py` (`DEFER`): conflicts with
   `supplier_discovery_v2/xmlriver_subprocess.py`'s hardcoded root subprocess
   path and the Vercel deployment bundle boundary; requires an explicit owner
@@ -740,6 +773,7 @@ limitations.
 - Supplier identity domain move report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902-report.md).
 - Search integrations move report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903-report.md).
 - Contact crawler move report (Pass 8): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903-report.md).
+- Collect-inn pipeline/CLI split report (Pass 9): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903-report.md).
 - Repository layout map: [`docs/architecture/REPOSITORY_LAYOUT.md`](../docs/architecture/REPOSITORY_LAYOUT.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).

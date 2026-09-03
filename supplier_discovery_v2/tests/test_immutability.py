@@ -137,6 +137,35 @@ class ImmutabilityTests(unittest.TestCase):
                 ["backend/domain/supplier_enrichment/contact_crawler.py"],
             )
 
+    def test_enrichment_pipeline_module_is_protected(self):
+        root = Path(__file__).resolve().parents[2]
+        protected = {
+            str(path.relative_to(root)).replace("\\", "/") for path in protected_paths(root)
+        }
+        self.assertIn("backend/domain/supplier_enrichment/pipeline.py", protected)
+        # collect_inn.py itself stays protected at root as the thinned CLI
+        # wrapper — this split does not remove its own protection.
+        self.assertIn("collect_inn.py", protected)
+
+    def test_disposable_mutation_of_enrichment_pipeline_module_is_detected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            synthetic_root = Path(directory) / "synthetic_root"
+            pipeline_path = (
+                synthetic_root / "backend" / "domain" / "supplier_enrichment" / "pipeline.py"
+            )
+            pipeline_path.parent.mkdir(parents=True)
+            pipeline_path.write_text("# disposable pipeline stand-in\n", encoding="utf-8")
+
+            manifest = Path(directory) / "manifest.json"
+            write_baseline(synthetic_root, manifest)
+            self.assertEqual(verify(synthetic_root, manifest), [])
+
+            pipeline_path.write_text("# mutated content\n", encoding="utf-8")
+            self.assertEqual(
+                verify(synthetic_root, manifest),
+                ["backend/domain/supplier_enrichment/pipeline.py"],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

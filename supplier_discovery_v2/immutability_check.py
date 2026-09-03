@@ -39,6 +39,13 @@ def protected_paths(root: Path) -> list[Path]:
     contact_crawler = root / "backend" / "domain" / "supplier_enrichment" / "contact_crawler.py"
     if contact_crawler.is_file():
         paths.append(contact_crawler)
+    # Extracted from collect_inn.py's protected content (the deterministic
+    # ИНН/ОГРН parsing logic) by
+    # TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903;
+    # collect_inn.py itself stays protected at root as the thinned CLI.
+    pipeline = root / "backend" / "domain" / "supplier_enrichment" / "pipeline.py"
+    if pipeline.is_file():
+        paths.append(pipeline)
     repository = root / "mail" / "repository.py"
     if repository.is_file():
         paths.append(repository)

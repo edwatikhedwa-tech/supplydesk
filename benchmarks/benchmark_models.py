@@ -93,7 +93,7 @@ def safe_name(host: str, url: str) -> str:
 
 def prepare(hosts: list[str], workers: int, max_pages: int) -> None:
     """Обойти сайты один раз, сложить страницы в кэш и составить эталон."""
-    from collect_inn import INN_PATHS, INN_URL_HINTS
+    from backend.domain.supplier_enrichment.pipeline import INN_PATHS, INN_URL_HINTS
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     crawler = ContactCrawler(

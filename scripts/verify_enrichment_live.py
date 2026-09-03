@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from backend.integrations.registry.checko_client import CheckoClient  # noqa: E402
-from collect_inn import (  # noqa: E402
+from backend.domain.supplier_enrichment.pipeline import (  # noqa: E402
     INN_PATHS,
     INN_URL_HINTS,
     extract_for_site,

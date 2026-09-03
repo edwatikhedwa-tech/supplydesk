@@ -18,7 +18,7 @@ not a target structure. For behavioral component ownership, see
 |---|---|
 | root composition entrypoints | `supplier_app.py` (local backend entrypoint), plus a shrinking flat package of supplier-discovery/extraction modules still at root (e.g. `serp_parser.py`, `collect_inn.py`) and the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
 | `api/` | `api/index.py` — the Vercel serverless adapter around `supplier_app.py` |
-| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — LLM/provider transport moved out of the root flat package (`llm_fallback.py`, `routerai_client.py`); `backend/integrations/search/` — SERP/web-lookup integrations moved out of the root flat package (`web_lookup.py`, `xmlriver_client.py`); `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the root flat package (`email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`); `backend/domain/supplier_enrichment/` — supplier-enrichment crawling logic moved out of the root flat package (`contact_crawler.py`) |
+| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — LLM/provider transport moved out of the root flat package (`llm_fallback.py`, `routerai_client.py`); `backend/integrations/search/` — SERP/web-lookup integrations moved out of the root flat package (`web_lookup.py`, `xmlriver_client.py`); `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the root flat package (`email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`); `backend/domain/supplier_enrichment/` — supplier-enrichment logic split out of the root flat package: `contact_crawler.py` (moved) and `pipeline.py` (extracted from `collect_inn.py`'s reusable ИНН/ОГРН parsing, shared by `supplier_app.py` and the CLI) |
 | `mail/` | Real Yandex IMAP/SMTP integration and SQLite-backed mail repository |
 | `migrations/` | Versioned SQL schema DDL |
 | `frontend/` | React/Vite SPA (TypeScript, Tailwind) |
@@ -87,11 +87,24 @@ not a target structure. For behavioral component ownership, see
   `supplier_discovery_v2/immutability_check.py`'s protected-path list was
   migrated in the same change, so the existing immutability guard was never
   weakened.
+- `TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903`:
+  `collect_inn.py`'s reusable deterministic ИНН/ОГРН parsing (`INN_URL_HINTS`,
+  `INN_PATHS`, `page_text`, `extract_for_site`, `extract_legal_ids_for_site`)
+  was extracted to `backend/domain/supplier_enrichment/pipeline.py`;
+  `collect_inn.py` stays at root as the thinned CLI (argument parsing, the
+  crawl/LLM/web/DaData orchestration in `main()`, and CSV output), importing
+  the extracted functions back. 4 confirmed consumers of those specific
+  symbols were updated to the canonical import path (`supplier_app.py`,
+  `scripts/verify_enrichment_live.py`, `tests/test_enrichment_pipeline.py`,
+  `benchmarks/benchmark_models.py`).
+  `supplier_discovery_v2/immutability_check.py`'s protected-path list gained
+  the new `pipeline.py` path alongside the unchanged root `collect_inn.py`
+  entry — the split's deliberate content change to `collect_inn.py` does not
+  remove its own protection.
 - Remaining root modules named in
-  `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md` (including
-  `supplier_app.py`, `api/index.py`, `serp_parser.py`, `collect_inn.py`) are
-  unmoved and require their own bounded, explicitly-scoped task. `serp_parser.py`
+  `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md` (`supplier_app.py`,
+  `api/index.py`, `serp_parser.py`, root `test_*.py`) are unmoved and each
+  requires its own bounded task or an explicit owner decision. `serp_parser.py`
   is `DEFER`red pending an explicit subprocess/deployment contract decision
   because `supplier_discovery_v2/xmlriver_subprocess.py` hardcodes its root
-  path; `collect_inn.py` mixes a reusable enrichment pipeline with a CLI and
-  needs an explicit split (not a pure move) before it can move.
+  path.
