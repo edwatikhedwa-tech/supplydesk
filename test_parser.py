@@ -10,7 +10,7 @@ from __future__ import annotations
 import sys
 
 from backend.integrations.search.xmlriver_client import XmlRiverClient, XmlRiverError, XmlRiverTemporaryError
-from serp_parser import (
+from backend.integrations.search.serp_parser import (
     SerpCollector, build_query, host_of, root_domain_of, default_out_path,
 )
 

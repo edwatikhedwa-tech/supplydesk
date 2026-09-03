@@ -13,7 +13,7 @@ def protected_paths(root: Path) -> list[Path]:
         candidate = root / name
         if candidate.is_file():
             paths.append(candidate)
-    for name in ("serp_parser.py", "supplier_app.py", "collect_inn.py"):
+    for name in ("supplier_app.py", "collect_inn.py"):
         candidate = root / name
         if candidate.is_file():
             paths.append(candidate)
@@ -46,6 +46,14 @@ def protected_paths(root: Path) -> list[Path]:
     pipeline = root / "backend" / "domain" / "supplier_enrichment" / "pipeline.py"
     if pipeline.is_file():
         paths.append(pipeline)
+    # Moved out of the flat root package by
+    # TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903. The thin root
+    # serp_parser.py compatibility wrapper is intentionally left unprotected
+    # (like collect_contacts.py's and benchmark_models.py's wrappers) —
+    # it carries no logic to drift.
+    serp_parser = root / "backend" / "integrations" / "search" / "serp_parser.py"
+    if serp_parser.is_file():
+        paths.append(serp_parser)
     repository = root / "mail" / "repository.py"
     if repository.is_file():
         paths.append(repository)

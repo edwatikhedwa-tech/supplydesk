@@ -15,7 +15,10 @@ class XmlRiverSubprocess:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.timeout = timeout
-        self.parser_path = Path(parser_path) if parser_path else Path(__file__).resolve().parents[1] / "serp_parser.py"
+        self.parser_path = (
+            Path(parser_path) if parser_path
+            else Path(__file__).resolve().parents[1] / "backend" / "integrations" / "search" / "serp_parser.py"
+        )
 
     def search(self, query: QueryVariant) -> tuple[list[DiscoveryResult], dict[str, object]]:
         safe_name = "".join(char if char.isalnum() else "_" for char in query.query.casefold())[:70].strip("_") or "query"

@@ -35,7 +35,7 @@ from backend.domain.supplier_enrichment.pipeline import (
     page_text,
 )
 from backend.domain.supplier_identity.inn_extractor import InnHit, is_requisites_url, score_inn
-from serp_parser import host_of, load_dotenv, read_lines
+from backend.integrations.search.serp_parser import host_of, load_dotenv, read_lines
 
 log = logging.getLogger("inn-cli")
 

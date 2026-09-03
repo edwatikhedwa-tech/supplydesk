@@ -103,18 +103,20 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
 - `mail/` — the real Yandex IMAP/SMTP integration and SQLite-backed mail repository.
 - `backend/integrations/{registry,llm,search}/` — provider adapters moved out of the root flat
   package: `dadata_client.py`, `checko_client.py`, `llm_fallback.py`, `routerai_client.py`,
-  `web_lookup.py`, `xmlriver_client.py`.
+  `web_lookup.py`, `xmlriver_client.py`, `serp_parser.py` (the last with a thin root
+  `serp_parser.py` compatibility wrapper — canonical invocation is
+  `python -m backend.integrations.search.serp_parser ...`).
 - `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the
   root flat package: `email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`.
 - `backend/domain/supplier_enrichment/` — supplier-enrichment logic split out of the root flat
   package: `contact_crawler.py` (moved) and `pipeline.py` (the reusable ИНН/ОГРН parsing
   extracted from `collect_inn.py`, shared by `supplier_app.py` and the CLI).
-- Root-level `*.py` files besides `supplier_app.py`/`api/` (e.g. `serp_parser.py`,
-  `collect_inn.py`) are a flat package of supplier-discovery/extraction
-  modules genuinely imported by the backend — this is deliberate structure, not clutter; don't
-  move them without checking what imports them first. Two operator CLIs already moved to
-  `scripts/collect_contacts.py` and `benchmarks/benchmark_models.py`, with thin root
-  compatibility wrappers; see `docs/architecture/REPOSITORY_LAYOUT.md` for the current map.
+- `collect_inn.py` stays at root as a thinned CLI (argparse, crawl/LLM/web/DaData
+  orchestration, CSV output) importing its extracted pipeline back — this is deliberate
+  structure, not an oversight. Three operator CLIs already moved with thin root compatibility
+  wrappers: `scripts/collect_contacts.py`, `benchmarks/benchmark_models.py`,
+  `backend/integrations/search/serp_parser.py`; see `docs/architecture/REPOSITORY_LAYOUT.md`
+  for the current map.
 
 At the end of every substantive final response, include the
 `[ИНСТРУМЕНТЫ И SKILLS]` block required by the `TOOL_USAGE_REPORTING` rule in

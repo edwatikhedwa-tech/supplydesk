@@ -16,9 +16,9 @@ not a target structure. For behavioral component ownership, see
 
 | Path | Contains |
 |---|---|
-| root composition entrypoints | `supplier_app.py` (local backend entrypoint), plus a shrinking flat package of supplier-discovery/extraction modules still at root (e.g. `serp_parser.py`, `collect_inn.py`) and the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
+| root composition entrypoints | `supplier_app.py` (local backend entrypoint); `serp_parser.py` (thin CLI-compatibility wrapper, implementation moved) and `collect_inn.py` (thinned CLI, implementation partly extracted) still at root; the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
 | `api/` | `api/index.py` — the Vercel serverless adapter around `supplier_app.py` |
-| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — LLM/provider transport moved out of the root flat package (`llm_fallback.py`, `routerai_client.py`); `backend/integrations/search/` — SERP/web-lookup integrations moved out of the root flat package (`web_lookup.py`, `xmlriver_client.py`); `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the root flat package (`email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`); `backend/domain/supplier_enrichment/` — supplier-enrichment logic split out of the root flat package: `contact_crawler.py` (moved) and `pipeline.py` (extracted from `collect_inn.py`'s reusable ИНН/ОГРН parsing, shared by `supplier_app.py` and the CLI) |
+| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — LLM/provider transport moved out of the root flat package (`llm_fallback.py`, `routerai_client.py`); `backend/integrations/search/` — SERP/web-lookup integrations moved out of the root flat package (`web_lookup.py`, `xmlriver_client.py`, `serp_parser.py`, the last with a thin root CLI-compatibility wrapper); `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the root flat package (`email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`); `backend/domain/supplier_enrichment/` — supplier-enrichment logic split out of the root flat package: `contact_crawler.py` (moved) and `pipeline.py` (extracted from `collect_inn.py`'s reusable ИНН/ОГРН parsing, shared by `supplier_app.py` and the CLI) |
 | `mail/` | Real Yandex IMAP/SMTP integration and SQLite-backed mail repository |
 | `migrations/` | Versioned SQL schema DDL |
 | `frontend/` | React/Vite SPA (TypeScript, Tailwind) |
@@ -101,10 +101,26 @@ not a target structure. For behavioral component ownership, see
   the new `pipeline.py` path alongside the unchanged root `collect_inn.py`
   entry — the split's deliberate content change to `collect_inn.py` does not
   remove its own protection.
+- `TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903`: `serp_parser.py`
+  moved to `backend/integrations/search/serp_parser.py`, with a thin root
+  `serp_parser.py` compatibility wrapper (delegating only `main()`, same
+  pattern as `collect_contacts.py`'s wrapper) preserving the documented
+  `python serp_parser.py ...` invocation. Per explicit owner decision (the
+  diagnostic had flagged this as conflicting with
+  `supplier_discovery_v2/xmlriver_subprocess.py`'s hardcoded subprocess path
+  and the Vercel deployment boundary): that hardcoded default `parser_path`
+  was updated to the new canonical location, and the module's own
+  `load_dotenv(Path(__file__).with_name(".env"))` call (which would have
+  silently started looking for `.env` beside the new nested path) was fixed
+  to a `REPO_ROOT`-relative lookup, matching the pattern already proven by
+  `collect_contacts.py` in Pass 2. 7 confirmed consumers updated to the
+  canonical import path. `supplier_discovery_v2/immutability_check.py`'s
+  protected-path list was migrated in the same change; the unprotected root
+  wrapper carries no logic to drift, matching `collect_contacts.py`'s and
+  `benchmark_models.py`'s wrappers.
 - Remaining root modules named in
-  `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md` (`supplier_app.py`,
-  `api/index.py`, `serp_parser.py`, root `test_*.py`) are unmoved and each
-  requires its own bounded task or an explicit owner decision. `serp_parser.py`
-  is `DEFER`red pending an explicit subprocess/deployment contract decision
-  because `supplier_discovery_v2/xmlriver_subprocess.py` hardcodes its root
-  path.
+  `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`
+  (`supplier_app.py`, `api/index.py`, root `test_*.py`) are unmoved.
+  `supplier_app.py`/`api/index.py` stay `KEEP_ROOT` as protected entrypoints;
+  root `test_*.py` await conversion to real `unittest.TestCase`s per owner
+  decision (tracked as a separate bounded task, not yet executed).

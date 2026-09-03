@@ -166,6 +166,33 @@ class ImmutabilityTests(unittest.TestCase):
                 ["backend/domain/supplier_enrichment/pipeline.py"],
             )
 
+    def test_serp_parser_is_protected_at_its_new_canonical_path(self):
+        root = Path(__file__).resolve().parents[2]
+        protected = {
+            str(path.relative_to(root)).replace("\\", "/") for path in protected_paths(root)
+        }
+        self.assertIn("backend/integrations/search/serp_parser.py", protected)
+        self.assertNotIn("serp_parser.py", protected)
+
+    def test_disposable_mutation_of_serp_parser_is_detected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            synthetic_root = Path(directory) / "synthetic_root"
+            serp_path = (
+                synthetic_root / "backend" / "integrations" / "search" / "serp_parser.py"
+            )
+            serp_path.parent.mkdir(parents=True)
+            serp_path.write_text("# disposable serp_parser stand-in\n", encoding="utf-8")
+
+            manifest = Path(directory) / "manifest.json"
+            write_baseline(synthetic_root, manifest)
+            self.assertEqual(verify(synthetic_root, manifest), [])
+
+            serp_path.write_text("# mutated content\n", encoding="utf-8")
+            self.assertEqual(
+                verify(synthetic_root, manifest),
+                ["backend/integrations/search/serp_parser.py"],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

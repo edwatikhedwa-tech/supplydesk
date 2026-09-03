@@ -27,7 +27,7 @@ from mail.repository import DEFAULT_SESSION_LIFETIME_SECONDS, DeliveryResolution
 from mail.runtime import RuntimeConfigurationError, RuntimeSession
 from mail.service import MailService
 from mail.types import ProviderError
-from serp_parser import SerpCollector, read_lines
+from backend.integrations.search.serp_parser import SerpCollector, read_lines
 from backend.integrations.search.xmlriver_client import XmlRiverClient
 
 # Enrichment pipeline (email/INN/company data) — see Documents/28-8/enrichment-and-cache.md.

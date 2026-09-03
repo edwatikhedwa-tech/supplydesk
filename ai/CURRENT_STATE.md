@@ -15,6 +15,33 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903`
+(Pass 10) moved `serp_parser.py` to
+[`backend/integrations/search/serp_parser.py`](../backend/integrations/search/serp_parser.py),
+per explicit owner decision (asked because the diagnostic had flagged this
+file as conflicting with `supplier_discovery_v2/xmlriver_subprocess.py`'s
+hardcoded subprocess path and the Vercel deployment boundary — a genuine
+architectural tension the diagnostic deliberately left to the owner, not a
+technical unknown). A thin root `serp_parser.py` compatibility wrapper
+(delegating only `main()`, same pattern as `collect_contacts.py`'s) keeps
+the documented `python serp_parser.py ...` invocation working — proven
+byte-for-byte identical `--help` output against the pre-move commit.
+`xmlriver_subprocess.py`'s hardcoded default `parser_path` was updated to
+the new canonical location (verified: the default now resolves to an
+existing file). The module's own `load_dotenv(Path(__file__).with_name(".env"))`
+call — which would have silently started looking for `.env` beside the new
+nested path instead of the repo root — was fixed to a `REPO_ROOT`-relative
+lookup, reusing the exact pattern Pass 2 already proved for
+`collect_contacts.py`. 7 confirmed consumers were updated to the canonical
+import path: `supplier_app.py`, `collect_inn.py`,
+`scripts/collect_contacts.py`, `benchmarks/benchmark_models.py`,
+`backend/integrations/search/web_lookup.py`,
+`backend/domain/supplier_identity/email_extractor.py` (lazy import),
+`test_parser.py`. `supplier_discovery_v2/immutability_check.py`'s
+protected-path list was migrated in the same change; the unprotected root
+wrapper carries no logic to drift. The task report is
+[`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903-report.md).
+
 `2026-09-03` — `TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903`
 (Pass 9) split `collect_inn.py`'s reusable deterministic ИНН/ОГРН parsing
 (`INN_URL_HINTS`, `INN_PATHS`, `page_text`, `extract_for_site`,
@@ -595,6 +622,25 @@ on this task's dedicated branch:
   to this task); docs/state/vibecoding validators and `git diff --check`
   passed.
 
+- Bounded root refactor Pass 10 (serp_parser.py move): `backend/integrations/search/serp_parser.py`
+  is now the canonical implementation; root `serp_parser.py` is a thin
+  compatibility wrapper. `supplier_app`, `collect_inn`,
+  `scripts.collect_contacts`, `benchmarks.benchmark_models`,
+  `backend.integrations.search.web_lookup`,
+  `backend.domain.supplier_identity.email_extractor`,
+  `supplier_discovery_v2.xmlriver_subprocess` all import successfully
+  offline; `api.index.handler` imports under `SUPPLYDESK_ENV=test`.
+  `XmlRiverSubprocess()`'s default `parser_path` verified to resolve to the
+  new file and exist. `serp_parser.py --help` (root wrapper) and `python -m
+  backend.integrations.search.serp_parser --help` verified byte-for-byte
+  identical to each other and to the pre-move commit.
+  `tests/test_enrichment_pipeline.py` +
+  `tests/diagnostics/test_collect_inn_llm_path.py` +
+  `supplier_discovery_v2/tests/test_immutability.py` (24/24 PASS, including
+  2 new immutability tests); `test_parser.py`/`test_extractor.py` (custom
+  root scripts, "Все проверки пройдены", exit `0`); official backend suite
+  `468 tests, failures=0, errors=9` (same pre-existing `pwsh`-gap),
+  `skipped=1`.
 - Bounded root refactor Pass 9 (collect_inn.py pipeline/CLI split):
   `backend/domain/supplier_enrichment/pipeline.py` now holds the
   deterministic ИНН/ОГРН parsing extracted from `collect_inn.py`;
@@ -708,22 +754,22 @@ on this task's dedicated branch:
 Pass 2 (CLI compatibility), Pass 3 (`dadata_client.py`), Pass 4
 (`checko_client.py` + immutability migration), Pass 5 (LLM integrations),
 Pass 6 (supplier identity domain), Pass 7 (search integrations), Pass 8
-(`contact_crawler.py`) and Pass 9 (`collect_inn.py` pipeline/CLI split) are
-complete; `backend/{integrations/{registry,llm,search},domain/
-{supplier_identity,supplier_enrichment}}/` now hold 12 moved/extracted
-modules and `FINDING-017`/`FINDING-018` are both resolved. Remaining root
-refactor items each need an explicit owner decision before a further
-bounded task, per the diagnostic and the causal-scope rule (no silent scope
-expansion into a new independent subsystem or unresolved architectural
-conflict):
+(`contact_crawler.py`), Pass 9 (`collect_inn.py` pipeline/CLI split) and
+Pass 10 (`serp_parser.py` move) are complete; `backend/{integrations/
+{registry,llm,search},domain/{supplier_identity,supplier_enrichment}}/` now
+hold 13 moved/extracted modules and `FINDING-017`/`FINDING-018` are both
+resolved. Owner decided (2026-09-03) to move `serp_parser.py` now and to
+convert root `test_*.py` into real `unittest.TestCase`s — the former is
+done (Pass 10); the latter is the one remaining item:
 
-- `serp_parser.py` (`DEFER`): conflicts with
-  `supplier_discovery_v2/xmlriver_subprocess.py`'s hardcoded root subprocess
-  path and the Vercel deployment bundle boundary; requires an explicit owner
-  decision on the subprocess/deployment contract before any move.
-- Root `test_*.py` (`DEPRECATED_REVIEW`): requires an owner decision on
-  discovery policy (stay manual / become unittest cases / retire) before any
-  move.
+- Root `test_*.py` (`test_extractor.py`, `test_inn.py`, `test_parser.py`,
+  `test_verify.py`): owner decided to convert these into real
+  `unittest.TestCase`s included in the official runner
+  (`scripts/run_test_suite.py`), not delete or leave as manual scripts. Not
+  yet executed — needs its own bounded task (verify no content/coverage is
+  lost in the conversion, decide the destination — `tests/` directly or a
+  `tests/legacy/` subpackage — and confirm `scripts/run_test_suite.py`'s
+  discovery picks them up).
 - `supplier_app.py`/`api/index.py` remain `KEEP_ROOT` — protected local and
   serverless entrypoints, not move candidates.
 
@@ -774,6 +820,7 @@ limitations.
 - Search integrations move report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903-report.md).
 - Contact crawler move report (Pass 8): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903-report.md).
 - Collect-inn pipeline/CLI split report (Pass 9): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903-report.md).
+- Serp-parser move report (Pass 10): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903-report.md).
 - Repository layout map: [`docs/architecture/REPOSITORY_LAYOUT.md`](../docs/architecture/REPOSITORY_LAYOUT.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).

@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 
 from backend.domain.supplier_identity.email_extractor import EmailHit, extract_from_html, root_domain
 from backend.domain.supplier_identity.inn_extractor import InnHit, inn_kind, normalize_inn, validate_inn_checksum
-from serp_parser import host_of
+from backend.integrations.search.serp_parser import host_of
 
 log = logging.getLogger("web")
 

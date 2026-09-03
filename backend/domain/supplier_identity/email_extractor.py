@@ -268,7 +268,7 @@ def validate_email(email: str) -> str | None:
 
 def root_domain(host: str) -> str:
     """Копия логики из serp_parser, продублирована, чтобы модуль был автономным."""
-    from serp_parser import root_domain_of
+    from backend.integrations.search.serp_parser import root_domain_of
 
     return root_domain_of(host)
 
