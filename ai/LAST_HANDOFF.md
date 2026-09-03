@@ -1,15 +1,70 @@
 ---
-document_id: HANDOFF-015
+document_id: HANDOFF-016
 status: CURRENT
 canonical: false
-owner: Codex
+owner: project-control
 updated_at: 2026-09-03
-based_on_commit: 10b7922df966f638839ff93eda7668d319c257a7
+based_on_commit: TASK-ARCHITECTURE-REFACTOR-SERIES-PAUSE-20260903
 ---
 
 # Last Handoff
 
-This current handoff records `TASK-COLD-START-WORKSPACE-HARD-GATE-20260903`.
+This current handoff records `TASK-ARCHITECTURE-REFACTOR-SERIES-PAUSE-20260903`.
+The older workspace-hard-gate handoff is retained below as historical context
+and is not the current task state.
+
+## Текущая задача
+
+Зафиксировать решение владельца: текущая серия bounded-рефакторингов
+(`supplier_app.py`/`mail/repository.py`) закрыта, а оставшаяся архитектурная
+программа поставлена на паузу до отдельного прямого поручения владельца.
+Read-only recovery audit на этой ветке (@ `a88334deb59f32d43f79afca63f71fc7bf263da0`)
+подтвердил `NO_UNFINISHED_REFACTOR_FOUND`.
+
+## Что изменено
+
+- `ai/DECISIONS.md`: добавлено `DECISION-014` — закрытие серии, пауза
+  оставшейся программы, явное правило возобновления только по прямому
+  поручению владельца (Task ID/scope/non-goals/allowed files/acceptance).
+- `ai/CURRENT_STATE.md`: зафиксирован результат recovery audit, список из
+  7 завершённых и уже интегрированных задач, статус CI, точный результат
+  тестов (`tests=504, failures=0, errors=9, skipped=1` — 9 ошибок не
+  исправлялись, это тот же pre-existing gap) и статус `PAUSED` для
+  оставшихся направлений.
+- `ai/LAST_HANDOFF.md` (этот файл), `ai/CHANGELOG.md`, `ai/INTERACTION_LOG.md`:
+  зафиксирована хронология closeout.
+- `ai/ACTIVE_TASK.md`: обновлён и остаётся `IDLE`.
+- Продуктовый код, frontend, backend, тесты, зависимости и
+  `ai/DEFERRED_FINDINGS.md` не изменялись.
+
+## Доказательства и ограничения
+
+- Workspace Guard перед изменениями: `PASS`. Ветка и HEAD на входе совпали с
+  проверенными в recovery audit
+  (`integration/current-architecture-governance-20260903` @
+  `a88334deb59f32d43f79afca63f71fc7bf263da0`), рабочее дерево было чистым.
+- Это исключительно state/documentation-only задача: product code, frontend,
+  backend, тесты и зависимости не запускались повторно и не изменялись;
+  полный test suite повторно не запускался — действующий workflow для
+  state-only closeout требует только документационных/state-проверок, а не
+  product-тестов. Точный результат тестов зафиксирован из уже подтверждённого
+  прогона той же сессии (`tests=504, failures=0, errors=9, skipped=1`), не
+  переоценён и не смягчён формулировкой "все тесты прошли".
+- `git diff --check`: `PASS`.
+
+## Следующий рациональный шаг
+
+Ничего не начинать самостоятельно. Возобновление любого из приостановленных
+направлений (campaign lifecycle, queue/send-attempt, inbox-reply,
+`supplier_app.py` mail HTTP batch C, dispatch-table conversion, дальнейшие
+architecture-enforcement изменения) требует нового прямого поручения
+владельца с отдельными Task ID, scope, non-goals, разрешённым списком файлов
+и acceptance-критериями — а не вывода из `ai/CURRENT_STATE.md`,
+`ai/NEXT_STAGES.md`, отчёта или формулировки "next step".
+
+---
+
+This handoff records `TASK-COLD-START-WORKSPACE-HARD-GATE-20260903`.
 The older default-operating-model handoff is retained below as historical
 context and is not the current task state.
 

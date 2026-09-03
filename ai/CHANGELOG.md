@@ -3,6 +3,34 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-03 — REFACTOR SERIES CLOSEOUT + ARCHITECTURE PROGRAM PAUSED
+
+- A read-only recovery audit on `integration/current-architecture-governance-20260903`
+  @ `a88334deb59f32d43f79afca63f71fc7bf263da0` found `NO_UNFINISHED_REFACTOR_FOUND`:
+  every bounded extraction pass reached full close and is already integrated;
+  the remaining architecture program has zero commits anywhere in the
+  repository — only prose next-step language.
+- Owner decision recorded as `DECISION-014`: the current bounded-refactor
+  series (`TASK-BOUNDED-SUPPLIER-APP-CONFIG-EXTRACT-20260903`,
+  `TASK-BOUNDED-SUPPLIER-APP-ENRICHMENT-EXTRACT-20260903`,
+  `TASK-BOUNDED-MAIL-REPOSITORY-DB-COMPAT-EXTRACT-20260903`,
+  `TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903`,
+  `TASK-BOUNDED-SUPPLIER-APP-ROUTE-HELPERS-EXTRACT-20260903`,
+  `TASK-BOUNDED-MAIL-REPOSITORY-AUTH-ACCOUNTS-EXTRACT-20260903`,
+  `TASK-BOUNDED-MAIL-REPOSITORY-TEMPLATES-EXTRACT-20260903`) is closed. The
+  remaining architecture program (campaign lifecycle extraction,
+  queue/send-attempt refactor, inbox-reply refactor, `supplier_app.py` mail
+  HTTP batch C, dispatch-table conversion, further architecture-enforcement
+  changes) is `PAUSED` pending a new direct owner instruction with its own
+  Task ID, scope, non-goals, allowed files and acceptance criteria.
+- Classifier-selected CI (`33763726815`) on this HEAD is `SUCCESS`. Exact
+  suite result: `tests=504, failures=0, errors=9, skipped=1` — the 9 errors
+  are the same pre-existing `pwsh`-gap documented across every prior task on
+  this line and were **not** fixed here; not in this closeout's scope.
+- State-only task: no product code, frontend, backend, test or dependency
+  file changed; `ai/DEFERRED_FINDINGS.md` unchanged; `ai/ACTIVE_TASK.md`
+  remains `IDLE`.
+
 ## 2026-09-03 — COLD-START WORKSPACE HARD GATE
 
 - Added `SESSION_WORKSPACE_HARD_GATE` before all project analysis, including

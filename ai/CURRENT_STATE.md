@@ -15,6 +15,34 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-ARCHITECTURE-REFACTOR-SERIES-PAUSE-20260903` (state-only
+closeout; no product code changed): a read-only recovery audit on this branch
+@ `a88334deb59f32d43f79afca63f71fc7bf263da0` returned `NO_UNFINISHED_REFACTOR_FOUND`
+— recorded as `DECISION-014`. The owner closed the current bounded-refactor
+series: `TASK-BOUNDED-SUPPLIER-APP-CONFIG-EXTRACT-20260903`,
+`TASK-BOUNDED-SUPPLIER-APP-ENRICHMENT-EXTRACT-20260903`,
+`TASK-BOUNDED-MAIL-REPOSITORY-DB-COMPAT-EXTRACT-20260903`,
+`TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903`,
+`TASK-BOUNDED-SUPPLIER-APP-ROUTE-HELPERS-EXTRACT-20260903`,
+`TASK-BOUNDED-MAIL-REPOSITORY-AUTH-ACCOUNTS-EXTRACT-20260903`, and
+`TASK-BOUNDED-MAIL-REPOSITORY-TEMPLATES-EXTRACT-20260903` are all complete and
+already integrated in this HEAD. Classifier-selected CI (`33763726815`: Change
+Classification, Fast Control, Backend Full, Full Control, CI Summary) is
+`SUCCESS` on this HEAD. Exact suite result: `tests=504, failures=0, errors=9,
+skipped=1` — the `9` errors are the same pre-existing `pwsh`-gap documented
+across every prior task on this line and were **not** fixed by this closeout;
+no new regression from the completed bounded passes was found. The remaining
+architecture program (campaign lifecycle extraction, queue/send-attempt
+refactor, inbox-reply refactor, `supplier_app.py` mail HTTP batch C,
+dispatch-table conversion, further architecture-enforcement changes) is
+`PAUSED` — zero commits exist for any of them anywhere in the repository —
+and needs a new direct owner instruction with its own Task ID, scope,
+non-goals, allowed files and acceptance criteria before either agent starts
+it; `ai/CURRENT_STATE.md`, `ai/NEXT_STAGES.md`, a report or a
+`ai/DEFERRED_FINDINGS.md` entry do not by themselves authorize resumption.
+Open `FINDING-*` entries in `ai/DEFERRED_FINDINGS.md` are unchanged by this
+closeout and remain independent technical debt.
+
 `2026-09-03` — `TASK-COLD-START-WORKSPACE-HARD-GATE-20260903` is complete with
 `PASS_WITH_LIMITATIONS`. The canonical policy defines
 `SESSION_WORKSPACE_HARD_GATE` before any project-specific analysis, including

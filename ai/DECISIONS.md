@@ -13,6 +13,39 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-014 — Close the current bounded-refactor series and pause the remaining architecture program
+
+- Decision ID: `DECISION-014`
+- Date: `2026-09-03`
+- Status: `ACTIVE`
+- Context: A read-only recovery audit on `integration/current-architecture-governance-20260903`
+  @ `a88334deb59f32d43f79afca63f71fc7bf263da0` found `NO_UNFINISHED_REFACTOR_FOUND`:
+  all seven bounded `supplier_app.py`/`mail/repository.py` extraction passes
+  reached full close (implement, tests, report, `ACTIVE_TASK: IDLE`) and are
+  already integrated; the remaining architecture-program passes (campaign
+  lifecycle extraction, queue/send-attempt refactor, inbox-reply refactor,
+  `supplier_app.py` mail HTTP batch C, dispatch-table conversion, further
+  architecture-enforcement changes) have zero commits anywhere in the
+  repository — only prose next-step language in task reports and
+  `ai/CURRENT_STATE.md`.
+- Decision: The owner declares the current bounded-refactor series closed.
+  The remaining architecture program is paused. Neither Codex nor Claude Code
+  may start any of the listed paused directions on the basis of
+  `ai/CURRENT_STATE.md`, `ai/NEXT_STAGES.md`, a task report, an
+  `ai/DEFERRED_FINDINGS.md` entry, or "next step" wording alone. Resumption
+  requires a new, direct owner instruction naming a Task ID, scope,
+  non-goals, allowed files and acceptance criteria.
+- Reason: Prevents an agent from treating documented next-step prose as
+  standing authorization, matching the recovery audit's own finding that
+  further passes were already scoped by their own reports as requiring a
+  separate owner decision.
+- Consequences: `ai/ACTIVE_TASK.md` remains `IDLE`. Open `FINDING-*` entries
+  in `ai/DEFERRED_FINDINGS.md` remain independent technical debt, are not
+  part of this pause, and do not block ordinary product work unless a future
+  task's files overlap them. The nine pre-existing `errors=9` in the official
+  suite remain unresolved and out of this closeout's scope.
+- Related task: `TASK-ARCHITECTURE-REFACTOR-SERIES-PAUSE-20260903`.
+
 ## DECISION-013 — Make the workspace gate a pre-analysis stop
 
 - Decision ID: `DECISION-013`
