@@ -15,6 +15,25 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-BOUNDED-SUPPLIER-APP-CONFIG-EXTRACT-20260903` (Pass 1
+of an owner-directed program to turn `supplier_app.py` into a thin
+composition entrypoint and split `mail/repository.py` by responsibility,
+following two read-only structural audits): `Config`, env-parsing helpers,
+`load_dotenv`, `yandex_provider_factory` moved to
+[`backend/app_config.py`](../backend/app_config.py); `FRONTEND_DIST`,
+`_looks_like_source_path`, `load_fixture_data` moved to
+[`backend/http_static.py`](../backend/http_static.py). All names remain
+importable from `supplier_app` (re-export), so `api/index.py` and operator
+scripts are unaffected. Incidentally found and fixed a local-environment-only
+`nh3` DLL load failure (unrelated to this change — reproduced with a bare
+`import nh3`) by reinstalling the package (`0.3.6` → `0.3.7`, both satisfy
+`requirements.txt`'s `nh3>=0.3,<0.4`); no dependency version change, no
+system/security setting touched. Official suite: `497 tests, failures=0,
+errors=9` (established baseline), `skipped=1`. `supplier_discovery_v2`
+stays an isolated pilot per explicit owner decision; `FINDING-009` stays out
+of scope pending a separate owner-approved security task. The task report is
+[`ai/reports/TASK-BOUNDED-SUPPLIER-APP-CONFIG-EXTRACT-20260903-report.md`](reports/TASK-BOUNDED-SUPPLIER-APP-CONFIG-EXTRACT-20260903-report.md).
+
 `2026-09-03` — `TASK-FIX-FINDING-019-DIAGNOSTIC-RUNNER-ENCODING-20260903`
 fixed `FINDING-019`: `scripts/diagnostics/diagnostic_runner.py`'s
 `secret_path_check` called `subprocess.run(..., text=True, ...)` without an

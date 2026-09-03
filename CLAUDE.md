@@ -111,6 +111,11 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
 - `backend/domain/supplier_enrichment/` — supplier-enrichment logic split out of the root flat
   package: `contact_crawler.py` (moved) and `pipeline.py` (the reusable ИНН/ОГРН parsing
   extracted from `collect_inn.py`, shared by `supplier_app.py` and the CLI).
+- `backend/app_config.py` / `backend/http_static.py` — `Config`, env-parsing helpers,
+  `load_dotenv`, `yandex_provider_factory` and static-asset/fixture helpers extracted out of
+  `supplier_app.py` (first step of turning it into a thin composition entrypoint; `SupplierApp`/
+  `SupplierHandler` stay in `supplier_app.py` for now). All names remain importable from
+  `supplier_app` via re-export — `api/index.py` and operator scripts are unaffected.
 - `collect_inn.py` stays at root as a thinned CLI (argparse, crawl/LLM/web/DaData
   orchestration, CSV output) importing its extracted pipeline back — this is deliberate
   structure, not an oversight. Three operator CLIs already moved with thin root compatibility
