@@ -15,6 +15,27 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-BOUNDED-MAIL-REPOSITORY-AUTH-ACCOUNTS-EXTRACT-20260903`
+(Pass 2 of splitting `mail/repository.py`, following a fresh
+cross-cluster-coupling audit of all ~220 methods): ~25 users/sessions/
+OAuth-state/mail-account CRUD methods moved to
+[`mail/auth_accounts.py`](../mail/auth_accounts.py) as `AuthAccountsMixin`
+— the one cluster confirmed to have zero private-helper coupling with any
+other cluster (audit-verified before the move, not assumed). A circular
+import was found and resolved before moving code:
+`iso_now`/`iso_after`/`utc_now`/`DEFAULT_SESSION_LIFETIME_SECONDS` moved to
+a new, independent [`mail/time_utils.py`](../mail/time_utils.py) that both
+`mail/repository.py` and `mail/auth_accounts.py` import from directly;
+`mail/repository.py` re-exports them so `mail/queue.py`,
+`backend/app_config.py` and 3 test files needed no changes. Four methods
+physically interleaved in the original line range (`get_request`,
+`request_positions`, `request_supplier`, `set_supplier_manual_inn`) belong
+to the Request/Supplier domains instead and were deliberately left in
+`mail/repository.py`. `mail/repository.py`: `8816` → `8297` lines.
+Official suite: `497 tests, failures=0, errors=9` (established baseline),
+`skipped=1`. The task report is
+[`ai/reports/TASK-BOUNDED-MAIL-REPOSITORY-AUTH-ACCOUNTS-EXTRACT-20260903-report.md`](reports/TASK-BOUNDED-MAIL-REPOSITORY-AUTH-ACCOUNTS-EXTRACT-20260903-report.md).
+
 `2026-09-03` — `TASK-BOUNDED-SUPPLIER-APP-ROUTE-HELPERS-EXTRACT-20260903`
 (batches A+B of `SupplierHandler` decomposition): `_thread_messages`/
 `_request_route`/`_request_action` moved to

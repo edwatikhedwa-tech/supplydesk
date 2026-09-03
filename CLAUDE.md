@@ -106,6 +106,14 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
   adapters) extracted out of `mail/repository.py` (first step of splitting that
   8800+-line file by responsibility); `mail/repository.py` imports it back, no consumer
   outside the mail package ever referenced these names directly.
+  `mail/time_utils.py` — `UTC`/`utc_now`/`iso_now`/`iso_after`/`DEFAULT_SESSION_LIFETIME_SECONDS`,
+  split out so both `mail/repository.py` and `mail/auth_accounts.py` can depend on them
+  without a circular import; `mail/repository.py` re-exports them for `mail/queue.py`,
+  `backend/app_config.py` and tests, which still import from `mail.repository` unchanged.
+  `mail/auth_accounts.py` — `AuthAccountsMixin`: users/sessions/OAuth-state/mail-account CRUD
+  (`seed_user`, `authenticate`, `create_session`, `save_mail_account`, etc.) extracted out of
+  `MailRepository` — the one cluster confirmed to have zero private-helper coupling with any
+  other cluster in the file. `class MailRepository(AuthAccountsMixin)` composes it in.
 - `backend/integrations/{registry,llm,search}/` — provider adapters moved out of the root flat
   package: `dadata_client.py`, `checko_client.py`, `llm_fallback.py`, `routerai_client.py`,
   `web_lookup.py`, `xmlriver_client.py`, `serp_parser.py` (the last with a thin root
