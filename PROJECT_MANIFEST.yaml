@@ -14,11 +14,14 @@ project:
 
 workspace_policy:
   local_default_workspace: C:\Users\edwat\SupplyDesk
+  physical_workspace_identity: C:\Users\edwat\SupplyDesk
   legacy_root: C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS
   legacy_usage: RECOVERY_ONLY
   legacy_forbidden_actions: [development, backend, frontend_build, migrations, canonical_state_changes]
   legacy_recovery_requires_explicit_task: true
   explicit_override: scripts/assert_workspace.ps1 -ExpectedRoot <absolute path>
+  session_gate: SESSION_WORKSPACE_HARD_GATE
+  branch_policy: task-dependent; verify current Git/task state after the workspace gate passes
   automatic_supplydesk_variant_discovery: FORBIDDEN
 
 baseline:

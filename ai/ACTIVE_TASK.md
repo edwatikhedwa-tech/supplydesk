@@ -1,19 +1,19 @@
 ---
-document_id: TASK-LOCK-032
+document_id: TASK-LOCK-033
 status: CURRENT
 canonical: false
-owner: Claude
+owner: project-control
 updated_at: 2026-09-03
-based_on_commit: f180d91
+based_on_commit: MERGE-integration/current-architecture-governance-20260903
 ---
 
 # Active Task
 
 Task ID: `NONE`
-Agent: `Claude`
+Agent: `Codex`
 Mode: `IDLE`
-Started: `2026-09-03`
-Scope: `No active task; TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903 (batch A of SupplierHandler decomposition) is closed: 16 auth/session/OAuth methods moved to backend/http_auth.py as AuthHandlerMixin, composed via inheritance; do_GET/do_POST/do_DELETE and route ordering untouched, no dispatch table introduced; FINDING-020 recorded (no 404/SPA-fallback test coverage, out of scope); 497 tests / 0 failures. Next: batch B (request route helpers), batch C (global-supplier/mail route helpers), then DISPATCH_TABLE decision, then mail/repository.py mixin split.`
+Started: `—`
+Scope: `no active project task; integration branch integration/current-architecture-governance-20260903 was created by merging origin/claude/zen-goldwasser-022bb1 (architecture line — TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903 closed: 16 auth/session/OAuth methods moved to backend/http_auth.py as AuthHandlerMixin, plus enrichment/config/mail-db-compat extractions; 497 tests / 0 failures; next planned steps are batch B/C of SupplierHandler decomposition, not authorized by this consolidation) with codex/TASK-COLD-START-WORKSPACE-HARD-GATE-20260903 (governance line — SESSION_WORKSPACE_HARD_GATE, READ_ONLY hard gate, DEFAULT_PROJECT_OPERATING_MODEL and related default-operating-model rules; PASS_WITH_LIMITATIONS, fresh Claude behavioral trace remains NOT VERIFIED). No further supplier_app/mail refactor is authorized by this consolidation task.`
 Allowed files: `none — no active task`
-Status: `IDLE — TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903 completed; batch B not yet started`
+Status: `IDLE — integration merge of the two lines completed; consolidation only, no new refactor started`
 Last update: `2026-09-03`

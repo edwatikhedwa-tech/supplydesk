@@ -13,6 +13,50 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-013 — Make the workspace gate a pre-analysis stop
+
+- Decision ID: `DECISION-013`
+- Date: `2026-09-03`
+- Status: `ACTIVE`
+- Context: The prior gate was described before mutations and runtime/build
+  actions, but a read-only or architecture/cleanup task could begin in the
+  wrong checkout. The legacy checkout also had stale adapter instructions.
+- Decision: Require `SESSION_WORKSPACE_HARD_GATE` as the first project action,
+  including `READ_ONLY`. Permit only root identity, the guard, the canonical
+  pointer and a legacy marker before the gate; a failed guard is a hard stop.
+  Keep the physical canonical workspace stable while treating branch identity
+  as task-dependent. Update the legacy adapter/marker locally without
+  synchronizing the legacy checkout into the canonical branch.
+- Reason: It prevents analysis and tool selection from operating on a stale or
+  user-modified checkout, while preserving explicit worktree/CI use through
+  `-ExpectedRoot`.
+- Consequences: Wrong-root read-only audits are intentionally blocked; a fresh
+  Claude proof remains unavailable while its non-interactive API harness
+  returns malformed HTTP 200 responses. No product behavior changes.
+- Related task: `TASK-COLD-START-WORKSPACE-HARD-GATE-20260903`.
+
+## DECISION-012 — Make the project operating model the default agent contract
+
+- Decision ID: `DECISION-012`
+- Date: `2026-09-03`
+- Status: `ACTIVE`
+- Context: The project had canonical preflight, tool-selection, verification and
+  delivery rules, but ordinary prompts could still be interpreted as requiring
+  the owner to repeat tool names or approve direct causal updates.
+- Decision: After successful Session Preflight, agents inherit the canonical
+  project operating model for the healthy session. The agent selects the
+  minimum sufficient tools, expands only direct causal dependencies, continues
+  delivery under the declared mode, and stops for real owner decisions only.
+  The full behavior is owned by `ai/VIBECODING_RULES.md`; `ai/AI_CONTRACT.md`
+  keeps the compatibility pointer and safety boundary.
+- Reason: One canonical default removes repeated prompt boilerplate while
+  preserving destructive, security, live-external and upstream approval gates.
+- Consequences: A neutral fresh-session canary is required to prove behavior;
+  static policy consistency alone cannot be reported as universal behavioral
+  proof. The existing browser split, Code Rot role, Bug Reproducer gates,
+  Skill Doctor periodic policy and tool-usage reporting remain unchanged.
+- Related task: `TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903`.
+
 ## DECISION-011 — Keep architecture lifecycle and browser auth boundaries explicit
 
 - Decision ID: `DECISION-011`

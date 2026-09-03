@@ -2,6 +2,26 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-03 — TASK-COLD-START-WORKSPACE-HARD-GATE-20260903
+
+- Read-only discovery confirmed two checkouts: the legacy OneDrive checkout
+  was dirty and the canonical `C:\Users\edwat\SupplyDesk` checkout was the
+  intended project root. No user data, database, runtime or mail paths were
+  changed.
+- A fresh Claude legacy trace before the adapter update launched project-root
+  audit work instead of stopping, confirming the bootstrap gap. The exact
+  child was interrupted; unrelated Claude processes were left untouched.
+- Updated the canonical gate/contract/adapters/manifest and focused diagnostics
+  in one task-scoped commit. Updated only the legacy adapter/contract/marker
+  locally so a fresh agent entering the stale checkout receives a stop signal.
+- Post-fix Codex Canary 1 blocked the legacy checkout before project analysis
+  and passed the canonical checkout before continuing a read-only audit.
+  Claude A/B attempts returned an API 200 malformed-response error with no
+  usable post-fix behavioral trace.
+- Local validators, the guard, focused tests and `doctor -Plan` were run.
+  Publication is a separate final action after the commit and is recorded in
+  the owner response.
+
 ## 2026-09-03 — TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903
 
 - Owner instruction: "почини, а потом продолжи рефакторинг!" — first
@@ -1169,3 +1189,21 @@ was unavailable; remote SHA and FAST CI were not checked.
 State change: after DNS access recovered, the same task branch was published;
 remote SHA matches `301934fb0daa1f49cad8c793c9a5acbd30b10152`, and FAST Control CI
 run `33645377974` passed. Full product suites were skipped by report-only scope.
+
+## 2026-09-03 — TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903
+
+State change: added the canonical default operating model, automatic minimum
+sufficient tool selection, owner-reminder independence, causal-scope delivery,
+real-stop-only handling and minimum owner prompt rules. Replaced the conflicting
+file-count change-budget wording with the causal review thresholds.
+
+State change: static policy validator, documentation/state validators,
+`git diff --check` and `18/18` focused governance tests passed. Candidate commit
+`2678370f` was created with a clean tree. The current task's direct scope was
+limited to governance and evidence; no product code, runtime, database, mail,
+provider or frontend state changed.
+
+State change: neutral fresh child attempts for Claude and Codex contained no tool
+names but returned no usable child trace; both owned hung processes were stopped
+by exact PID. Cold-start behavior is therefore `NOT VERIFIED`, not simulated or
+claimed from the parent session.

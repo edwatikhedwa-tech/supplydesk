@@ -1,13 +1,94 @@
 ---
-document_id: HANDOFF-013
+document_id: HANDOFF-015
 status: CURRENT
 canonical: false
-owner: Claude
+owner: Codex
 updated_at: 2026-09-03
-based_on_commit: 6af2af1822820e996f1126b8a1b26d19be0000f0
+based_on_commit: 10b7922df966f638839ff93eda7668d319c257a7
 ---
 
 # Last Handoff
+
+This current handoff records `TASK-COLD-START-WORKSPACE-HARD-GATE-20260903`.
+The older default-operating-model handoff is retained below as historical
+context and is not the current task state.
+
+## Текущая задача
+
+Ужесточить границу канонического workspace до любой проектной работы,
+включая read-only-аудит, и доказать свежий запуск агента без изменения
+продуктового кода.
+
+## Что изменено
+
+- `ai/VIBECODING_RULES.md` и `ai/AI_CONTRACT.md` требуют
+  `SESSION_WORKSPACE_HARD_GATE` до анализа; неверный корень останавливает
+  работу с `BLOCKED_WRONG_WORKSPACE`.
+- `AGENTS.md`, `CLAUDE.md`, `PROJECT_MANIFEST.yaml` и диагностические тесты
+  указывают на один канонический путь и task-dependent ветку.
+- В legacy checkout локально обновлены только adapter/contract/marker,
+  чтобы свежий агент там увидел указатель и остановился. Эти три файла не
+  синхронизировались в canonical commit и не публиковались.
+- `ai/ACTIVE_TASK.md` возвращён в `IDLE`; создан task report.
+
+## Доказательства и ограничения
+
+- `assert_workspace.ps1`: canonical `PASS`, legacy `BLOCKED_WRONG_WORKSPACE`.
+- Codex Canary 1: legacy `PASS` — остановился до анализа; canonical `PASS` —
+  прошёл gate и продолжил read-only-аудит.
+- Claude post-fix A/B: `NOT VERIFIED` из-за API 200 malformed-response; ранее
+  зафиксирован wrong-workspace trace, который подтвердил bootstrap gap до
+  локального legacy adapter fix.
+- Фокусные governance tests: `8/8`; validators и `doctor -Plan` прошли.
+
+## Следующий рациональный шаг
+
+Проверить classifier-selected FAST/control CI после публикации; FULL CI,
+Canaries 2–4, runtime и продуктовые изменения остаются вне этой задачи.
+
+---
+
+This current handoff records `TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903`.
+The older search-integrations and CI handoff is retained below as historical
+context and is not the current task state.
+
+## Текущая задача
+
+Сделать каноническую модель работы SupplyDesk default-контрактом агента и
+проверить её cold-start поведением без названий tools/skills в child prompt.
+
+## Что изменено
+
+- `ai/VIBECODING_RULES.md`: добавлены `DEFAULT_PROJECT_OPERATING_MODEL`,
+  `AUTOMATIC_TOOL_SELECTION`, `USER_TOOL_REMINDER_NOT_REQUIRED`,
+  `DEFAULT_NOT_NEEDED_DISCIPLINE`, `AUTONOMOUS_DELIVERY_DEFAULT`,
+  `REAL_STOP_ONLY` и `OWNER_PROMPT_MINIMUM`; `last_corrected` обновлён до
+  `2026-09-03` при сохранении версии `1.3`.
+- `ai/AI_CONTRACT.md`: старое file-count stop wording заменено на pointer к
+  canonical causal change-budget model.
+- `ai/tools/validate_vibecoding.py` и governance tests: добавлены static
+  markers, negative check старого hard-stop и исключение вложенных worktrees
+  из canonical policy discovery.
+- State/report records and `ai/ACTIVE_TASK.md` closeout the task lifecycle.
+
+## Доказательства и ограничения
+
+- Workspace Guard, policy/docs/state validators, static contradiction audit,
+  `git diff --check` and `18/18` focused governance tests passed.
+- Candidate commit: `2678370f`; tree was clean before cold-start attempts.
+- Claude `-p --no-session-persistence` returned `exit 1` with no events/result;
+  Codex `exec --ephemeral --json --sandbox read-only` produced no JSONL during
+  bounded waiting. Only the exact owned child processes were stopped.
+- Neutral child prompts contained no tool/skill/instruction names. No tracked
+  product file changed. Fresh Claude/Codex behavior is `NOT VERIFIED`; canaries
+  2–4 were not run and no synthetic behavior was reported as proof.
+
+## Следующий рациональный шаг
+
+After a working non-interactive Claude or Codex auth/backend is available, rerun
+only the failed cold-start canaries against this committed policy.
+
+## Historical previous handoff — HISTORICAL — NOT CURRENT
 
 This handoff records two pieces of work done under one owner instruction
 ("почини, а потом продолжи рефакторинг!"): (1) a root-cause fix for the

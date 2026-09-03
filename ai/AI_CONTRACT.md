@@ -55,23 +55,30 @@ verification.
     result must carry a date/scope and a checked source. If it cannot be
     rechecked, mark it `REPORTED` or `NOT VERIFIED`; if it is old, mark the
     document `HISTORICAL — NOT CURRENT` and link to the canonical state.
-13. Before any repository mutation, runtime start, database write, migration,
+13. Apply the canonical `SESSION_WORKSPACE_HARD_GATE` in
+    `ai/VIBECODING_RULES.md` before any project-specific analysis or execution,
+    including `READ_ONLY`. Before that gate, inspect only workspace identity,
+    the guard, the canonical pointer and an applicable legacy marker. A
+    mismatch is `BLOCKED_WRONG_WORKSPACE` and a STOP; do not auto-cd or invoke
+    project-analysis skills. A `LEGACY_WORKSPACE_DO_NOT_DEVELOP_HERE.txt`
+    marker means `STOP_PROJECT_WORK_HERE`, not permission for a read-only audit.
+14. Before any repository mutation, runtime start, database write, migration,
     artifact-producing test, build, commit or push, run
     `scripts/assert_workspace.ps1`. The default local root is the canonical
     workspace; an explicit `-ExpectedRoot <absolute path>` is required for a
     deliberate Git worktree or CI checkout. A guard mismatch is a STOP.
 
-14. Load only the skills and tools relevant to the classified task. Record an
-    expected change budget before implementation; if the scope grows to more
-    than roughly twice that budget or adds a new file category, stop and report
-    `CHANGE BUDGET EXCEEDED` before proceeding.
+15. Load only the skills and tools relevant to the classified task. Apply the
+    canonical `## Change budget` model in `ai/VIBECODING_RULES.md`: it is an
+    early-warning scope review, not a file-count gate. Direct causal
+    dependencies stay in scope automatically; file count alone is never a STOP.
 
-15. For a confirmed technical error, fix the root cause and add the smallest
+16. For a confirmed technical error, fix the root cause and add the smallest
     regression test when recurrence is possible. Use a tested helper only for
     a repeated cross-cutting pattern; do not turn one implementation detail
     into a global rule or preventive sweep without evidence.
 
-16. Update state and reports by factual scope: small tasks change only the
+17. Update state and reports by factual scope: small tasks change only the
     affected documents, while milestone, architecture and control changes may
     update relevant global records. Preserve concise traceability without
     duplicating the same fact across the full state pack.
@@ -356,6 +363,13 @@ outcome and an acceptance criterion.
 - `MINIMUM_SUFFICIENT_TOOLSET`: use the smallest set of tools that supplies the
   required evidence. The number of tools listed is not a quality metric and
   must not create pressure to use more tools.
+
+- `DEFAULT_PROJECT_OPERATING_MODEL`, `AUTOMATIC_TOOL_SELECTION`,
+  `USER_TOOL_REMINDER_NOT_REQUIRED`, `AUTONOMOUS_DELIVERY_DEFAULT`,
+  `REAL_STOP_ONLY` and `OWNER_PROMPT_MINIMUM` are canonical execution rules in
+  `ai/VIBECODING_RULES.md`. After a successful Session Preflight, agents apply
+  those rules by default for the healthy session; adapters must point to them,
+  not copy their behavior.
 
 ## Security and data boundary
 
