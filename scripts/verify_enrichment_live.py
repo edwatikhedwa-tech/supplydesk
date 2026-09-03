@@ -21,7 +21,7 @@ from collect_inn import (  # noqa: E402
     extract_for_site,
     extract_legal_ids_for_site,
 )
-from contact_crawler import ContactCrawler  # noqa: E402
+from backend.domain.supplier_enrichment.contact_crawler import ContactCrawler  # noqa: E402
 from backend.domain.supplier_identity.inn_resolver import collect_name_hints_from_pages, resolve_inn_by_legal_ids  # noqa: E402
 from supplier_app import load_dotenv  # noqa: E402
 

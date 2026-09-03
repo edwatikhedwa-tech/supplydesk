@@ -13,7 +13,7 @@ def protected_paths(root: Path) -> list[Path]:
         candidate = root / name
         if candidate.is_file():
             paths.append(candidate)
-    for name in ("serp_parser.py", "supplier_app.py", "contact_crawler.py", "collect_inn.py"):
+    for name in ("serp_parser.py", "supplier_app.py", "collect_inn.py"):
         candidate = root / name
         if candidate.is_file():
             paths.append(candidate)
@@ -34,6 +34,11 @@ def protected_paths(root: Path) -> list[Path]:
         candidate = root / "backend" / "integrations" / "search" / name
         if candidate.is_file():
             paths.append(candidate)
+    # Moved out of the flat root package by
+    # TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903.
+    contact_crawler = root / "backend" / "domain" / "supplier_enrichment" / "contact_crawler.py"
+    if contact_crawler.is_file():
+        paths.append(contact_crawler)
     repository = root / "mail" / "repository.py"
     if repository.is_file():
         paths.append(repository)

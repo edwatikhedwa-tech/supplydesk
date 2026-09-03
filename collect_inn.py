@@ -26,7 +26,7 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from contact_crawler import ContactCrawler, SiteResult
+from backend.domain.supplier_enrichment.contact_crawler import ContactCrawler, SiteResult
 from backend.domain.supplier_identity.inn_extractor import (
     InnHit,
     LegalIdHit,

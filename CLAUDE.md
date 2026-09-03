@@ -106,8 +106,10 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
   `web_lookup.py`, `xmlriver_client.py`.
 - `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the
   root flat package: `email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`.
+- `backend/domain/supplier_enrichment/` — supplier-enrichment crawling logic moved out of the
+  root flat package: `contact_crawler.py`.
 - Root-level `*.py` files besides `supplier_app.py`/`api/` (e.g. `serp_parser.py`,
-  `contact_crawler.py`, `collect_inn.py`) are a flat package of supplier-discovery/extraction
+  `collect_inn.py`) are a flat package of supplier-discovery/extraction
   modules genuinely imported by the backend — this is deliberate structure, not clutter; don't
   move them without checking what imports them first. Two operator CLIs already moved to
   `scripts/collect_contacts.py` and `benchmarks/benchmark_models.py`, with thin root

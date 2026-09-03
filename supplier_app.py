@@ -40,7 +40,7 @@ from collect_inn import (
     extract_legal_ids_for_site,
     page_text,
 )
-from contact_crawler import ContactCrawler, SiteResult
+from backend.domain.supplier_enrichment.contact_crawler import ContactCrawler, SiteResult
 from backend.domain.supplier_identity.email_extractor import is_contact_url, root_domain
 from backend.domain.supplier_identity.inn_extractor import (
     InnHit,

@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-03
-based_on_commit: a5d50839d62109d364ca97a2f271a14432b38c5d
+based_on_commit: 0efbdaf
 ---
 
 # Current State
@@ -14,6 +14,37 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-03` — `TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903`
+moved `contact_crawler.py` to
+[`backend/domain/supplier_enrichment/`](../backend/domain/supplier_enrichment/)
+(`git diff -M --stat`: `0 insertions(+), 0 deletions(-)`, pure move — its
+only internal import was already the canonical
+`backend.domain.supplier_identity.email_extractor` path from an earlier
+pass). 7 confirmed consumers were updated to the canonical import path:
+`supplier_app.py`, `collect_inn.py`, `benchmarks/benchmark_models.py`,
+`scripts/verify_enrichment_live.py`, `scripts/collect_contacts.py`,
+`tests/test_enrichment_pipeline.py`, `tests/diagnostics/test_collect_inn_llm_path.py`.
+`supplier_discovery_v2/immutability_check.py`'s protected-path list was
+migrated in the same change, so the existing immutability guard was never
+weakened; `supplier_discovery_v2/tests/test_immutability.py` gained 2 new
+regression tests (protection-at-new-path + disposable-mutation-detection).
+This is Pass 8 of the bounded root-refactor series, done per explicit owner
+instruction to continue and finish it. The task report is
+[`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903-report.md).
+
+`2026-09-03` — Fixed a genuine TOCTOU race in
+`tests.test_mail_integrity...test_35_disabled_wait_preserves_retry_budget_for_real_transport_attempt`
+(flagged as a separate finding by the prior `CI_INFRA` fix task). Root cause:
+`attempts` is bumped by `_record_transport_attempt` and the provider is
+called (incrementing `send_calls`) before the worker's `retry_job()` write
+flips `mail_jobs.status` back to `'queued'` on the exception path
+(`mail/queue.py:239-274`); the test polled only `send_calls >= 1` then
+asserted `status` immediately. Reproduced the exact CI failure
+deterministically with an injected delay in `retry_job` (RED), then fixed
+the test to poll for the final `status == "queued"` too, matching the
+existing pattern in `test_32` (GREEN). Test-only change; full suite
+(48 passed, 1 skipped) reran clean. Commit `0efbdaf`.
 
 `2026-09-03` — `Backend Full` `CI_INFRA` timeout fix `CONFIRMED`: the
 Windows Defender exclusion step (`6af2af1`) was proven on the
@@ -542,6 +573,17 @@ on this task's dedicated branch:
   to this task); docs/state/vibecoding validators and `git diff --check`
   passed.
 
+- Bounded root refactor Pass 8 (contact_crawler):
+  `backend/domain/supplier_enrichment/contact_crawler.py` is now the
+  canonical implementation; the root copy is gone, no wrapper.
+  `supplier_app`, `collect_inn`, `scripts.collect_contacts`,
+  `benchmarks.benchmark_models`, `scripts.verify_enrichment_live` all import
+  successfully offline; `api.index.handler` imports under
+  `SUPPLYDESK_ENV=test`. `tests/test_enrichment_pipeline.py` +
+  `supplier_discovery_v2/tests/test_immutability.py` (17/17 PASS, including
+  2 new immutability tests); official backend suite `464 tests, failures=0,
+  errors=9` (same pre-existing `pwsh`-gap), `skipped=1`.
+
 ## Not verified
 
 - NOT VERIFIED: live external provider routes, real SMTP/IMAP, real email and
@@ -597,8 +639,9 @@ on this task's dedicated branch:
   `provider.send_calls` then immediately asserts DB `status` with no
   synchronization guaranteeing the background `MailQueue` worker has
   finished writing the final status), not a product regression and not
-  caused by this branch's changes. Flagged as a separate out-of-scope task
-  (not fixed here); not a DoD blocker for this branch.
+  caused by this branch's changes. `RESOLVED` on `2026-09-03`: the test now
+  also polls for the final `status == "queued"` before asserting (commit
+  `0efbdaf`); see this file's Last update entry.
 - Product/live-provider follow-up remains bounded by the limitations above and
   the open findings in [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
 
@@ -629,17 +672,29 @@ on this task's dedicated branch:
 
 Pass 2 (CLI compatibility), Pass 3 (`dadata_client.py`), Pass 4
 (`checko_client.py` + immutability migration), Pass 5 (LLM integrations),
-Pass 6 (supplier identity domain) and Pass 7 (search integrations) are
-complete; `backend/{integrations/{registry,llm,search},domain/
-supplier_identity}/` now hold 10 moved modules and `FINDING-017`/
-`FINDING-018` are both resolved. Any further root moves — `supplier_app.py`,
-`api/index.py`, `serp_parser.py`, `contact_crawler.py`, `collect_inn.py`, or
-the remaining runtime modules named in the root diagnostic — require their
-own bounded task with explicit import, subprocess and deployment contracts
-(`contact_crawler.py`/`collect_inn.py` are `MOVE_DOMAIN_PACKAGE`/High risk
-per the diagnostic; `serp_parser.py` stays `DEFER`red pending an explicit
-subprocess/deployment contract decision); none is authorized by this
-change. Keep the Browser Full `FAIL` and Finding-009 as separate recorded
+Pass 6 (supplier identity domain), Pass 7 (search integrations) and Pass 8
+(`contact_crawler.py`) are complete; `backend/{integrations/{registry,llm,
+search},domain/{supplier_identity,supplier_enrichment}}/` now hold 11 moved
+modules and `FINDING-017`/`FINDING-018` are both resolved. Remaining root
+refactor items each need their own explicit design decision or bounded task
+before implementation, per the diagnostic and the causal-scope rule (no
+silent scope expansion into a new independent subsystem):
+
+- `collect_inn.py` (`MOVE_DOMAIN_PACKAGE`, High risk): requires splitting the
+  reusable enrichment pipeline out from its CLI entrypoint — a structural
+  change, not a pure move; needs its own bounded task with an explicit
+  split contract.
+- `serp_parser.py` (`DEFER`): conflicts with
+  `supplier_discovery_v2/xmlriver_subprocess.py`'s hardcoded root subprocess
+  path and the Vercel deployment bundle boundary; requires an explicit owner
+  decision on the subprocess/deployment contract before any move.
+- Root `test_*.py` (`DEPRECATED_REVIEW`): requires an owner decision on
+  discovery policy (stay manual / become unittest cases / retire) before any
+  move.
+- `supplier_app.py`/`api/index.py` remain `KEEP_ROOT` — protected local and
+  serverless entrypoints, not move candidates.
+
+Keep the Browser Full `FAIL` and Finding-009 as separate recorded
 limitations.
 
 ## Canonical references
@@ -684,6 +739,7 @@ limitations.
 - Cross-agent skill availability report: [`ai/reports/TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902-report.md`](reports/TASK-CROSS-AGENT-SKILL-AVAILABILITY-20260902-report.md).
 - Supplier identity domain move report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902-report.md).
 - Search integrations move report: [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903-report.md).
+- Contact crawler move report (Pass 8): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903-report.md).
 - Repository layout map: [`docs/architecture/REPOSITORY_LAYOUT.md`](../docs/architecture/REPOSITORY_LAYOUT.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).

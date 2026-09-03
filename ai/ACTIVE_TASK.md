@@ -1,10 +1,10 @@
 ---
-document_id: TASK-LOCK-023
+document_id: TASK-LOCK-024
 status: CURRENT
 canonical: false
 owner: Claude
 updated_at: 2026-09-03
-based_on_commit: 6af2af1822820e996f1126b8a1b26d19be0000f0
+based_on_commit: pending-this-commit
 ---
 
 # Active Task
@@ -13,7 +13,7 @@ Task ID: `NONE`
 Agent: `Claude`
 Mode: `IDLE`
 Started: `2026-09-03`
-Scope: `No active task; TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903 is closed (web_lookup.py and xmlriver_client.py moved to backend/integrations/search/, immutability guard migrated and proven)`
+Scope: `No active task; TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903 is closed (contact_crawler.py moved to backend/domain/supplier_enrichment/, immutability guard migrated and proven, 464 tests / 0 failures). Remaining root-refactor items (collect_inn.py split, serp_parser.py subprocess/deployment contract, root test_*.py discovery policy) each require an explicit owner decision before a further bounded task.`
 Allowed files: `none — no active task`
-Status: `IDLE — TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903 completed; no active task`
+Status: `IDLE — TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903 completed; no active task`
 Last update: `2026-09-03`

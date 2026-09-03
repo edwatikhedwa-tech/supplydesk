@@ -13,7 +13,7 @@ import unittest
 from unittest import mock
 
 import collect_inn
-from contact_crawler import SiteResult
+from backend.domain.supplier_enrichment.contact_crawler import SiteResult
 
 NO_INN_HTML = "<html><body>Добро пожаловать на наш сайт.</body></html>"
 
