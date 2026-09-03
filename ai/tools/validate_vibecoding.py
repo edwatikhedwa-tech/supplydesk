@@ -99,6 +99,29 @@ V13_POLICY_MARKERS = (
     "`REQUIRED_CHECKS`",
     "`NOT_NEEDED_CHECKS`",
 )
+DEFAULT_OPERATING_MODEL_MARKERS = (
+    "## Default project operating model",
+    "`DEFAULT_PROJECT_OPERATING_MODEL`",
+    "`AUTOMATIC_TOOL_SELECTION`",
+    "`USER_TOOL_REMINDER_NOT_REQUIRED`",
+    "`DEFAULT_NOT_NEEDED_DISCIPLINE`",
+    "`AUTONOMOUS_DELIVERY_DEFAULT`",
+    "`REAL_STOP_ONLY`",
+    "`OWNER_PROMPT_MINIMUM`",
+    "are not an opt-out.",
+    "`ALL TOOLS AVAILABLE != RUN ALL TOOLS`",
+    "For `DELIVERY_MODE: PUBLISH`, it then performs",
+)
+CHANGE_BUDGET_MARKERS = (
+    "`CHANGE BUDGET = EARLY WARNING, NOT FILE-COUNT GATE`",
+    "`<=125% expected`",
+    "`125–150% expected`",
+    "`>150% expected`",
+    "File count by itself is never an automatic",
+)
+LEGACY_CHANGE_BUDGET_MARKER = (
+    "more than roughly twice that budget or introduces a new file category, stop"
+)
 REGISTRY_ENTRY_RE = re.compile(r"^\s{2}-\s+id:\s*([^\s#]+)\s*$", re.MULTILINE)
 REGISTRY_FIELD_RE = re.compile(r"^\s{4}([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$", re.MULTILINE)
 
@@ -117,7 +140,12 @@ def read_text(path: Path) -> str:
 def policy_candidates(root: Path) -> list[Path]:
     candidates: list[Path] = []
     for path in root.rglob("*.md"):
-        if {".git", "node_modules"} & set(path.parts):
+        parts = set(path.parts)
+        nested_worktree = any(
+            path.parts[index : index + 2] in ((".claude", "worktrees"), (".codex", "worktrees"))
+            for index in range(len(path.parts) - 1)
+        )
+        if {".git", "node_modules"} & parts or nested_worktree:
             continue
         try:
             info = metadata(read_text(path))
@@ -276,6 +304,20 @@ def validate(root: Path) -> list[str]:
         for marker in V13_POLICY_MARKERS:
             if marker not in policy_text:
                 errors.append(f"POLICY-028 FAIL: V1.3 execution-policy marker is missing: {marker}")
+        for marker in DEFAULT_OPERATING_MODEL_MARKERS:
+            if marker not in policy_text:
+                errors.append(f"POLICY-029 FAIL: default operating-model marker is missing: {marker}")
+        for marker in CHANGE_BUDGET_MARKERS:
+            if marker not in policy_text:
+                errors.append(f"POLICY-030 FAIL: causal change-budget marker is missing: {marker}")
+        for path, text in (
+            (policy_path, policy_text),
+            (root / "ai/AI_CONTRACT.md", read_text(root / "ai/AI_CONTRACT.md") if (root / "ai/AI_CONTRACT.md").is_file() else ""),
+        ):
+            if LEGACY_CHANGE_BUDGET_MARKER in text:
+                errors.append(
+                    f"POLICY-030 FAIL: legacy file-count change-budget stop remains in {path.relative_to(root).as_posix()}"
+                )
 
     for instruction in (root / "AGENTS.md", root / "CLAUDE.md"):
         if not instruction.is_file():

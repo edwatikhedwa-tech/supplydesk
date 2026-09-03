@@ -15,6 +15,20 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903` added the
+canonical default operating model to [`ai/VIBECODING_RULES.md`](VIBECODING_RULES.md):
+healthy-session inheritance, automatic minimum-sufficient tool selection without
+owner reminders, causal-scope delivery, `REAL_STOP_ONLY`, `NOT_NEEDED`
+discipline and `OWNER_PROMPT_MINIMUM`. The shared AI contract points to that
+single owner surface; adapters and the factual registry were not duplicated or
+changed. The change-budget rule now treats file count as an early-warning review
+and keeps direct causal dependencies in scope. Validator coverage and governance
+tests pass (`18/18`); the candidate commit is `2678370f`. Fresh Claude and Codex
+child invocations were attempted with neutral prompts but produced no usable
+trace, so behavioral cold-start proof is `NOT VERIFIED`; no tracked product file
+was changed by the attempts. See the task report for exact commands, prompts and
+limitations.
+
 `2026-09-03` — `Backend Full` `CI_INFRA` timeout fix `CONFIRMED`: the
 Windows Defender exclusion step (`6af2af1`) was proven on the
 classifier-selected CI run for
@@ -214,8 +228,9 @@ quarantine filename copies require separate owner review.
   verified VibeCoding policy HEAD `9d3e58232230b276396f3bc127e2d937bed8482d`.
 - Cleanup Batch 2 branch: `control/safe-cleanup-batch2-20260901`, retained as
   the immediately preceding evidence branch.
-- Current task branch: `audit/frontend-knip-20260902`; this task's published
-  commit is `dc93a181c85c175863a84ddddb1c71c9172a98bb`.
+- Current task branch: `audit/frontend-knip-20260902`; the current working tree
+  is clean after the candidate governance commit, with final publication
+  evidence recorded by Git and the task report.
 - Canonical development checkout: `C:\Users\edwat\SupplyDesk`.
 - Historical legacy checkout: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`, marked
   `LEGACY_WORKSPACE_DO_NOT_DEVELOP_HERE.txt`.
@@ -303,6 +318,12 @@ quarantine filename copies require separate owner review.
   Governance Freeze, One-Shot Delivery, Tool Audit Batching and stronger
   report/state minimization and verification-budget semantics. Its validator
   checks these policy markers rather than agent cognition.
+- `TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903` extends V1.3 with the default
+  project operating model, automatic tool selection, owner-reminder independence,
+  causal-scope autonomous delivery, real-stop-only handling and minimum owner
+  prompt rules. The validator checks their static markers; the attempted Claude
+  and Codex cold-start processes yielded no child trace, so behavioral proof is
+  explicitly partial.
 - Workspace Guard V1 adds `scripts/assert_workspace.ps1`, which compares the
   real Git root with the canonical local default or an explicit absolute
   `-ExpectedRoot` for CI and intentional worktrees without changing directory,
@@ -650,6 +671,7 @@ limitations.
 - Decisions: [`ai/DECISIONS.md`](DECISIONS.md).
 - Deferred findings: [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
 - Latest governance report: [`ai/reports/TASK-DOCUMENTATION-GOVERNANCE-20260901-report.md`](reports/TASK-DOCUMENTATION-GOVERNANCE-20260901-report.md).
+- Default agent operating model report: [`ai/reports/TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903-report.md`](reports/TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903-report.md).
 - Diagnostic report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md).
 - Browser Full stability report: [`ai/reports/TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902-report.md`](reports/TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902-report.md).
 - Diagnostic V1.1 report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md).
@@ -688,4 +710,3 @@ limitations.
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).
-

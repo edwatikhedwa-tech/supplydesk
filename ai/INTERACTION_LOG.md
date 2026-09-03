@@ -1169,3 +1169,21 @@ was unavailable; remote SHA and FAST CI were not checked.
 State change: after DNS access recovered, the same task branch was published;
 remote SHA matches `301934fb0daa1f49cad8c793c9a5acbd30b10152`, and FAST Control CI
 run `33645377974` passed. Full product suites were skipped by report-only scope.
+
+## 2026-09-03 — TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903
+
+State change: added the canonical default operating model, automatic minimum
+sufficient tool selection, owner-reminder independence, causal-scope delivery,
+real-stop-only handling and minimum owner prompt rules. Replaced the conflicting
+file-count change-budget wording with the causal review thresholds.
+
+State change: static policy validator, documentation/state validators,
+`git diff --check` and `18/18` focused governance tests passed. Candidate commit
+`2678370f` was created with a clean tree. The current task's direct scope was
+limited to governance and evidence; no product code, runtime, database, mail,
+provider or frontend state changed.
+
+State change: neutral fresh child attempts for Claude and Codex contained no tool
+names but returned no usable child trace; both owned hung processes were stopped
+by exact PID. Cold-start behavior is therefore `NOT VERIFIED`, not simulated or
+claimed from the parent session.

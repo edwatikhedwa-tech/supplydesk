@@ -1354,3 +1354,24 @@ Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH_REPORT_ONLY`
   report-only classifier.
 - Ruff/Vulture were not available without installation and remain outside this
   diagnostic.
+
+## 2026-09-03 — TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903
+
+Task ID: `TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903`
+Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH`
+
+- Added one canonical default project operating model to `ai/VIBECODING_RULES.md`
+  and a compatibility pointer in `ai/AI_CONTRACT.md`; adapters and the factual
+  registry were kept unchanged.
+- Replaced the old file-count change-budget stop with the causal-scope model:
+  `<=125%`, `125–150%` internal review and `>150%` stop only for a broken causal
+  chain or a new category/subsystem.
+- Added static validator coverage and two focused governance cases; policy,
+  docs/state validators and `18/18` governance tests passed.
+- Created candidate commit `2678370f`. Neutral Claude and Codex child launches
+  were attempted without tool/skill names in their prompts, but neither returned
+  a usable child trace; no tracked product file changed and no canary was
+  simulated as proof.
+- Product code, backend, frontend, browser, database, mail and provider state
+  were not changed. Final publication and CI evidence remain in the closeout
+  response because this report was prepared before the one allowed push.

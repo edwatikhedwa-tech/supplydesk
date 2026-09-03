@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 version: 1.3
-last_corrected: 2026-09-02
+last_corrected: 2026-09-03
 based_on_commit: a7e780bf61c8263f8921a5cbcc9f5d9d4f89c199
 ---
 
@@ -104,6 +104,69 @@ task does not load provider skills; a governance task does not load product
 runtime skills. A relevant skill may be loaded later when the task actually
 requires it. Never load the complete skill library speculatively.
 
+## Default project operating model
+
+`DEFAULT_PROJECT_OPERATING_MODEL`: after a successful `SESSION PREFLIGHT`, the
+current project instructions, tool registry, workflow rules and tool-selection
+rules are active by default for later independent tasks in the same healthy
+session. Revalidate only under the session rules above. The owner prompt supplies
+the `GOAL`, `CONSTRAINTS`, `BUSINESS INTENT` and explicit exceptions. The agent
+owns the `METHOD`, `TOOL SELECTION`, `SKILL SELECTION`, `VERIFICATION`, direct
+`CAUSAL DEPENDENCIES` and `DELIVERY`. Missing tool or skill names in the prompt
+are not an opt-out.
+
+`AUTOMATIC_TOOL_SELECTION`: for every new independent task, classify the task,
+consult the applicable registry entries, choose the
+`MINIMUM_SUFFICIENT_TOOLSET`, perform the one-time current-agent discovery
+required by `REGISTRY_AGENT_VISIBILITY` before the first relevant agent-local
+skill, and run only the relevant configured mechanisms. Examples: evaluate
+Bug Reproducer for a classified bug task; agent-browser for one-off exploratory
+UI work; Playwright for permanent deterministic UI regression; Code Rot Cleaner
+with `rg` and applicable analyzers for cleanup/structural work; Knip for
+frontend unused/dependency analysis; and Skill Doctor only under its periodic or
+explicit owner-request policy. `ALL TOOLS AVAILABLE != RUN ALL TOOLS`.
+
+`USER_TOOL_REMINDER_NOT_REQUIRED`: tool selection correctness does not depend on
+the owner naming a tool. An explicit tool name is an additional intent signal,
+not the activation mechanism; task classification and project rules activate the
+relevant policy.
+
+`DEFAULT_NOT_NEEDED_DISCIPLINE`: when classification shows that a tool, skill or
+check is irrelevant, record `NOT_NEEDED` and do not run it for compliance
+ceremony. `NOT_NEEDED` is not a missed default and does not downgrade an
+otherwise complete task.
+
+`AUTONOMOUS_DELIVERY_DEFAULT`: once goal and scope are sufficiently clear, the
+agent continues through `ANALYZE → IMPLEMENT → DIRECT CAUSAL UPDATES → VERIFY`.
+For `DELIVERY_MODE: PUBLISH`, it then performs the Task-ID commit, ordinary
+push, remote SHA confirmation, classifier-selected CI and closeout in the same
+task. For `DELIVERY_MODE: LOCAL_ONLY`, it commits when required and does not
+push. Direct imports, tests, mocks, stale paths, docs and package markers are
+causal updates, not new product scope, and do not require micro-approval.
+This default does not authorize destructive, security-sensitive or live
+external actions and does not bypass an invoked upstream skill's mandatory gate.
+
+`REAL_STOP_ONLY`: ask the owner only when an actual owner decision is required:
+business behavior, a new API contract, database schema/migration/data mutation,
+production credentials or login, a paid/live external side effect, deletion of
+production or user data, force-push/history rewrite/merge/deploy, a new
+independent subsystem outside the causal chain, conflicting mandatory
+requirements, a required failure that remains unexplained or unfixable after
+one bounded diagnosis inside scope, or a mandatory approval gate of an invoked
+upstream skill. One upstream gate is one consolidated question; after the last
+required gate the agent continues autonomously. Ordinary direct dependency
+updates are not a real stop.
+
+`OWNER_PROMPT_MINIMUM`: after this policy is active, a typical owner prompt may
+contain only the desired result, business constraints, explicit prohibited
+actions and explicit authorization for a live or destructive action when
+applicable. The owner is not required to repeat the project operating model or
+tool names.
+
+Final substantive responses continue to use the existing
+`TOOL_USAGE_REPORTING` contract in `ai/AI_CONTRACT.md`; only actually used
+tools/skills/workflows are listed.
+
 ## Verification budget
 
 Select checks from the real change set and risk, and record the selected set as
@@ -135,14 +198,27 @@ When a technical error is confirmed:
 ## Change budget
 
 Before implementation, record `EXPECTED CHANGE AREAS` as a short list of
-categories such as scripts, one validator, one test or one governance
-document. If the actual scope grows to more than roughly twice the expected
-scope or introduces a new file category, stop and report:
+categories such as governance documents, one validator, one test and evidence
+records. `CHANGE BUDGET = EARLY WARNING, NOT FILE-COUNT GATE`.
 
-`CHANGE BUDGET EXCEEDED`
+Direct causal dependencies are automatically part of the current scope. For
+example, `A → B imports A → C patches A → D protects path A → E documents A`
+keeps `B/C/D/E` in the same causal scope; those files are not new product scope.
 
-Then state whether the extra work is necessary for the current goal or is a
-separate task. This is a review threshold, not a rigid file-count limit.
+- `<=125% expected`: continue automatically when the work is causal.
+- `125–150% expected`: perform an internal scope review; continue when the goal
+  is unchanged and no new subsystem or change category appeared.
+- `>150% expected`: stop only when a single causal chain cannot be demonstrated
+  or a new change category/subsystem appeared.
+
+Record `CHANGE BUDGET EXCEEDED` only for that substantive boundary, not because
+the number of files alone increased. File count by itself is never an automatic
+STOP. A destructive or security-sensitive boundary remains governed by its
+separate approval rules.
+
+When the substantive boundary is reached, state whether the extra work is
+necessary for the current goal or is a separate task, then stop and report
+`CHANGE BUDGET EXCEEDED`.
 
 ## COMPREHENSIVE-FIRST
 

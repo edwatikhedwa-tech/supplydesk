@@ -1,19 +1,19 @@
 ---
-document_id: TASK-LOCK-023
+document_id: TASK-LOCK-024
 status: CURRENT
 canonical: false
-owner: Claude
+owner: project-control
 updated_at: 2026-09-03
-based_on_commit: 6af2af1822820e996f1126b8a1b26d19be0000f0
+based_on_commit: 3aaae0252c4fa784ec9a4b2d4c8658a32545dff4
 ---
 
 # Active Task
 
 Task ID: `NONE`
-Agent: `Claude`
+Agent: `Codex`
 Mode: `IDLE`
 Started: `2026-09-03`
-Scope: `No active task; TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903 is closed (web_lookup.py and xmlriver_client.py moved to backend/integrations/search/, immutability guard migrated and proven)`
+Scope: `No active task; TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903 is closed with PASS_WITH_LIMITATIONS`
 Allowed files: `none — no active task`
-Status: `IDLE — TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903 completed; no active task`
+Status: `IDLE — canonical policy change, static acceptance and closeout report completed; fresh child behavior remains NOT VERIFIED`
 Last update: `2026-09-03`

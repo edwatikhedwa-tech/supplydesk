@@ -61,10 +61,10 @@ verification.
     workspace; an explicit `-ExpectedRoot <absolute path>` is required for a
     deliberate Git worktree or CI checkout. A guard mismatch is a STOP.
 
-14. Load only the skills and tools relevant to the classified task. Record an
-    expected change budget before implementation; if the scope grows to more
-    than roughly twice that budget or adds a new file category, stop and report
-    `CHANGE BUDGET EXCEEDED` before proceeding.
+14. Load only the skills and tools relevant to the classified task. Apply the
+    canonical `## Change budget` model in `ai/VIBECODING_RULES.md`: it is an
+    early-warning scope review, not a file-count gate. Direct causal
+    dependencies stay in scope automatically; file count alone is never a STOP.
 
 15. For a confirmed technical error, fix the root cause and add the smallest
     regression test when recurrence is possible. Use a tested helper only for
@@ -356,6 +356,13 @@ outcome and an acceptance criterion.
 - `MINIMUM_SUFFICIENT_TOOLSET`: use the smallest set of tools that supplies the
   required evidence. The number of tools listed is not a quality metric and
   must not create pressure to use more tools.
+
+- `DEFAULT_PROJECT_OPERATING_MODEL`, `AUTOMATIC_TOOL_SELECTION`,
+  `USER_TOOL_REMINDER_NOT_REQUIRED`, `AUTONOMOUS_DELIVERY_DEFAULT`,
+  `REAL_STOP_ONLY` and `OWNER_PROMPT_MINIMUM` are canonical execution rules in
+  `ai/VIBECODING_RULES.md`. After a successful Session Preflight, agents apply
+  those rules by default for the healthy session; adapters must point to them,
+  not copy their behavior.
 
 ## Security and data boundary
 

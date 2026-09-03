@@ -194,6 +194,32 @@ class VibeCodingGovernanceTests(unittest.TestCase):
         finally:
             shutil.rmtree(root)
 
+    def test_default_operating_model_semantics_are_declared(self):
+        policy = (ROOT / "ai/VIBECODING_RULES.md").read_text(encoding="utf-8")
+        for marker in (
+            "## Default project operating model",
+            "`DEFAULT_PROJECT_OPERATING_MODEL`",
+            "`AUTOMATIC_TOOL_SELECTION`",
+            "`USER_TOOL_REMINDER_NOT_REQUIRED`",
+            "`AUTONOMOUS_DELIVERY_DEFAULT`",
+            "`REAL_STOP_ONLY`",
+            "`OWNER_PROMPT_MINIMUM`",
+            "are not an opt-out.",
+        ):
+            self.assertIn(marker, policy)
+
+    def test_change_budget_is_causal_not_file_count_gate(self):
+        policy = (ROOT / "ai/VIBECODING_RULES.md").read_text(encoding="utf-8")
+        contract = (ROOT / "ai/AI_CONTRACT.md").read_text(encoding="utf-8")
+        self.assertIn("`CHANGE BUDGET = EARLY WARNING, NOT FILE-COUNT GATE`", policy)
+        self.assertIn("`<=125% expected`", policy)
+        self.assertIn("`125–150% expected`", policy)
+        self.assertIn("`>150% expected`", policy)
+        self.assertIn("File count by itself is never an automatic", policy)
+        legacy = "more than roughly twice that budget or introduces a new file category, stop"
+        self.assertNotIn(legacy, policy)
+        self.assertNotIn(legacy, contract)
+
     def test_final_status_case_a_required_pass_other_not_needed(self):
         self.assertEqual(
             final_task_status(["PASS", "PASS"], ["NOT_NEEDED", "NOT_NEEDED"]),

@@ -13,6 +13,28 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-012 — Make the project operating model the default agent contract
+
+- Decision ID: `DECISION-012`
+- Date: `2026-09-03`
+- Status: `ACTIVE`
+- Context: The project had canonical preflight, tool-selection, verification and
+  delivery rules, but ordinary prompts could still be interpreted as requiring
+  the owner to repeat tool names or approve direct causal updates.
+- Decision: After successful Session Preflight, agents inherit the canonical
+  project operating model for the healthy session. The agent selects the
+  minimum sufficient tools, expands only direct causal dependencies, continues
+  delivery under the declared mode, and stops for real owner decisions only.
+  The full behavior is owned by `ai/VIBECODING_RULES.md`; `ai/AI_CONTRACT.md`
+  keeps the compatibility pointer and safety boundary.
+- Reason: One canonical default removes repeated prompt boilerplate while
+  preserving destructive, security, live-external and upstream approval gates.
+- Consequences: A neutral fresh-session canary is required to prove behavior;
+  static policy consistency alone cannot be reported as universal behavioral
+  proof. The existing browser split, Code Rot role, Bug Reproducer gates,
+  Skill Doctor periodic policy and tool-usage reporting remain unchanged.
+- Related task: `TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903`.
+
 ## DECISION-011 — Keep architecture lifecycle and browser auth boundaries explicit
 
 - Decision ID: `DECISION-011`
