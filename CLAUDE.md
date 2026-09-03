@@ -110,6 +110,17 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
   adapters) extracted out of `mail/repository.py` (first step of splitting that
   8800+-line file by responsibility); `mail/repository.py` imports it back, no consumer
   outside the mail package ever referenced these names directly.
+  `mail/time_utils.py` — `UTC`/`utc_now`/`iso_now`/`iso_after`/`DEFAULT_SESSION_LIFETIME_SECONDS`,
+  split out so both `mail/repository.py` and `mail/auth_accounts.py` can depend on them
+  without a circular import; `mail/repository.py` re-exports them for `mail/queue.py`,
+  `backend/app_config.py` and tests, which still import from `mail.repository` unchanged.
+  `mail/auth_accounts.py` — `AuthAccountsMixin`: users/sessions/OAuth-state/mail-account CRUD
+  (`seed_user`, `authenticate`, `create_session`, `save_mail_account`, etc.) extracted out of
+  `MailRepository` — the one cluster confirmed to have zero private-helper coupling with any
+  other cluster in the file.
+  `mail/mail_templates.py` — `MailTemplatesMixin`: `get_mail_template`/`save_mail_template`,
+  another zero-coupling cluster (only touches the universal `_audit_connection`).
+  `class MailRepository(AuthAccountsMixin, MailTemplatesMixin)` composes both in.
 - `backend/integrations/{registry,llm,search}/` — provider adapters moved out of the root flat
   package: `dadata_client.py`, `checko_client.py`, `llm_fallback.py`, `routerai_client.py`,
   `web_lookup.py`, `xmlriver_client.py`, `serp_parser.py` (the last with a thin root
@@ -128,8 +139,15 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
 - `backend/http_auth.py` — `AuthHandlerMixin`: login, session, CSRF and Yandex OAuth handler
   methods (`_login`, `_auth_me`, `_require_session`, `_require_csrf`, `_oauth_start`,
   `_oauth_callback`, etc.) extracted out of `SupplierHandler`.
-  `class SupplierHandler(AuthHandlerMixin, SimpleHTTPRequestHandler)` composes it in;
-  `do_GET`/`do_POST`/`do_DELETE` and their route ordering are untouched.
+- `backend/http_requests.py` / `backend/http_global_suppliers.py` — `RequestRouteMixin`
+  (`_thread_messages`, `_request_route`, `_request_action`) and `GlobalSupplierRouteMixin`
+  (`_global_supplier_route`, `_global_supplier_action`) extracted out of `SupplierHandler`. Mail
+  routes stay inline in `do_GET`/`do_POST` — unlike requests/global-suppliers, they never had a
+  dedicated sub-router method to lift; carving one out would mean restructuring `do_GET`/`do_POST`
+  bodies rather than a pure move, so it's deliberately not done here.
+  `class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMixin,
+  SimpleHTTPRequestHandler)` composes all three in; `do_GET`/`do_POST`/`do_DELETE` and their route
+  ordering are untouched.
 - `backend/domain/supplier_enrichment/orchestrator.py` — `EnrichmentOrchestratorMixin` and
   `EnrichmentOutcome`: the ~1000-line enrichment pipeline (SERP→crawl→registry→web→finance
   retry stages, `_enrich_one`) extracted out of `SupplierApp` (Pass 2 of the same

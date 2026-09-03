@@ -49,6 +49,60 @@ trace, so behavioral cold-start proof is `NOT VERIFIED`; no tracked product file
 was changed by the attempts. See the task report for exact commands, prompts and
 limitations.
 
+`2026-09-03` — `TASK-BOUNDED-MAIL-REPOSITORY-TEMPLATES-EXTRACT-20260903`
+(Pass 3 of splitting `mail/repository.py`): `get_mail_template`/
+`save_mail_template` moved to
+[`mail/mail_templates.py`](../mail/mail_templates.py) as
+`MailTemplatesMixin` — second zero-cross-cluster-coupling extraction
+after auth/accounts. `class MailRepository(AuthAccountsMixin,
+MailTemplatesMixin)`. `mail/repository.py`: `8297` → `8234` lines.
+Official suite: `497 tests, failures=0, errors=9` (established baseline),
+`skipped=1`. The task report is
+[`ai/reports/TASK-BOUNDED-MAIL-REPOSITORY-TEMPLATES-EXTRACT-20260903-report.md`](reports/TASK-BOUNDED-MAIL-REPOSITORY-TEMPLATES-EXTRACT-20260903-report.md).
+
+`2026-09-03` — `TASK-BOUNDED-MAIL-REPOSITORY-AUTH-ACCOUNTS-EXTRACT-20260903`
+(Pass 2 of splitting `mail/repository.py`, following a fresh
+cross-cluster-coupling audit of all ~220 methods): ~25 users/sessions/
+OAuth-state/mail-account CRUD methods moved to
+[`mail/auth_accounts.py`](../mail/auth_accounts.py) as `AuthAccountsMixin`
+— the one cluster confirmed to have zero private-helper coupling with any
+other cluster (audit-verified before the move, not assumed). A circular
+import was found and resolved before moving code:
+`iso_now`/`iso_after`/`utc_now`/`DEFAULT_SESSION_LIFETIME_SECONDS` moved to
+a new, independent [`mail/time_utils.py`](../mail/time_utils.py) that both
+`mail/repository.py` and `mail/auth_accounts.py` import from directly;
+`mail/repository.py` re-exports them so `mail/queue.py`,
+`backend/app_config.py` and 3 test files needed no changes. Four methods
+physically interleaved in the original line range (`get_request`,
+`request_positions`, `request_supplier`, `set_supplier_manual_inn`) belong
+to the Request/Supplier domains instead and were deliberately left in
+`mail/repository.py`. `mail/repository.py`: `8816` → `8297` lines.
+Official suite: `497 tests, failures=0, errors=9` (established baseline),
+`skipped=1`. The task report is
+[`ai/reports/TASK-BOUNDED-MAIL-REPOSITORY-AUTH-ACCOUNTS-EXTRACT-20260903-report.md`](reports/TASK-BOUNDED-MAIL-REPOSITORY-AUTH-ACCOUNTS-EXTRACT-20260903-report.md).
+
+`2026-09-03` — `TASK-BOUNDED-SUPPLIER-APP-ROUTE-HELPERS-EXTRACT-20260903`
+(batches A+B of `SupplierHandler` decomposition): `_thread_messages`/
+`_request_route`/`_request_action` moved to
+[`backend/http_requests.py`](../backend/http_requests.py)
+(`RequestRouteMixin`); `_global_supplier_route`/`_global_supplier_action`
+moved to
+[`backend/http_global_suppliers.py`](../backend/http_global_suppliers.py)
+(`GlobalSupplierRouteMixin`). `SupplierHandler` now composes
+`AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMixin`;
+`do_GET`/`do_POST`/`do_DELETE` untouched. `supplier_app.py`: `1185` →
+`1038` lines. Batch C (mail HTTP route helpers) is explicitly NOT
+done: unlike requests/global-suppliers, mail routes never had a
+dedicated sub-router method — all ~65 `/api/mail/*` branches are inline
+in `do_GET`/`do_POST`, so extracting them means creating new method
+boundaries (restructuring `do_GET`/`do_POST` bodies), not a pure move;
+left for a separate owner decision. `DISPATCH_TABLE: NOT_NEEDED` —
+`do_GET`/`do_POST` are still long (~204/~326 lines) but a dispatch table
+wouldn't shrink that, since the bulk is inline mail-route bodies, not
+if/elif overhead. Official suite: `497 tests, failures=0, errors=9`
+(established baseline), `skipped=1`. The task report is
+[`ai/reports/TASK-BOUNDED-SUPPLIER-APP-ROUTE-HELPERS-EXTRACT-20260903-report.md`](reports/TASK-BOUNDED-SUPPLIER-APP-ROUTE-HELPERS-EXTRACT-20260903-report.md).
+
 `2026-09-03` — `TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903` (Pass 3
 of the composition-entrypoint program, batch A of `SupplierHandler`
 decomposition): 16 auth/session/OAuth handler methods (`_login`,
