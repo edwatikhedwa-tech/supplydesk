@@ -15,6 +15,23 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-FIX-FINDING-019-DIAGNOSTIC-RUNNER-ENCODING-20260903`
+fixed `FINDING-019`: `scripts/diagnostics/diagnostic_runner.py`'s
+`secret_path_check` called `subprocess.run(..., text=True, ...)` without an
+explicit `encoding=` on four `git diff`/`git ls-files` calls; on Windows
+this decoded stdout with the locale codepage (`cp1251`) instead of UTF-8,
+crashing with `AttributeError` whenever the ambient staged diff contained
+Cyrillic text. Fixed by adding `encoding="utf-8", errors="replace"`,
+matching this same file's own already-correct `run_process()` helper. Two
+more instances of the identical defect (`git_check`'s branch/HEAD lookup)
+were found and fixed while verifying. Proven on a real repro, not a
+synthetic stand-in: this task's own Cyrillic-heavy documentation changes
+were staged alongside the fix, confirmed to break `cp1251` decoding, and
+`tests.diagnostics.test_diagnostic_negative_fixtures...test_machine_output_fields_are_present_and_safe`
+passed under that exact condition. Official suite: `497 tests, failures=0,
+errors=9` (established baseline), `skipped=1`. The task report is
+[`ai/reports/TASK-FIX-FINDING-019-DIAGNOSTIC-RUNNER-ENCODING-20260903-report.md`](reports/TASK-FIX-FINDING-019-DIAGNOSTIC-RUNNER-ENCODING-20260903-report.md).
+
 `2026-09-03` — `TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903` (Pass 11,
 final pass of the root refactor program) converted the four root manual
 check scripts (`test_extractor.py`, `test_inn.py`, `test_parser.py`,
@@ -796,9 +813,8 @@ supplier_enrichment}}/` hold 13 moved/extracted modules, `tests/legacy/`
 holds 4 converted test modules, and `FINDING-017`/`FINDING-018` are both
 resolved. `supplier_app.py`/`api/index.py` remain `KEEP_ROOT` — the only
 intentionally-unmoved root Python, being the protected local and serverless
-entrypoints. `FINDING-019` (an unrelated `diagnostic_runner.py`
-subprocess-encoding bug, discovered incidentally during Pass 11) is open
-and requires its own separate task.
+entrypoints. `FINDING-019` (the `diagnostic_runner.py` subprocess-encoding
+bug discovered incidentally during Pass 11) is now also resolved.
 
 Keep the Browser Full `FAIL` and Finding-009 as separate recorded
 limitations.
@@ -849,6 +865,7 @@ limitations.
 - Collect-inn pipeline/CLI split report (Pass 9): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903-report.md).
 - Serp-parser move report (Pass 10): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903-report.md).
 - Tests/legacy conversion report (Pass 11, final): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903-report.md).
+- FINDING-019 fix report: [`ai/reports/TASK-FIX-FINDING-019-DIAGNOSTIC-RUNNER-ENCODING-20260903-report.md`](reports/TASK-FIX-FINDING-019-DIAGNOSTIC-RUNNER-ENCODING-20260903-report.md).
 - Repository layout map: [`docs/architecture/REPOSITORY_LAYOUT.md`](../docs/architecture/REPOSITORY_LAYOUT.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).

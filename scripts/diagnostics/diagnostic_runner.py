@@ -130,8 +130,8 @@ def git_check(root: Path) -> CheckResult:
     dirty = status_meta != "exit=0; output_hash=" + safe_hash("")
     # The command metadata is intentionally hashed; names and diff contents are not emitted.
     status = "WARNING" if dirty else "PASS"
-    branch = subprocess.run(["git", "branch", "--show-current"], cwd=str(root), capture_output=True, text=True, check=False).stdout.strip() or "DETACHED"
-    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(root), capture_output=True, text=True, check=False).stdout.strip()
+    branch = subprocess.run(["git", "branch", "--show-current"], cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", check=False).stdout.strip() or "DETACHED"
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", check=False).stdout.strip()
     evidence = f"repository branch={branch}, HEAD={head}, staged/untracked state checked; " + ("working tree has changes" if dirty else "working tree clean")
     return CheckResult("DOC-001", "COMP-DOCTOR", status, evidence, ["REQ-DIAG-001"], ["FM-DIAGNOSTIC-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md")
 
@@ -569,15 +569,15 @@ def secret_path_check(
         code, _ = git_value(root, ["diff", "--cached", "--name-only"])
         if code != 0:
             return CheckResult("DOC-010", "COMP-DOCTOR", "NOT_VERIFIED", "staged path list could not be inspected", ["REQ-DIAG-001", "REQ-DIAG-002"], ["FM-DIAGNOSTIC-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", evidence_level="STRUCTURAL", safe_next_action="OPEN_RUNBOOK")
-        staged_names = subprocess.run(["git", "diff", "--cached", "--name-only"], cwd=str(root), capture_output=True, text=True, check=False).stdout.splitlines()
+        staged_names = subprocess.run(["git", "diff", "--cached", "--name-only"], cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", check=False).stdout.splitlines()
     if tracked_names is None:
-        tracked_names = subprocess.run(["git", "ls-files"], cwd=str(root), capture_output=True, text=True, check=False).stdout.splitlines()
+        tracked_names = subprocess.run(["git", "ls-files"], cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", check=False).stdout.splitlines()
     if untracked_names is None:
-        untracked_names = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], cwd=str(root), capture_output=True, text=True, check=False).stdout.splitlines()
+        untracked_names = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", check=False).stdout.splitlines()
     if local_names is None:
         local_names = [str(path.relative_to(root)) for pattern in (".env*", ".vercel/.env.*") for path in root.glob(pattern)]
     if staged_diff is None:
-        staged_diff = subprocess.run(["git", "diff", "--cached", "--unified=0"], cwd=str(root), capture_output=True, text=True, check=False).stdout
+        staged_diff = subprocess.run(["git", "diff", "--cached", "--unified=0"], cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", check=False).stdout
     staged_or_tracked = [name for name in (staged_names + tracked_names) if is_high_signal_name(name)]
     findings = scan_staged_literal_diff(staged_diff)
     if staged_or_tracked or findings:

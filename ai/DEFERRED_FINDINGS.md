@@ -17,7 +17,9 @@ this current register. Resolved findings and full chronology are preserved in
 
 - ID: `FINDING-019`
 - Severity: `LOW`
-- Status: `OPEN`
+- Status: `RESOLVED — fixed by adding explicit encoding="utf-8", errors="replace"
+  to the four affected subprocess.run calls, matching the file's own
+  existing correct pattern in run_process()`
 - Evidence: `scripts/diagnostics/diagnostic_runner.py:secret_path_check` calls
   `subprocess.run(["git", "diff", "--cached", "--unified=0"], ...,
   capture_output=True, text=True, check=False).stdout` (line 580) without an
@@ -51,12 +53,29 @@ this current register. Resolved findings and full chronology are preserved in
   committed (clearing the git staging area), a clean rerun of
   `scripts/run_test_suite.py` returned to the established `9`-error
   `pwsh`-gap baseline with no `AttributeError`.
-- Next verification: a separate task adds `encoding="utf-8"` to all four
-  `subprocess.run(..., text=True, ...)` calls in `secret_path_check`
+- Next verification (superseded by resolution below): a separate task adds
+  `encoding="utf-8"` to all four `subprocess.run(..., text=True, ...)` calls
+  in `secret_path_check`
   (`scripts/diagnostics/diagnostic_runner.py:572,574,576,580`), then proves
   the fix by staging a disposable Cyrillic-containing change and confirming
   `test_machine_output_fields_are_present_and_safe` passes instead of
   erroring.
+- Resolution: `TASK-FIX-FINDING-019-DIAGNOSTIC-RUNNER-ENCODING-20260903`
+  added `encoding="utf-8", errors="replace"` to the four `secret_path_check`
+  calls (lines 572, 574, 576, 580) — matching the exact parameters this same
+  file's own `run_process()` helper already used correctly a few lines
+  above, so this was a real inconsistency, not a new pattern. Also fixed two
+  more instances of the identical missing-`encoding` defect found in the
+  same file while verifying the fix (`git_check`'s raw `branch`/`head`
+  lookups at lines 133-134) — lower practical risk since branch names and
+  commit hashes are normally ASCII, but the same root cause. Proven by
+  staging this task's own Cyrillic-heavy documentation changes (this file
+  and the task report) and confirming
+  `test_machine_output_fields_are_present_and_safe` passes with the fix in
+  place, where it previously raised `AttributeError` under the same staged
+  condition.
+- Resolution report:
+  `ai/reports/TASK-FIX-FINDING-019-DIAGNOSTIC-RUNNER-ENCODING-20260903-report.md`
 
 ## FINDING-018 — `collect_inn.py --llm` imports a nonexistent symbol
 
