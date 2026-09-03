@@ -116,6 +116,12 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
   `supplier_app.py` (first step of turning it into a thin composition entrypoint; `SupplierApp`/
   `SupplierHandler` stay in `supplier_app.py` for now). All names remain importable from
   `supplier_app` via re-export — `api/index.py` and operator scripts are unaffected.
+- `backend/domain/supplier_enrichment/orchestrator.py` — `EnrichmentOrchestratorMixin` and
+  `EnrichmentOutcome`: the ~1000-line enrichment pipeline (SERP→crawl→registry→web→finance
+  retry stages, `_enrich_one`) extracted out of `SupplierApp` (Pass 2 of the same
+  composition-entrypoint program). `class SupplierApp(EnrichmentOrchestratorMixin)` composes it
+  in, so every method still resolves `self.repository`/`self.service`/`self.llm_*` exactly as
+  before — no behavior change, no new public surface.
 - `collect_inn.py` stays at root as a thinned CLI (argparse, crawl/LLM/web/DaData
   orchestration, CSV output) importing its extracted pipeline back — this is deliberate
   structure, not an oversight. Three operator CLIs already moved with thin root compatibility

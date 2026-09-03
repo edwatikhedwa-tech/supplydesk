@@ -15,6 +15,23 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-BOUNDED-SUPPLIER-APP-ENRICHMENT-EXTRACT-20260903`
+(Pass 2 of the composition-entrypoint program): the ~1000-line enrichment
+pipeline (SERP→crawl→registry→web→finance retry stages, `_enrich_one` and
+17 related methods) moved from `SupplierApp` into
+[`backend/domain/supplier_enrichment/orchestrator.py`](../backend/domain/supplier_enrichment/orchestrator.py)
+as `EnrichmentOrchestratorMixin`; `SupplierApp` composes it via
+inheritance, so every method still resolves `self.repository`/
+`self.service`/`self.llm_*` exactly as before. Fixed one direct causal
+regression:
+`tests/diagnostics/test_llm_integration_move.py`'s `CONSUMERS` map asserted
+the LLM import lived in `supplier_app.py`'s own source text; updated to
+point at the new orchestrator module. Official suite: `497 tests,
+failures=0, errors=9` (established baseline), `skipped=1`; immutability
+guard `13/13 PASS` (protected paths unaffected — this pass moved code
+within a file, not a protected root path). The task report is
+[`ai/reports/TASK-BOUNDED-SUPPLIER-APP-ENRICHMENT-EXTRACT-20260903-report.md`](reports/TASK-BOUNDED-SUPPLIER-APP-ENRICHMENT-EXTRACT-20260903-report.md).
+
 `2026-09-03` — `TASK-BOUNDED-SUPPLIER-APP-CONFIG-EXTRACT-20260903` (Pass 1
 of an owner-directed program to turn `supplier_app.py` into a thin
 composition entrypoint and split `mail/repository.py` by responsibility,
