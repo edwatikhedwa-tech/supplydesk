@@ -15,6 +15,17 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-BOUNDED-MAIL-REPOSITORY-TEMPLATES-EXTRACT-20260903`
+(Pass 3 of splitting `mail/repository.py`): `get_mail_template`/
+`save_mail_template` moved to
+[`mail/mail_templates.py`](../mail/mail_templates.py) as
+`MailTemplatesMixin` — second zero-cross-cluster-coupling extraction
+after auth/accounts. `class MailRepository(AuthAccountsMixin,
+MailTemplatesMixin)`. `mail/repository.py`: `8297` → `8234` lines.
+Official suite: `497 tests, failures=0, errors=9` (established baseline),
+`skipped=1`. The task report is
+[`ai/reports/TASK-BOUNDED-MAIL-REPOSITORY-TEMPLATES-EXTRACT-20260903-report.md`](reports/TASK-BOUNDED-MAIL-REPOSITORY-TEMPLATES-EXTRACT-20260903-report.md).
+
 `2026-09-03` — `TASK-BOUNDED-MAIL-REPOSITORY-AUTH-ACCOUNTS-EXTRACT-20260903`
 (Pass 2 of splitting `mail/repository.py`, following a fresh
 cross-cluster-coupling audit of all ~220 methods): ~25 users/sessions/

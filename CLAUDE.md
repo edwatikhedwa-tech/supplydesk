@@ -113,7 +113,10 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
   `mail/auth_accounts.py` — `AuthAccountsMixin`: users/sessions/OAuth-state/mail-account CRUD
   (`seed_user`, `authenticate`, `create_session`, `save_mail_account`, etc.) extracted out of
   `MailRepository` — the one cluster confirmed to have zero private-helper coupling with any
-  other cluster in the file. `class MailRepository(AuthAccountsMixin)` composes it in.
+  other cluster in the file.
+  `mail/mail_templates.py` — `MailTemplatesMixin`: `get_mail_template`/`save_mail_template`,
+  another zero-coupling cluster (only touches the universal `_audit_connection`).
+  `class MailRepository(AuthAccountsMixin, MailTemplatesMixin)` composes both in.
 - `backend/integrations/{registry,llm,search}/` — provider adapters moved out of the root flat
   package: `dadata_client.py`, `checko_client.py`, `llm_fallback.py`, `routerai_client.py`,
   `web_lookup.py`, `xmlriver_client.py`, `serp_parser.py` (the last with a thin root

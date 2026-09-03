@@ -16,6 +16,7 @@ from uuid import uuid4
 
 from .auth import new_token
 from .auth_accounts import AuthAccountsMixin
+from .mail_templates import MailTemplatesMixin
 from .bounce import classify_bounce, failed_recipients
 from .content import (
     clean_email_text,
@@ -175,7 +176,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-class MailRepository(AuthAccountsMixin):
+class MailRepository(AuthAccountsMixin, MailTemplatesMixin):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
         self.db_path = Path(db_path).expanduser().resolve()
@@ -3702,70 +3703,6 @@ class MailRepository(AuthAccountsMixin):
                 (request_id, supplier_id, rating, now),
             )
             self._audit_connection(connection, workspace_id, user_id, "request_supplier.rated", "request_supplier", f"{request_id}:{supplier_id}", {"rating": rating})
-
-    # ------------------------------------------------ workspace mail template
-
-    def get_mail_template(self, workspace_id: int) -> dict[str, Any] | None:
-        with self.connect() as connection:
-            row = connection.execute(
-                "SELECT subject, body_text, updated_at FROM workspace_mail_templates WHERE workspace_id=?",
-                (workspace_id,),
-            ).fetchone()
-            if not row:
-                return None
-            attachments = connection.execute(
-                """SELECT filename, mime_type, size_bytes, content
-                   FROM workspace_mail_template_attachments
-                   WHERE workspace_id=? ORDER BY id""",
-                (workspace_id,),
-            ).fetchall()
-        return {**dict(row), "attachments": [dict(item) for item in attachments]}
-
-    def save_mail_template(
-        self, workspace_id: int, user_id: int, *, subject: str, body_text: str,
-        attachments: Iterable[dict[str, Any]],
-    ) -> dict[str, Any]:
-        """Atomically replace the workspace template and its attachment set."""
-        now = iso_now()
-        items = list(attachments)
-        with self.connect() as connection:
-            connection.execute("BEGIN IMMEDIATE")
-            connection.execute(
-                """INSERT INTO workspace_mail_templates(
-                       workspace_id, subject, body_text, updated_by, updated_at
-                   ) VALUES (?, ?, ?, ?, ?)
-                   ON CONFLICT(workspace_id) DO UPDATE SET
-                       subject=excluded.subject, body_text=excluded.body_text,
-                       updated_by=excluded.updated_by, updated_at=excluded.updated_at""",
-                (workspace_id, subject, body_text, user_id, now),
-            )
-            connection.execute(
-                "DELETE FROM workspace_mail_template_attachments WHERE workspace_id=?",
-                (workspace_id,),
-            )
-            for item in items:
-                connection.execute(
-                    """INSERT INTO workspace_mail_template_attachments(
-                           workspace_id, filename, mime_type, size_bytes, content
-                       ) VALUES (?, ?, ?, ?, ?)""",
-                    (
-                        workspace_id, item["filename"], item["mime_type"],
-                        item["size_bytes"], item["content"],
-                    ),
-                )
-            self._audit_connection(
-                connection, workspace_id, user_id, "mail_template.updated",
-                "workspace_mail_template", str(workspace_id),
-                {
-                    "subject_length": len(subject),
-                    "body_length": len(body_text),
-                    "attachments": [
-                        {"filename": item["filename"], "size_bytes": item["size_bytes"]}
-                        for item in items
-                    ],
-                },
-            )
-        return self.get_mail_template(workspace_id) or {}
 
     # --------------------------------------------- outgoing send operations
 
