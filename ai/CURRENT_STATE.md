@@ -15,6 +15,28 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-BOUNDED-SUPPLIER-APP-ROUTE-HELPERS-EXTRACT-20260903`
+(batches A+B of `SupplierHandler` decomposition): `_thread_messages`/
+`_request_route`/`_request_action` moved to
+[`backend/http_requests.py`](../backend/http_requests.py)
+(`RequestRouteMixin`); `_global_supplier_route`/`_global_supplier_action`
+moved to
+[`backend/http_global_suppliers.py`](../backend/http_global_suppliers.py)
+(`GlobalSupplierRouteMixin`). `SupplierHandler` now composes
+`AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMixin`;
+`do_GET`/`do_POST`/`do_DELETE` untouched. `supplier_app.py`: `1185` →
+`1038` lines. Batch C (mail HTTP route helpers) is explicitly NOT
+done: unlike requests/global-suppliers, mail routes never had a
+dedicated sub-router method — all ~65 `/api/mail/*` branches are inline
+in `do_GET`/`do_POST`, so extracting them means creating new method
+boundaries (restructuring `do_GET`/`do_POST` bodies), not a pure move;
+left for a separate owner decision. `DISPATCH_TABLE: NOT_NEEDED` —
+`do_GET`/`do_POST` are still long (~204/~326 lines) but a dispatch table
+wouldn't shrink that, since the bulk is inline mail-route bodies, not
+if/elif overhead. Official suite: `497 tests, failures=0, errors=9`
+(established baseline), `skipped=1`. The task report is
+[`ai/reports/TASK-BOUNDED-SUPPLIER-APP-ROUTE-HELPERS-EXTRACT-20260903-report.md`](reports/TASK-BOUNDED-SUPPLIER-APP-ROUTE-HELPERS-EXTRACT-20260903-report.md).
+
 `2026-09-03` — `TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903` (Pass 3
 of the composition-entrypoint program, batch A of `SupplierHandler`
 decomposition): 16 auth/session/OAuth handler methods (`_login`,

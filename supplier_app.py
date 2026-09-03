@@ -42,6 +42,8 @@ from backend.integrations.registry.checko_client import CheckoClient
 from backend.domain.supplier_identity.inn_extractor import validate_inn_checksum
 from backend.domain.supplier_enrichment.orchestrator import EnrichmentOrchestratorMixin
 from backend.http_auth import AuthHandlerMixin
+from backend.http_global_suppliers import GlobalSupplierRouteMixin
+from backend.http_requests import RequestRouteMixin
 
 log = logging.getLogger("supplier_app")
 
@@ -58,7 +60,7 @@ def _strict_optional_bool(payload: dict, field: str) -> bool | None:
     return value
 
 
-class SupplierHandler(AuthHandlerMixin, SimpleHTTPRequestHandler):
+class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMixin, SimpleHTTPRequestHandler):
     server_version = "SupplydeskMail/1.0"
 
     @property
@@ -687,155 +689,6 @@ class SupplierHandler(AuthHandlerMixin, SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
-
-    def _thread_messages(self, session: dict, query: dict[str, list[str]]) -> None:
-        try:
-            request_id = int((query.get("request_id") or [1043])[0])
-            supplier_id = int((query.get("supplier_id") or [0])[0])
-        except ValueError:
-            self._json(400, {"error": "Некорректные идентификаторы переписки."})
-            return
-        if supplier_id <= 0:
-            self._json(200, {"items": self.app.repository.list_threads(session["workspace_id"])})
-            return
-        self._json(200, {"items": self.app.repository.thread_messages(session["workspace_id"], request_id, supplier_id)})
-
-    def _request_route(self, session: dict, path: str, query: dict[str, list[str]]) -> None:
-        parts = [part for part in path.split("/") if part]
-        try:
-            request_id = int(parts[2])
-        except (IndexError, ValueError):
-            self._json(400, {"error": "Некорректный идентификатор заявки."})
-            return
-        if len(parts) == 3:
-            request = self.app.repository.get_request(session["workspace_id"], request_id)
-            if not request:
-                self._json(404, {"error": "Заявка не найдена."})
-                return
-            self._json(200, {"request": request, "positions": self.app.repository.request_positions(session["workspace_id"], request_id), "items": self.app.repository.list_suppliers(session["workspace_id"], request_id)})
-            return
-        if len(parts) == 4 and parts[3] == "suppliers":
-            self._json(200, {"items": self.app.repository.list_suppliers(session["workspace_id"], request_id)})
-            return
-        self._json(404, {"error": "Маршрут заявки не найден."})
-
-    def _request_action(self, session: dict, path: str, body: dict) -> None:
-        parts = [part for part in path.split("/") if part]
-        try:
-            request_id = int(parts[2])
-        except (IndexError, ValueError):
-            self._json(400, {"error": "Некорректный идентификатор заявки."})
-            return
-        if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "inn":
-            try:
-                supplier_id = int(parts[4])
-            except ValueError:
-                self._json(400, {"error": "Некорректный идентификатор поставщика."})
-                return
-            result = self.app.update_supplier_inn(
-                session["workspace_id"], session["user_id"], request_id, supplier_id,
-                str(body.get("inn", "")),
-            )
-            self._json(200, result)
-            return
-        if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "rating":
-            try:
-                supplier_id = int(parts[4])
-                rating = int(body.get("rating", 0))
-            except (ValueError, TypeError):
-                self._json(400, {"error": "Некорректная оценка."})
-                return
-            self.app.repository.set_deal_rating(session["workspace_id"], session["user_id"], request_id, supplier_id, rating)
-            self._json(200, {"ok": True})
-            return
-        if len(parts) == 3:
-            self.app.repository.update_request(
-                session["workspace_id"], request_id, session["user_id"],
-                name=body.get("name"), description=body.get("description"), deadline=body.get("deadline"),
-            )
-            self._json(200, {"ok": True})
-            return
-        if len(parts) == 4 and parts[3] == "search":
-            result = self.app.repository.start_request_search(session["workspace_id"], request_id, session["user_id"])
-            if request_id == 1043:
-                # The existing page is a completed, enriched fixture; keep it available for the current workspace.
-                self.app.repository.complete_request_search(session["workspace_id"], request_id)
-                result["status"] = "completed"
-                result["search_progress"] = result["search_total"]
-            self._json(202, {"ok": True, **result})
-            return
-        if len(parts) == 5 and parts[3] == "search" and parts[4] == "step":
-            result = self.app.process_search_step(session["workspace_id"], request_id)
-            self._json(200, {"ok": True, **result})
-            return
-        if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "irrelevant":
-            try:
-                supplier_id = int(parts[4])
-            except ValueError:
-                self._json(400, {"error": "Некорректный идентификатор поставщика."})
-                return
-            self.app.repository.set_irrelevant(session["workspace_id"], session["user_id"], request_id, supplier_id, True)
-            self._json(200, {"ok": True})
-            return
-        self._json(404, {"error": "Действие заявки не найдено."})
-
-    def _global_supplier_route(self, session: dict, path: str) -> None:
-        """GET /api/global-suppliers/<id> — card detail (history + issues)."""
-        parts = [part for part in path.split("/") if part]
-        try:
-            global_supplier_id = int(parts[2])
-        except (IndexError, ValueError):
-            self._json(400, {"error": "Некорректный идентификатор поставщика."})
-            return
-        if len(parts) != 3:
-            self._json(404, {"error": "Маршрут не найден."})
-            return
-        detail = self.app.repository.global_supplier_detail(session["workspace_id"], global_supplier_id)
-        if not detail:
-            self._json(404, {"error": "Поставщик не найден."})
-            return
-        self._json(200, detail)
-
-    def _global_supplier_action(self, session: dict, path: str, body: dict) -> None:
-        parts = [part for part in path.split("/") if part]
-        try:
-            global_supplier_id = int(parts[2])
-        except (IndexError, ValueError):
-            self._json(400, {"error": "Некорректный идентификатор поставщика."})
-            return
-        if len(parts) == 3:
-            note = body.get("note")
-            self.app.repository.update_global_supplier(session["workspace_id"], global_supplier_id, note=str(note) if note is not None else None)
-            self._json(200, {"ok": True})
-            return
-        if len(parts) == 4 and parts[3] == "relationship":
-            try:
-                self.app.repository.set_global_supplier_relationship(
-                    session["workspace_id"], session["user_id"], global_supplier_id,
-                    str(body.get("status", "none")), reason=str(body.get("reason", "")),
-                )
-            except ValueError as exc:
-                self._json(400, {"error": str(exc)})
-                return
-            self._json(200, {"ok": True})
-            return
-        if len(parts) == 4 and parts[3] == "issues":
-            reason = str(body.get("reason", "other"))
-            issue_id = self.app.repository.add_global_supplier_issue(
-                session["workspace_id"], session["user_id"], global_supplier_id,
-                reason=reason, comment=str(body.get("comment", "")),
-                correct_inn=str(body.get("correct_inn", "")), source="manual",
-            )
-            if bool(body.get("blacklist")):
-                # Store the issue's own reason code (not a translated label) — the
-                # frontend already has issueReasonLabels for display, and reusing it
-                # keeps one source of truth for "what does this code mean".
-                self.app.repository.set_global_supplier_relationship(
-                    session["workspace_id"], session["user_id"], global_supplier_id, "blacklisted", reason=reason,
-                )
-            self._json(201, {"ok": True, "issue_id": issue_id})
-            return
-        self._json(404, {"error": "Действие не найдено."})
 
     def _read_json(self) -> dict | None:
         try:
