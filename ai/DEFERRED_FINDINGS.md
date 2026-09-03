@@ -13,6 +13,51 @@ Only unresolved, accepted-risk, or explicitly superseded findings belong in
 this current register. Resolved findings and full chronology are preserved in
 [`ai/history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md`](history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md).
 
+## FINDING-019 — `diagnostic_runner.py`'s secret scan crashes on a Cyrillic staged diff
+
+- ID: `FINDING-019`
+- Severity: `LOW`
+- Status: `OPEN`
+- Evidence: `scripts/diagnostics/diagnostic_runner.py:secret_path_check` calls
+  `subprocess.run(["git", "diff", "--cached", "--unified=0"], ...,
+  capture_output=True, text=True, check=False).stdout` (line 580) without an
+  explicit `encoding=`. On this Windows environment, `text=True` decodes
+  the subprocess's stdout using the locale's default codepage (`cp1251`),
+  not UTF-8 — but `git diff` always emits UTF-8. When the currently staged
+  diff (`git diff --cached`) contains Cyrillic text (extremely common in
+  this codebase's comments/docstrings/Russian identifiers), the reader
+  thread hits `UnicodeDecodeError` internally and `.stdout` ends up `None`;
+  `scan_staged_literal_diff` then calls `diff_text.splitlines()` on `None`
+  and raises `AttributeError`. Reproduced deterministically during
+  `TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903` while a large,
+  Cyrillic-heavy diff was staged-but-uncommitted:
+  `tests.diagnostics.test_diagnostic_negative_fixtures.DiagnosticNegativeFixtureTests.test_machine_output_fields_are_present_and_safe`
+  errored with exactly this traceback; the same three `subprocess.run` calls
+  in the same function (lines 572, 574, 576, for `git diff --name-only`/
+  `git ls-files`/`git ls-files --others`) share the same missing-`encoding`
+  pattern and are equally exposed, just less likely to contain Cyrillic
+  bytes in a single run.
+- Impact: any contributor who runs the full local test suite
+  (`scripts/run_test_suite.py`) while they happen to have a Cyrillic-containing
+  diff staged-but-not-yet-committed will see this test error, indistinguishable
+  at a glance from a real regression, purely because of ambient git index
+  state rather than anything in the code under test.
+- Why deferred: discovered incidentally while verifying
+  `TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903`'s regression suite
+  (converting root manual test scripts to `unittest.TestCase`s); fixing a
+  subprocess-encoding bug in an unrelated diagnostic tool is out of that
+  task's scope (`AI_CONTRACT.md` rule 5 — do not fix unrelated problems).
+  Confirmed non-blocking for that task: after the task's own changes were
+  committed (clearing the git staging area), a clean rerun of
+  `scripts/run_test_suite.py` returned to the established `9`-error
+  `pwsh`-gap baseline with no `AttributeError`.
+- Next verification: a separate task adds `encoding="utf-8"` to all four
+  `subprocess.run(..., text=True, ...)` calls in `secret_path_check`
+  (`scripts/diagnostics/diagnostic_runner.py:572,574,576,580`), then proves
+  the fix by staging a disposable Cyrillic-containing change and confirming
+  `test_machine_output_fields_are_present_and_safe` passes instead of
+  erroring.
+
 ## FINDING-018 — `collect_inn.py --llm` imports a nonexistent symbol
 
 - ID: `FINDING-018`

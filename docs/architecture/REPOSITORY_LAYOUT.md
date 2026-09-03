@@ -24,7 +24,7 @@ not a target structure. For behavioral component ownership, see
 | `frontend/` | React/Vite SPA (TypeScript, Tailwind) |
 | `scripts/` | Operator/control tooling, plus one moved CLI implementation (`scripts/collect_contacts.py`) with a root compatibility wrapper |
 | `benchmarks/` | Offline fixtures (`enrichment_cases.json`) and one moved CLI implementation (`benchmarks/benchmark_models.py`) with a root compatibility wrapper |
-| `tests/` | Backend unittest suites, including `tests/diagnostics/` |
+| `tests/` | Backend unittest suites, including `tests/diagnostics/` and `tests/legacy/` (four root manual-check scripts converted to real `unittest.TestCase`s) |
 | `supplier_discovery_v2/` | Isolated discovery pilot; does not import or modify production parser code (see its own `README.md`) |
 
 ## Moves in progress
@@ -118,9 +118,19 @@ not a target structure. For behavioral component ownership, see
   protected-path list was migrated in the same change; the unprotected root
   wrapper carries no logic to drift, matching `collect_contacts.py`'s and
   `benchmark_models.py`'s wrappers.
+- `TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903`: the four root manual
+  check scripts (`test_extractor.py`, `test_inn.py`, `test_parser.py`,
+  `test_verify.py` — custom `check()`/`main()` scripts, never part of
+  `scripts/run_test_suite.py`'s discovery) were converted into real
+  `unittest.TestCase`s under `tests/legacy/`, per explicit owner decision.
+  Every `check(name, actual, expected)` call became
+  `self._check(name, actual, expected)` (a thin `subTest`+`assertEqual`
+  wrapper), 1:1 verified by call-site line diff — no coverage lost, no
+  assertion rewritten. The root files were deleted (no other code imported
+  them). `tests/legacy/` is picked up automatically by
+  `scripts/run_test_suite.py`'s existing recursive `unittest` discovery over
+  `tests/` — no runner change was needed.
 - Remaining root modules named in
   `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`
-  (`supplier_app.py`, `api/index.py`, root `test_*.py`) are unmoved.
-  `supplier_app.py`/`api/index.py` stay `KEEP_ROOT` as protected entrypoints;
-  root `test_*.py` await conversion to real `unittest.TestCase`s per owner
-  decision (tracked as a separate bounded task, not yet executed).
+  (`supplier_app.py`, `api/index.py`) are unmoved and stay `KEEP_ROOT` as
+  protected entrypoints.

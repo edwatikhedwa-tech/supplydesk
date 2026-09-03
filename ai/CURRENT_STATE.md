@@ -15,6 +15,31 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903` (Pass 11,
+final pass of the root refactor program) converted the four root manual
+check scripts (`test_extractor.py`, `test_inn.py`, `test_parser.py`,
+`test_verify.py` — custom `check()`/`main()` scripts never discovered by
+`scripts/run_test_suite.py`) into real `unittest.TestCase`s under
+[`tests/legacy/`](../tests/legacy/), per explicit owner decision (asked
+alongside the `serp_parser.py` decision — the diagnostic had explicitly
+deferred both to the owner). Every `check(name, actual, expected)` call
+became `self._check(name, actual, expected)` (a `subTest`+`assertEqual`
+wrapper); a line-by-line diff of all 186 call sites across the four files
+confirmed exact 1:1 parity before the root files were deleted — no coverage
+lost, no assertion logic rewritten. `tests/legacy/` needed no runner change:
+`scripts/run_test_suite.py`'s existing recursive `unittest.discover` over
+`tests/` picked it up automatically (verified: `tests.legacy.test_extractor`
+etc. appear in the official run's verbose output). Incidentally discovered
+and deferred (not fixed) `FINDING-019`: a missing `encoding="utf-8"` on
+`diagnostic_runner.py`'s `subprocess.run(["git","diff",...])` calls crashes
+`secret_path_check` when the ambient staged diff contains Cyrillic text —
+confirmed non-blocking for this task (the error was present only while this
+task's own large Cyrillic diff was staged-but-uncommitted; it disappeared
+on a clean rerun after committing). This closes the multi-pass root
+refactor program (Passes 2-11); `supplier_app.py`/`api/index.py` remain the
+only intentionally-unmoved root Python, per `KEEP_ROOT`. The task report is
+[`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903-report.md).
+
 `2026-09-03` — `TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903`
 (Pass 10) moved `serp_parser.py` to
 [`backend/integrations/search/serp_parser.py`](../backend/integrations/search/serp_parser.py),
@@ -622,6 +647,15 @@ on this task's dedicated branch:
   to this task); docs/state/vibecoding validators and `git diff --check`
   passed.
 
+- Bounded root refactor Pass 11 (tests/legacy conversion): `tests/legacy/{test_extractor,
+  test_inn,test_parser,test_verify}.py` are real `unittest.TestCase`s
+  (`ExtractorTests`, `InnExtractorTests`, `SerpParserTests`, `VerifyTests`),
+  discovered automatically by `scripts/run_test_suite.py`; root copies are
+  gone. `python -m unittest discover -s tests/legacy -v`: `29/29 PASS`.
+  Official backend suite: `497 tests, failures=0, errors=9` (same
+  pre-existing `pwsh`-gap; confirmed a transient 10th error seen mid-task
+  was `FINDING-019`, caused by this task's own uncommitted staged diff, not
+  by the new test files — cleared after commit), `skipped=1`.
 - Bounded root refactor Pass 10 (serp_parser.py move): `backend/integrations/search/serp_parser.py`
   is now the canonical implementation; root `serp_parser.py` is a thin
   compatibility wrapper. `supplier_app`, `collect_inn`,
@@ -751,27 +785,20 @@ on this task's dedicated branch:
 
 ## Current next step
 
-Pass 2 (CLI compatibility), Pass 3 (`dadata_client.py`), Pass 4
-(`checko_client.py` + immutability migration), Pass 5 (LLM integrations),
-Pass 6 (supplier identity domain), Pass 7 (search integrations), Pass 8
-(`contact_crawler.py`), Pass 9 (`collect_inn.py` pipeline/CLI split) and
-Pass 10 (`serp_parser.py` move) are complete; `backend/{integrations/
-{registry,llm,search},domain/{supplier_identity,supplier_enrichment}}/` now
-hold 13 moved/extracted modules and `FINDING-017`/`FINDING-018` are both
-resolved. Owner decided (2026-09-03) to move `serp_parser.py` now and to
-convert root `test_*.py` into real `unittest.TestCase`s — the former is
-done (Pass 10); the latter is the one remaining item:
-
-- Root `test_*.py` (`test_extractor.py`, `test_inn.py`, `test_parser.py`,
-  `test_verify.py`): owner decided to convert these into real
-  `unittest.TestCase`s included in the official runner
-  (`scripts/run_test_suite.py`), not delete or leave as manual scripts. Not
-  yet executed — needs its own bounded task (verify no content/coverage is
-  lost in the conversion, decide the destination — `tests/` directly or a
-  `tests/legacy/` subpackage — and confirm `scripts/run_test_suite.py`'s
-  discovery picks them up).
-- `supplier_app.py`/`api/index.py` remain `KEEP_ROOT` — protected local and
-  serverless entrypoints, not move candidates.
+The bounded root refactor program (Passes 2-11) is complete. Pass 2 (CLI
+compatibility), Pass 3 (`dadata_client.py`), Pass 4 (`checko_client.py` +
+immutability migration), Pass 5 (LLM integrations), Pass 6 (supplier
+identity domain), Pass 7 (search integrations), Pass 8 (`contact_crawler.py`),
+Pass 9 (`collect_inn.py` pipeline/CLI split), Pass 10 (`serp_parser.py`
+move) and Pass 11 (`tests/legacy/` conversion) are all done; `backend/
+{integrations/{registry,llm,search},domain/{supplier_identity,
+supplier_enrichment}}/` hold 13 moved/extracted modules, `tests/legacy/`
+holds 4 converted test modules, and `FINDING-017`/`FINDING-018` are both
+resolved. `supplier_app.py`/`api/index.py` remain `KEEP_ROOT` — the only
+intentionally-unmoved root Python, being the protected local and serverless
+entrypoints. `FINDING-019` (an unrelated `diagnostic_runner.py`
+subprocess-encoding bug, discovered incidentally during Pass 11) is open
+and requires its own separate task.
 
 Keep the Browser Full `FAIL` and Finding-009 as separate recorded
 limitations.
@@ -821,6 +848,7 @@ limitations.
 - Contact crawler move report (Pass 8): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903-report.md).
 - Collect-inn pipeline/CLI split report (Pass 9): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903-report.md).
 - Serp-parser move report (Pass 10): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903-report.md).
+- Tests/legacy conversion report (Pass 11, final): [`ai/reports/TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903-report.md`](reports/TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903-report.md).
 - Repository layout map: [`docs/architecture/REPOSITORY_LAYOUT.md`](../docs/architecture/REPOSITORY_LAYOUT.md).
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).
