@@ -15,6 +15,26 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-03` — `TASK-COLD-START-WORKSPACE-HARD-GATE-20260903` is complete with
+`PASS_WITH_LIMITATIONS`. The canonical policy defines
+`SESSION_WORKSPACE_HARD_GATE` before any project-specific analysis, including
+`READ_ONLY`; a mismatch is `BLOCKED_WRONG_WORKSPACE`, and the legacy marker
+means `STOP_PROJECT_WORK_HERE`. Codex Canary 1 passed in both canonical and
+legacy contexts; the Claude post-fix harness returned an API 200
+malformed-response error in both contexts, so Claude behavioral proof remains
+`NOT VERIFIED`. Focused governance coverage is `8/8`; product code and runtime
+were not touched. The task commit is recorded in the task report.
+
+`2026-09-03` — `TASK-COLD-START-WORKSPACE-HARD-GATE-20260903` was in progress.
+The canonical policy now defines `SESSION_WORKSPACE_HARD_GATE` before any
+project-specific analysis, including `READ_ONLY`; a mismatch is
+`BLOCKED_WRONG_WORKSPACE`, and the legacy marker means
+`STOP_PROJECT_WORK_HERE`. `AGENTS.md` and `CLAUDE.md` point to that single
+policy surface, the manifest separates stable physical workspace identity from
+task-dependent branch state, and focused governance coverage is now `8/8`.
+Fresh Claude/Codex Canary 1 evidence is pending; product code and runtime were
+not touched.
+
 `2026-09-03` — `TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903` added the
 canonical default operating model to [`ai/VIBECODING_RULES.md`](VIBECODING_RULES.md):
 healthy-session inheritance, automatic minimum-sufficient tool selection without

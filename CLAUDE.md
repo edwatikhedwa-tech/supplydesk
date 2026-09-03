@@ -35,6 +35,10 @@ the relevant files were actually connected or read.
 
 ## Workspace guard
 
+Before project-specific analysis or execution, including read-only work, enforce
+the canonical `SESSION_WORKSPACE_HARD_GATE` from
+[`ai/VIBECODING_RULES.md`](ai/VIBECODING_RULES.md). Only after it passes may the
+agent read project state, classify the task or select project-analysis tools.
 Before any file change, state/report update, backend start, frontend build,
 database write, migration, artifact-producing test, commit or push, run:
 

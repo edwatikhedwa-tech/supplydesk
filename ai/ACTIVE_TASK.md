@@ -1,10 +1,10 @@
 ---
-document_id: TASK-LOCK-024
+document_id: TASK-LOCK-025
 status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-03
-based_on_commit: 3aaae0252c4fa784ec9a4b2d4c8658a32545dff4
+based_on_commit: cfcfb68f2b078baff7968f3d94d2321a1518fd5f
 ---
 
 # Active Task
@@ -12,8 +12,9 @@ based_on_commit: 3aaae0252c4fa784ec9a4b2d4c8658a32545dff4
 Task ID: `NONE`
 Agent: `Codex`
 Mode: `IDLE`
-Started: `2026-09-03`
-Scope: `No active task; TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903 is closed with PASS_WITH_LIMITATIONS`
-Allowed files: `none — no active task`
-Status: `IDLE — canonical policy change, static acceptance and closeout report completed; fresh child behavior remains NOT VERIFIED`
+Started: `—`
+Scope: `no active project task`
+Allowed files: `—`
+Non-goals: `—`
+Status: `IDLE — TASK-COLD-START-WORKSPACE-HARD-GATE-20260903 completed with PASS_WITH_LIMITATIONS; Claude fresh behavioral trace remains NOT VERIFIED because both post-fix CLI attempts returned an API 200 malformed-response error`
 Last update: `2026-09-03`

@@ -2,6 +2,26 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-03 — TASK-COLD-START-WORKSPACE-HARD-GATE-20260903
+
+- Read-only discovery confirmed two checkouts: the legacy OneDrive checkout
+  was dirty and the canonical `C:\Users\edwat\SupplyDesk` checkout was the
+  intended project root. No user data, database, runtime or mail paths were
+  changed.
+- A fresh Claude legacy trace before the adapter update launched project-root
+  audit work instead of stopping, confirming the bootstrap gap. The exact
+  child was interrupted; unrelated Claude processes were left untouched.
+- Updated the canonical gate/contract/adapters/manifest and focused diagnostics
+  in one task-scoped commit. Updated only the legacy adapter/contract/marker
+  locally so a fresh agent entering the stale checkout receives a stop signal.
+- Post-fix Codex Canary 1 blocked the legacy checkout before project analysis
+  and passed the canonical checkout before continuing a read-only audit.
+  Claude A/B attempts returned an API 200 malformed-response error with no
+  usable post-fix behavioral trace.
+- Local validators, the guard, focused tests and `doctor -Plan` were run.
+  Publication is a separate final action after the commit and is recorded in
+  the owner response.
+
 ## 2026-09-03 — TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903
 
 - Owner instruction: "почини, а потом продолжи рефакторинг!" — first

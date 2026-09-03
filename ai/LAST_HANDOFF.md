@@ -1,13 +1,52 @@
 ---
-document_id: HANDOFF-014
+document_id: HANDOFF-015
 status: CURRENT
 canonical: false
 owner: Codex
 updated_at: 2026-09-03
-based_on_commit: 3aaae0252c4fa784ec9a4b2d4c8658a32545dff4
+based_on_commit: 10b7922df966f638839ff93eda7668d319c257a7
 ---
 
 # Last Handoff
+
+This current handoff records `TASK-COLD-START-WORKSPACE-HARD-GATE-20260903`.
+The older default-operating-model handoff is retained below as historical
+context and is not the current task state.
+
+## Текущая задача
+
+Ужесточить границу канонического workspace до любой проектной работы,
+включая read-only-аудит, и доказать свежий запуск агента без изменения
+продуктового кода.
+
+## Что изменено
+
+- `ai/VIBECODING_RULES.md` и `ai/AI_CONTRACT.md` требуют
+  `SESSION_WORKSPACE_HARD_GATE` до анализа; неверный корень останавливает
+  работу с `BLOCKED_WRONG_WORKSPACE`.
+- `AGENTS.md`, `CLAUDE.md`, `PROJECT_MANIFEST.yaml` и диагностические тесты
+  указывают на один канонический путь и task-dependent ветку.
+- В legacy checkout локально обновлены только adapter/contract/marker,
+  чтобы свежий агент там увидел указатель и остановился. Эти три файла не
+  синхронизировались в canonical commit и не публиковались.
+- `ai/ACTIVE_TASK.md` возвращён в `IDLE`; создан task report.
+
+## Доказательства и ограничения
+
+- `assert_workspace.ps1`: canonical `PASS`, legacy `BLOCKED_WRONG_WORKSPACE`.
+- Codex Canary 1: legacy `PASS` — остановился до анализа; canonical `PASS` —
+  прошёл gate и продолжил read-only-аудит.
+- Claude post-fix A/B: `NOT VERIFIED` из-за API 200 malformed-response; ранее
+  зафиксирован wrong-workspace trace, который подтвердил bootstrap gap до
+  локального legacy adapter fix.
+- Фокусные governance tests: `8/8`; validators и `doctor -Plan` прошли.
+
+## Следующий рациональный шаг
+
+Проверить classifier-selected FAST/control CI после публикации; FULL CI,
+Canaries 2–4, runtime и продуктовые изменения остаются вне этой задачи.
+
+---
 
 This current handoff records `TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903`.
 The older search-integrations and CI handoff is retained below as historical
