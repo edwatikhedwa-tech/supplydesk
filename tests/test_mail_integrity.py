@@ -894,14 +894,21 @@ class MailIntegrityAcceptanceTests(unittest.TestCase):
             with self.repo.connect() as connection:
                 connection.execute("UPDATE mail_runtime_controls SET outgoing_enabled=1, updated_at='now' WHERE id=1")
             queue.wake()
+
+            def snapshot():
+                with self.repo.connect() as connection:
+                    return connection.execute(
+                        "SELECT status, attempts, next_attempt_at FROM mail_jobs WHERE id=?", (queued["job_id"],)
+                    ).fetchone()
+
             deadline = time.monotonic() + 3
-            while time.monotonic() < deadline and self.provider.send_calls < 1:
+            row = snapshot()
+            # send_calls increments before the worker's retry_job() write lands, so
+            # wait for the final "queued" status too, not just the transport attempt.
+            while time.monotonic() < deadline and not (self.provider.send_calls >= 1 and row["status"] == "queued"):
                 time.sleep(0.05)
+                row = snapshot()
             self.assertEqual(self.provider.send_calls, 1)
-            with self.repo.connect() as connection:
-                row = connection.execute(
-                    "SELECT status, attempts, next_attempt_at FROM mail_jobs WHERE id=?", (queued["job_id"],)
-                ).fetchone()
             self.assertEqual(row["status"], "queued")
             self.assertEqual(row["attempts"], 1)
             self.assertIsNotNone(row["next_attempt_at"])
