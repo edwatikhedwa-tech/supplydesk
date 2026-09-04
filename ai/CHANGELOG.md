@@ -1651,3 +1651,6 @@ Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH`
   (`frontend/src/App.tsx`, `frontend/src/pages/UiExperiment.tsx` and
   `frontend/src/styles/`) plus local `docs/experiments/` and `runtime/`; they
   remain outside the published branches and were not inspected or changed.
+- Final documentation boundary commit `b70c4cf` was pushed to canonical and
+  the external base was fast-forwarded to the same SHA; both refs were
+  rechecked equal.

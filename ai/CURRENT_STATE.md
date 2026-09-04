@@ -19,10 +19,12 @@ preserved under [`ai/history/`](history/).
 verified the canonical checkout at `C:\Users\edwat\SupplyDesk` and the
 canonical branch `integration/current-architecture-governance-20260903`.
 The expected owner-approved functional HEAD `878cf70` was confirmed; a
-documentation-only reconciliation commit `1a5acf2` was then pushed normally,
-and local/remote HEADs matched. The external base branch
-`ui/external-redesign-base-20260904` was created from that verified canonical
-HEAD and pushed without force. GitHub's current default branch is
+documentation-only reconciliation commit `1a5acf2` was pushed normally, then
+the final documentation boundary commit `b70c4cf` was pushed normally as well;
+local/remote HEADs match at `b70c4cf`. The external base branch
+`ui/external-redesign-base-20260904` was created from the verified canonical
+HEAD and fast-forwarded to the same final SHA without force. GitHub's current
+default branch is
 `claude/zen-goldwasser-022bb1`; it was not changed. The root `README.md` is
 absent; `docs/CURRENT_STATE.md` is explicitly historical and points to this
 file. No UI, backend, API, business logic, OAuth, database, provider or mail

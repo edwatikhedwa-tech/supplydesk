@@ -85,6 +85,12 @@ creation. It was created from the verified canonical HEAD and pushed normally.
 Its local and remote SHA both matched the canonical SHA at creation:
 `1a5acf232fc7ddfbb5b50a98ea697eb6fd79ac65`.
 
+The final documentation boundary commit
+`b70c4cf11133ec5f279448f8eb6283ffaac5eb46` was pushed normally to the
+canonical branch. The external base was fast-forwarded normally to the same
+SHA. Final local and remote canonical SHA, and final local and remote external
+base SHA, all equal `b70c4cf11133ec5f279448f8eb6283ffaac5eb46`.
+
 Current GitHub default branch: `claude/zen-goldwasser-022bb1`.
 Recommended default for this canonical stream:
 `integration/current-architecture-governance-20260903`.
@@ -99,7 +105,8 @@ worktree reported unstaged `frontend/src/App.tsx` and untracked
 `frontend/src/pages/UiExperiment.tsx`, `frontend/src/styles/`,
 `docs/experiments/` and `runtime/`. Their provenance is not verified. They
 were not inspected, staged, committed, pushed or deleted. The published
-canonical and external branch SHAs remain the documentation-only state above.
+canonical and external branch SHAs remain the final documentation-only state
+`b70c4cf11133ec5f279448f8eb6283ffaac5eb46`.
 
 ## Stop state
 

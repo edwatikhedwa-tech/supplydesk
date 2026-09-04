@@ -14,10 +14,12 @@ based_on_commit: 878cf70292683fa8d9730ee353af78854746b2b1
 Canonical root is `C:\Users\edwat\SupplyDesk`; canonical branch is
 `integration/current-architecture-governance-20260903`. The expected functional
 HEAD `878cf70` was verified. Documentation-only commit `1a5acf2` reconciled
-the branch and commit anchors and was pushed with a normal fast-forward; local
-and remote HEADs matched at that point. The external base branch
-`ui/external-redesign-base-20260904` was created from that canonical HEAD and
-pushed without force. The current GitHub default branch is
+the branch and commit anchors and was pushed with a normal fast-forward.
+Final documentation boundary commit `b70c4cf` was then pushed normally; local
+and remote canonical HEADs match at `b70c4cf`. The external base branch
+`ui/external-redesign-base-20260904` was created from the verified canonical
+HEAD and fast-forwarded to the same final SHA without force. The current GitHub
+default branch is
 `claude/zen-goldwasser-022bb1`; it was not changed.
 
 Documentation audit: runtime guard, `LOCAL_CANONICAL` `:8000`, `SAFE_TEST`

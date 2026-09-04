@@ -1573,7 +1573,9 @@ Verification state: validators PASS; backend `91/91` PASS; canonical HTTP smoke
 staged security scan found no high-confidence secret signatures. One initial
 push attempt hit transient GitHub DNS failure, then the normal push succeeded.
 Canonical branch and remote matched at `1a5acf2`; external base was created and
-verified at the same SHA. GitHub default branch was observed but not changed.
+verified at the same SHA. Final documentation boundary commit `b70c4cf` was
+pushed and the external base was fast-forwarded to the same SHA; GitHub default
+branch was observed but not changed.
 
 State change: after synchronization, a final status check found unverified
 worktree drift: unstaged `frontend/src/App.tsx` and untracked
