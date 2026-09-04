@@ -15,6 +15,89 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-04` — Dellin registration was approved; the owner shared the real
+`DELLIN_API_KEY` and it was added to the local (gitignored) `.env`. A live
+calculation against the real `api.dellin.ru` (Moscow → Saint Petersburg, a
+real request/supplier from the recovered database) returned `status:
+"success"`, `price: 15422.0 RUB` — the first genuine non-mocked proof that
+`TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903`'s integration works end-to-end.
+That same live call surfaced a real gap:
+`backend/domain/logistics/quote_service.py`'s `_compute_term_days` only
+looked at `orderDates.giveoutFromOspReceiver`, which the live response did
+not include for this address-to-address route (it had
+`derivalFromOspReceiver`/`arrivalToOspReceiver` instead) — `term_days` came
+back `None` even though a real term was derivable. Fixed by trying
+`giveoutFromOspReceiver` → `derivalFromOspReceiver` → `arrivalToOspReceiver`
+in that priority order instead of only the first; re-verified against the
+same live route afterward — `term_days: 2`. Two new tests cover the
+fallback and the still-`None` case when no ready-date field is present at
+all; official logistics suite: `13 tests, all pass` (was `11`). Commercial
+authorization to use the Dellin API in a paid SaaS product remains
+`NOT VERIFIED` — this key confirms registration/technical access only, not
+a commercial-use decision.
+
+`2026-09-03` — `TASK-ROOT-CAUSE-RUNTIME-FIX-20260903`: root-cause fix for a
+Yandex OAuth callback-mismatch the owner hit against a prior session's
+"start the server" desktop shortcut. That shortcut used the `SAFE_TEST`
+runtime (`scripts/start_test_runtime.ps1`, default port `18000`, real
+provider credentials always blanked by design) because it was the one path
+already proven working in-session — without re-checking
+`PROJECT_MANIFEST.yaml`, which already listed both `backend_default_port:
+8000` and a separate port-`18000` audit URL, just with no explicit rule
+tying either to "what the owner actually means." `DECISION-016` names two
+mutually exclusive runtime modes as the fix: `PROJECT_MANIFEST.yaml` gained
+a `runtime_modes` block (`LOCAL_CANONICAL`: port `8000`, `python
+supplier_app.py`, real credentials only by explicit owner task;
+`SAFE_TEST`: port `18000`, `scripts/start_test_runtime.ps1 -Apply`,
+disposable DB, credentials always blanked) as the first source of truth;
+`docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md` now gives one
+unambiguous command per mode instead of a vague pointer; `ai/AI_CONTRACT.md`
+rule 14 requires classifying `RUNTIME_MODE` before any backend start;
+`ai/VIBECODING_RULES.md` and `CLAUDE.md` got one cross-reference line each.
+No new governance subsystem was created.
+
+By the owner's explicit, separately-given authorization, the canonical
+checkout's local `.env` (previously absent, then partially reconstructed in
+this session from memory of the underlying values) was fully replaced with
+an automatic, byte-for-byte copy of the real `.env` from the legacy
+recovery-only checkout (`C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`,
+read-only source, nothing executed or changed there) — 20 variables carried
+over with no manual per-secret selection and no secret value ever printed to
+chat, logs or this file. The pre-existing partial `.env` was preserved as a
+timestamped local backup outside git first. Two variables
+(`SUPPLYDESK_CANONICAL_DB_PATH`, `MAIL_DB_PATH`) that pointed into the
+legacy checkout's own database were removed so the canonical app falls back
+to its own default (`mail-data/supplier.sqlite3` under this checkout, not
+the legacy one); no `DATABASE_URL` was present in the source (no
+Postgres-redirect risk). Non-secret runtime settings were set explicitly to
+the `LOCAL_CANONICAL` contract: `APP_HOST=127.0.0.1`, `PORT=8000`,
+`APP_BASE_URL=http://127.0.0.1:8000`, `SUPPLYDESK_ENV` changed from
+`production` to `development` (this is real local development, not a
+deployment); `MAIL_OUTGOING_DISABLED=1` was already present and left as is.
+While patching the file, a self-caused encoding bug was found and fixed
+immediately: a Windows PowerShell 5.1 `Get-Content -Raw`/`Set-Content
+-Encoding UTF8` round-trip corrupted the file's Cyrillic comments (the same
+class of defect as an earlier same-session `.ps1` encoding bug) — caught via
+the harness's own external-file-change notification, fixed by re-reading the
+original source with an explicit UTF-8 (no BOM) `System.Text.Encoding` and
+rewriting from scratch; the final file was verified to contain no `U+FFFD`
+replacement-character marker.
+
+The real `LOCAL_CANONICAL` runtime (`python supplier_app.py`, not the test
+script) was started and verified: `GET /` → `200`, `GET /api/auth/me` →
+`200`, `GET /api/auth/yandex/start` → `302` to `oauth.yandex.ru` with
+`redirect_uri=http://127.0.0.1:8000/oauth/yandex/callback` — byte-identical
+to the `YANDEX_REDIRECT_URI` recovered from the legacy `.env`. Port `18000`
+had no listener at verification time (`SAFE_TEST` not running). **NOT
+VERIFIED**: whether this redirect URI is still the one actually registered
+in the Yandex OAuth application console right now (not opened — no owner
+Yandex login available to this session) and whether a full OAuth code
+exchange completes (needs the owner's own Yandex login, not attempted).
+`ai/tools/validate_docs.py`/`validate_state.py`/`validate_vibecoding.py`:
+all `PASS`; `PROJECT_MANIFEST.yaml` re-parsed as valid YAML after the edit.
+Full report:
+[`ai/reports/TASK-ROOT-CAUSE-RUNTIME-FIX-20260903-report.md`](reports/TASK-ROOT-CAUSE-RUNTIME-FIX-20260903-report.md).
+
 `2026-09-03` — `TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903` added an MVP
 shipping-cost calculator for one request/one supplier, using the public
 Дeловые Линии (Dellin) calculator API — real product code, API and schema

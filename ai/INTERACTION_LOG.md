@@ -2,6 +2,60 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-03 — TASK-ROOT-CAUSE-RUNTIME-FIX-20260903
+
+State change: performed a read-only root-cause analysis of why a prior
+session in this conversation confused `SAFE_TEST` (port 18000, always
+credential-blanked) with `LOCAL_CANONICAL` (port 8000, the port actually
+registered with Yandex) when building a "start the server" desktop
+shortcut. Root cause: `PROJECT_MANIFEST.yaml` already had both port facts
+but no explicit rule connecting either to the owner's actual intent, and the
+prior session picked the port already proven working in-session instead of
+re-consulting the manifest.
+
+State change: added `DECISION-016` and a minimal, causally-linked governance
+fix — `PROJECT_MANIFEST.yaml` gained a `runtime_modes` block naming
+`LOCAL_CANONICAL`/`SAFE_TEST` explicitly (first source of truth);
+`docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md` now gives one
+unambiguous start command per mode instead of a vague pointer;
+`ai/AI_CONTRACT.md` rule 14 requires classifying `RUNTIME_MODE` before any
+backend start; `ai/VIBECODING_RULES.md` and `CLAUDE.md` each got one
+cross-reference line. No new governance subsystem was created.
+
+State change: by the owner's explicit, separately-given authorization, the
+canonical checkout's `.env` was fully and automatically recovered
+(byte-for-byte, no manual per-secret selection, no secret value ever
+printed to chat/logs/report) from the legacy recovery-only checkout. The
+prior partial `.env` was backed up locally first (`.env.backup-<timestamp>`,
+gitignored). Two variables pointing at the legacy checkout's own database
+(`SUPPLYDESK_CANONICAL_DB_PATH`, `MAIL_DB_PATH`) were removed so the app
+falls back to its own canonical default; no `DATABASE_URL` was present.
+Non-secret `LOCAL_CANONICAL` values (`APP_HOST`, `PORT`, `APP_BASE_URL`,
+`SUPPLYDESK_ENV=development`) were set explicitly; `MAIL_OUTGOING_DISABLED=1`
+was already present and left untouched.
+
+State change: while patching the file, a self-caused encoding bug was found
+via the harness's own external-file-change notification and fixed
+immediately — a Windows PowerShell 5.1 `Get-Content -Raw`/`Set-Content
+-Encoding UTF8` round-trip had corrupted the file's Cyrillic comments (same
+defect class as an earlier same-session `.ps1` bug). Fixed by re-reading the
+original source with an explicit UTF-8 (no BOM) encoding and rewriting from
+scratch; verified no `U+FFFD` marker remained.
+
+State change: started the real `LOCAL_CANONICAL` runtime
+(`python supplier_app.py`, not the test script) and verified `/` → 200,
+`/api/auth/me` → 200, `/api/auth/yandex/start` → 302 with
+`redirect_uri=http://127.0.0.1:8000/oauth/yandex/callback`, byte-identical
+to the legacy `YANDEX_REDIRECT_URI`. Confirmed no listener on port 18000 at
+verification time. Left the server running per the owner's stated goal
+(normal local use). Not attempted: completing the actual Yandex login (needs
+the owner's own credentials) and confirming the redirect URI is still
+registered in the live Yandex OAuth console (not opened).
+
+Added `DECISION-016` to `ai/DECISIONS.md`, updated `ai/CURRENT_STATE.md` and
+`ai/LAST_HANDOFF.md`, wrote
+`ai/reports/TASK-ROOT-CAUSE-RUNTIME-FIX-20260903-report.md`.
+
 ## 2026-09-03 — TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903
 
 State change: added a manual, per-request/per-supplier shipping-cost

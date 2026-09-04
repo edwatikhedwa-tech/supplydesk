@@ -53,6 +53,17 @@ never changes directory, branch or files. If it prints
 `BLOCKED_WRONG_WORKSPACE`, stop immediately, even when local state files appear
 valid.
 
+Before starting a backend runtime specifically, classify `RUNTIME_MODE`
+(`LOCAL_CANONICAL` / `SAFE_TEST` / `CI` / `OTHER`) against
+`PROJECT_MANIFEST.yaml`'s `runtime_modes` block, then
+[`docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md`](docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md),
+before choosing a start command or port — see
+[`ai/AI_CONTRACT.md`](ai/AI_CONTRACT.md) rule 14. `SAFE_TEST` (default port
+`18000`) never has real provider credentials by design and must not be used
+for the owner's normal work session; do not substitute it for
+`LOCAL_CANONICAL` (port `8000`) just because it is the mode already proven
+working earlier in the session.
+
 The legacy root `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS` is
 recovery-only. Do not run ordinary coding tasks, the backend, frontend builds
 or migrations there, and do not use it to change canonical project state.

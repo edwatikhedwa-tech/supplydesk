@@ -194,16 +194,30 @@ def _compute_term_days(data: dict[str, Any]) -> int | None:
     if not isinstance(order_dates, dict):
         return None
     pickup = order_dates.get("pickup")
-    ready = order_dates.get("giveoutFromOspReceiver")
-    if not pickup or not ready:
+    if not pickup:
         return None
     try:
         pickup_date = dt.date.fromisoformat(str(pickup)[:10])
-        ready_date = dt.date.fromisoformat(str(ready)[:10])
     except ValueError:
         return None
-    delta = (ready_date - pickup_date).days
-    return delta if delta >= 0 else None
+    # Which "ready at destination" field the API actually returns depends on
+    # the delivery variant (terminal/address) and delivery type -- confirmed
+    # against a real response (2026-09-04, variant="address" both sides):
+    # giveoutFromOspReceiver was absent, derivalFromOspReceiver was present.
+    # Try the most precise field first, fall back to a coarser one rather
+    # than reporting no term at all when a later, less-precise date exists.
+    for key in ("giveoutFromOspReceiver", "derivalFromOspReceiver", "arrivalToOspReceiver"):
+        ready = order_dates.get(key)
+        if not ready:
+            continue
+        try:
+            ready_date = dt.date.fromisoformat(str(ready)[:10])
+        except ValueError:
+            continue
+        delta = (ready_date - pickup_date).days
+        if delta >= 0:
+            return delta
+    return None
 
 
 class LogisticsQuoteService:

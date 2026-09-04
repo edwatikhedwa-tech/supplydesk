@@ -51,6 +51,26 @@ CONTRACT_PRICE_RESPONSE = {
     "orderDates": {},
 }
 
+# Shape of a real response observed against the live API (2026-09-04,
+# address-to-address route Moscow -> Saint Petersburg): giveoutFromOspReceiver
+# was absent, but derivalFromOspReceiver was present -- term_days must fall
+# back to it instead of reporting no term at all.
+NO_GIVEOUT_DATE_RESPONSE = {
+    "price": 15422.0,
+    "auto": {"price": 15422.0, "contractPrice": False},
+    "derival": {"price": 0, "contractPrice": False},
+    "arrival": {"price": 0, "contractPrice": False},
+    "packages": {},
+    "insurance": 0,
+    "orderDates": {
+        "pickup": "2026-09-04",
+        "arrivalToOspSender": None,
+        "derivalFromOspSender": "2026-09-05",
+        "arrivalToOspReceiver": "2026-09-06",
+        "derivalFromOspReceiver": "2026-09-06",
+    },
+}
+
 
 class FakeDellinClient:
     """Stands in for DellinClient.calculate without any network access."""
@@ -100,6 +120,22 @@ class CacheTests(unittest.TestCase):
         other = LogisticsQuoteInput(**{**VALID_INPUT.__dict__, "cargo_places": 3})
         service.calculate(other)
         self.assertEqual(client.calls, 2)
+
+
+class TermDaysFallbackTests(unittest.TestCase):
+    def test_falls_back_to_derival_from_osp_receiver_when_giveout_is_absent(self) -> None:
+        client = FakeDellinClient([NO_GIVEOUT_DATE_RESPONSE])
+        service = LogisticsQuoteService(client=client)
+        result = service.calculate(VALID_INPUT)
+        self.assertEqual(result.status, "success")
+        self.assertEqual(result.term_days, 2)  # 2026-09-04 -> 2026-09-06
+
+    def test_returns_none_when_no_ready_date_field_is_present_at_all(self) -> None:
+        response = {**SUCCESS_RESPONSE, "orderDates": {"pickup": "2026-09-05"}}
+        client = FakeDellinClient([response])
+        service = LogisticsQuoteService(client=client)
+        result = service.calculate(VALID_INPUT)
+        self.assertIsNone(result.term_days)
 
 
 class UnavailableIsNotZeroTests(unittest.TestCase):

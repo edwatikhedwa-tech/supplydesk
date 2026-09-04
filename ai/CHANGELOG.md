@@ -3,6 +3,45 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-04 — LOGISTICS: LIVE DELLIN KEY CONNECTED, TERM_DAYS FALLBACK FIX
+
+- Owner shared the real `DELLIN_API_KEY` (Dellin registration approved);
+  added to the local `.env` only. A real calculation against `api.dellin.ru`
+  returned `status: "success"`, `price: 15422.0 RUB` — first genuine
+  non-mocked proof the MVP integration works.
+- The same live call showed `term_days` came back `None` because
+  `_compute_term_days` only checked `orderDates.giveoutFromOspReceiver`,
+  absent in this real response. Fixed to fall back through
+  `giveoutFromOspReceiver` → `derivalFromOspReceiver` → `arrivalToOspReceiver`;
+  re-verified live — `term_days: 2`. Two new tests added; logistics suite
+  now `13 tests, all pass`.
+- Commercial authorization to use the Dellin API in a paid SaaS product
+  remains `NOT VERIFIED` — unaffected by this key.
+
+## 2026-09-03 — RUNTIME MODE ROOT-CAUSE FIX + FULL .ENV RECOVERY
+
+- `TASK-ROOT-CAUSE-RUNTIME-FIX-20260903`: fixed the root cause of a Yandex
+  OAuth callback-mismatch — a prior session's "start the server" shortcut
+  used the `SAFE_TEST` runtime (port `18000`, credentials always blanked)
+  instead of `LOCAL_CANONICAL` (port `8000`, the port actually registered
+  with Yandex), without re-checking `PROJECT_MANIFEST.yaml`.
+- `DECISION-016`: `PROJECT_MANIFEST.yaml` now names both runtime modes
+  explicitly in a new `runtime_modes` block (first source of truth);
+  `docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md` gives one
+  unambiguous start command per mode; `ai/AI_CONTRACT.md` rule 14 now
+  requires classifying `RUNTIME_MODE` before any backend start.
+- By explicit separate owner authorization, `.env` at the canonical checkout
+  root was fully, automatically recovered (byte-for-byte, no manual secret
+  selection) from the legacy recovery-only checkout, with the previous
+  partial `.env` backed up locally first, two legacy-pointing DB-path
+  variables removed, and non-secret `LOCAL_CANONICAL` runtime values set
+  explicitly. No secret value was ever printed to chat, logs or a report.
+- Verified against a real `LOCAL_CANONICAL` run (`python supplier_app.py`,
+  port 8000): root/`auth/me` 200, `/api/auth/yandex/start` redirects with
+  `redirect_uri=http://127.0.0.1:8000/oauth/yandex/callback`, matching the
+  legacy `YANDEX_REDIRECT_URI` exactly. Port 18000 confirmed not in use.
+- Report: [`ai/reports/TASK-ROOT-CAUSE-RUNTIME-FIX-20260903-report.md`](reports/TASK-ROOT-CAUSE-RUNTIME-FIX-20260903-report.md).
+
 ## 2026-09-03 — LOGISTICS: DELLIN SHIPPING-COST CALCULATOR MVP
 
 - `TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903`: added a manual shipping-cost

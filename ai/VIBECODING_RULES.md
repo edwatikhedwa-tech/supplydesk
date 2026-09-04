@@ -642,6 +642,10 @@ Important responsibilities:
 - `scripts/doctor.ps1` is the SupplyDesk diagnostic control plane. Its profiles
   are `OFFLINE_TEST`, `LOCAL_CANONICAL` and `LIVE_EXTERNAL`; offline evidence
   never proves a live provider result, and `-Apply` remains a safety gate.
+  `LOCAL_CANONICAL` here names a read-only Doctor inspection mode; the same
+  name for "which backend runtime/port/`.env` the owner actually starts" is
+  defined separately in `PROJECT_MANIFEST.yaml`'s `runtime_modes` block —
+  check that block first, do not conflate the two.
 - `validate_docs`, `validate_state` and `validate_traceability` protect
   documentation, state and requirement-to-check links when their surfaces are
   affected.

@@ -1,17 +1,77 @@
 ---
-document_id: HANDOFF-017
+document_id: HANDOFF-018
 status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-03
-based_on_commit: TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903
+based_on_commit: TASK-ROOT-CAUSE-RUNTIME-FIX-20260903
 ---
 
 # Last Handoff
 
-This current handoff records `TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903`. The
-older refactor-series-pause handoff is retained below as historical context
-and is not the current task state.
+This current handoff records `TASK-ROOT-CAUSE-RUNTIME-FIX-20260903`. The
+older logistics-MVP handoff is retained below as historical context and is
+not the current task state.
+
+## Текущая задача
+
+Root-cause разбор, почему прошлая сессия перепутала `LOCAL_CANONICAL` (порт
+8000) и `SAFE_TEST` (порт 18000) рантаймы, минимальная governance-поправка
+против повторения, и полное автоматическое восстановление `.env` из
+legacy checkout по явному разрешению владельца — без ручного выбора
+секретов и без вывода их значений куда-либо.
+
+## Что изменено
+
+- `PROJECT_MANIFEST.yaml`: новый блок `runtime_modes` (`LOCAL_CANONICAL`
+  порт 8000 / `SAFE_TEST` порт 18000).
+- `docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md`: одна однозначная
+  команда на каждый режим вместо расплывчатой формулировки.
+- `ai/AI_CONTRACT.md` (правило 14), `ai/VIBECODING_RULES.md`, `CLAUDE.md`:
+  короткие причинно-связанные добавления, требующие классифицировать
+  `RUNTIME_MODE` перед стартом рантайма.
+- `ai/DECISIONS.md` (`DECISION-016`), этот файл, `ai/CHANGELOG.md`,
+  `ai/INTERACTION_LOG.md`, `ai/ACTIVE_TASK.md`,
+  `ai/reports/TASK-ROOT-CAUSE-RUNTIME-FIX-20260903-report.md`.
+- `C:\Users\edwat\SupplyDesk\.env` (не в git): старая частичная версия
+  сохранена как локальный `.env.backup-20260903-232311`; затем файл
+  целиком заменён автоматической копией из legacy checkout (20 переменных),
+  с явными canonical-переопределениями несекретных значений
+  (`APP_HOST`/`PORT`/`APP_BASE_URL`/`SUPPLYDESK_ENV`) и удалением двух
+  переменных пути к БД, указывавших на legacy-папку.
+
+## Доказательства и ограничения
+
+- Workspace Guard: `PASS`. Legacy checkout — только read-only чтение
+  `.env`, код там не запускался, файлы не менялись.
+- `validate_docs.py`/`validate_state.py`/`validate_vibecoding.py`: `PASS`;
+  `PROJECT_MANIFEST.yaml` — валидный YAML после правки; `git diff --check`
+  — чисто.
+- Реальный `LOCAL_CANONICAL`-рантайм (`python supplier_app.py`, порт 8000)
+  запущен и проверен: `/` → 200, `/api/auth/me` → 200,
+  `/api/auth/yandex/start` → 302 с `redirect_uri=http://127.0.0.1:8000/
+  oauth/yandex/callback`, байт-в-байт совпадающим со значением из legacy
+  `.env`. Порт 18000 не слушался никем на момент проверки.
+- По ходу патча `.env` найдена и сразу исправлена собственная ошибка
+  кодировки (PowerShell 5.1 без явной UTF-8 побил кириллические
+  комментарии) — исправлено повторным чтением оригинала с явной
+  `UTF8Encoding`, подтверждено отсутствием символа `U+FFFD`.
+- `NOT VERIFIED`: реальный вход владельца через Яндекс (нужен его логин,
+  не выполнялся); действительно ли этот `redirect_uri` сейчас
+  зарегистрирован в консоли `oauth.yandex.ru` (консоль не открывалась).
+- Секретные значения (client secret, ключ шифрования, пароль, API-ключи)
+  ни разу не выведены в чат/лог/отчёт — только имена переменных
+  (`VARIABLE_PRESENT: YES/NO`) и безопасные несекретные значения.
+
+## Следующий рациональный шаг
+
+Владелец сам проходит реальный вход через Яндекс на `http://127.0.0.1:8000/`
+и подтверждает, что экран согласия открылся без ошибки callback. Если
+ошибка останется — значит дело не в порте/`.env`, а в самом
+`YANDEX_CLIENT_SECRET` или в консоли `oauth.yandex.ru`, это отдельная
+проверка, не покрытая этой задачей.
+
+---
 
 ## Текущая задача
 

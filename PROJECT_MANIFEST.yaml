@@ -85,6 +85,25 @@ runtime:
   default_backend_url: http://127.0.0.1:8000
   default_frontend_url: http://127.0.0.1:5173
 
+# First source of truth for "which server am I starting/using" — check this
+# block before choosing a start command or port. Two mutually exclusive
+# modes only; do not invent a third without an owner task.
+runtime_modes:
+  LOCAL_CANONICAL:
+    purpose: the owner's normal local backend session; real provider credentials only by explicit owner task
+    start_command: python supplier_app.py
+    prerequisite: .env at repo root (workspace_policy.local_default_workspace), loaded by backend/app_config.py's load_dotenv
+    base_url: http://127.0.0.1:8000
+    database: canonical (mail-data/supplier.sqlite3, protected_local_path)
+    runbook: docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md
+  SAFE_TEST:
+    purpose: tests/browser/diagnostics only — never the owner's normal work session
+    start_command: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_test_runtime.ps1 -Apply
+    default_port: 18000
+    database: disposable (runtime/test-data/supplier.sqlite3)
+    credentials: none — start_test_runtime.ps1 blanks real provider keys itself
+    runbook: docs/testing/TEST_ENVIRONMENT.md
+
 browser_acceptance:
   public_shell_test: frontend/tests/frontend-audit.spec.ts
   fast_browser_smoke_test: frontend/tests/fast-browser-smoke.spec.ts

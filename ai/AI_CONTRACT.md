@@ -67,6 +67,14 @@ verification.
     `scripts/assert_workspace.ps1`. The default local root is the canonical
     workspace; an explicit `-ExpectedRoot <absolute path>` is required for a
     deliberate Git worktree or CI checkout. A guard mismatch is a STOP.
+    Before any backend runtime start specifically, classify `RUNTIME_MODE`
+    (`LOCAL_CANONICAL` / `SAFE_TEST` / `CI` / `OTHER`) against
+    `PROJECT_MANIFEST.yaml`'s `runtime_modes` block — the first source of
+    truth — then `docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md`, and
+    only then pick the start command and port. Do not infer the mode from
+    "whatever previously worked in this session"; a mismatch between the
+    owner's actual intent (normal use vs. test/diagnostic) and the started
+    mode is a STOP, not a judgment call — ask if it is not already obvious.
 
 15. Load only the skills and tools relevant to the classified task. Apply the
     canonical `## Change budget` model in `ai/VIBECODING_RULES.md`: it is an

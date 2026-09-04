@@ -13,6 +13,44 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-016 — Name and separate LOCAL_CANONICAL (port 8000) from SAFE_TEST (port 18000) runtime modes
+
+- Decision ID: `DECISION-016`
+- Date: `2026-09-03`
+- Status: `ACTIVE`
+- Context: A prior session built a "start the server" desktop shortcut wired
+  to the `SAFE_TEST` runtime (`scripts/start_test_runtime.ps1`, default port
+  `18000`, real provider credentials always blanked) because it was the one
+  path already proven working in that session, without re-checking
+  `PROJECT_MANIFEST.yaml` (which already listed `backend_default_port: 8000`
+  and a separate `browser_acceptance.audit_live_route_url: 18000`, just
+  without an explicit rule tying "which mode does the owner actually mean"
+  to either). The owner then tried "Sign in with Yandex" against port 18000
+  and got Yandex's callback-mismatch error, since the registered OAuth
+  redirect URI is for port 8000.
+- Decision: `PROJECT_MANIFEST.yaml` gets one new `runtime_modes` block naming
+  exactly two mutually exclusive modes — `LOCAL_CANONICAL` (port `8000`,
+  `python supplier_app.py`, real credentials via a local `.env` only by
+  explicit owner task) and `SAFE_TEST` (port `18000`,
+  `scripts/start_test_runtime.ps1 -Apply`, disposable DB, provider
+  credentials always blanked by the script itself). This is the first
+  source of truth. `docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md`
+  gives one unambiguous command per mode. `ai/AI_CONTRACT.md` rule 14 now
+  requires classifying `RUNTIME_MODE` (`LOCAL_CANONICAL`/`SAFE_TEST`/`CI`/
+  `OTHER`) against the manifest before choosing a start command or port, and
+  forbids inferring the mode from "whatever already worked earlier in the
+  session."
+- Reason: the ambiguity was real and already latent in the manifest (two
+  ports, no named relationship); the fix reuses the existing
+  `LOCAL_CANONICAL` name already used by `scripts/doctor.ps1`'s diagnostic
+  profiles (cross-referenced, not duplicated) instead of inventing a new
+  term or a new governance subsystem.
+- Consequences: any future "start/use the app" request must be classified
+  before a script or port is chosen. `SAFE_TEST` must never be offered as a
+  substitute for the owner's normal local session, and `LOCAL_CANONICAL`
+  must never be used for a test/browser/diagnostic run.
+- Related task: `TASK-ROOT-CAUSE-RUNTIME-FIX-20260903`.
+
 ## DECISION-015 — Dellin logistics MVP: address-search routing, no workspace_id on logistics_quotes
 
 - Decision ID: `DECISION-015`
