@@ -3,6 +3,22 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-04 — APPLITOOLS VISUAL QA PILOT
+
+- `TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904`: added an independent,
+  opt-in Applitools Eyes layer for `/messages` only, using the official
+  fixture-based Playwright integration and SDK `1.48.4` with the existing
+  Playwright `1.62.1`.
+- Added three representative projects (`1440×900`, `1280×720`, `390×844`)
+  and real-application checkpoints for request list, conversation and reply
+  composer. Local Playwright screenshots are captured alongside Eyes checks;
+  no `/messages` API route mocking or second E2E framework was introduced.
+- Compatibility, typecheck, config listing, dependency dry-run and the
+  no-key safety run passed. The real Eyes run is `BLOCKED` because the key is
+  absent and SAFE_TEST contains no disposable correspondence; baseline,
+  controlled regression and Eyes-vs-Playwright value comparison are therefore
+  `NOT VERIFIED`. MCP and global governance were intentionally not changed.
+
 ## 2026-09-04 — MESSAGES DEEP VISUAL REDESIGN
 
 - `TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904`: made `/messages`

@@ -2,6 +2,37 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-04 — TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904
+
+State change: created the active pilot lock after revalidating the canonical
+root, branch `integration/current-architecture-governance-20260903`, HEAD
+`6206c95806a8caf1dc5191e9c03762151d332ea5`, the clean scope boundary and
+unrelated enrichment/runtime changes. Read the frontend product engineering
+and evidence-first research instructions, then checked official Applitools
+Playwright integration, advanced-usage and MCP documentation.
+
+Compatibility assessment: `PASS`. Installed the official
+`@applitools/eyes-playwright@1.48.4`; its peer range accepts the existing
+Playwright `1.62.1`. Added a separate classic-runner config with only the
+required desktop, laptop and mobile viewports, plus a single real `/messages`
+flow covering list, conversation and reply composer. The test captures local
+Playwright images beside Eyes checkpoints, uses a Dynamic match level for
+timestamps, and does not mock the correspondence API.
+
+Evidence: workspace guard `PASS`; package `npm ci --dry-run` `PASS`; frontend
+typecheck `PASS`; Applitools config lists exactly three tests; no-key run
+completed with `3 skipped` in `1.22s` and made no Eyes request. SAFE_TEST
+login/API smoke was previously confirmed (`login 200`, authenticated `/me`
+`200`, correspondence `200` with `0` items); therefore the real conversation
+flow cannot be exercised yet.
+
+Limit: `APPLITOOLS_API_KEY` was checked only for presence and was not read,
+printed or stored. No real mailbox data was submitted. Baseline, controlled
+regression, screenshot comparison, MCP spike and owner value assessment are
+`NOT VERIFIED` pending a sanitized disposable conversation and owner-managed
+key configuration. No UI, backend, API, database, business logic or global
+governance files were changed.
+
 ## 2026-09-04 — TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904
 
 State change: created the active task lock after revalidating the canonical

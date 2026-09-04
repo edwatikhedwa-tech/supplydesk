@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: d7b0e39
+based_on_commit: 5dd23d5
 ---
 
 # Current State
@@ -14,6 +14,17 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-04` — `TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904` added an
+opt-in Applitools Eyes Playwright pilot scoped only to `/messages`. The
+official SDK `@applitools/eyes-playwright@1.48.4` is installed and peer
+compatible with the existing Playwright `1.62.1`; the separate config defines
+only `1440×900`, `1280×720` and `390×844` projects and checks the real list,
+conversation and reply-composer states without API route mocking. The actual
+Eyes run is `BLOCKED`: `APPLITOOLS_API_KEY` is not configured and SAFE_TEST
+has no synthetic correspondence, so no external Eyes request, baseline or
+controlled-regression result exists. No UI, backend, API, database or business
+logic changed; MCP and global VibeCoding governance remain untouched.
 
 `2026-09-04` — `TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904`
 completed a second, intentionally visual-only pass over `/messages`. The

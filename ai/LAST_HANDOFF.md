@@ -4,17 +4,41 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: d7b0e39
+based_on_commit: 5dd23d5
 ---
 
 # Last Handoff
 
-This current handoff records
-`TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904`. The prior UI
-modernization, acceptance-correction, redesign and runtime-fix handoffs remain
-below as historical context.
+## Current: TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904
 
-## Current deep visual redesign status
+The limited Applitools Eyes pilot is implemented but its acceptance run is
+`BLOCKED`, not failed. The official SDK `@applitools/eyes-playwright@1.48.4`
+is installed against Playwright `1.62.1`; the separate config covers only
+`1440×900`, `1280×720` and `390×844`, and the real `/messages` scenario checks
+request list, conversation and reply composer states. No UI redesign, backend,
+API, database, business-logic, MCP or global-governance change was made.
+
+The no-key safety run passed with `3 skipped` in `1.22s`, but no Eyes cloud
+request was attempted because `APPLITOOLS_API_KEY` is absent. SAFE_TEST is
+running on port `18000` with no synthetic correspondence (`0` items), so the
+real conversation/composer flow, provisional baseline and controlled CSS
+regression remain `NOT VERIFIED`. Existing Playwright visual tests were not
+rewritten.
+
+Owner action to continue: configure the key in the local process or CI secret
+store without pasting it into chat, prepare or approve sanitized disposable
+SAFE_TEST correspondence, run `npm run test:visual:eyes` from `frontend`,
+manually approve the first baseline, then run and fully revert the temporary
+CSS regression experiment. MCP remains not installed and not run until the
+SDK pilot produces evidence.
+
+Detailed evidence: `ai/reports/TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904-report.md`.
+
+The deep visual redesign handoff below is now historical context. The prior UI
+modernization, acceptance-correction, redesign and runtime-fix handoffs remain
+below it.
+
+## Historical: TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904
 
 The frontend-only deep redesign is complete locally with rendered engineering
 acceptance `PASS`; artifact comparison is `PARTIAL` because the authenticated
