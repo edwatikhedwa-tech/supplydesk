@@ -1571,3 +1571,21 @@ corrected 1024px table compression and supplier name/INN spacing. Authenticated
 production BEFORE capture and `scripts/audit_toolchain.py` remain
 `NOT VERIFIED`; pre-existing dirty control-plane files and untracked `runtime/`
 were preserved and not staged.
+
+## 2026-09-04 — TASK-SUPPLYDESK-SHADCN-MIGRATION-20260904
+
+State change: migrated the isolated `experiment/ui-shadcn-v2` component boundary
+from custom shadcn-style wrappers to official shadcn/ui source files backed by
+Radix where applicable. Added `frontend/components.json`, direct Radix/CVA/
+`clsx`/`tailwind-merge` dependencies and the official component family without
+changing backend, API, database, auth, mail or business logic. Product-specific
+compositions were retained; Accordion is `NOT USED`.
+
+Verification state: workspace guard PASS; typecheck, build and `git diff --check`
+PASS; lint has 0 errors and 8 warnings; focused matrix `18 passed, 6 skipped`;
+full frontend/browser suite `340 passed, 12 skipped`; HTTP smoke returned 200
+for `/` and `/api/auth/me`, expected 401 for the protected dashboard endpoint
+and 404 for an unknown endpoint. Before/after screenshots were captured and
+reviewed at the required desktop/tablet/mobile widths. Missing toolchain and
+geometry helper scripts remain `NOT VERIFIED`. The task commit and push status
+are recorded at closeout; `runtime/` remained outside scope.

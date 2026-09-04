@@ -1647,3 +1647,22 @@ Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH`
   5 pre-existing warnings; rendered browser/a11y matrix `9 passed, 3 skipped`
   across 1440px, 1280px, 1024px and 390px. Screenshots are in
   `frontend/artifacts/ui-shadcn-v2-20260904/`.
+
+## 2026-09-04 — TASK-SUPPLYDESK-SHADCN-MIGRATION-20260904
+
+- Replaced the experiment's custom Input, Checkbox, Dialog, DropdownMenu,
+  Tooltip and Tabs primitives with official shadcn/ui component sources and
+  added official Table, Popover, Sidebar, Badge and Button foundations.
+- Added `frontend/components.json` using the official `new-york` preset,
+  Radix-backed primitives, the existing `@/*` aliases and Lucide icons.
+- Added only the needed direct dependencies: Radix packages, CVA, `clsx` and
+  `tailwind-merge`; `@base-ui/react` and Accordion were not added. Existing
+  domain-specific compositions and product behavior remain unchanged.
+- Preserved the visual baseline with existing SupplyDesk tokens and scoped
+  styles; only narrow compatibility overrides were added for tabs and dialog
+  overlay appearance.
+- Verification: typecheck PASS; lint 0 errors/8 warnings; build PASS; focused
+  rendered browser/a11y matrix `18 passed, 6 skipped`; full frontend/browser
+  suite `340 passed, 12 skipped`; HTTP smoke `200/200`, expected protected
+  `401`, unknown-route `404`; `git diff --check` PASS. `runtime/` was not
+  staged or changed.

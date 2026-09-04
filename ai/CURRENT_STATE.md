@@ -15,19 +15,22 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-04` — `TASK-SUPPLYDESK-UI-SHADCN-V2-20260904` added an isolated
-frontend-only experiment on branch `experiment/ui-shadcn-v2`. The public
-`/experiment/ui-shadcn-v2/*` route family renders static Dashboard, Requests,
-Suppliers and Messages/Email Workspace alternatives with scoped semantic
-tokens, local shadcn-style primitives, responsive layouts and presentation-only
-states. No production API, backend, database, auth, mail or business logic was
-changed. Final typecheck, lint (0 errors; 5 pre-existing warnings), build and
-rendered browser/a11y matrix passed: `9 passed, 3 skipped` across 1440px,
-1280px, 1024px and 390px. Screenshots are stored under
-`frontend/artifacts/ui-shadcn-v2-20260904/`. Authenticated production BEFORE
-captures and `scripts/audit_toolchain.py` are `NOT VERIFIED`; pre-existing
-worktree changes and untracked `runtime/` were preserved and excluded.
-Detailed evidence: [`ai/reports/TASK-SUPPLYDESK-UI-SHADCN-V2-20260904-report.md`](reports/TASK-SUPPLYDESK-UI-SHADCN-V2-20260904-report.md).
+`2026-09-04` — `TASK-SUPPLYDESK-SHADCN-MIGRATION-20260904` migrated the
+isolated `experiment/ui-shadcn-v2` frontend to an official shadcn/ui
+foundation at the local component boundary. `frontend/components.json` now
+defines the official `new-york` preset, and the generated Button, Badge, Input,
+Checkbox, Dialog, DropdownMenu, Popover, Tabs, Table, Tooltip and Sidebar
+components use the official shadcn source shape with Radix primitives where the
+registry uses them. Product-specific compositions remain local; Accordion is
+`NOT USED`. No backend, API, database, auth, mail or business logic changed.
+Typecheck and build passed; lint has 0 errors and 8 warnings; the focused
+rendered browser/a11y matrix passed `18 passed, 6 skipped`, and the full
+frontend/browser suite passed `340 passed, 12 skipped`. Before/after screenshots
+for the four routes and required 1440px, 1280px, 1024px and 390px profiles are
+stored under `frontend/artifacts/ui-shadcn-migration-20260904/`; missing
+`scripts/audit_toolchain.py` and geometry helper checks remain `NOT VERIFIED`.
+Pre-existing untracked `runtime/` was preserved and excluded.
+Detailed evidence: [`ai/reports/TASK-SUPPLYDESK-SHADCN-MIGRATION-20260904-report.md`](reports/TASK-SUPPLYDESK-SHADCN-MIGRATION-20260904-report.md).
 
 `2026-09-04` — `TASK-RUNTIME-SELECTION-HARD-GUARD-20260904` added the
 dependency-free `scripts/runtime_guard.py` as the single runtime-selection

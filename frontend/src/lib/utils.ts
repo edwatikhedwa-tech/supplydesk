@@ -80,8 +80,9 @@ export function getAvatarColor(name: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-export function cn(...classes: (string | false | null | undefined)[]): string {
-  return classes.filter(Boolean).join(' ');
+/** Official shadcn utility: flatten conditional classes and resolve Tailwind conflicts. */
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(inputs));
 }
 
 /** Russian plural forms: pluralize(1,'поставщик','поставщика','поставщиков') -> 'поставщик'. */
@@ -148,3 +149,5 @@ export function displayCorrespondenceSupplierName(name: string): string {
   }
   return trimmed;
 }
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';

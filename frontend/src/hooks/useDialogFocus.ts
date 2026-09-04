@@ -18,7 +18,7 @@ function visibleFocusableElements(dialog: HTMLElement): HTMLElement[] {
   });
 }
 
-/** Gives a small local dialog a predictable keyboard lifecycle without adding a UI dependency. */
+/** Focus lifecycle for the two mail composers that remain product-specific. */
 export function useDialogFocus(
   dialogRef: RefObject<HTMLElement>,
   initialFocusRef: RefObject<HTMLElement>,

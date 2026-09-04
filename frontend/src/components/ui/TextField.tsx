@@ -1,6 +1,7 @@
 import type { InputHTMLAttributes } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Input } from './input';
 
 interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -14,7 +15,7 @@ export function TextField({ label, icon: Icon, error, id, className, ...props }:
     <div className={cn('relative', className)}>
       <label htmlFor={id} className="sr-only">{label}</label>
       {Icon && <Icon size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" aria-hidden={true} />}
-      <input
+      <Input
         id={id}
         aria-label={label}
         aria-invalid={Boolean(error)}

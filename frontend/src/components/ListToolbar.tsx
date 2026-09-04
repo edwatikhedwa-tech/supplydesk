@@ -1,6 +1,14 @@
-import { Search } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import { FILTERS, SORTS, type FilterKey, type SortKey } from '@/useRequestState';
-import { Button, DropdownMenu, TextField } from '@/components/ui';
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+  TextField,
+} from '@/components/ui';
 
 interface Props {
   filter: FilterKey;
@@ -36,7 +44,19 @@ export function ListToolbar({ filter, setFilter, search, setSearch, sort, setSor
         <div className="flex items-baseline gap-2"><h2 className="text-sm font-semibold text-ink-800">Компании</h2><span className="text-xs text-ink-400">· {counts.found}</span></div>
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
           <TextField label="Поиск компании, ИНН или сайта" icon={Search} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск компании, ИНН, сайта…" className="w-full sm:w-64" />
-          <DropdownMenu label="Сортировка" items={SORTS.map((item) => ({ id: item.key, label: item.label }))} value={currentSort.key} onSelect={(value) => setSort(value as SortKey)} />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="secondary" size="sm" className="min-w-32 justify-between">
+                {currentSort.label}
+                <ChevronDown className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuRadioGroup value={currentSort.key} onValueChange={(value) => setSort(value as SortKey)}>
+                {SORTS.map((item) => <DropdownMenuRadioItem key={item.key} value={item.key}>{item.label}</DropdownMenuRadioItem>)}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Фильтр компаний">

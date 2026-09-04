@@ -6,7 +6,7 @@ import { cn, displayCorrespondenceSupplierName, formatRelativeDate } from '@/lib
 import type { ThreadSummary } from '@/lib/types';
 import { getThreadDisplayStatus, isAwaitingResponse, isPrimaryCorrespondence, needsThreadAttention } from '@/components/mail/threadStatus';
 import { UnmatchedPreview } from '@/components/mail/UnmatchedPreview';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Count } from '@/components/ui/StatusBadge';
 import { TextField } from '@/components/ui/TextField';
 

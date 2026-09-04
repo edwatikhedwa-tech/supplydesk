@@ -272,7 +272,10 @@
 .sd-v2-page--messages { max-width: none; padding-bottom: 22px; }
 .sd-v2-page--messages .sd-v2-page-intro { margin-bottom: 17px; }
 .sd-v2-mail-tabs { display: flex; align-items: center; gap: 22px; min-height: 38px; border-bottom: 1px solid var(--border); }
+.sd-v2-mail-tabs { justify-content: flex-start; height: 38px; border-radius: 0; background: transparent; padding: 0; }
 .sd-v2-mail-tab { display: inline-flex; height: 38px; align-items: center; gap: 7px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; padding: 0 2px; background: transparent; color: #56647a; font-size: 11px; font-weight: 700; }
+.sd-v2-mail-tabs .sd-v2-mail-tab { border-radius: 0; box-shadow: none; padding: 0 2px; }
+.sd-v2-mail-tabs .sd-v2-mail-tab[data-state='active'] { background: transparent; box-shadow: none; }
 .sd-v2-mail-tab span { color: #a3adbb; font-size: 10px; font-variant-numeric: tabular-nums; }
 .sd-v2-mail-tab:hover { color: var(--foreground); }
 .sd-v2-mail-tab.is-active { border-bottom-color: var(--primary); color: var(--primary); }

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { Badge as ShadcnBadge } from './badge';
 
 export type StatusBadgeTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 
@@ -27,10 +28,10 @@ const dotClasses: Record<StatusBadgeTone, string> = {
 /** Status answers only “what is happening?”; counts and actions stay outside. */
 export function StatusBadge({ label, tone = 'neutral', title, dot = false }: StatusBadgeProps) {
   return (
-    <span title={title} className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-2xs font-semibold ring-1 ring-inset', toneClasses[tone])}>
+    <ShadcnBadge title={title} variant="outline" className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 text-2xs font-semibold ring-1 ring-inset', toneClasses[tone])}>
       {dot && <span aria-hidden="true" className={cn('h-1.5 w-1.5 rounded-full', dotClasses[tone])} />}
       {label}
-    </span>
+    </ShadcnBadge>
   );
 }
 

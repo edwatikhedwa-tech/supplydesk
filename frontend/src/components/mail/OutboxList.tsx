@@ -4,7 +4,7 @@ import { api } from '@/lib/api';
 import { cn, displayCorrespondenceSupplierName, formatRelativeDate } from '@/lib/utils';
 import type { ThreadSummary } from '@/lib/types';
 import { getThreadDisplayStatus } from '@/components/mail/threadStatus';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Count } from '@/components/ui/StatusBadge';
 import { TextField } from '@/components/ui/TextField';
 

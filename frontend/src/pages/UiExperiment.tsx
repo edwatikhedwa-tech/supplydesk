@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -31,6 +31,38 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import {
+  Badge as ShadcnBadge,
+  Button as ShadcnButton,
+  Checkbox,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Sidebar as ShadcnSidebar,
+  SidebarProvider,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui';
+import { cn } from '@/lib/utils';
 import '@/styles/ui-experiment.css';
 
 type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
@@ -178,24 +210,21 @@ const supplierFilters: { key: 'all' | 'trusted' | 'waiting' | 'silent'; label: s
   { key: 'silent', label: 'Не отвечают' },
 ];
 
-function cn(...values: Array<string | false | null | undefined>) {
-  return values.filter(Boolean).join(' ');
-}
-
 function toneLabel(tone: Tone) {
   return tone;
 }
 
 function V2Button({ variant = 'secondary', className, children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
-  return <button className={cn('sd-v2-button', `sd-v2-button--${variant}`, className)} {...props}>{children}</button>;
+  const primitiveVariant = variant === 'primary' ? 'default' : variant === 'secondary' ? 'outline' : 'ghost';
+  return <ShadcnButton variant={primitiveVariant} size="md" className={cn('sd-v2-button', `sd-v2-button--${variant}`, className)} {...props}>{children}</ShadcnButton>;
 }
 
 function V2Badge({ label, tone = 'neutral', dot = false }: { label: string; tone?: Tone; dot?: boolean }) {
-  return <span className={cn('sd-v2-badge', `sd-v2-badge--${toneLabel(tone)}`)}>{dot && <span className="sd-v2-badge__dot" aria-hidden="true" />}{label}</span>;
+  return <ShadcnBadge variant="outline" className={cn('sd-v2-badge', `sd-v2-badge--${toneLabel(tone)}`)}>{dot && <span className="sd-v2-badge__dot" aria-hidden="true" />}{label}</ShadcnBadge>;
 }
 
 function IconButton({ label, children, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
-  return <button aria-label={label} title={label} className={cn('sd-v2-icon-button', className)} {...props}>{children}</button>;
+  return <ShadcnButton aria-label={label} title={label} variant="ghost" size="icon" className={cn('sd-v2-icon-button', className)} {...props}>{children}</ShadcnButton>;
 }
 
 function PageIntro({ eyebrow, title, description, actions }: { eyebrow: string; title: string; description: string; actions?: ReactNode }) {
@@ -229,7 +258,9 @@ function Notice({ message, onDismiss }: { message: string; onDismiss: () => void
 
 function Sidebar({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
   return (
-    <div className={cn('sd-v2-sidebar__inner', mobile && 'sd-v2-sidebar__inner--mobile')}>
+    <SidebarProvider className="h-full min-h-0 w-full bg-transparent">
+      <ShadcnSidebar collapsible="none" className="h-full min-h-0 w-full bg-transparent p-0 text-inherit">
+        <div className={cn('sd-v2-sidebar__inner', mobile && 'sd-v2-sidebar__inner--mobile')}>
       <div className="sd-v2-brand">
         <div className="sd-v2-brand__mark" aria-hidden="true"><span /> <span /></div>
         <div><strong>SupplyDesk</strong><span>Procurement OS</span></div>
@@ -254,7 +285,9 @@ function Sidebar({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?
         <div className="sd-v2-profile"><div className="sd-v2-profile__avatar">ЕК</div><div><strong>Елена Кузнецова</strong><span>Отдел снабжения</span></div><MoreHorizontal size={16} /></div>
         <div className="sd-v2-sidebar__footnote"><CircleDot size={12} /> Стенд презентации · данные вымышлены</div>
       </div>
-    </div>
+        </div>
+      </ShadcnSidebar>
+    </SidebarProvider>
   );
 }
 
@@ -316,24 +349,79 @@ function DashboardPage() {
 }
 
 function RequestTable({ rows, compact = false }: { rows: RequestRow[]; compact?: boolean }) {
-  return <div className={cn('sd-v2-table-wrap', compact && 'sd-v2-table-wrap--compact')}><table className="sd-v2-table"><thead><tr><th>Заявка</th><th>Статус</th><th>Поставщики</th><th>Ответы</th><th>Дедлайн</th><th><span className="sr-only">Действия</span></th></tr></thead><tbody>{rows.map((request) => <tr key={request.id}><td data-label="Заявка"><div className="sd-v2-primary-cell"><strong>{request.name}</strong><span>№{request.id} · {request.positions} позиц. · обновлено {request.updated}</span></div></td><td data-label="Статус"><V2Badge label={request.status} tone={request.statusTone} dot /></td><td data-label="Поставщики"><span className="sd-v2-number">{request.suppliers}</span><div className="sd-v2-mini-progress"><span style={{ width: `${request.progress}%` }} /></div></td><td data-label="Ответы"><span className="sd-v2-number">{request.replies}</span>{request.pending > 0 && <small className="sd-v2-cell-note">{request.pending} ждут</small>}</td><td data-label="Дедлайн"><span className={cn('sd-v2-deadline', `sd-v2-deadline--${request.deadlineTone}`)}>{request.deadline}</span></td><td className="sd-v2-table__action"><a className="sd-v2-row-action" href={`/experiment/ui-shadcn-v2/requests?request=${request.id}`}>Открыть <ArrowUpRight size={14} /></a></td></tr>)}</tbody></table></div>;
+  return (
+    <div className={cn('sd-v2-table-wrap', compact && 'sd-v2-table-wrap--compact')}>
+      <Table className="sd-v2-table">
+        <TableHeader><TableRow><TableHead>Заявка</TableHead><TableHead>Статус</TableHead><TableHead>Поставщики</TableHead><TableHead>Ответы</TableHead><TableHead>Дедлайн</TableHead><TableHead><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader>
+        <TableBody>{rows.map((request) => <TableRow key={request.id}>
+          <TableCell data-label="Заявка"><div className="sd-v2-primary-cell"><strong>{request.name}</strong><span>№{request.id} · {request.positions} позиц. · обновлено {request.updated}</span></div></TableCell>
+          <TableCell data-label="Статус"><V2Badge label={request.status} tone={request.statusTone} dot /></TableCell>
+          <TableCell data-label="Поставщики"><span className="sd-v2-number">{request.suppliers}</span><div className="sd-v2-mini-progress"><span style={{ width: `${request.progress}%` }} /></div></TableCell>
+          <TableCell data-label="Ответы"><span className="sd-v2-number">{request.replies}</span>{request.pending > 0 && <small className="sd-v2-cell-note">{request.pending} ждут</small>}</TableCell>
+          <TableCell data-label="Дедлайн"><span className={cn('sd-v2-deadline', `sd-v2-deadline--${request.deadlineTone}`)}>{request.deadline}</span></TableCell>
+          <TableCell className="sd-v2-table__action"><a className="sd-v2-row-action" href={`/experiment/ui-shadcn-v2/requests?request=${request.id}`}>Открыть <ArrowUpRight size={14} /></a></TableCell>
+        </TableRow>)}</TableBody>
+      </Table>
+    </div>
+  );
 }
 
 function RequestsPage() {
   const [filter, setFilter] = useState<(typeof requestFilters)[number]['key']>('all');
   const [search, setSearch] = useState('');
+  const [showProgress, setShowProgress] = useState(true);
   const [preview, setPreview] = useState<RequestRow | null>(null);
+  const previewTriggerRef = useRef<HTMLElement | null>(null);
+  const openPreview = (request: RequestRow, trigger?: HTMLElement) => {
+    previewTriggerRef.current = trigger ?? null;
+    setPreview(request);
+  };
+  const closePreview = () => {
+    const trigger = previewTriggerRef.current;
+    setPreview(null);
+    window.requestAnimationFrame(() => trigger?.focus());
+  };
   const visibleRequests = useMemo(() => requests.filter((request) => {
     const matchesSearch = `${request.name} ${request.id}`.toLowerCase().includes(search.trim().toLowerCase());
     const matchesFilter = filter === 'all' || (filter === 'active' && request.status === 'В работе') || (filter === 'waiting' && request.status === 'Ожидает ответа') || (filter === 'done' && request.status === 'Завершена') || (filter === 'attention' && request.status === 'Требует внимания');
     return matchesSearch && matchesFilter;
   }), [filter, search]);
-  useEffect(() => { const close = (event: KeyboardEvent) => event.key === 'Escape' && setPreview(null); document.addEventListener('keydown', close); return () => document.removeEventListener('keydown', close); }, []);
-  return <div className="sd-v2-page"><PageIntro eyebrow="Рабочее пространство · Реальные статусы" title="Мои заявки" description="Сравнивайте сроки, ответы и движение по поставщикам в одном рабочем списке." actions={<V2Button variant="primary"><Plus size={16} /> Новая заявка</V2Button>} /><section className="sd-v2-section" aria-labelledby="requests-list-title"><div className="sd-v2-list-toolbar"><div className="sd-v2-filter-group" role="group" aria-label="Фильтр заявок">{requestFilters.map((item) => <button key={item.key} type="button" aria-pressed={filter === item.key} className={cn('sd-v2-filter-chip', filter === item.key && 'is-active')} onClick={() => setFilter(item.key)}>{item.label}<span>{item.key === 'all' ? requests.length : item.key === 'attention' ? 1 : item.key === 'done' ? 1 : item.key === 'waiting' ? 1 : 2}</span></button>)}</div><label className="sd-v2-search"><Search size={16} /><span className="sr-only">Поиск по заявкам</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по названию или №…" /></label><IconButton label="Настроить отображение" className="sd-v2-toolbar-icon"><SlidersHorizontal size={17} /></IconButton></div><div className="sd-v2-section-header sd-v2-section-header--inside"><div><p className="sd-v2-section-header__eyebrow">Структурированные данные</p><div className="sd-v2-section-header__title-row"><h2 id="requests-list-title">Все заявки</h2><span className="sd-v2-section-header__meta">{visibleRequests.length} в списке</span></div></div><div className="sd-v2-table-legend"><span><span className="sd-v2-legend-dot sd-v2-legend-dot--info" />в работе</span><span><span className="sd-v2-legend-dot sd-v2-legend-dot--warning" />нужен ответ</span></div></div>{visibleRequests.length > 0 ? <div onClick={(event) => { const target = event.target as HTMLElement; const row = target.closest('tr'); if (row) { const id = Number(row.getAttribute('data-request-id')); const next = requests.find((item) => item.id === id); if (next) setPreview(next); } }}><div className="sd-v2-table-wrap"><table className="sd-v2-table sd-v2-table--requests"><thead><tr><th>Заявка</th><th>Статус</th><th>Поставщики</th><th>Ответы</th><th>Дедлайн</th><th><span className="sr-only">Действия</span></th></tr></thead><tbody>{visibleRequests.map((request) => <tr key={request.id} data-request-id={request.id}><td data-label="Заявка"><button type="button" className="sd-v2-primary-cell sd-v2-primary-cell--button" onClick={() => setPreview(request)}><strong>{request.name}</strong><span>№{request.id} · {request.positions} позиций · {request.updated}</span></button></td><td data-label="Статус"><V2Badge label={request.status} tone={request.statusTone} dot /></td><td data-label="Поставщики"><span className="sd-v2-number">{request.suppliers}</span><div className="sd-v2-mini-progress"><span style={{ width: `${request.progress}%` }} /></div></td><td data-label="Ответы"><span className="sd-v2-number">{request.replies}</span>{request.pending > 0 && <small className="sd-v2-cell-note">{request.pending} ждут</small>}</td><td data-label="Дедлайн"><span className={cn('sd-v2-deadline', `sd-v2-deadline--${request.deadlineTone}`)}>{request.deadline}</span></td><td className="sd-v2-table__action"><button className="sd-v2-row-action" type="button" onClick={() => setPreview(request)}>Открыть <ArrowUpRight size={14} /></button></td></tr>)}</tbody></table></div></div> : <div className="sd-v2-empty"><ClipboardList size={22} /><strong>Ничего не найдено</strong><span>Попробуйте изменить поиск или выбрать другой статус.</span></div>}</section>{preview && <RequestPreview request={preview} onClose={() => setPreview(null)} />}</div>;
+  return (
+    <div className="sd-v2-page">
+      <PageIntro eyebrow="Рабочее пространство · Реальные статусы" title="Мои заявки" description="Сравнивайте сроки, ответы и движение по поставщикам в одном рабочем списке." actions={<V2Button variant="primary"><Plus size={16} /> Новая заявка</V2Button>} />
+      <section className="sd-v2-section" aria-labelledby="requests-list-title">
+        <div className="sd-v2-list-toolbar">
+          <div className="sd-v2-filter-group" role="group" aria-label="Фильтр заявок">{requestFilters.map((item) => <button key={item.key} type="button" aria-pressed={filter === item.key} className={cn('sd-v2-filter-chip', filter === item.key && 'is-active')} onClick={() => setFilter(item.key)}>{item.label}<span>{item.key === 'all' ? requests.length : item.key === 'attention' ? 1 : item.key === 'done' ? 1 : item.key === 'waiting' ? 1 : 2}</span></button>)}</div>
+          <label className="sd-v2-search"><Search size={16} /><span className="sr-only">Поиск по заявкам</span><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по названию или №…" /></label>
+          <Popover>
+            <PopoverTrigger asChild><IconButton label="Настроить отображение" className="sd-v2-toolbar-icon"><SlidersHorizontal size={17} /></IconButton></PopoverTrigger>
+            <PopoverContent align="end" className="w-64">
+              <p className="text-sm font-semibold text-ink-900">Настроить отображение</p>
+              <label className="mt-3 flex items-center gap-2 text-sm text-ink-700"><Checkbox checked={showProgress} onCheckedChange={(checked) => setShowProgress(checked === true)} /><span>Показывать прогресс</span></label>
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="sd-v2-section-header sd-v2-section-header--inside"><div><p className="sd-v2-section-header__eyebrow">Структурированные данные</p><div className="sd-v2-section-header__title-row"><h2 id="requests-list-title">Все заявки</h2><span className="sd-v2-section-header__meta">{visibleRequests.length} в списке</span></div></div><div className="sd-v2-table-legend"><span><span className="sd-v2-legend-dot sd-v2-legend-dot--info" />в работе</span><span><span className="sd-v2-legend-dot sd-v2-legend-dot--warning" />нужен ответ</span></div></div>
+        {visibleRequests.length > 0 ? <div onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button, a')) return; const row = target.closest('tr'); if (row) { const id = Number(row.getAttribute('data-request-id')); const next = requests.find((item) => item.id === id); if (next) openPreview(next, target); } }}><div className="sd-v2-table-wrap"><Table className="sd-v2-table sd-v2-table--requests"><TableHeader><TableRow><TableHead>Заявка</TableHead><TableHead>Статус</TableHead><TableHead>Поставщики</TableHead><TableHead>Ответы</TableHead><TableHead>Дедлайн</TableHead><TableHead><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader><TableBody>{visibleRequests.map((request) => <TableRow key={request.id} data-request-id={request.id}><TableCell data-label="Заявка"><button type="button" className="sd-v2-primary-cell sd-v2-primary-cell--button" onClick={(event) => openPreview(request, event.currentTarget)}><strong>{request.name}</strong><span>№{request.id} · {request.positions} позиций · {request.updated}</span></button></TableCell><TableCell data-label="Статус"><V2Badge label={request.status} tone={request.statusTone} dot /></TableCell><TableCell data-label="Поставщики"><span className="sd-v2-number">{request.suppliers}</span>{showProgress && <div className="sd-v2-mini-progress"><span style={{ width: `${request.progress}%` }} /></div>}</TableCell><TableCell data-label="Ответы"><span className="sd-v2-number">{request.replies}</span>{request.pending > 0 && <small className="sd-v2-cell-note">{request.pending} ждут</small>}</TableCell><TableCell data-label="Дедлайн"><span className={cn('sd-v2-deadline', `sd-v2-deadline--${request.deadlineTone}`)}>{request.deadline}</span></TableCell><TableCell className="sd-v2-table__action"><button className="sd-v2-row-action" type="button" onClick={(event) => openPreview(request, event.currentTarget)}>Открыть <ArrowUpRight size={14} /></button></TableCell></TableRow>)}</TableBody></Table></div></div> : <div className="sd-v2-empty"><ClipboardList size={22} /><strong>Ничего не найдено</strong><span>Попробуйте изменить поиск или выбрать другой статус.</span></div>}
+      </section>
+      {preview && <RequestPreview request={preview} onClose={closePreview} />}
+    </div>
+  );
 }
 
 function RequestPreview({ request, onClose }: { request: RequestRow; onClose: () => void }) {
-  return <div className="sd-v2-modal-scrim" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="sd-v2-preview" role="dialog" aria-modal="true" aria-labelledby="request-preview-title"><header className="sd-v2-preview__header"><div><p className="sd-v2-section-header__eyebrow">Предпросмотр заявки</p><h2 id="request-preview-title">{request.name}</h2><span>№{request.id} · обновлено {request.updated}</span></div><IconButton label="Закрыть предпросмотр" onClick={onClose}><X size={18} /></IconButton></header><div className="sd-v2-preview__body"><div className="sd-v2-preview__status"><V2Badge label={request.status} tone={request.statusTone} dot /><span>Дедлайн: <strong>{request.deadline}</strong></span></div><div className="sd-v2-preview__stats"><div><span>Поставщики</span><strong>{request.suppliers}</strong></div><div><span>Ответы</span><strong>{request.replies}</strong></div><div><span>Позиций</span><strong>{request.positions}</strong></div></div><div className="sd-v2-preview__note"><FileText size={16} /><p>Это визуальный предпросмотр. Открытие production-заявки намеренно не включено в эксперимент.</p></div></div><footer className="sd-v2-preview__footer"><V2Button variant="quiet" onClick={onClose}>Закрыть</V2Button><V2Button variant="primary" onClick={onClose}>Понятно</V2Button></footer></section></div>;
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sd-v2-preview [&>button]:hidden">
+        <DialogHeader className="sd-v2-preview__header">
+          <div><p className="sd-v2-section-header__eyebrow">Предпросмотр заявки</p><DialogTitle>{request.name}</DialogTitle><span>№{request.id} · обновлено {request.updated}</span></div>
+          <DialogClose asChild><IconButton label="Закрыть предпросмотр"><X size={18} /></IconButton></DialogClose>
+        </DialogHeader>
+        <div className="sd-v2-preview__body"><div className="sd-v2-preview__status"><V2Badge label={request.status} tone={request.statusTone} dot /><span>Дедлайн: <strong>{request.deadline}</strong></span></div><div className="sd-v2-preview__stats"><div><span>Поставщики</span><strong>{request.suppliers}</strong></div><div><span>Ответы</span><strong>{request.replies}</strong></div><div><span>Позиций</span><strong>{request.positions}</strong></div></div><div className="sd-v2-preview__note"><FileText size={16} /><p>Это визуальный предпросмотр. Открытие production-заявки намеренно не включено в эксперимент.</p></div></div>
+        <DialogFooter className="sd-v2-preview__footer"><V2Button variant="quiet" onClick={onClose}>Закрыть</V2Button><V2Button variant="primary" onClick={onClose}>Понятно</V2Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function SuppliersPage() {
@@ -341,17 +429,46 @@ function SuppliersPage() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<number[]>([]);
   const [preview, setPreview] = useState<SupplierRow | null>(null);
+  const previewTriggerRef = useRef<HTMLElement | null>(null);
+  const openPreview = (supplier: SupplierRow, trigger?: HTMLElement) => {
+    previewTriggerRef.current = trigger ?? null;
+    setPreview(supplier);
+  };
+  const closePreview = () => {
+    const trigger = previewTriggerRef.current;
+    setPreview(null);
+    window.requestAnimationFrame(() => trigger?.focus());
+  };
   const visibleSuppliers = useMemo(() => suppliers.filter((supplier) => {
     const matchesSearch = `${supplier.name} ${supplier.inn} ${supplier.site}`.toLowerCase().includes(search.trim().toLowerCase());
     const matchesFilter = filter === 'all' || (filter === 'trusted' && supplier.relationship === 'Проверенный') || (filter === 'waiting' && supplier.contact === 'Ожидаем ответ') || (filter === 'silent' && supplier.contact === 'Не отвечает');
     return matchesSearch && matchesFilter;
   }), [filter, search]);
   const toggle = (id: number) => setSelected((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
-  return <div className="sd-v2-page"><PageIntro eyebrow="Справочник · Контакты и история" title="Поставщики" description="Быстрый обзор компаний, их последнего контакта и состояния ответа." actions={<V2Button variant="primary" disabled={selected.length === 0}><Send size={16} /> Создать заявку {selected.length > 0 && `(${selected.length})`}</V2Button>} /><section className="sd-v2-section" aria-labelledby="suppliers-list-title"><div className="sd-v2-list-toolbar"><div className="sd-v2-filter-group" role="group" aria-label="Фильтр поставщиков">{supplierFilters.map((item) => <button key={item.key} type="button" aria-pressed={filter === item.key} className={cn('sd-v2-filter-chip', filter === item.key && 'is-active')} onClick={() => setFilter(item.key)}>{item.label}<span>{item.key === 'all' ? suppliers.length : item.key === 'trusted' ? 2 : item.key === 'waiting' ? 1 : 1}</span></button>)}</div><label className="sd-v2-search"><Search size={16} /><span className="sr-only">Поиск по поставщикам</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Название, ИНН или сайт…" /></label></div><div className="sd-v2-section-header sd-v2-section-header--inside"><div><p className="sd-v2-section-header__eyebrow">Компании</p><div className="sd-v2-section-header__title-row"><h2 id="suppliers-list-title">Все поставщики</h2><span className="sd-v2-section-header__meta">{visibleSuppliers.length} в списке</span></div></div><label className="sd-v2-select-all"><input type="checkbox" checked={visibleSuppliers.length > 0 && visibleSuppliers.every((supplier) => selected.includes(supplier.id))} onChange={(event) => setSelected(event.target.checked ? visibleSuppliers.map((supplier) => supplier.id) : [])} />Выбрать все</label></div><div className="sd-v2-table-wrap"><table className="sd-v2-table sd-v2-table--suppliers"><thead><tr><th className="sd-v2-table__check-col"><span className="sr-only">Выбрать</span></th><th>Компания</th><th>Контакт</th><th>Ответы</th><th>Последний контакт</th><th>Связь</th><th><span className="sr-only">Действия</span></th></tr></thead><tbody>{visibleSuppliers.map((supplier) => <tr key={supplier.id}><td data-label="Выбрать" className="sd-v2-table__check-col"><input type="checkbox" aria-label={`Выбрать ${supplier.name}`} checked={selected.includes(supplier.id)} onChange={() => toggle(supplier.id)} /></td><td data-label="Компания"><div className="sd-v2-primary-cell"><button type="button" className="sd-v2-primary-cell--button" onClick={() => setPreview(supplier)}><strong>{supplier.name}</strong><span>ИНН {supplier.inn}</span></button><a href={`https://${supplier.site}`} className="sd-v2-site-link" target="_blank" rel="noreferrer">{supplier.site} <ArrowUpRight size={12} /></a></div></td><td data-label="Контакт"><V2Badge label={supplier.contact} tone={supplier.contactTone} dot /></td><td data-label="Ответы"><div className="sd-v2-response"><strong>{supplier.response}%</strong><div className="sd-v2-mini-progress"><span style={{ width: `${supplier.response}%` }} /></div><small>{supplier.requests} заявок</small></div></td><td data-label="Последний контакт"><span className="sd-v2-table-meta">{supplier.lastContact}</span></td><td data-label="Связь"><V2Badge label={supplier.relationship} tone={supplier.relationshipTone} /></td><td className="sd-v2-table__action"><button className="sd-v2-row-action" type="button" onClick={() => setPreview(supplier)}>Карточка <ArrowUpRight size={14} /></button></td></tr>)}</tbody></table></div></section>{selected.length > 0 && <div className="sd-v2-selection-bar"><div><strong>{selected.length}</strong><span>поставщика выбрано</span></div><div><V2Button variant="quiet" onClick={() => setSelected([])}>Снять выбор</V2Button><V2Button variant="primary" onClick={() => setSelected([])}><Send size={15} /> Создать заявку</V2Button></div></div>}{preview && <SupplierPreview supplier={preview} onClose={() => setPreview(null)} />}</div>;
+  return (
+    <div className="sd-v2-page">
+      <PageIntro eyebrow="Справочник · Контакты и история" title="Поставщики" description="Быстрый обзор компаний, их последнего контакта и состояния ответа." actions={<V2Button variant="primary" disabled={selected.length === 0}><Send size={16} /> Создать заявку {selected.length > 0 && `(${selected.length})`}</V2Button>} />
+      <section className="sd-v2-section" aria-labelledby="suppliers-list-title">
+        <div className="sd-v2-list-toolbar"><div className="sd-v2-filter-group" role="group" aria-label="Фильтр поставщиков">{supplierFilters.map((item) => <button key={item.key} type="button" aria-pressed={filter === item.key} className={cn('sd-v2-filter-chip', filter === item.key && 'is-active')} onClick={() => setFilter(item.key)}>{item.label}<span>{item.key === 'all' ? suppliers.length : item.key === 'trusted' ? 2 : item.key === 'waiting' ? 1 : 1}</span></button>)}</div><label className="sd-v2-search"><Search size={16} /><span className="sr-only">Поиск по поставщикам</span><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Название, ИНН или сайт…" /></label></div>
+        <div className="sd-v2-section-header sd-v2-section-header--inside"><div><p className="sd-v2-section-header__eyebrow">Компании</p><div className="sd-v2-section-header__title-row"><h2 id="suppliers-list-title">Все поставщики</h2><span className="sd-v2-section-header__meta">{visibleSuppliers.length} в списке</span></div></div><label className="sd-v2-select-all"><Checkbox checked={visibleSuppliers.length > 0 && visibleSuppliers.every((supplier) => selected.includes(supplier.id))} onCheckedChange={(checked) => setSelected(checked === true ? visibleSuppliers.map((supplier) => supplier.id) : [])} />Выбрать все</label></div>
+        <div className="sd-v2-table-wrap"><Table className="sd-v2-table sd-v2-table--suppliers"><TableHeader><TableRow><TableHead className="sd-v2-table__check-col"><span className="sr-only">Выбрать</span></TableHead><TableHead>Компания</TableHead><TableHead>Контакт</TableHead><TableHead>Ответы</TableHead><TableHead>Последний контакт</TableHead><TableHead>Связь</TableHead><TableHead><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader><TableBody>{visibleSuppliers.map((supplier) => <TableRow key={supplier.id}><TableCell data-label="Выбрать" className="sd-v2-table__check-col"><Checkbox aria-label={`Выбрать ${supplier.name}`} checked={selected.includes(supplier.id)} onCheckedChange={() => toggle(supplier.id)} /></TableCell><TableCell data-label="Компания"><div className="sd-v2-primary-cell"><button type="button" className="sd-v2-primary-cell--button" onClick={(event) => openPreview(supplier, event.currentTarget)}><strong>{supplier.name}</strong><span>ИНН {supplier.inn}</span></button><a href={`https://${supplier.site}`} className="sd-v2-site-link" target="_blank" rel="noreferrer">{supplier.site} <ArrowUpRight size={12} /></a></div></TableCell><TableCell data-label="Контакт"><V2Badge label={supplier.contact} tone={supplier.contactTone} dot /></TableCell><TableCell data-label="Ответы"><div className="sd-v2-response"><strong>{supplier.response}%</strong><div className="sd-v2-mini-progress"><span style={{ width: `${supplier.response}%` }} /></div><small>{supplier.requests} заявок</small></div></TableCell><TableCell data-label="Последний контакт"><span className="sd-v2-table-meta">{supplier.lastContact}</span></TableCell><TableCell data-label="Связь"><V2Badge label={supplier.relationship} tone={supplier.relationshipTone} /></TableCell><TableCell className="sd-v2-table__action"><button className="sd-v2-row-action" type="button" onClick={(event) => openPreview(supplier, event.currentTarget)}>Карточка <ArrowUpRight size={14} /></button></TableCell></TableRow>)}</TableBody></Table></div>
+      </section>
+      {selected.length > 0 && <div className="sd-v2-selection-bar"><div><strong>{selected.length}</strong><span>поставщика выбрано</span></div><div><V2Button variant="quiet" onClick={() => setSelected([])}>Снять выбор</V2Button><V2Button variant="primary" onClick={() => setSelected([])}><Send size={15} /> Создать заявку</V2Button></div></div>}
+      {preview && <SupplierPreview supplier={preview} onClose={closePreview} />}
+    </div>
+  );
 }
 
 function SupplierPreview({ supplier, onClose }: { supplier: SupplierRow; onClose: () => void }) {
-  return <div className="sd-v2-modal-scrim" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="sd-v2-preview" role="dialog" aria-modal="true" aria-labelledby="supplier-preview-title"><header className="sd-v2-preview__header"><div><p className="sd-v2-section-header__eyebrow">Карточка поставщика</p><h2 id="supplier-preview-title">{supplier.name}</h2><span>ИНН {supplier.inn} · {supplier.site}</span></div><IconButton label="Закрыть карточку" onClick={onClose}><X size={18} /></IconButton></header><div className="sd-v2-preview__body"><div className="sd-v2-preview__status"><V2Badge label={supplier.relationship} tone={supplier.relationshipTone} dot /><span>Последний контакт: <strong>{supplier.lastContact}</strong></span></div><div className="sd-v2-preview__stats"><div><span>Ответы</span><strong>{supplier.response}%</strong></div><div><span>Заявки</span><strong>{supplier.requests}</strong></div><div><span>Контакт</span><strong>{supplier.contact}</strong></div></div><div className="sd-v2-preview__note"><Truck size={16} /><p>Открытие production-карточки намеренно не выполняется в изолированном эксперименте.</p></div></div><footer className="sd-v2-preview__footer"><V2Button variant="quiet" onClick={onClose}>Закрыть</V2Button><V2Button variant="primary" onClick={onClose}>Понятно</V2Button></footer></section></div>;
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sd-v2-preview [&>button]:hidden">
+        <DialogHeader className="sd-v2-preview__header"><div><p className="sd-v2-section-header__eyebrow">Карточка поставщика</p><DialogTitle>{supplier.name}</DialogTitle><span>ИНН {supplier.inn} · {supplier.site}</span></div><DialogClose asChild><IconButton label="Закрыть карточку"><X size={18} /></IconButton></DialogClose></DialogHeader>
+        <div className="sd-v2-preview__body"><div className="sd-v2-preview__status"><V2Badge label={supplier.relationship} tone={supplier.relationshipTone} dot /><span>Последний контакт: <strong>{supplier.lastContact}</strong></span></div><div className="sd-v2-preview__stats"><div><span>Ответы</span><strong>{supplier.response}%</strong></div><div><span>Заявки</span><strong>{supplier.requests}</strong></div><div><span>Контакт</span><strong>{supplier.contact}</strong></div></div><div className="sd-v2-preview__note"><Truck size={16} /><p>Открытие production-карточки намеренно не выполняется в изолированном эксперименте.</p></div></div>
+        <DialogFooter className="sd-v2-preview__footer"><V2Button variant="quiet" onClick={onClose}>Закрыть</V2Button><V2Button variant="primary" onClick={onClose}>Понятно</V2Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function MessagesPage() {
@@ -366,11 +483,11 @@ function MessagesPage() {
   }), [mode, search]);
   const selected = visibleThreads.find((thread) => thread.id === selectedId) ?? visibleThreads[0] ?? null;
   useEffect(() => { if (visibleThreads.length > 0 && !visibleThreads.some((thread) => thread.id === selectedId)) setSelectedId(visibleThreads[0].id); }, [selectedId, visibleThreads]);
-  return <div className="sd-v2-page sd-v2-page--messages"><PageIntro eyebrow="Рабочее пространство · Заявка → поставщик → переписка" title="Переписка" description="Ответы поставщиков, привязанные к заявкам, в одном контексте." actions={<V2Button variant="secondary" onClick={() => setNotice('Ответ можно подготовить в production-рабочем пространстве.')}><Send size={16} /> Ответить</V2Button>} />{notice && <Notice message={notice} onDismiss={() => setNotice('')} />}<div className="sd-v2-mail-tabs" role="tablist" aria-label="Раздел переписки">{[{ key: 'requests', label: 'По заявкам', count: 2 }, { key: 'unmatched', label: 'Без привязки', count: 1 }, { key: 'outbox', label: 'Очередь', count: 1 }].map((tab) => <button key={tab.key} type="button" role="tab" aria-selected={mode === tab.key} className={cn('sd-v2-mail-tab', mode === tab.key && 'is-active')} onClick={() => setMode(tab.key as typeof mode)}>{tab.label}<span>{tab.count}</span></button>)}</div><div className={cn('sd-v2-mail-layout', selected && 'sd-v2-mail-layout--reading')}><aside className="sd-v2-mail-navigator" aria-label="Список переписок"><div className="sd-v2-mail-navigator__header"><div><p className="sd-v2-section-header__eyebrow">Рабочий список</p><h2>{mode === 'requests' ? 'Мои заявки' : mode === 'unmatched' ? 'Без привязки' : 'Исходящие'}</h2></div><span>{visibleThreads.length}</span></div><label className="sd-v2-search sd-v2-search--wide"><Search size={16} /><span className="sr-only">Поиск по переписке</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по заявке или поставщику" /></label><div className="sd-v2-mail-navigator__summary"><span><Mail size={14} /> Все сообщения <strong>{visibleThreads.length}</strong></span><span><Clock3 size={14} /> Ждут ответа <strong>1</strong></span></div><div className="sd-v2-thread-list">{visibleThreads.map((thread) => <button key={thread.id} type="button" className={cn('sd-v2-thread', selected?.id === thread.id && 'is-active')} onClick={() => setSelectedId(thread.id)}><span className={cn('sd-v2-thread__indicator', thread.unread && 'is-unread')} /><span className="sd-v2-thread__body"><span className="sd-v2-thread__top"><strong>{thread.supplier}</strong><time>{thread.time}</time></span><span className="sd-v2-thread__request">{thread.requestName}</span><span className="sd-v2-thread__subject">{thread.subject}</span><span className="sd-v2-thread__preview">{thread.preview}</span></span><V2Badge label={thread.state} tone={thread.stateTone} /></button>)}</div>{visibleThreads.length === 0 && <div className="sd-v2-empty sd-v2-empty--small"><Mail size={20} /><strong>Нет переписок</strong><span>В этом представлении пока нет писем.</span></div>}</aside>{selected ? <MailDetail thread={selected} onBack={() => setSelectedId(0)} onReply={() => setNotice('Кнопка ответа оставлена как presentation-only состояние эксперимента.')} /> : <div className="sd-v2-mail-empty"><Mail size={24} /><strong>Выберите переписку</strong><span>Здесь появится история общения и следующий доступный шаг.</span></div>}<MailContext thread={selected} /></div><p className="sd-v2-experiment-note">Почтовые действия в этом стенде не отправляют письма и не меняют состояние заявок.</p></div>;
+  return <div className="sd-v2-page sd-v2-page--messages"><PageIntro eyebrow="Рабочее пространство · Заявка → поставщик → переписка" title="Переписка" description="Ответы поставщиков, привязанные к заявкам, в одном контексте." actions={<V2Button variant="secondary" onClick={() => setNotice('Ответ можно подготовить в production-рабочем пространстве.')}><Send size={16} /> Ответить</V2Button>} />{notice && <Notice message={notice} onDismiss={() => setNotice('')} />}<Tabs value={mode} onValueChange={(value) => setMode(value as typeof mode)}><TabsList className="sd-v2-mail-tabs" aria-label="Раздел переписки">{[{ key: 'requests', label: 'По заявкам', count: 2 }, { key: 'unmatched', label: 'Без привязки', count: 1 }, { key: 'outbox', label: 'Очередь', count: 1 }].map((tab) => <TabsTrigger key={tab.key} value={tab.key} className="sd-v2-mail-tab">{tab.label}<span>{tab.count}</span></TabsTrigger>)}</TabsList><TabsContent value="requests" className="hidden" /><TabsContent value="unmatched" className="hidden" /><TabsContent value="outbox" className="hidden" /></Tabs><div className={cn('sd-v2-mail-layout', selected && 'sd-v2-mail-layout--reading')}><aside className="sd-v2-mail-navigator" aria-label="Список переписок"><div className="sd-v2-mail-navigator__header"><div><p className="sd-v2-section-header__eyebrow">Рабочий список</p><h2>{mode === 'requests' ? 'Мои заявки' : mode === 'unmatched' ? 'Без привязки' : 'Исходящие'}</h2></div><span>{visibleThreads.length}</span></div><label className="sd-v2-search sd-v2-search--wide"><Search size={16} /><span className="sr-only">Поиск по переписке</span><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по заявке или поставщику" /></label><div className="sd-v2-mail-navigator__summary"><span><Mail size={14} /> Все сообщения <strong>{visibleThreads.length}</strong></span><span><Clock3 size={14} /> Ждут ответа <strong>1</strong></span></div><div className="sd-v2-thread-list">{visibleThreads.map((thread) => <button key={thread.id} type="button" className={cn('sd-v2-thread', selected?.id === thread.id && 'is-active')} onClick={() => setSelectedId(thread.id)}><span className={cn('sd-v2-thread__indicator', thread.unread && 'is-unread')} /><span className="sd-v2-thread__body"><span className="sd-v2-thread__top"><strong>{thread.supplier}</strong><time>{thread.time}</time></span><span className="sd-v2-thread__request">{thread.requestName}</span><span className="sd-v2-thread__subject">{thread.subject}</span><span className="sd-v2-thread__preview">{thread.preview}</span></span><V2Badge label={thread.state} tone={thread.stateTone} /></button>)}</div>{visibleThreads.length === 0 && <div className="sd-v2-empty sd-v2-empty--small"><Mail size={20} /><strong>Нет переписок</strong><span>В этом представлении пока нет писем.</span></div>}</aside>{selected ? <MailDetail thread={selected} onBack={() => setSelectedId(0)} onReply={() => setNotice('Кнопка ответа оставлена как presentation-only состояние эксперимента.')} /> : <div className="sd-v2-mail-empty"><Mail size={24} /><strong>Выберите переписку</strong><span>Здесь появится история общения и следующий доступный шаг.</span></div>}<MailContext thread={selected} /></div><p className="sd-v2-experiment-note">Почтовые действия в этом стенде не отправляют письма и не меняют состояние заявок.</p></div>;
 }
 
 function MailDetail({ thread, onBack, onReply }: { thread: MailThread; onBack: () => void; onReply: () => void }) {
-  return <section className="sd-v2-mail-detail" aria-labelledby="mail-detail-title"><header className="sd-v2-mail-detail__header"><IconButton label="Вернуться к списку переписок" className="sd-v2-mail-back" onClick={onBack}><ArrowLeft size={18} /></IconButton><div className="sd-v2-mail-detail__heading"><p className="sd-v2-section-header__eyebrow">{thread.requestId ? `Заявка №${thread.requestId}` : 'Входящее письмо'}</p><h2 id="mail-detail-title">{thread.subject}</h2><span>{thread.supplier} · {thread.email}</span></div><IconButton label="Открыть дополнительные действия"><MoreHorizontal size={18} /></IconButton></header><div className="sd-v2-mail-context-line"><div><FileText size={15} /><span><strong>{thread.requestName}</strong>{thread.requestId && ` · ${thread.messages.length + 2} сообщения`}</span></div><V2Badge label={thread.state} tone={thread.stateTone} dot /></div><div className="sd-v2-message-list">{thread.messages.map((message) => <article className={cn('sd-v2-message', `sd-v2-message--${message.direction}`)} key={message.id}><div className="sd-v2-message__meta"><div className="sd-v2-message__avatar">{message.direction === 'inbound' ? thread.supplier.slice(4, 6) : 'ЕК'}</div><div><strong>{message.sender}</strong><time>{message.time}</time></div></div><p>{message.text}</p>{message.attachments && <div className="sd-v2-attachments">{message.attachments.map((attachment) => <span key={attachment}><Paperclip size={14} />{attachment}</span>)}</div>}</article>)}</div><footer className="sd-v2-mail-reply-bar"><div><span className="sd-v2-reply-bar__status"><span /> Готово к следующему действию</span><small>Ответ будет открыт в рабочей версии</small></div><V2Button variant="primary" onClick={onReply}><Send size={15} /> Ответить поставщику <ArrowRight size={14} /></V2Button></footer></section>;
+  return <section className="sd-v2-mail-detail" aria-labelledby="mail-detail-title"><header className="sd-v2-mail-detail__header"><IconButton label="Вернуться к списку переписок" className="sd-v2-mail-back" onClick={onBack}><ArrowLeft size={18} /></IconButton><div className="sd-v2-mail-detail__heading"><p className="sd-v2-section-header__eyebrow">{thread.requestId ? `Заявка №${thread.requestId}` : 'Входящее письмо'}</p><h2 id="mail-detail-title">{thread.subject}</h2><span>{thread.supplier} · {thread.email}</span></div><TooltipProvider delayDuration={150}><Tooltip><TooltipTrigger asChild><IconButton label="Открыть дополнительные действия"><MoreHorizontal size={18} /></IconButton></TooltipTrigger><TooltipContent>Дополнительные действия</TooltipContent></Tooltip></TooltipProvider></header><div className="sd-v2-mail-context-line"><div><FileText size={15} /><span><strong>{thread.requestName}</strong>{thread.requestId && ` · ${thread.messages.length + 2} сообщения`}</span></div><V2Badge label={thread.state} tone={thread.stateTone} dot /></div><div className="sd-v2-message-list">{thread.messages.map((message) => <article className={cn('sd-v2-message', `sd-v2-message--${message.direction}`)} key={message.id}><div className="sd-v2-message__meta"><div className="sd-v2-message__avatar">{message.direction === 'inbound' ? thread.supplier.slice(4, 6) : 'ЕК'}</div><div><strong>{message.sender}</strong><time>{message.time}</time></div></div><p>{message.text}</p>{message.attachments && <div className="sd-v2-attachments">{message.attachments.map((attachment) => <span key={attachment}><Paperclip size={14} />{attachment}</span>)}</div>}</article>)}</div><footer className="sd-v2-mail-reply-bar"><div><span className="sd-v2-reply-bar__status"><span /> Готово к следующему действию</span><small>Ответ будет открыт в рабочей версии</small></div><V2Button variant="primary" onClick={onReply}><Send size={15} /> Ответить поставщику <ArrowRight size={14} /></V2Button></footer></section>;
 }
 
 function MailContext({ thread }: { thread: MailThread | null }) {

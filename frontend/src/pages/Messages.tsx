@@ -10,7 +10,7 @@ import { EmailWorkspace } from '@/components/mail/EmailWorkspace';
 import { Composer, type MailComposerContext } from '@/components/mail/Composer';
 import { EmailRenderer } from '@/components/mail/EmailRenderer';
 import { InboxReplyComposer } from '@/components/mail/InboxReplyComposer';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import type { InboxMessage, InboxSuggestion, MailMessage, ManualLinkRequestOption, ThreadSummary } from '@/lib/types';
 
 type Mode = 'requests' | 'unmatched' | 'outbox';

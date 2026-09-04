@@ -9,28 +9,35 @@ based_on_commit: 3e935f2
 
 # Last Handoff
 
-## Current: TASK-SUPPLYDESK-UI-SHADCN-V2-20260904
+## Current: TASK-SUPPLYDESK-SHADCN-MIGRATION-20260904
 
-Branch `experiment/ui-shadcn-v2` contains the isolated SupplyDesk visual
-experiment at `/experiment/ui-shadcn-v2/*`: Dashboard, Requests, Suppliers and
-Messages/Email Workspace alternatives. It uses scoped semantic CSS tokens and
-local shadcn-style primitives with static fixture data. Production routes,
-backend, API, database, auth, mail and business logic were not changed.
+Branch `experiment/ui-shadcn-v2` now contains the isolated SupplyDesk visual
+experiment backed by official shadcn/ui local components. The new
+`frontend/components.json` uses the official `new-york` configuration with
+Radix as the underlying primitive layer. Button, Badge, Input, Checkbox,
+Dialog, DropdownMenu, Popover, Tabs, Table, Tooltip and Sidebar are present in
+`frontend/src/components/ui/` and are consumed by the experiment or production
+UI composition points listed in the report. Product-specific controls remain
+local where no requested foundation component was needed; Accordion is `NOT
+USED`. Production routes, backend, API, database, auth, mail and business
+logic were not changed.
 
-Verification: workspace guard PASS; typecheck PASS; lint PASS with 0 errors and
-5 pre-existing warnings; build PASS; browser/a11y matrix `9 passed, 3 skipped`
-across 1440px, 1280px, 1024px and 390px. The 1024px table compression found in
-the first rendered review was corrected, and final route screenshots are in
-`frontend/artifacts/ui-shadcn-v2-20260904/`. The frontend dev server remains
-running on `5173`.
+Verification: workspace guard PASS; typecheck PASS; build PASS; lint PASS with
+0 errors and 8 warnings; focused browser/a11y matrix `18 passed, 6 skipped`;
+full frontend/browser suite `340 passed, 12 skipped`; HTTP smoke returned
+`200` for `/` and `/api/auth/me`, expected `401` for the protected dashboard
+endpoint and `404` for an unknown endpoint. Required before/after screenshots
+are in `frontend/artifacts/ui-shadcn-migration-20260904/`; the canonical
+server remains available on `8000`.
 
-Limits: authenticated production BEFORE captures and the missing
-`scripts/audit_toolchain.py` helper are NOT VERIFIED. Existing dirty control
-plane files and untracked `runtime/` were preserved and excluded. Detailed
-evidence: `ai/reports/TASK-SUPPLYDESK-UI-SHADCN-V2-20260904-report.md`.
+Limits: `scripts/audit_toolchain.py` and the geometry audit helper are absent,
+so those checks are `NOT VERIFIED`. Existing control-plane changes and
+untracked `runtime/` were preserved and excluded. Detailed evidence:
+`ai/reports/TASK-SUPPLYDESK-SHADCN-MIGRATION-20260904-report.md`.
 
 Rollback: revert the task commit; no database, mail or production data
-rollback is required.
+rollback is required. The previous visual experiment report remains historical
+and is not the current classification after this migration.
 
 ## Historical: TASK-RUNTIME-SELECTION-HARD-GUARD-20260904
 

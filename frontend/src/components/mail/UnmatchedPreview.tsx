@@ -3,7 +3,7 @@ import { GripVertical, Link as LinkIcon, Mail, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn, formatRelativeDate } from '@/lib/utils';
 import type { InboxPreview } from '@/lib/types';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 interface UnmatchedPreviewProps {
   refreshKey: number;

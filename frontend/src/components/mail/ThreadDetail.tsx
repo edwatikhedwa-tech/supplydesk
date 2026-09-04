@@ -5,7 +5,7 @@ import { cn, displayCorrespondenceSupplierName, formatFullDate, getAvatarColor, 
 import { EmailRenderer } from '@/components/mail/EmailRenderer';
 import { ThreadMetadataControls } from '@/components/mail/ThreadMetadataControls';
 import { getThreadDisplayStatus } from '@/components/mail/threadStatus';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { StatusBadge, type StatusBadgeTone } from '@/components/ui/StatusBadge';
 import type { InboxConversation, MailMessage, ThreadSummary } from '@/lib/types';
 
