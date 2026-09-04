@@ -9,7 +9,30 @@ based_on_commit: 3e935f2
 
 # Last Handoff
 
-## Current: TASK-RUNTIME-SELECTION-HARD-GUARD-20260904
+## Current: TASK-SUPPLYDESK-UI-SHADCN-V2-20260904
+
+Branch `experiment/ui-shadcn-v2` contains the isolated SupplyDesk visual
+experiment at `/experiment/ui-shadcn-v2/*`: Dashboard, Requests, Suppliers and
+Messages/Email Workspace alternatives. It uses scoped semantic CSS tokens and
+local shadcn-style primitives with static fixture data. Production routes,
+backend, API, database, auth, mail and business logic were not changed.
+
+Verification: workspace guard PASS; typecheck PASS; lint PASS with 0 errors and
+5 pre-existing warnings; build PASS; browser/a11y matrix `9 passed, 3 skipped`
+across 1440px, 1280px, 1024px and 390px. The 1024px table compression found in
+the first rendered review was corrected, and final route screenshots are in
+`frontend/artifacts/ui-shadcn-v2-20260904/`. The frontend dev server remains
+running on `5173`.
+
+Limits: authenticated production BEFORE captures and the missing
+`scripts/audit_toolchain.py` helper are NOT VERIFIED. Existing dirty control
+plane files and untracked `runtime/` were preserved and excluded. Detailed
+evidence: `ai/reports/TASK-SUPPLYDESK-UI-SHADCN-V2-20260904-report.md`.
+
+Rollback: revert the task commit; no database, mail or production data
+rollback is required.
+
+## Historical: TASK-RUNTIME-SELECTION-HARD-GUARD-20260904
 
 `scripts/runtime_guard.py` is now the single purpose-to-runtime authority.
 `OWNER_SESSION`, `VISUAL_ACCEPTANCE`, `OAUTH_CHECK` and

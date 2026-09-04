@@ -15,6 +15,7 @@ const Blacklist = lazy(() => import('@/pages/Blacklist').then(({ Blacklist: comp
 const Settings = lazy(() => import('@/pages/Settings').then(({ Settings: component }) => ({ default: component })));
 const NotFound = lazy(() => import('@/pages/NotFound').then(({ NotFound: component }) => ({ default: component })));
 const CampaignPage = lazy(() => import('@/pages/CampaignPage').then(({ CampaignPage: component }) => ({ default: component })));
+const UiExperiment = lazy(() => import('@/pages/UiExperiment').then(({ UiExperiment: component }) => ({ default: component })));
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
@@ -30,6 +31,7 @@ function AppRoutes() {
     <Suspense fallback={<LoadingState label="Загрузка страницы…" className="min-h-screen" />}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/experiment/ui-shadcn-v2/*" element={<UiExperiment />} />
         <Route
           element={
             <RequireAuth>

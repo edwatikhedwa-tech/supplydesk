@@ -15,6 +15,20 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-04` — `TASK-SUPPLYDESK-UI-SHADCN-V2-20260904` added an isolated
+frontend-only experiment on branch `experiment/ui-shadcn-v2`. The public
+`/experiment/ui-shadcn-v2/*` route family renders static Dashboard, Requests,
+Suppliers and Messages/Email Workspace alternatives with scoped semantic
+tokens, local shadcn-style primitives, responsive layouts and presentation-only
+states. No production API, backend, database, auth, mail or business logic was
+changed. Final typecheck, lint (0 errors; 5 pre-existing warnings), build and
+rendered browser/a11y matrix passed: `9 passed, 3 skipped` across 1440px,
+1280px, 1024px and 390px. Screenshots are stored under
+`frontend/artifacts/ui-shadcn-v2-20260904/`. Authenticated production BEFORE
+captures and `scripts/audit_toolchain.py` are `NOT VERIFIED`; pre-existing
+worktree changes and untracked `runtime/` were preserved and excluded.
+Detailed evidence: [`ai/reports/TASK-SUPPLYDESK-UI-SHADCN-V2-20260904-report.md`](reports/TASK-SUPPLYDESK-UI-SHADCN-V2-20260904-report.md).
+
 `2026-09-04` — `TASK-RUNTIME-SELECTION-HARD-GUARD-20260904` added the
 dependency-free `scripts/runtime_guard.py` as the single runtime-selection
 authority. All six required purposes now map deterministically to

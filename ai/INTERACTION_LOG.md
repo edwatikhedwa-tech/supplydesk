@@ -1555,3 +1555,19 @@ tests PASS; safe `AUTOMATED_TEST` smoke `2/2` PASS; canonical
 node-config typecheck and validators PASS. SAFE_TEST rendered screenshots at
 `1440×900` and `360×800` were reviewed. Canonical authenticated `/messages`,
 OAuth callback, live provider and mail actions were not automated.
+
+## 2026-09-04 — TASK-SUPPLYDESK-UI-SHADCN-V2-20260904
+
+State change: created the isolated UI experiment route family on
+`experiment/ui-shadcn-v2`; no production data or application behavior was
+changed. Added the experiment page, scoped stylesheet, browser acceptance test
+and design documentation.
+
+Verification state: workspace guard PASS; frontend typecheck and build PASS;
+lint PASS with 0 errors and 5 pre-existing warnings; final rendered browser/
+a11y matrix `9 passed, 3 skipped` across desktop-wide, desktop-compact,
+tablet-landscape and mobile-large profiles. The first visual review found and
+corrected 1024px table compression and supplier name/INN spacing. Authenticated
+production BEFORE capture and `scripts/audit_toolchain.py` remain
+`NOT VERIFIED`; pre-existing dirty control-plane files and untracked `runtime/`
+were preserved and not staged.

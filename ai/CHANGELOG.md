@@ -1632,3 +1632,18 @@ Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH`
   canonical public-shell visual acceptance `1/1` PASS, frontend typecheck,
   lint, build, node config typecheck and state validators PASS. No backend
   business logic, OAuth, DB schema, provider or outgoing-mail behavior changed.
+
+## 2026-09-04 — TASK-SUPPLYDESK-UI-SHADCN-V2-20260904
+
+- Added an isolated frontend visual experiment on branch
+  `experiment/ui-shadcn-v2` with Dashboard, Requests, Suppliers and
+  Messages/Email Workspace routes under `/experiment/ui-shadcn-v2/*`.
+- Added scoped semantic tokens, local shadcn-style primitives, responsive
+  desktop/tablet/mobile layouts, presentation-only dialogs/notices and the
+  design rationale in `docs/experiments/ui-shadcn-v2.md`.
+- Preserved production route auth, backend/API/database/mail behavior and all
+  unrelated worktree changes.
+- Verification: workspace guard, typecheck and build PASS; lint 0 errors with
+  5 pre-existing warnings; rendered browser/a11y matrix `9 passed, 3 skipped`
+  across 1440px, 1280px, 1024px and 390px. Screenshots are in
+  `frontend/artifacts/ui-shadcn-v2-20260904/`.
