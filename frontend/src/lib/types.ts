@@ -220,6 +220,10 @@ export interface ThreadSummary {
   last_message_direction: MailDirection | null;
   /** ID исходного inbox-письма для ручной связи без поставщика/треда. */
   manual_inbox_id?: number | null;
+  /** Личный для пользователя маркер важности; не меняет статус письма. */
+  is_important: boolean;
+  /** Личный приоритет: 1, 2, 3 или null без приоритета. */
+  priority: 1 | 2 | 3 | null;
 }
 
 type MailDirection = 'outbound' | 'inbound';

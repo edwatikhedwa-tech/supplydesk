@@ -26,6 +26,10 @@ export function Messages() {
   const [selectedThread, setSelectedThread] = useState<ThreadSummary | null>(null);
   const [composerCtx, setComposerCtx] = useState<MailComposerContext | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [navigatorSearch, setNavigatorSearch] = useState('');
+  const [linkNotice, setLinkNotice] = useState('');
+  const [linkError, setLinkError] = useState('');
+  const [lastDragLink, setLastDragLink] = useState<{ inboxId: number; requestId: number } | null>(null);
 
   /** Открыть конкретный тред по ссылке `/messages?thread=<заявка>:<поставщик>`.
    *  Так статус «Ответ получен» в таблице заявки ведёт прямо в письмо, а не
@@ -89,7 +93,65 @@ export function Messages() {
   const changeMode = (nextMode: Mode) => {
     setMode(nextMode);
     setSelectedThread(null);
+    setLinkNotice('');
+    setLinkError('');
   };
+
+  const handleMetadataChange = useCallback(async (thread: ThreadSummary, patch: { important?: boolean; priority?: 1 | 2 | 3 | null }) => {
+    const result = await api.updateThreadMetadata(thread.request_id, thread.supplier_id, patch);
+    setSelectedThread((current) => current && threadKey(current) === threadKey(thread)
+      ? { ...current, is_important: result.is_important, priority: result.priority }
+      : current);
+    setRefreshKey((value) => value + 1);
+  }, []);
+
+  const openUnmatched = useCallback((messageId?: number) => {
+    setMode('unmatched');
+    setSelectedThread(null);
+    setLinkError('');
+    navigate(messageId != null ? `/messages?tab=unmatched&inbox=${messageId}` : '/messages?tab=unmatched');
+  }, [navigate]);
+
+  const handleDropUnmatched = useCallback(async (messageId: number, requestId: number) => {
+    setLinkError('');
+    setLinkNotice('');
+    try {
+      const suggestions = await api.inboxSuggestions(messageId);
+      const exact = suggestions.items.filter((item) => item.request_id === requestId && item.match === 'exact');
+      if (exact.length === 1) {
+        await api.manuallyLinkInboxMessage({
+          inbox_message_id: messageId,
+          request_id: requestId,
+          supplier_id: exact[0].supplier_id,
+          confirmed: true,
+        });
+        setLastDragLink({ inboxId: messageId, requestId });
+        setLinkNotice(`Письмо связано с заявкой №${requestId}.`);
+        setRefreshKey((value) => value + 1);
+        window.dispatchEvent(new CustomEvent('supplydesk:unmatched-mail-changed', { detail: { delta: -1 } }));
+        return;
+      }
+      // Domain-only or multiple matches never become an automatic link. The
+      // existing manual dialog remains the authority for the final choice.
+      navigate(`/messages?tab=unmatched&inbox=${messageId}&request=${requestId}`);
+    } catch (err) {
+      setLinkError(err instanceof ApiError ? err.message : 'Не удалось проверить письмо. Откройте ручную привязку.');
+      openUnmatched(messageId);
+    }
+  }, [navigate, openUnmatched]);
+
+  const undoDragLink = useCallback(async () => {
+    if (!lastDragLink) return;
+    try {
+      await api.unlinkManualInboxMessage(lastDragLink.inboxId);
+      setLastDragLink(null);
+      setLinkNotice('Связь отменена. Письмо снова в списке без привязки.');
+      setRefreshKey((value) => value + 1);
+      window.dispatchEvent(new CustomEvent('supplydesk:unmatched-mail-changed', { detail: { delta: 1 } }));
+    } catch (err) {
+      setLinkError(err instanceof ApiError ? err.message : 'Не удалось отменить связь.');
+    }
+  }, [lastDragLink]);
 
   /** Открытие треда помечает его входящие прочитанными на сервере
    *  (MailRepository.thread_messages), поэтому список нужно перезапросить —
@@ -106,39 +168,61 @@ export function Messages() {
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden h-screen">
-      <div className="flex min-h-[76px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-ink-200/70 bg-white px-4 py-3 sm:h-[76px] sm:flex-nowrap sm:px-8 sm:py-0">
-        <div className="min-w-0">
-          <h1 className="text-page-title font-bold text-ink-900">Переписка</h1>
-          <p className="text-xs text-ink-500 mt-0.5">Переписка по заявкам, очередь отправки и письма без привязки</p>
+    <div className="flex h-[calc(100vh-3.5rem)] flex-1 flex-col overflow-hidden lg:h-screen">
+      <header className="shrink-0 border-b border-ink-200/70 bg-white px-4 py-4 sm:px-8">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0">
+            <p className="text-2xs font-bold uppercase tracking-[0.16em] text-accent-700">РАБОЧЕЕ ПРОСТРАНСТВО ЗАКУПОК</p>
+            <h1 className="mt-1 text-page-title font-bold text-ink-900">Сообщения</h1>
+            <p className="mt-0.5 text-xs text-ink-500">Заявка <span aria-hidden="true">→</span> поставщик <span aria-hidden="true">→</span> переписка</p>
+          </div>
+          {mode !== 'unmatched' && (
+            <div className="relative w-full xl:max-w-[430px]">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" aria-hidden="true" />
+              <label htmlFor="messages-search" className="sr-only">Поиск по поставщику, заявке, теме или адресу</label>
+              <input id="messages-search" type="search" value={navigatorSearch} onChange={(event) => setNavigatorSearch(event.target.value)} placeholder="Поставщик, заявка, тема или email" className="w-full rounded-xl border border-ink-200 bg-ink-50 py-3 pl-10 pr-3 text-sm text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-accent-400 focus:bg-white focus:ring-2 focus:ring-accent-100" />
+            </div>
+          )}
         </div>
-        <div className="flex items-center bg-ink-100 rounded-lg p-0.5">
+        <nav className="mt-4 flex max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-ink-100 p-1" aria-label="Разделы сообщений" role="tablist">
           <button
             type="button"
             aria-pressed={mode === 'requests'}
+            aria-selected={mode === 'requests'}
             onClick={() => changeMode('requests')}
-            className={cn('min-h-10 px-4 py-1.5 text-sm font-medium rounded-md transition-all', mode === 'requests' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
+            role="tab"
+            className={cn('min-h-10 shrink-0 rounded-lg px-4 py-1.5 text-sm font-semibold transition-all', mode === 'requests' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
           >
             По заявкам
           </button>
           <button
             type="button"
             aria-pressed={mode === 'unmatched'}
+            aria-selected={mode === 'unmatched'}
             onClick={() => changeMode('unmatched')}
-            className={cn('min-h-10 px-4 py-1.5 text-sm font-medium rounded-md transition-all', mode === 'unmatched' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
+            role="tab"
+            className={cn('min-h-10 shrink-0 rounded-lg px-4 py-1.5 text-sm font-semibold transition-all', mode === 'unmatched' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
           >
             Без привязки
           </button>
           <button
             type="button"
             aria-pressed={mode === 'outbox'}
+            aria-selected={mode === 'outbox'}
             onClick={() => changeMode('outbox')}
-            className={cn('min-h-10 px-4 py-1.5 text-sm font-medium rounded-md transition-all', mode === 'outbox' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
+            role="tab"
+            className={cn('min-h-10 shrink-0 rounded-lg px-4 py-1.5 text-sm font-semibold transition-all', mode === 'outbox' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
           >
             Очередь
           </button>
-        </div>
-      </div>
+        </nav>
+        {(linkNotice || linkError) && (
+          <div className="mt-3 flex flex-wrap items-center gap-2" role={linkError ? 'alert' : 'status'}>
+            <p className={cn('text-xs font-semibold', linkError ? 'text-rose-700' : 'text-emerald-700')}>{linkError || linkNotice}</p>
+            {lastDragLink && linkNotice && <button type="button" onClick={() => void undoDragLink()} className="min-h-9 rounded-lg px-2.5 text-xs font-semibold text-ink-700 ring-1 ring-ink-200 hover:bg-ink-50">Отменить связь</button>}
+          </div>
+        )}
+      </header>
 
       <div className="flex-1 flex overflow-hidden">
         {mode === 'requests' ? (
@@ -150,6 +234,10 @@ export function Messages() {
               selectedThreadKey={selectedThread ? threadKey(selectedThread) : null}
               onSelectThread={setSelectedThread}
               refreshKey={refreshKey}
+              searchInput={navigatorSearch}
+              onOpenUnmatched={openUnmatched}
+              onDropUnmatched={handleDropUnmatched}
+              onMetadataChange={handleMetadataChange}
             />
             {selectedThread ? (
               <ThreadDetail
@@ -159,6 +247,7 @@ export function Messages() {
                 onOpenRequest={(requestId) => navigate(`/requests/${requestId}`)}
                 onUnlinkManual={selectedThread.manual_inbox_id != null ? handleManualUnlink : undefined}
                 onRead={handleThreadRead}
+                onMetadataChange={handleMetadataChange}
               />
             ) : (
               <EmptyState className="hidden xl:flex" />
@@ -170,6 +259,8 @@ export function Messages() {
               selectedThreadKey={selectedThread ? threadKey(selectedThread) : null}
               onSelectThread={setSelectedThread}
               refreshKey={refreshKey}
+              searchInput={navigatorSearch}
+              onMetadataChange={handleMetadataChange}
             />
             {selectedThread ? (
               <ThreadDetail
@@ -178,13 +269,14 @@ export function Messages() {
                 onReply={selectedThread.manual_inbox_id == null ? handleReply : undefined}
                 onOpenRequest={(requestId) => navigate(`/requests/${requestId}`)}
                 onRead={handleThreadRead}
+                onMetadataChange={handleMetadataChange}
               />
             ) : (
               <EmptyState className="hidden xl:flex" />
             )}
           </>
         ) : (
-          <UnmatchedInbox preselectId={wantedInboxId} />
+          <UnmatchedInbox preselectId={wantedInboxId} preselectRequestId={params.get('request') ? Number(params.get('request')) : null} />
         )}
       </div>
 
@@ -204,7 +296,7 @@ function EmptyState({ className = '' }: { className?: string }) {
   );
 }
 
-function UnmatchedInbox({ preselectId }: { preselectId?: number | null }) {
+function UnmatchedInbox({ preselectId, preselectRequestId }: { preselectId?: number | null; preselectRequestId?: number | null }) {
   const [items, setItems] = useState<InboxMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState(false);
@@ -259,6 +351,17 @@ function UnmatchedInbox({ preselectId }: { preselectId?: number | null }) {
     }, 180);
     return () => window.clearTimeout(timer);
   }, [linkModalOpen, linkQuery, requestRetryToken]);
+
+  useEffect(() => {
+    if (!linkModalOpen || selectedRequest || preselectRequestId == null) return;
+    const option = requestOptions.find((item) => item.id === preselectRequestId);
+    if (option) {
+      setSelectedRequest(option);
+      // A drag target identifies the request, not the supplier. Supplier
+      // selection remains explicit so a domain match can never be guessed.
+      setSelectedSupplierId(null);
+    }
+  }, [linkModalOpen, preselectRequestId, requestOptions, selectedRequest]);
 
   useEffect(() => {
     if (!linkModalOpen) return undefined;
@@ -369,7 +472,7 @@ function UnmatchedInbox({ preselectId }: { preselectId?: number | null }) {
   return (
     <>
       <div className={cn(
-        'w-full shrink-0 border-r border-ink-200 bg-white flex-col xl:w-[360px] xl:flex',
+        'w-full shrink-0 border-r border-ink-200 bg-white flex-col xl:w-[400px] 2xl:w-[420px] xl:flex',
         selected ? 'hidden' : 'flex',
       )}>
         <div className="px-3 pt-3 pb-2.5 border-b border-ink-100 shrink-0">

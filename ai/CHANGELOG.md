@@ -3,6 +3,25 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-04 — MESSAGES WORKSPACE REDESIGN + USER METADATA
+
+- `TASK-MESSAGES-WORKSPACE-REDESIGN-20260904`: redesigned `/messages` into a
+  procurement workspace with a desktop navigator/detail split, mobile
+  list-to-detail behavior in code, global conversation search, request-group
+  attention expansion, a three-item unmatched preview, accessible flag and
+  priority controls, and shortened presentation-only supplier names.
+- Added additive `mail_thread_user_metadata` persistence and
+  `POST /api/correspondence/metadata`. The flag and priority are independent,
+  scoped to user/workspace/request/supplier, optimistic in the UI, and do not
+  alter mail or delivery statuses. Added a safe drag shortcut that only links a
+  single exact sender match; ambiguous/domain/unknown cases remain manual.
+- Confirmed: targeted backend tests (`6`, all pass), frontend typecheck/build,
+  lint with the existing `5` warnings and no errors, migration creation in the
+  disposable runtime, and an authenticated canonical-session desktop render.
+- `NOT VERIFIED`: authenticated SAFE_TEST browser flow, real drag/drop against
+  a disposable seeded correspondence, tablet/mobile screenshot matrix, and
+  the absent repository `scripts/audit_toolchain.py`/geometry runner.
+
 ## 2026-09-04 — LOGISTICS: LIVE DELLIN KEY CONNECTED, TERM_DAYS FALLBACK FIX
 
 - Owner shared the real `DELLIN_API_KEY` (Dellin registration approved);

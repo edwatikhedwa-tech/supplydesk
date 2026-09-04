@@ -2,6 +2,37 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-04 — TASK-MESSAGES-WORKSPACE-REDESIGN-20260904
+
+State change: created an active task lock for the `/messages` redesign after
+confirming the workspace guard, branch, HEAD and pre-existing untracked
+`runtime/` boundary. Read-only discovery confirmed the current request-grouped
+mail list, existing manual unmatched workflow, queue/delivery safeguards, and
+the unchanged global sidebar.
+
+State change: added `migrations/034_thread_user_metadata.sql`,
+`mail/thread_metadata.py`, repository composition, per-session metadata fields
+on correspondence/outbox summaries, and one CSRF-protected metadata route.
+The storage is additive and user-specific; invalid priorities, cross-workspace
+requests and unknown threads are rejected. Existing manual-link routes remain
+the source of truth.
+
+State change: implemented the product UI changes in `Messages.tsx`,
+`ThreadList.tsx`, `ThreadDetail.tsx`, `OutboxList.tsx`, and two focused mail
+components. The compact unmatched preview reuses `/api/mail/inbox/preview`;
+drag-and-drop calls suggestions first and directly links only one exact sender
+match. All other outcomes navigate to the existing manual flow without
+guessing a supplier.
+
+Evidence: targeted backend tests passed (`python -m unittest
+tests.test_thread_metadata tests.test_messages_visibility`, 6 tests); the
+frontend typecheck and production build passed; lint reported 0 errors and the
+same 5 warnings in unrelated existing files. The new migration exists in the
+disposable SAFE_TEST database after a guarded runtime restart. An authenticated
+desktop render was inspected in the existing canonical-session tab at
+1287×912; mobile/tablet viewport override did not take effect in the current
+in-app browser, so those screenshots are `NOT VERIFIED`.
+
 ## 2026-09-03 — TASK-ROOT-CAUSE-RUNTIME-FIX-20260903
 
 State change: performed a read-only root-cause analysis of why a prior

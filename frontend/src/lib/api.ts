@@ -147,6 +147,20 @@ export const api = {
 
   listThreads: () => request<{ items: ThreadSummary[] }>('/api/correspondence'),
   listOutboxThreads: () => request<{ items: ThreadSummary[] }>('/api/mail/queue/messages'),
+  updateThreadMetadata: (
+    requestId: number,
+    supplierId: number,
+    input: { important?: boolean; priority?: 1 | 2 | 3 | null },
+  ) => request<{
+    ok: true;
+    request_id: number;
+    supplier_id: number;
+    is_important: boolean;
+    priority: 1 | 2 | 3 | null;
+  }>('/api/correspondence/metadata', {
+    method: 'POST',
+    body: JSON.stringify({ request_id: requestId, supplier_id: supplierId, ...input }),
+  }),
   threadMessages: (requestId: number, supplierId: number) =>
     request<{ items: MailMessage[] }>(`/api/mail/threads?request_id=${requestId}&supplier_id=${supplierId}`),
   listInbox: () => request<{ items: InboxMessage[] }>('/api/mail/inbox'),

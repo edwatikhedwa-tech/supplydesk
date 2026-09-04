@@ -9,6 +9,52 @@ based_on_commit: TASK-ROOT-CAUSE-RUNTIME-FIX-20260903
 
 # Last Handoff
 
+This current handoff records `TASK-MESSAGES-WORKSPACE-REDESIGN-20260904`.
+The prior runtime-fix handoff remains below as historical context.
+
+## Текущая задача
+
+Product UX redesign of `/messages` into a procurement-oriented correspondence
+workspace, with durable user metadata and safe unmatched-mail shortcuts.
+
+## Что изменено
+
+- `frontend/src/pages/Messages.tsx` now owns the workspace header/search,
+  unmatched navigation, safe drag-link decision and metadata refresh.
+- `ThreadList.tsx`, `ThreadDetail.tsx` and `OutboxList.tsx` keep the existing
+  mail semantics while adding request-first hierarchy, display-only company
+  shortening, accessible metadata controls and the compact unmatched preview.
+- `migrations/034_thread_user_metadata.sql`, `mail/thread_metadata.py`,
+  `mail/repository.py` and `supplier_app.py` add the user/workspace-scoped
+  `is_important`/`priority` contract through one endpoint.
+- Product/API docs, decision register, current state, changelog, interaction
+  log and targeted tests were updated.
+
+## Доказательства и ограничения
+
+- Workspace Guard: `PASS` before mutation, runtime restart and build.
+- Backend verification profile: `54` tests, failures `0`, errors `0`, one
+  штатно пропущенный тест.
+- Frontend typecheck/build: `PASS`; lint: `0` errors and `5` existing warnings.
+- SAFE_TEST disposable database contains the new metadata table after guarded
+  restart; canonical runtime on port `8000` was not stopped.
+- Authenticated canonical-session browser render inspected at `1287×912`:
+  header/search, request groups, unmatched preview, shortened supplier labels,
+  flag/priority controls, detail header and email cards are visible and
+  coherent. `NOT VERIFIED`: authenticated SAFE_TEST browser flow, true
+  drag/drop browser interaction, 390×844 and 768×1024 screenshots, and the
+  absent required `scripts/audit_toolchain.py`/geometry runner.
+
+## Закрытие этапа
+
+Full available verification profile and state validators passed. Commit the
+implementation with task ID; do not push automatically. Responsive acceptance
+at the requested widths, authenticated SAFE_TEST flow and real browser
+drag/drop remain explicitly unverified because the current CUA session cannot
+change viewport or authenticate SAFE_TEST.
+
+---
+
 This current handoff records `TASK-ROOT-CAUSE-RUNTIME-FIX-20260903`. The
 older logistics-MVP handoff is retained below as historical context and is
 not the current task state.

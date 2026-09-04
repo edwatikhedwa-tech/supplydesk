@@ -13,6 +13,32 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-017 — Procurement workspace layout and user-scoped thread metadata
+
+- Decision ID: `DECISION-017`
+- Date: `2026-09-04`
+- Status: `ACTIVE`
+- Context: The `/messages` page needed to support procurement triage without
+  turning correspondence into a generic mailbox. The existing request-grouped
+  list, manual unmatched workflow, outbox and delivery safeguards are already
+  product contracts and must remain authoritative.
+- Decision: Keep a desktop two-column layout (request/supplier navigator plus
+  conversation detail) and a list-to-detail mobile layout. Add a compact
+  unmatched preview and HTML5 drag-and-drop only as a shortcut into the current
+  manual-link workflow. Direct drag linking is allowed only for one exact
+  sender match; domain-only, ambiguous and unknown cases require explicit
+  manual selection. Store the important marker and priority separately in
+  `mail_thread_user_metadata`, keyed by workspace, user, request and supplier;
+  they never overwrite mail transport or delivery status.
+- Reason: This reuses the existing mail identity and linking APIs, keeps
+  decisions reversible, makes shared-workspace presentation personal to the
+  operator, and prevents a UI gesture from silently guessing a supplier.
+- Consequences: `GET /api/correspondence` and the outbox include the current
+  user's metadata; `POST /api/correspondence/metadata` is the single write
+  route. A future thread identity change must update this scope deliberately,
+  rather than adding a second flag/priority store.
+- Related task: `TASK-MESSAGES-WORKSPACE-REDESIGN-20260904`.
+
 ## DECISION-016 — Name and separate LOCAL_CANONICAL (port 8000) from SAFE_TEST (port 18000) runtime modes
 
 - Decision ID: `DECISION-016`

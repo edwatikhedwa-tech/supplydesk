@@ -27,7 +27,7 @@ class RequestRouteMixin:
             self._json(400, {"error": "Некорректные идентификаторы переписки."})
             return
         if supplier_id <= 0:
-            self._json(200, {"items": self.app.repository.list_threads(session["workspace_id"])})
+            self._json(200, {"items": self.app.repository.list_threads(session["workspace_id"], session["user_id"])})
             return
         self._json(200, {"items": self.app.repository.thread_messages(session["workspace_id"], request_id, supplier_id)})
 

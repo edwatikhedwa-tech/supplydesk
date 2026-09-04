@@ -18,6 +18,7 @@ from .auth import new_token
 from .auth_accounts import AuthAccountsMixin
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
+from .thread_metadata import ThreadMetadataMixin
 from .bounce import classify_bounce, failed_recipients
 from .content import (
     clean_email_text,
@@ -177,7 +178,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin):
+class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
         self.db_path = Path(db_path).expanduser().resolve()
@@ -1678,7 +1679,7 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin
                 {"supplier_ids": sorted(target_ids)},
             )
 
-    def list_threads(self, workspace_id: int, *, include_queue_only: bool = False) -> list[dict[str, Any]]:
+    def list_threads(self, workspace_id: int, user_id: int | None = None, *, include_queue_only: bool = False) -> list[dict[str, Any]]:
         with self.connect() as connection:
             rows = connection.execute(
                 """SELECT * FROM (
@@ -1724,9 +1725,16 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin
                 ) ORDER BY COALESCE(last_message_at, created_at) DESC""",
                 (workspace_id, int(include_queue_only), workspace_id),
             ).fetchall()
-        return [dict(row) for row in rows]
+        items = [dict(row) for row in rows]
+        metadata = self.list_thread_metadata(workspace_id, user_id) if user_id is not None else {}
+        for item in items:
+            item.update(metadata.get((int(item["request_id"]), int(item["supplier_id"])), {
+                "is_important": False,
+                "priority": None,
+            }))
+        return items
 
-    def list_outbox_threads(self, workspace_id: int) -> list[dict[str, Any]]:
+    def list_outbox_threads(self, workspace_id: int, user_id: int | None = None) -> list[dict[str, Any]]:
         """Return request threads that still contain an outbound queue item.
 
         The correspondence view intentionally excludes queue-only threads, but
@@ -1734,7 +1742,7 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin
         summary contract keeps the outbox and correspondence views consistent.
         """
         return [
-            item for item in self.list_threads(workspace_id, include_queue_only=True)
+            item for item in self.list_threads(workspace_id, user_id, include_queue_only=True)
             if item.get("manual_inbox_id") is None and int(item.get("pending_outbound_count") or 0) > 0
         ]
 

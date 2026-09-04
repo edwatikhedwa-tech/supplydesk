@@ -145,7 +145,7 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                 # после ручного нажатия «Синхронизировать» в «Настройках».
                 # Вызов ограничен по частоте, поэтому повторные F5 не ждут IMAP.
                 self.app.maybe_sync_incoming(session["user_id"], session["workspace_id"])
-                self._json(200, {"items": self.app.repository.list_threads(session["workspace_id"])})
+                self._json(200, {"items": self.app.repository.list_threads(session["workspace_id"], session["user_id"])})
             return
         if parsed.path == "/api/mail/template":
             session = self._require_session()
@@ -205,7 +205,7 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
         if parsed.path == "/api/mail/queue/messages":
             session = self._require_session()
             if session:
-                self._json(200, {"items": self.app.repository.list_outbox_threads(session["workspace_id"])})
+                self._json(200, {"items": self.app.repository.list_outbox_threads(session["workspace_id"], session["user_id"])})
             return
         if parsed.path.startswith("/api/mail/campaigns/"):
             session = self._require_session()
@@ -539,6 +539,22 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                     supplier_id,
                     confirmed=body.get("confirmed") is True,
                 ))
+            elif parsed.path == "/api/correspondence/metadata":
+                important = body.get("important") if "important" in body else None
+                if important is not None and type(important) is not bool:
+                    raise ValueError("important должен быть логическим значением true или false.")
+                priority = body.get("priority") if "priority" in body else None
+                if "priority" in body and priority not in (None, 1, 2, 3):
+                    raise ValueError("priority должен быть равен 1, 2, 3 или null.")
+                metadata_kwargs = {"important": important}
+                if "priority" in body:
+                    metadata_kwargs["priority"] = priority
+                result = self.app.repository.update_thread_metadata(
+                    session["workspace_id"], session["user_id"],
+                    int(body.get("request_id", 0)), int(body.get("supplier_id", 0)),
+                    **metadata_kwargs,
+                )
+                self._json(200, {"ok": True, **result})
             elif parsed.path == "/api/mail/inbox/manual-unlink":
                 self._json(200, self.app.repository.unlink_manual_inbox_message(
                     session["workspace_id"], session["user_id"], int(body.get("inbox_message_id", 0)),

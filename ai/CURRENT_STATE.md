@@ -3,7 +3,7 @@ document_id: STATE-001
 status: CURRENT
 canonical: true
 owner: project-control
-updated_at: 2026-09-03
+updated_at: 2026-09-04
 based_on_commit: 0efbdaf
 ---
 
@@ -14,6 +14,23 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-04` — `TASK-MESSAGES-WORKSPACE-REDESIGN-20260904` is implemented in
+the working tree: `/messages` now uses a procurement-oriented two-column
+layout, a compact unmatched preview, request-group search, keyboard-accessible
+flag/priority controls, and a safe desktop drag shortcut into the existing
+manual-link workflow. A new additive migration
+`migrations/034_thread_user_metadata.sql` and
+`POST /api/correspondence/metadata` persist user/workspace/request/supplier
+metadata without changing mail transport semantics. Targeted repository tests,
+frontend typecheck, lint and build are confirmed; browser rendering is
+confirmed in the authenticated canonical-session tab at 1287×912. The
+required `scripts/audit_toolchain.py` and repository browser-geometry runner
+are absent, and authenticated SAFE_TEST browser verification plus actual
+390×844/768×1024 screenshots remain `NOT VERIFIED`. The available backend
+verification profile is now `54` tests with `0` failures and `0` errors (one
+expected skip); frontend typecheck/build pass and lint has only five existing
+warnings outside this task.
 
 `2026-09-04` — Dellin registration was approved; the owner shared the real
 `DELLIN_API_KEY` and it was added to the local (gitignored) `.env`. A live

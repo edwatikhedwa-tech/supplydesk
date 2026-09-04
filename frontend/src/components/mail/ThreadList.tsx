@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight, Clock3, Mail, Search } from 'lucide-react';
+import { useEffect, useMemo, useState, type DragEvent } from 'react';
+import { ChevronDown, ChevronRight, Clock3, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { cn, formatRelativeDate, pluralize } from '@/lib/utils';
+import { cn, displayCorrespondenceSupplierName, formatRelativeDate, pluralize } from '@/lib/utils';
 import type { ThreadSummary } from '@/lib/types';
 import { getThreadDisplayStatus, isAwaitingResponse, isPrimaryCorrespondence, needsThreadAttention } from '@/components/mail/threadStatus';
+import { ThreadMetadataControls } from '@/components/mail/ThreadMetadataControls';
+import { UnmatchedPreview } from '@/components/mail/UnmatchedPreview';
 
 /** Переписка сгруппирована по заявке, а не сплошным списком.
  *
@@ -61,19 +63,23 @@ interface ThreadListProps {
   selectedThreadKey: string | null;
   onSelectThread: (thread: ThreadSummary) => void;
   refreshKey: number;
+  searchInput: string;
+  onOpenUnmatched: (messageId?: number) => void;
+  onDropUnmatched: (messageId: number, requestId: number) => Promise<void>;
+  onMetadataChange: (thread: ThreadSummary, patch: { important?: boolean; priority?: 1 | 2 | 3 | null }) => Promise<void>;
 }
 
 type ThreadFilter = 'primary' | 'awaiting-response';
 
-export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: ThreadListProps) {
+export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey, searchInput, onOpenUnmatched, onDropUnmatched, onMetadataChange }: ThreadListProps) {
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
-  const [search, setSearch] = useState('');
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [searchInput, setSearchInput] = useState('');
   const [filter, setFilter] = useState<ThreadFilter>('primary');
+  const [draggedInboxId, setDraggedInboxId] = useState<number | null>(null);
+  const [dropTargetRequestId, setDropTargetRequestId] = useState<number | null>(null);
+  const [dropBusy, setDropBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,23 +101,18 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
     };
   }, [refreshKey, retryToken]);
 
-  const handleSearchChange = (value: string) => {
-    setSearchInput(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setSearch(value), 200);
-  };
-
   const searchedThreads = useMemo(() => {
-    if (!search.trim()) return threads;
-    const q = search.trim().toLowerCase();
+    if (!searchInput.trim()) return threads;
+    const q = searchInput.trim().toLowerCase();
     return threads.filter(
       (t) =>
         t.subject.toLowerCase().includes(q) ||
         t.request_name.toLowerCase().includes(q) ||
         t.supplier_name.toLowerCase().includes(q) ||
-        t.supplier_email.toLowerCase().includes(q)
+        t.supplier_email.toLowerCase().includes(q) ||
+        t.supplier_host.toLowerCase().includes(q)
     );
-  }, [threads, search]);
+  }, [threads, searchInput]);
 
   const primaryThreads = useMemo(
     () => searchedThreads.filter(isPrimaryCorrespondence),
@@ -147,27 +148,30 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
   // При поиске или фильтрации показываем всё раскрытым: иначе совпадение
   // может оказаться внутри свёрнутой группы и будет выглядеть как «ничего
   // не найдено».
-  const searching = Boolean(search.trim());
+  const searching = Boolean(searchInput.trim());
   const narrowing = searching || filter !== 'primary';
+
+  const handleDrop = async (event: DragEvent<HTMLDivElement>, requestId: number) => {
+    event.preventDefault();
+    const rawId = event.dataTransfer.getData('application/x-supplydesk-inbox-id');
+    const messageId = Number(rawId);
+    setDropTargetRequestId(null);
+    setDraggedInboxId(null);
+    if (!messageId || dropBusy) return;
+    setDropBusy(true);
+    try {
+      await onDropUnmatched(messageId, requestId);
+    } finally {
+      setDropBusy(false);
+    }
+  };
 
   return (
     <div className={cn(
-      'w-full shrink-0 border-r border-ink-200 bg-white flex-col xl:w-[360px] xl:flex',
+      'w-full shrink-0 border-r border-ink-200 bg-white flex-col xl:w-[400px] 2xl:w-[420px] xl:flex',
       selectedThreadKey ? 'hidden' : 'flex',
     )}>
-      <div className="px-3 pt-3 pb-2.5 border-b border-ink-100 shrink-0">
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-          <label htmlFor="messages-search" className="sr-only">Поиск по поставщику, заявке или письму</label>
-          <input
-            id="messages-search"
-            type="text"
-            value={searchInput}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Поиск по поставщику, заявке или письму..."
-            className="w-full pl-9 pr-3 py-2 text-sm bg-ink-50 border border-ink-200 rounded-lg focus:outline-none focus:border-ink-300 focus:bg-white transition-colors placeholder:text-ink-400"
-          />
-        </div>
+      <div className="shrink-0 border-b border-ink-100 px-3 pt-3 pb-2.5">
         <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="Фильтр по статусу">
           <button
             type="button"
@@ -201,6 +205,14 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
         </div>
       </div>
 
+      <UnmatchedPreview
+        refreshKey={refreshKey}
+        onShowAll={() => onOpenUnmatched()}
+        onOpenMessage={(messageId) => onOpenUnmatched(messageId)}
+        onDragStart={setDraggedInboxId}
+        onDragEnd={() => { setDraggedInboxId(null); setDropTargetRequestId(null); }}
+      />
+
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="p-3 space-y-2">
@@ -226,7 +238,7 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
             <p className="text-sm text-ink-500">
               {filter === 'awaiting-response'
                 ? 'Нет писем, ожидающих ответа'
-                : search.trim()
+                : searchInput.trim()
                   ? 'По вашему поиску ничего не найдено'
                   : 'Нет отправленных писем или ответов'}
             </p>
@@ -237,7 +249,21 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
               const isCollapsed = !narrowing && (collapsed ?? defaultCollapsed).has(group.requestId);
               return (
                 <div key={group.requestId} className="mb-0.5">
-                  <div className="flex items-center gap-1 px-2 py-1.5 sticky top-0 z-10 bg-white/95 backdrop-blur-sm">
+                  <div
+                    onDragOver={(event) => {
+                      if (draggedInboxId != null) {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = 'move';
+                        setDropTargetRequestId(group.requestId);
+                      }
+                    }}
+                    onDragLeave={() => setDropTargetRequestId((current) => current === group.requestId ? null : current)}
+                    onDrop={(event) => void handleDrop(event, group.requestId)}
+                    className={cn(
+                      'sticky top-0 z-10 flex items-center gap-1 border-y border-transparent bg-white/95 px-2 py-1.5 backdrop-blur-sm transition-colors',
+                      draggedInboxId != null && dropTargetRequestId === group.requestId && 'border-accent-300 bg-accent-50/95 ring-2 ring-inset ring-accent-300',
+                    )}
+                  >
                     <button
                       onClick={() => toggle(group.requestId)}
                       aria-expanded={!isCollapsed}
@@ -268,6 +294,7 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
                     >
                       Заявка
                     </Link>
+                    {draggedInboxId != null && dropTargetRequestId === group.requestId && <span className="hidden shrink-0 text-2xs font-semibold text-accent-700 sm:inline">Отпустите для привязки</span>}
                   </div>
 
                   {!isCollapsed && group.threads.map((thread) => {
@@ -280,25 +307,27 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
                     // иначе отметка не гаснет после открытия письма.
                     const isUnread = thread.unread_count > 0;
                     const status = getThreadDisplayStatus(thread);
+                    const supplierLabel = displayCorrespondenceSupplierName(thread.supplier_name) || 'Поставщик не определён';
                     return (
-                      <button
-                        key={key}
-                        onClick={() => onSelectThread(thread)}
-                        aria-label={`${thread.supplier_name || 'Поставщик не определён'}: ${thread.subject}. ${status.label}`}
-                        className={cn(
-                          'w-full border-l-2 py-2.5 pl-7 pr-3 text-left transition-colors',
-                          isSelected ? 'bg-accent-50/50 border-accent-500' : 'border-transparent hover:bg-ink-50'
-                        )}
-                      >
-                        <div className="flex items-start gap-2">
+                      <div key={key} className={cn('flex items-start', isSelected ? 'bg-accent-50/50' : 'hover:bg-ink-50')}>
+                        <button
+                          type="button"
+                          onClick={() => onSelectThread(thread)}
+                          aria-label={`${supplierLabel}: ${thread.subject}. ${status.label}`}
+                          className={cn(
+                            'min-w-0 flex-1 border-l-2 py-2.5 pl-7 pr-1 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-400',
+                            isSelected ? 'border-accent-500' : 'border-transparent'
+                          )}
+                        >
+                          <div className="flex items-start gap-2">
                           <span
                             title={isUnread ? 'Непрочитанный ответ поставщика' : undefined}
                             className={cn('mt-1.5 block h-2 w-2 shrink-0 rounded-full', isUnread ? 'bg-emerald-500' : 'bg-transparent')}
                           />
                           <div className="min-w-0 flex-1">
                             <div className="mb-0.5 flex items-center justify-between gap-2">
-                              <span className={cn('truncate text-sm', isUnread ? 'font-semibold text-ink-800' : 'font-medium text-ink-700')}>
-                                {thread.supplier_name || 'Поставщик не определён'}
+                              <span className={cn('min-w-0 truncate text-sm', isUnread ? 'font-semibold text-ink-800' : 'font-medium text-ink-700')} title={thread.supplier_name || undefined}>
+                                {supplierLabel}
                               </span>
                               <span className="shrink-0 text-xs text-ink-600">{formatRelativeDate(thread.last_message_at)}</span>
                             </div>
@@ -310,14 +339,22 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey }: Th
                               {!isAwaitingResponse(thread) && (
                                 <span title={status.title} className={cn('inline-flex shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1', status.className)}>{status.label}</span>
                               )}
-                              <span className="truncate text-xs text-ink-600">
+                              <span className="min-w-0 flex-1 truncate text-xs text-ink-600">
                                 {thread.messages_count} {pluralize(thread.messages_count, 'письмо', 'письма', 'писем')}
                                 {hasReplies && <> · {thread.replies_count} {pluralize(thread.replies_count, 'ответ', 'ответа', 'ответов')}</>}
                               </span>
                             </div>
                           </div>
-                        </div>
-                      </button>
+                          </div>
+                        </button>
+                        {thread.manual_inbox_id == null && (
+                          <ThreadMetadataControls
+                            important={thread.is_important}
+                            priority={thread.priority}
+                            onChange={(patch) => onMetadataChange(thread, patch)}
+                          />
+                        )}
+                      </div>
                     );
                   })}
                 </div>

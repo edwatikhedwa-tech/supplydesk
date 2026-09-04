@@ -137,3 +137,14 @@ export function displaySupplierName(name: string, inn: string): string {
   }
   return shortCompanyName(trimmed);
 }
+
+/** Shorten legal prefixes in correspondence rows while keeping ИП intact.
+ * The complete legal name remains available through the element title. */
+export function displayCorrespondenceSupplierName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed || /^ИП\b/i.test(trimmed)) return trimmed;
+  for (const [pattern, short] of LEGAL_FORM_ABBREVIATIONS) {
+    if (pattern.test(trimmed)) return trimmed.replace(pattern, short);
+  }
+  return trimmed;
+}
