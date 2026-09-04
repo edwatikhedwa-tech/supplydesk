@@ -16,6 +16,10 @@ const items = [
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'supplydesk.sidebar.collapsed';
 
+function isSafeTestRuntime(): boolean {
+  return window.location.hostname === '127.0.0.1' && window.location.port === '18000';
+}
+
 function readSidebarCollapsed(): boolean {
   try {
     const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
@@ -213,6 +217,15 @@ export function Layout() {
 
   return (
     <div data-app-shell className="min-h-screen bg-ink-50 text-ink-900">
+      {isSafeTestRuntime() && (
+        <div
+          role="status"
+          data-runtime-badge
+          className="sticky top-0 z-40 flex min-h-8 items-center justify-center border-b border-amber-300 bg-amber-100 px-4 py-2 text-center text-[11px] font-extrabold uppercase tracking-[0.12em] text-amber-950"
+        >
+          SAFE TEST <span aria-hidden="true">·</span> DISPOSABLE DATA <span aria-hidden="true">·</span> PORT 18000
+        </div>
+      )}
       <a href="#main-content" className="fixed left-4 top-4 z-[80] -translate-y-20 rounded-lg bg-white px-3 py-2 text-xs font-bold text-ink-900 shadow-float transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-accent-500">
         Перейти к содержимому
       </a>

@@ -1,6 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
+import { assertRuntime } from './runtimeGuard';
+
+const runtime = assertRuntime({
+  surface: 'frontend',
+  baseUrl: process.env.BACKEND_BASE_URL,
+});
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -18,8 +24,8 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      '/api': 'http://127.0.0.1:8000',
-      '/oauth': 'http://127.0.0.1:8000',
+      '/api': runtime.baseUrl,
+      '/oauth': runtime.baseUrl,
     },
   },
 });

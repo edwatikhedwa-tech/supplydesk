@@ -1,4 +1,11 @@
 import { defineConfig } from '@playwright/test';
+import { assertRuntime } from './runtimeGuard';
+
+const runtime = assertRuntime({
+  surface: 'browser',
+  baseUrl: process.env.AUDIT_BASE_URL,
+  backendUrl: process.env.RUNTIME_BACKEND_URL,
+});
 
 const viewports = [
   { name: 'desktop-max', width: 1920, height: 1080 },
@@ -33,7 +40,7 @@ export default defineConfig({
     ['html', { outputFolder: 'artifacts/playwright-report', open: 'never' }],
   ],
   use: {
-    baseURL: process.env.AUDIT_BASE_URL ?? 'http://127.0.0.1:8000',
+    baseURL: runtime.baseUrl,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'off',

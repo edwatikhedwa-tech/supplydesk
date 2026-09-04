@@ -1541,3 +1541,17 @@ Reviewed desktop and narrow mobile screenshots show no overlap or horizontal
 overflow. A separate persisted before screenshot was unavailable, so the
 transformation comparison remains PARTIAL. No backend, API, database, auth,
 routing or business-logic changes were made.
+
+## 2026-09-04 — TASK-RUNTIME-SELECTION-HARD-GUARD-20260904
+
+State change: introduced the centralized purpose/runtime guard, canonical and
+safe launch wrappers, guarded frontend/browser tooling and a SAFE_TEST badge.
+The intentional `VISUAL_ACCEPTANCE + SAFE_TEST` demonstration stopped with
+guard failure; no fallback was attempted.
+
+Verification state: workspace guard PASS; runtime matrix and controlled-failure
+tests PASS; safe `AUTOMATED_TEST` smoke `2/2` PASS; canonical
+`VISUAL_ACCEPTANCE` public shell `1/1` PASS; frontend typecheck, lint, build,
+node-config typecheck and validators PASS. SAFE_TEST rendered screenshots at
+`1440×900` and `360×800` were reviewed. Canonical authenticated `/messages`,
+OAuth callback, live provider and mail actions were not automated.

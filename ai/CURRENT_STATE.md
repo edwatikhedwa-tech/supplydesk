@@ -15,6 +15,21 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-04` — `TASK-RUNTIME-SELECTION-HARD-GUARD-20260904` added the
+dependency-free `scripts/runtime_guard.py` as the single runtime-selection
+authority. All six required purposes now map deterministically to
+`LOCAL_CANONICAL` (`:8000`) or `SAFE_TEST` (`:18000`); mismatches print
+`FAIL + STOP`, and no alternate safe port is selected. Backend launchers,
+Vite, Playwright, Lighthouse, Storybook, CI and Doctor browser checks now use
+the guard. SAFE_TEST app shell has a visible disposable-data badge. Guarded
+verification passed: matrix/controlled-failure unit tests, safe browser smoke
+`2/2`, full frontend/browser suite `322 passed, 6 skipped`, canonical
+public-shell visual acceptance `1/1`, frontend typecheck, lint, build and Vite
+node-config typecheck. No backend business logic, OAuth, DB schema, provider
+configuration or outgoing-mail behavior changed. Remaining limits are direct
+imports, already-running unmarked processes, custom runners and serverless
+imports outside guarded launcher paths.
+
 `2026-09-04` — `TASK-SUPPLYDESK-TYPOGRAPHY-SHIMMER-20260904` completed a
 frontend-only typography pass across screen titles. The UI now prefers the
 `Public Sans`/`Geist` reference stack with local system fallbacks, uses shared

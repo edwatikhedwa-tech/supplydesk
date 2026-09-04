@@ -1618,3 +1618,17 @@ Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH`
   backend, API, database, routing, auth and business logic were not changed.
 - Verification: typecheck, build, lint (0 errors; 5 existing warnings),
   `git diff --check`, and rendered Playwright/a11y matrix `88/88` passed.
+
+## 2026-09-04 — TASK-RUNTIME-SELECTION-HARD-GUARD-20260904
+
+- Added the dependency-free `scripts/runtime_guard.py` with the six required
+  purposes and a strict purpose-to-runtime matrix.
+- Routed canonical/safe backend launchers, `supplier_app.py`, Vite, Playwright,
+  Lighthouse, Storybook, Doctor browser checks and CI through the guard.
+- Removed automatic SAFE_TEST alternate-port selection and canonical-to-safe
+  launcher fallback; mismatches now emit `FAIL + STOP`.
+- Added the SAFE_TEST disposable-data badge and an automated badge assertion.
+- Verification: controlled mismatch test PASS, safe browser smoke `2/2` PASS,
+  canonical public-shell visual acceptance `1/1` PASS, frontend typecheck,
+  lint, build, node config typecheck and state validators PASS. No backend
+  business logic, OAuth, DB schema, provider or outgoing-mail behavior changed.

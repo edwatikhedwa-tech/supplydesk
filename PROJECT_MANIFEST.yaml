@@ -91,25 +91,39 @@ runtime:
 runtime_modes:
   LOCAL_CANONICAL:
     purpose: the owner's normal local backend session; real provider credentials only by explicit owner task
-    start_command: python supplier_app.py
+    start_command: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_local_canonical.ps1 -Apply
     prerequisite: .env at repo root (workspace_policy.local_default_workspace), loaded by backend/app_config.py's load_dotenv
     base_url: http://127.0.0.1:8000
     database: canonical (mail-data/supplier.sqlite3, protected_local_path)
     runbook: docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md
   SAFE_TEST:
     purpose: tests/browser/diagnostics only — never the owner's normal work session
-    start_command: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_test_runtime.ps1 -Apply
+    start_command: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_test_runtime.ps1 -Apply -Purpose SAFE_TEST
     default_port: 18000
     database: disposable (runtime/test-data/supplier.sqlite3)
     credentials: none — start_test_runtime.ps1 blanks real provider keys itself
     runbook: docs/testing/TEST_ENVIRONMENT.md
+
+runtime_guard:
+  command: python scripts/runtime_guard.py
+  purpose_values: [OWNER_SESSION, VISUAL_ACCEPTANCE, SAFE_TEST, AUTOMATED_TEST, OAUTH_CHECK, MAIL_PROVIDER_CHECK]
+  selection_matrix:
+    OWNER_SESSION: LOCAL_CANONICAL
+    VISUAL_ACCEPTANCE: LOCAL_CANONICAL
+    SAFE_TEST: SAFE_TEST
+    AUTOMATED_TEST: SAFE_TEST
+    OAUTH_CHECK: LOCAL_CANONICAL
+    MAIL_PROVIDER_CHECK: LOCAL_CANONICAL
+  mismatch_behavior: FAIL_AND_STOP
+  fallback_to_safe_test: forbidden_without_explicit_owner_decision
+  browser_metadata: [RUNTIME_PURPOSE, RUNTIME_MODE, BASE_URL, DATABASE_CLASS, AUTH_MODE]
 
 browser_acceptance:
   public_shell_test: frontend/tests/frontend-audit.spec.ts
   fast_browser_smoke_test: frontend/tests/fast-browser-smoke.spec.ts
   public_shell_base_url: http://127.0.0.1:5173
   live_route_base_url: http://127.0.0.1:8000
-  audit_live_route_url: http://127.0.0.1:18000
+  safe_test_base_url: http://127.0.0.1:18000
   route_mocks_for_live_acceptance: false
   real_email_actions: forbidden
   safe_browser_actions_only: true
@@ -137,6 +151,12 @@ operator_tools:
     classification: TRACK_TOOLING
   - path: scripts/recover_supplydesk.ps1
     classification: TRACK_TOOLING
+  - path: scripts/runtime_guard.py
+    classification: TRACK_TOOLING
+  - path: scripts/start_local_canonical.ps1
+    classification: TRACK_TOOLING
+  - path: scripts/start_test_runtime.ps1
+    classification: TRACK_TOOLING
   - path: scripts/process_request_step.py
     classification: TRACK_TOOLING
   - path: scripts/runtime_status.py
@@ -156,8 +176,8 @@ tracked_test_contract:
   frontend_typecheck: npm run typecheck
   frontend_lint: npm run lint
   frontend_build: npm run build
-  public_shell: AUDIT_BASE_URL=http://127.0.0.1:5173 npx playwright test tests/frontend-audit.spec.ts -g "public shell" --workers=1
-  fast_browser_smoke: AUDIT_BASE_URL=http://127.0.0.1:8000 npx playwright test tests/fast-browser-smoke.spec.ts --project=desktop-compact
+  public_shell: $env:RUNTIME_PURPOSE='VISUAL_ACCEPTANCE'; $env:RUNTIME_MODE='LOCAL_CANONICAL'; $env:RUNTIME_BACKEND_URL='http://127.0.0.1:8000'; $env:AUDIT_BASE_URL='http://127.0.0.1:5173'; npx playwright test tests/frontend-audit.spec.ts -g "public shell" --workers=1
+  fast_browser_smoke: $env:RUNTIME_PURPOSE='AUTOMATED_TEST'; $env:RUNTIME_MODE='SAFE_TEST'; $env:RUNTIME_BACKEND_URL='http://127.0.0.1:18000'; $env:AUDIT_BASE_URL='http://127.0.0.1:18000'; npx playwright test tests/fast-browser-smoke.spec.ts --project=desktop-compact
   live_email_tests: not executed; no real mailbox or SMTP access
 
 testing:

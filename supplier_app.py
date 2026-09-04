@@ -45,6 +45,7 @@ from backend.domain.supplier_enrichment.orchestrator import EnrichmentOrchestrat
 from backend.http_auth import AuthHandlerMixin
 from backend.http_global_suppliers import GlobalSupplierRouteMixin
 from backend.http_requests import RequestRouteMixin
+from scripts.runtime_guard import RuntimeSelectionError, print_runtime_context, validate_runtime_selection
 
 log = logging.getLogger("supplier_app")
 
@@ -1052,6 +1053,22 @@ def main() -> None:
         datefmt="%H:%M:%S",
     )
     config = Config.from_env()
+    try:
+        runtime = validate_runtime_selection(
+            purpose=os.getenv("RUNTIME_PURPOSE"),
+            mode=os.getenv("RUNTIME_MODE"),
+            base_url=config.base_url,
+            database_class=os.getenv("RUNTIME_DATABASE_CLASS"),
+            auth_mode=os.getenv("RUNTIME_AUTH_MODE"),
+            database_path=config.db_path,
+            application_env=config.environment,
+            mail_outgoing_disabled=os.getenv("MAIL_OUTGOING_DISABLED"),
+            surface="backend",
+            root=ROOT,
+        )
+    except RuntimeSelectionError as exc:
+        raise SystemExit(f"FAIL: RUNTIME_SELECTION_GUARD\nSTOP: {exc}") from exc
+    print_runtime_context(runtime)
     SupplierApp(config).run()
 
 

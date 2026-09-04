@@ -326,6 +326,31 @@ log. Superseded and older decision prose is preserved in
 - Related requirements: mail and campaign documentation contract.
 - Related commits: `c076e1be385c3ae6da2716159e1f46fc2fce23d7`.
 
+## DECISION-019 — Hard runtime selection by purpose
+
+- Decision ID: `DECISION-019`
+- Date: `2026-09-04`
+- Status: `ACTIVE`
+- Context: Multiple backend, Vite, Playwright and visual-acceptance commands
+  could select a port by convention, including a previous automatic fallback
+  from canonical `:8000` to disposable `:18000`.
+- Decision: `scripts/runtime_guard.py` is the single runtime-selection
+  authority. `OWNER_SESSION`, `VISUAL_ACCEPTANCE`, `OAUTH_CHECK` and
+  `MAIL_PROVIDER_CHECK` require `LOCAL_CANONICAL`; `SAFE_TEST` and
+  `AUTOMATED_TEST` require `SAFE_TEST`. Mismatches fail and stop. Browser
+  entrypoints print purpose, mode, URL, database class and auth mode before
+  running. No automatic fallback is allowed. SAFE_TEST UI shows an explicit
+  disposable-data badge.
+- Reason: A visible, machine-checkable purpose/mode contract prevents an
+  owner session or visual acceptance from silently using synthetic data.
+- Consequences: Canonical work remains on `http://127.0.0.1:8000`; automated
+  work remains on `http://127.0.0.1:18000`. Direct imports, already-running
+  unmarked processes, custom browser runners and serverless imports remain
+  outside the guarded launcher path and must be treated as unverified.
+- Non-goals: Backend business logic, OAuth callback/settings, database schema,
+  provider configuration and outgoing-mail behavior were not changed.
+- Related task: `TASK-RUNTIME-SELECTION-HARD-GUARD-20260904`.
+
 ## DECISION-005 — Irreversible mail actions require an explicit gate
 
 - Decision ID: `DECISION-005`

@@ -1,21 +1,21 @@
 ---
-document_id: TASK-LOCK-039
+document_id: TASK-LOCK-040
 status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: ae557ba
+based_on_commit: 3e935f2
 ---
 
 # Active Task
 
-Task ID: `TASK-SUPPLYDESK-TYPOGRAPHY-SHIMMER-20260904`
+Task ID: `TASK-RUNTIME-SELECTION-HARD-GUARD-20260904`
 Agent: `Codex`
-Mode: `REDESIGN`
+Mode: `CONTROL_PLANE`
 Started: `2026-09-04`
-Scope: `Frontend-only typography alignment and screen-title shimmer; preserve routing, API, backend, database, auth and business logic.`
-Allowed files: `frontend/src/index.css, frontend/tailwind.config.js, frontend/src/components/PageFrame.tsx, frontend/src/components/PageHeader.tsx, frontend/src/pages/CampaignPage.tsx, frontend/src/pages/Login.tsx, frontend/src/pages/Messages.tsx, frontend/src/pages/NotFound.tsx, docs/ui-design-system.md, docs/ui-audit-20260904.md, ai state/report files required by project policy`
-Status: `COMPLETE — rendered desktop/mobile and frontend regression verification PASS; exact bundled reference-font match remains PARTIAL because no remote font dependency was introduced`
+Scope: `Unify runtime selection for backend, frontend, browser tests and acceptance; add the SAFE_TEST environment badge; preserve backend behavior, OAuth, database schema, provider settings and mail behavior.`
+Allowed files: `scripts/runtime_guard.py, scripts/start_local_canonical.ps1, scripts/start_test_runtime.ps1, scripts/test_runtime_entry.py, scripts/start_server_and_open.ps1, scripts/start_server.bat, scripts/recover_supplydesk.ps1, scripts/run_*.mjs, supplier_app.py, frontend runtime/config/package/Layout files, CI/runtime documentation, tests/diagnostics/test_runtime_guard.py, ai state/report files required by project policy`
+Status: `COMPLETE — hard guard, launcher wiring, controlled failure, safe badge and canonical/safe browser verification passed`
 Last update: `2026-09-04`
 
 Previous completed task report: `ai/reports/TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904-report.md`

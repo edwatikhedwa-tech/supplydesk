@@ -441,7 +441,14 @@ def backend_tests_check(root: Path, run_tests: bool, profile: str = "LOCAL_CANON
     return CheckResult("DOC-008", "COMP-DOCTOR", "PRODUCT_FAILURE", "backend regression suite failed; output retained only by hash", ["REQ-DIAG-001"], ["FM-TEST-001"], "docs/operations/runbooks/RUNBOOK-TEST-FAILURE.md", "TEST_FAIL", evidence_level="BEHAVIORAL", safe_next_action="RUN_TEST")
 
 
-def browser_check(root: Path, run_browser: bool, base_url: str = "http://127.0.0.1:5173") -> CheckResult:
+def browser_check(
+    root: Path,
+    run_browser: bool,
+    base_url: str = "http://127.0.0.1:5173",
+    *,
+    backend_url: str = "http://127.0.0.1:8000",
+    profile: str = "LOCAL_CANONICAL",
+) -> CheckResult:
     if not run_browser:
         return CheckResult("DOC-009", "COMP-FRONTEND", "NOT_VERIFIED", "browser acceptance contract is present; Playwright execution was not requested", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "BROWSER_CONTRACT_PRESENT", evidence_level="STRUCTURAL", safe_next_action="RUN_TEST")
     if not (root / "frontend/tests/frontend-audit.spec.ts").is_file():
@@ -453,6 +460,13 @@ def browser_check(root: Path, run_browser: bool, base_url: str = "http://127.0.0
         return CheckResult("DOC-009", "COMP-FRONTEND", "ENVIRONMENT_GAP", "frontend browser base URL is unavailable; Playwright was not started", ["REQ-FRONTEND-001"], ["FM-FRONTEND-001"], "docs/operations/runbooks/RUNBOOK-FRONTEND.md", "BROWSER_ENVIRONMENT_GAP", evidence_level="RUNTIME", safe_next_action="OPEN_RUNBOOK")
     env = os.environ.copy()
     env["AUDIT_BASE_URL"] = base_url
+    env["RUNTIME_BACKEND_URL"] = backend_url
+    if profile == "OFFLINE_TEST":
+        env["RUNTIME_PURPOSE"] = "AUTOMATED_TEST"
+        env["RUNTIME_MODE"] = "SAFE_TEST"
+    else:
+        env["RUNTIME_PURPOSE"] = "VISUAL_ACCEPTANCE"
+        env["RUNTIME_MODE"] = "LOCAL_CANONICAL"
     command = [shutil.which("npx"), "playwright", "test", "tests/frontend-audit.spec.ts", "-g", "public shell", "--workers=1"]
     try:
         completed = subprocess.run(command, cwd=str(root / "frontend"), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300, env=env, check=False)
@@ -628,7 +642,7 @@ def run_diagnostics(root: Path, *, base_url: str, frontend_base_url: str = "http
         frontend_check(root, run_frontend),
         database_check(root, db_path, profile),
         backend_tests_check(root, run_tests, profile),
-        browser_check(root, run_browser, frontend_base_url),
+        browser_check(root, run_browser, frontend_base_url, backend_url=base_url, profile=profile),
         secret_path_check(root),
         mail_runtime_contract_static(root),
         discovery_contract_static(root),

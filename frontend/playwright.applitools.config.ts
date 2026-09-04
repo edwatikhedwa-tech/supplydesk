@@ -1,5 +1,12 @@
 import { defineConfig } from '@playwright/test';
 import type { EyesFixture } from '@applitools/eyes-playwright/fixture';
+import { assertRuntime } from './runtimeGuard';
+
+const runtime = assertRuntime({
+  surface: 'browser',
+  baseUrl: process.env.AUDIT_BASE_URL,
+  backendUrl: process.env.RUNTIME_BACKEND_URL,
+});
 
 const viewports = [
   { name: 'desktop-1440', width: 1440, height: 900 },
@@ -18,7 +25,7 @@ export default defineConfig<EyesFixture>({
   fullyParallel: false,
   reporter: [['list']],
   use: {
-    baseURL: process.env.AUDIT_BASE_URL ?? 'http://127.0.0.1:18000',
+    baseURL: runtime.baseUrl,
     browserName: 'chromium',
     headless: true,
     trace: 'retain-on-failure',
