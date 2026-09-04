@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: 0dcecc9
+based_on_commit: faff551026e96ceed9f3a1d0856d628380d4cb98
 ---
 
 # Current State
@@ -15,9 +15,13 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-04` — `TASK-SUPPLYDESK-SHADCN-MIGRATION-20260904` migrated the
-isolated `experiment/ui-shadcn-v2` frontend to an official shadcn/ui
-foundation at the local component boundary. `frontend/components.json` now
+`2026-09-04` — `TASK-PREPARE-CLEAN-EXTERNAL-REDESIGN-BASE-V2-20260904` fixed
+the documentation anchors for the already completed
+`TASK-SUPPLYDESK-SHADCN-MIGRATION-20260904`. The exact frontend source base is
+commit `faff551026e96ceed9f3a1d0856d628380d4cb98` on branch
+`experiment/ui-shadcn-v2`; this task changes documentation only.
+`frontend/components.json` defines the official shadcn/ui
+foundation at the local component boundary and now
 defines the official `new-york` preset, and the generated Button, Badge, Input,
 Checkbox, Dialog, DropdownMenu, Popover, Tabs, Table, Tooltip and Sidebar
 components use the official shadcn source shape with Radix primitives where the

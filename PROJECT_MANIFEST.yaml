@@ -1,13 +1,15 @@
 manifest_version: 1
 manifest_id: supplydesk-control-canonical-baseline-20260901
-reconciled_at: 2026-09-01
+reconciled_at: 2026-09-04
 status: CANONICAL_WITH_LIMITATIONS
 
 project:
   name: SupplyDesk
   repository: edwatikhedwa-tech/supplydesk
   visibility: private
-  canonical_branch: control/final-hygiene-acceptance-20260901
+  canonical_branch: integration/current-architecture-governance-20260903
+  current_frontend_base_branch: experiment/ui-shadcn-v2
+  current_frontend_base_commit: faff551026e96ceed9f3a1d0856d628380d4cb98
   governance_branch: control/documentation-governance-20260901
   audit_branch: audit/repository-hygiene-reports-20260901
   audit_commit: b5a454f9b39f3cbf01d640d5b67e4231ca25733a
@@ -33,7 +35,7 @@ canonical_state:
   active_task: ai/ACTIVE_TASK.md
   decisions: ai/DECISIONS.md
   deferred_findings: ai/DEFERRED_FINDINGS.md
-  task_report: ai/reports/TASK-SAFE-CLEANUP-BATCH2-20260901-report.md
+  task_report: ai/reports/TASK-SUPPLYDESK-SHADCN-MIGRATION-20260904-report.md
   rule: ai/CURRENT_STATE.md is the only current-state source; dated reports are evidence or history
 
 documentation:

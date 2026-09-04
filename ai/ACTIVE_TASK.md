@@ -1,10 +1,10 @@
 ---
 document_id: TASK-LOCK-040
-status: IDLE
+status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: 3e935f2
+based_on_commit: faff551026e96ceed9f3a1d0856d628380d4cb98
 ---
 
 # Active Task

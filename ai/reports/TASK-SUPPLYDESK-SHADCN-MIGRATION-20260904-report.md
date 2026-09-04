@@ -1,6 +1,6 @@
 ---
 task_id: TASK-SUPPLYDESK-SHADCN-MIGRATION-20260904
-status: COMPLETE_WITH_LIMITATIONS
+status: CURRENT
 branch: experiment/ui-shadcn-v2
 baseline_commit: a610c2ef94638fa19255059932dca0b82b9b3122
 ---

@@ -4,15 +4,18 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: 3e935f2
+based_on_commit: faff551026e96ceed9f3a1d0856d628380d4cb98
 ---
 
 # Last Handoff
 
-## Current: TASK-SUPPLYDESK-SHADCN-MIGRATION-20260904
+## Current: TASK-PREPARE-CLEAN-EXTERNAL-REDESIGN-BASE-V2-20260904
 
-Branch `experiment/ui-shadcn-v2` now contains the isolated SupplyDesk visual
-experiment backed by official shadcn/ui local components. The new
+The exact source base is commit `faff551026e96ceed9f3a1d0856d628380d4cb98` on
+branch `experiment/ui-shadcn-v2`. It contains the isolated SupplyDesk visual
+experiment backed by official shadcn/ui local components. This task changes
+documentation/governance only; the UI and application behavior remain unchanged.
+The new
 `frontend/components.json` uses the official `new-york` configuration with
 Radix as the underlying primitive layer. Button, Badge, Input, Checkbox,
 Dialog, DropdownMenu, Popover, Tabs, Table, Tooltip and Sidebar are present in

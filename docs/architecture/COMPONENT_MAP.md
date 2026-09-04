@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: engineering
 updated_at: 2026-09-04
-source_commit: 78484108ed010e152ab0e3e04d2490e8c4137d6c
+source_commit: faff551026e96ceed9f3a1d0856d628380d4cb98
 ---
 
 # Component Map
@@ -45,8 +45,9 @@ read-only SQLite URI for database inspection.
 
 ## Frontend UI boundaries
 
-`frontend/src/components/ui/` owns the local dependency-free primitives and
-semantic control language. `frontend/src/components/PageFrame.tsx` owns the
+`frontend/src/components/ui/` owns the local shadcn/ui component foundation:
+official shadcn-derived source files, Radix-backed behavior where applicable,
+and SupplyDesk-specific compositions. `frontend/src/components/PageFrame.tsx` owns the
 shared page header/content frame. `frontend/src/components/mail/EmailWorkspace.tsx`
 owns the email navigator/read-pane layout boundary; data fetching, selection,
 reply and linking remain in the existing mail page/components. Future Notes/AI
