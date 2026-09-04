@@ -176,7 +176,7 @@ export function Messages() {
           <div className="min-w-0">
             <p className="text-2xs font-bold uppercase tracking-[0.16em] text-accent-700">Рабочее пространство закупок</p>
             <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h1 className="text-page-title font-bold tracking-tight text-ink-900">Сообщения</h1>
+              <h1 className="sd-shimmer-heading text-page-title font-semibold tracking-tight text-ink-900">Сообщения</h1>
               <p className="text-xs font-medium text-ink-500">Заявка <span aria-hidden="true">→</span> поставщик <span aria-hidden="true">→</span> переписка</p>
             </div>
           </div>

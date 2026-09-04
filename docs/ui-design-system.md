@@ -42,8 +42,18 @@ SupplyDesk — это не generic admin panel, а спокойный рабоч
 - Radius: `rounded-lg` controls, `rounded-xl` surfaces, `rounded-2xl` only for
   intentional hero/empty surfaces.
 - Spacing: 4, 8, 12, 16, 24, 32 px. New UI must not introduce arbitrary gaps.
-- UI font: existing system stack with Inter fallback; embedded email content is
-  an intentional isolated content exception.
+- UI font: `Public Sans`, then `Geist`, then the local system UI stack
+  (`ui-sans-serif`, `system-ui`, `Segoe UI`); no remote font request is added,
+  so the app remains usable offline. Embedded email content keeps its isolated
+  sender-controlled font stack as an intentional content exception.
+- Screen titles use the shared `page-title` role: `28px` on mobile up to `32px`
+  on desktop. The login display title uses `32px` on mobile up to `36px` on
+  desktop, matching the reference scale without making dense B2B content
+  oversized.
+- Primary screen `h1` elements use the local `sd-shimmer-heading` CSS treatment:
+  a restrained blue gradient sweep with a `prefers-reduced-motion` static
+  fallback. Shimmer is reserved for page titles, not error messages, metadata,
+  statuses or mail HTML.
 
 ## Primitives
 

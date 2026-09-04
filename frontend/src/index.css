@@ -1,5 +1,5 @@
 :root {
-  --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-ui: 'Public Sans', 'Geist', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', 'Cascadia Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --sd-canvas: #f7f9fc;
   --sd-surface: #ffffff;
@@ -95,10 +95,28 @@ select {
 
   .sd-page-title {
     color: var(--sd-text);
-    font-size: clamp(1.5rem, 1.35rem + 0.45vw, 1.75rem);
-    font-weight: 750;
+    font-size: clamp(1.75rem, 1.55rem + 0.55vw, 2rem);
+    font-weight: 600;
     letter-spacing: -0.022em;
     line-height: 1.15;
+  }
+
+  .sd-shimmer-heading {
+    --sd-shimmer-base: var(--sd-text);
+    --sd-shimmer-highlight: #2563eb;
+    color: var(--sd-shimmer-base);
+    background-image: linear-gradient(105deg, var(--sd-shimmer-base) 0%, var(--sd-shimmer-base) 38%, var(--sd-shimmer-highlight) 49%, var(--sd-shimmer-base) 60%, var(--sd-shimmer-base) 100%);
+    background-position: 100% 0;
+    background-size: 240% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: sd-heading-shimmer 4.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  .sd-shimmer-heading--light {
+    --sd-shimmer-base: #ffffff;
+    --sd-shimmer-highlight: #93c5fd;
   }
 
   .sd-page-description {
@@ -146,6 +164,10 @@ select {
 
 @keyframes sd-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sd-shimmer { to { transform: translateX(100%); } }
+@keyframes sd-heading-shimmer {
+  0%, 65% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
 
 @media (max-width: 640px) {
   .sd-page { padding: var(--sd-space-6) 16px 40px; }
@@ -156,6 +178,12 @@ select {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .sd-shimmer-heading {
+    color: var(--sd-shimmer-base);
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    animation: none !important;
+  }
 }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }

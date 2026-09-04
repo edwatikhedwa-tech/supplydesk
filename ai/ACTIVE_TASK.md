@@ -9,13 +9,13 @@ based_on_commit: ae557ba
 
 # Active Task
 
-Task ID: `TASK-SUPPLYDESK-UI-FOUNDATION-V1-20260904`
+Task ID: `TASK-SUPPLYDESK-TYPOGRAPHY-SHIMMER-20260904`
 Agent: `Codex`
 Mode: `REDESIGN`
 Started: `2026-09-04`
-Scope: `Frontend-only SupplyDesk Design System v1 foundation, shared page shell, main-page migration, email workspace boundary and Notes/AI UI contracts; preserve routing, API, backend, database, auth and business logic.`
-Allowed files: `frontend/**, docs/ui-design-system.md, docs/ui-audit-20260904.md, docs/product/messages-workspace.md, docs/architecture/COMPONENT_MAP.md, ai state/report files required by project policy`
-Status: `COMPLETE — foundation implemented; rendered desktop/tablet/mobile and accessibility verification PASS, reference comparison PARTIAL`
+Scope: `Frontend-only typography alignment and screen-title shimmer; preserve routing, API, backend, database, auth and business logic.`
+Allowed files: `frontend/src/index.css, frontend/tailwind.config.js, frontend/src/components/PageFrame.tsx, frontend/src/components/PageHeader.tsx, frontend/src/pages/CampaignPage.tsx, frontend/src/pages/Login.tsx, frontend/src/pages/Messages.tsx, frontend/src/pages/NotFound.tsx, docs/ui-design-system.md, docs/ui-audit-20260904.md, ai state/report files required by project policy`
+Status: `COMPLETE — rendered desktop/mobile and frontend regression verification PASS; exact bundled reference-font match remains PARTIAL because no remote font dependency was introduced`
 Last update: `2026-09-04`
 
 Previous completed task report: `ai/reports/TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904-report.md`

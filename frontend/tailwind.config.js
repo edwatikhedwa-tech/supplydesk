@@ -24,12 +24,12 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'SF Pro Text', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['Public Sans', 'Geist', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       },
       fontSize: {
         '2xs': ['0.6875rem', { lineHeight: '1rem' }],
-        'page-title': ['clamp(1.5rem, 1.35rem + 0.45vw, 1.75rem)', { lineHeight: '1.15', letterSpacing: '-0.022em' }],
-        'display-title': ['clamp(1.75rem, 1.45rem + 0.8vw, 2rem)', { lineHeight: '1.1', letterSpacing: '-0.03em' }],
+        'page-title': ['clamp(1.75rem, 1.55rem + 0.55vw, 2rem)', { lineHeight: '1.15', letterSpacing: '-0.022em' }],
+        'display-title': ['clamp(2rem, 1.75rem + 0.9vw, 2.25rem)', { lineHeight: '1.1', letterSpacing: '-0.03em' }],
         metric: ['clamp(1.75rem, 1.55rem + 0.45vw, 1.875rem)', { lineHeight: '1.1', letterSpacing: '-0.025em' }],
       },
       borderRadius: {

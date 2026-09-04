@@ -2,6 +2,28 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-04 — TASK-SUPPLYDESK-TYPOGRAPHY-SHIMMER-20260904
+
+State change: started a scoped `REDESIGN` task after reviewing the owner’s
+assistant-ui tw-shimmer and AI Elements Shimmer references. The implementation
+kept the existing React/Tailwind stack and did not add a dependency or remote
+font request. The app-wide UI stack now prefers `Public Sans`, `Geist` and
+local system fallbacks; embedded sender HTML remains isolated.
+
+Implementation: raised shared page titles to `28px` mobile / `32px` desktop and
+display titles to `32px` / `36px`; applied `sd-shimmer-heading` to primary
+screen headings in the shared page intro, request detail, campaign, login,
+messages and fallback screens. The CSS effect uses a low-noise blue gradient
+sweep and explicitly restores solid readable text under `prefers-reduced-motion`.
+
+Evidence: typecheck, lint, build, full rendered Playwright/a11y matrix `88/88`,
+related frontend suites `226 passed / 6 skipped`, HTTP smoke (`5173` root `200`,
+SAFE_TEST root and `/api/auth/me` `200`, unknown API `404`), computed-style
+checks for desktop/mobile/reduced motion, and reviewed screenshots in
+`frontend/artifacts/typography-shimmer-20260904/`. No horizontal overflow or
+console errors were observed. Exact font-file parity with the hosted references
+is not claimed because the local stack intentionally has no external font load.
+
 ## 2026-09-04 — TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904
 
 State change: started a narrow `REDESIGN` task over commit `ae557ba` after

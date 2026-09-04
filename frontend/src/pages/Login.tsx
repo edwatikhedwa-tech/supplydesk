@@ -181,7 +181,7 @@ export function Login() {
             SupplyDesk
             <span className="h-px w-8 bg-blue-300/40" />
           </div>
-          <h1 className="text-display-title font-semibold text-white">Вход в рабочее пространство</h1>
+          <h1 className="sd-shimmer-heading sd-shimmer-heading--light text-display-title font-semibold text-white">Вход в рабочее пространство</h1>
         </div>
 
         <section className="w-full px-0 py-5 sm:py-6">

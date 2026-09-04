@@ -114,7 +114,7 @@ export function CampaignPage() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <nav className="mb-3 flex items-center gap-1.5 text-xs text-ink-500"><Link to={request ? `/requests/${request.request.id}` : '/requests'} className="hover:text-ink-800">Заявка</Link><ChevronRight className="h-3 w-3 text-ink-300" /><span className="truncate font-medium text-ink-700">Кампания</span></nav>
-          <div className="flex flex-wrap items-center gap-2"><h1 className="break-words text-page-title font-bold tracking-tight text-ink-900">{title}</h1><span className="rounded-full bg-ink-100 px-2.5 py-1 text-xs font-bold text-ink-600">Кампания №{summary.campaign_id}</span></div>
+          <div className="flex flex-wrap items-center gap-2"><h1 className="sd-shimmer-heading break-words text-page-title font-semibold tracking-tight text-ink-900">{title}</h1><span className="rounded-full bg-ink-100 px-2.5 py-1 text-xs font-bold text-ink-600">Кампания №{summary.campaign_id}</span></div>
           <p className="mt-2 text-sm text-ink-500">{summary.provider} · обновлено {formatDate(summary.updated_at)} · этап {summary.stage}</p>
         </div>
         <button type="button" onClick={() => void load()} disabled={refreshing} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-ink-200 bg-white px-3 text-sm font-semibold text-ink-700 shadow-soft hover:border-accent-300 hover:text-accent-700 disabled:cursor-wait disabled:opacity-60"><RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />Обновить</button>

@@ -3,6 +3,22 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-04 — TYPOGRAPHY AND HEADING SHIMMER
+
+- `TASK-SUPPLYDESK-TYPOGRAPHY-SHIMMER-20260904`: aligned the app-wide UI font
+  stack with the supplied assistant-ui reference direction by preferring
+  `Public Sans`/`Geist` and local system fallbacks; no remote font or package
+  was added.
+- Increased shared screen title roles to `28→32px` and login display titles to
+  `32→36px` across mobile-to-desktop, then applied a restrained CSS gradient
+  shimmer to primary screen `h1` elements. Reduced-motion users get a static
+  readable fallback; errors, metadata, statuses and embedded email HTML stay
+  unchanged.
+- Verified workspace guard, typecheck, lint (0 errors, 5 existing warnings),
+  build, full Playwright `88/88`, related frontend suites `226 passed / 6
+  skipped`, HTTP smoke and real SAFE_TEST screenshots at `1440×900` and
+  `360×800`. No backend, API, database, auth or business logic changed.
+
 ## 2026-09-04 — MESSAGES MESSAGE-PAIR READER
 
 - `TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904`: adapted the opened

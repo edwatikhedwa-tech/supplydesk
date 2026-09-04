@@ -15,6 +15,18 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-04` — `TASK-SUPPLYDESK-TYPOGRAPHY-SHIMMER-20260904` completed a
+frontend-only typography pass across screen titles. The UI now prefers the
+`Public Sans`/`Geist` reference stack with local system fallbacks, uses shared
+`page-title`/`display-title` sizes (`28→32px` and `32→36px` across mobile to
+desktop), and applies a restrained CSS gradient shimmer to primary screen
+`h1` elements. The effect has a static `prefers-reduced-motion` fallback;
+error headings, metadata, status labels and embedded sender HTML remain
+unchanged. No dependency, external font request, route, API, backend,
+database, auth or business logic changed. Rendered SAFE_TEST checks passed on
+desktop/mobile, including request detail and login; full Playwright and related
+frontend suites remain green.
+
 `2026-09-04` — `TASK-SUPPLYDESK-UI-FOUNDATION-V1-20260904` extended the
 frontend-only UI foundation beyond `/messages`: semantic CSS/Tailwind roles,
 canonical local controls and state primitives, a shared `PageFrame`, skip-link

@@ -9,7 +9,32 @@ based_on_commit: 4b89cc8
 
 # Last Handoff
 
-## Current: TASK-SUPPLYDESK-UI-FOUNDATION-V1-20260904
+## Current: TASK-SUPPLYDESK-TYPOGRAPHY-SHIMMER-20260904
+
+The frontend now uses a reference-aligned UI font stack beginning with
+`Public Sans` and `Geist`, followed by local system fallbacks. Shared screen
+titles are slightly larger (`28px` mobile → `32px` desktop; login display title
+`32px` → `36px`) and primary screen `h1` elements use a restrained CSS gradient
+shimmer. Reduced-motion users receive a static readable title. Error headings,
+metadata, statuses and embedded email HTML were intentionally left outside the
+effect.
+
+Verification: workspace guard PASS; typecheck PASS; lint PASS with 0 errors and
+5 pre-existing warnings; build PASS; full Playwright rendered/a11y matrix
+88/88 PASS; related campaign/Mail.ru/fast-browser suites 226 passed and 6
+viewport-gated tests skipped. Real SAFE_TEST screenshots were reviewed at
+1440×900 and 360×800 for login, dashboard, requests, suppliers, blacklist,
+settings, new request, messages and request detail; no overlap or horizontal
+overflow was observed. Reduced-motion computed-style check disabled the
+animation and restored solid text. Evidence is in
+`frontend/artifacts/typography-shimmer-20260904/`.
+
+Rollback: revert the task commit; no database, mail data, runtime credentials
+or external services were changed. Exact reference-font loading is not claimed:
+no external font request or new font package was introduced, so rendering uses
+the first locally available family in the stack.
+
+## Historical: TASK-SUPPLYDESK-UI-FOUNDATION-V1-20260904
 
 SupplyDesk now has a local dependency-free Design System v1 foundation: semantic
 CSS/Tailwind roles, canonical form/choice/overlay/table/state primitives, a

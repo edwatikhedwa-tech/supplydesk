@@ -8,7 +8,7 @@ export function NotFound() {
         <Compass size={24} />
       </div>
       <div>
-        <h1 className="text-xl font-bold text-ink-900">Страница не найдена</h1>
+        <h1 className="sd-shimmer-heading text-page-title font-semibold text-ink-900">Страница не найдена</h1>
         <p className="mt-1.5 max-w-sm text-sm text-ink-500">Такого адреса нет в приложении — возможно, ссылка устарела или в ней опечатка.</p>
       </div>
       <Link to="/" className="mt-2 inline-flex items-center gap-2 rounded-xl bg-accent-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-700">
