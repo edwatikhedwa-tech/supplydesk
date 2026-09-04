@@ -169,8 +169,8 @@ export function Messages() {
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-1 flex-col overflow-hidden lg:h-screen">
-      <header className="shrink-0 border-b border-ink-200/70 bg-white px-4 py-4 sm:px-8">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <header className="shrink-0 border-b border-ink-200/70 bg-white px-4 py-3 sm:px-6">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
             <p className="text-2xs font-bold uppercase tracking-[0.16em] text-accent-700">РАБОЧЕЕ ПРОСТРАНСТВО ЗАКУПОК</p>
             <h1 className="mt-1 text-page-title font-bold text-ink-900">Сообщения</h1>
@@ -184,14 +184,14 @@ export function Messages() {
             </div>
           )}
         </div>
-        <nav className="mt-4 flex max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-ink-100 p-1" aria-label="Разделы сообщений" role="tablist">
+        <nav className="mt-3 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-ink-100 p-0.5" aria-label="Разделы сообщений" role="tablist">
           <button
             type="button"
             aria-pressed={mode === 'requests'}
             aria-selected={mode === 'requests'}
             onClick={() => changeMode('requests')}
             role="tab"
-            className={cn('min-h-10 shrink-0 rounded-lg px-4 py-1.5 text-sm font-semibold transition-all', mode === 'requests' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
+            className={cn('min-h-9 shrink-0 rounded-lg px-3.5 py-1 text-sm font-semibold transition-all', mode === 'requests' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
           >
             По заявкам
           </button>
@@ -201,7 +201,7 @@ export function Messages() {
             aria-selected={mode === 'unmatched'}
             onClick={() => changeMode('unmatched')}
             role="tab"
-            className={cn('min-h-10 shrink-0 rounded-lg px-4 py-1.5 text-sm font-semibold transition-all', mode === 'unmatched' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
+            className={cn('min-h-9 shrink-0 rounded-lg px-3.5 py-1 text-sm font-semibold transition-all', mode === 'unmatched' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
           >
             Без привязки
           </button>
@@ -211,7 +211,7 @@ export function Messages() {
             aria-selected={mode === 'outbox'}
             onClick={() => changeMode('outbox')}
             role="tab"
-            className={cn('min-h-10 shrink-0 rounded-lg px-4 py-1.5 text-sm font-semibold transition-all', mode === 'outbox' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
+            className={cn('min-h-9 shrink-0 rounded-lg px-3.5 py-1 text-sm font-semibold transition-all', mode === 'outbox' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
           >
             Очередь
           </button>
@@ -606,7 +606,7 @@ function UnmatchedInbox({ preselectId, preselectRequestId }: { preselectId?: num
             </div>
           )}
           <div ref={detailScrollRef} className="flex-1 overflow-y-auto">
-            <div className="mx-auto w-full max-w-[1180px] space-y-4 px-4 py-5 sm:px-6 lg:px-10 xl:px-12">
+            <div className="w-full space-y-4 px-4 py-5 sm:px-6 lg:px-6 xl:px-8 2xl:px-10">
               <div className="rounded-2xl border border-ink-200 bg-white px-5 py-4 shadow-sm sm:px-6">
                 <p className="text-2xs font-semibold uppercase tracking-wider text-ink-600">Входящее письмо</p>
                 <div className="mt-2 flex min-w-0 items-start justify-between gap-4">

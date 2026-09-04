@@ -114,6 +114,39 @@ _DELIVERY_STATUS_KEYS = (
 )
 
 
+def _communication_message_predicate(alias: str = "m") -> str:
+    """Return the business predicate for messages shown as communication.
+
+    Queue attempts remain durable for operations, but only inbound messages and
+    outbound events that reached SMTP (or could have reached it) belong in the
+    conversation history. The integrity marker is the transport boundary for
+    a failed attempt: a pre-DATA failure has no ``irreversible_at`` timestamp.
+    """
+    return f"""(
+        {alias}.direction='inbound'
+        OR (
+            {alias}.direction='outbound'
+            AND (
+                {alias}.status IN ('sent', 'delivery_unknown')
+                OR (
+                    {alias}.status IN ('failed', 'bounced')
+                    AND (
+                        {alias}.sent_at IS NOT NULL
+                        OR EXISTS (
+                            SELECT 1
+                            FROM mail_jobs visibility_job
+                            JOIN mail_job_integrity visibility_integrity
+                              ON visibility_integrity.job_id=visibility_job.id
+                            WHERE visibility_job.message_id={alias}.id
+                              AND visibility_integrity.irreversible_at IS NOT NULL
+                        )
+                    )
+                )
+            )
+        )
+    )"""
+
+
 def _normalized_mail_address(value: Any) -> str:
     return str(value or "").strip().lower()
 
@@ -1682,11 +1715,16 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin
     def list_threads(self, workspace_id: int, user_id: int | None = None, *, include_queue_only: bool = False) -> list[dict[str, Any]]:
         with self.connect() as connection:
             rows = connection.execute(
-                """SELECT * FROM (
-                     SELECT t.id, t.request_id, t.supplier_id, t.subject, t.last_message_at, t.created_at,
+                f"""SELECT * FROM (
+                     SELECT t.id, t.request_id, t.supplier_id, t.subject,
+                            COALESCE((SELECT m.created_at FROM mail_messages m WHERE m.thread_id=t.id
+                               AND {_communication_message_predicate("m")}
+                               ORDER BY m.created_at DESC, m.id DESC LIMIT 1), t.created_at) AS last_message_at,
+                            t.created_at,
                             r.name AS request_name, s.name AS supplier_name, s.email AS supplier_email,
                             s.host AS supplier_host, s.external_key AS supplier_external_key,
-                            (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id) AS messages_count,
+                            (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id
+                               AND {_communication_message_predicate("m")}) AS messages_count,
                             (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='inbound' AND lower(COALESCE(m.from_email,'')) NOT LIKE 'mailer-daemon@%' AND lower(COALESCE(m.from_email,'')) NOT LIKE 'postmaster@%') AS replies_count,
                             -- Непрочитанные ответы — отдельно от общего числа ответов.
                             (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='inbound'
@@ -1694,17 +1732,18 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin
                                AND lower(COALESCE(m.from_email,'')) NOT LIKE 'postmaster@%'
                                AND NOT EXISTS (SELECT 1 FROM mail_message_reads mr WHERE mr.message_id=m.id)) AS unread_count,
                             (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='outbound' AND m.status IN ('queued', 'sending')) AS pending_outbound_count,
-                            (SELECT m.status FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='outbound' ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_outbound_status,
-                            (SELECT m.direction FROM mail_messages m WHERE m.thread_id=t.id ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_direction,
+                            (SELECT m.status FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='outbound'
+                               AND (? = 1 OR {_communication_message_predicate("m")})
+                               ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_outbound_status,
+                            (SELECT m.direction FROM mail_messages m WHERE m.thread_id=t.id
+                               AND {_communication_message_predicate("m")}
+                               ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_direction,
                             NULL AS manual_inbox_id
                      FROM mail_threads t JOIN requests r ON r.id=t.request_id JOIN suppliers s ON s.id=t.supplier_id
-                     WHERE t.workspace_id=? AND (? = 1 OR EXISTS (
-                         SELECT 1 FROM mail_messages visible_m
-                         WHERE visible_m.thread_id=t.id AND (
-                             visible_m.direction='inbound'
-                             OR (visible_m.direction='outbound' AND visible_m.status IN ('sent', 'failed', 'delivery_unknown'))
-                         )
-                     ))
+                      WHERE t.workspace_id=? AND (? = 1 OR EXISTS (
+                          SELECT 1 FROM mail_messages visible_m
+                          WHERE visible_m.thread_id=t.id AND {_communication_message_predicate("visible_m")}
+                      ))
                      UNION ALL
                      SELECT -link.id AS id, link.request_id, COALESCE(link.supplier_id, 0) AS supplier_id,
                             inbox.subject, inbox.received_at AS last_message_at, link.created_at,
@@ -1722,8 +1761,8 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin
                      JOIN requests r ON r.id=link.request_id
                      LEFT JOIN suppliers s ON s.id=link.supplier_id
                      WHERE link.workspace_id=? AND link.active=1 AND inbox.status='matched'
-                ) ORDER BY COALESCE(last_message_at, created_at) DESC""",
-                (workspace_id, int(include_queue_only), workspace_id),
+                 ) ORDER BY COALESCE(last_message_at, created_at) DESC""",
+                 (int(include_queue_only), workspace_id, int(include_queue_only), workspace_id),
             ).fetchall()
         items = [dict(row) for row in rows]
         metadata = self.list_thread_metadata(workspace_id, user_id) if user_id is not None else {}
@@ -8049,7 +8088,7 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin
     def thread_messages(self, workspace_id: int, request_id: int, supplier_id: int) -> list[dict[str, Any]]:
         with self.connect() as connection:
             rows = connection.execute(
-                "SELECT id, direction, from_email, to_email, subject, body_text, body_html, status, error, message_id, in_reply_to, references_header, created_at, sent_at FROM mail_messages WHERE workspace_id=? AND request_id=? AND supplier_id=? ORDER BY created_at",
+                f"SELECT id, direction, from_email, to_email, subject, body_text, body_html, status, error, message_id, in_reply_to, references_header, created_at, sent_at FROM mail_messages WHERE workspace_id=? AND request_id=? AND supplier_id=? AND {_communication_message_predicate('mail_messages')} ORDER BY created_at",
                 (workspace_id, request_id, supplier_id),
             ).fetchall()
             # Opening a thread is how a reply gets acknowledged — feeds the

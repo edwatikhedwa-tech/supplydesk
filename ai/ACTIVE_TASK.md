@@ -13,9 +13,9 @@ Task ID: `NONE`
 Agent: `Codex`
 Mode: `IDLE`
 Started: `2026-09-04`
-Scope: `Completed task was the /messages procurement workspace redesign with preserved mail/unmatched/queue/delivery semantics, durable user metadata and a safe desktop drag shortcut.`
+Scope: `Correct the rejected /messages acceptance defects over commit c70e6d63: communication visibility semantics, full-width conversation detail, compact B2B hierarchy, unmatched preview, metadata controls, and evidence-based QA.`
 Allowed files: `frontend/src/pages/Messages.tsx, frontend/src/components/mail/*, frontend/src/lib/api.ts, frontend/src/lib/types.ts, frontend/src/lib/utils.ts, backend/http_requests.py, mail/repository.py, mail/thread_metadata.py, migrations/034_thread_user_metadata.sql, supplier_app.py, tests/test_thread_metadata.py, docs/product/messages-workspace.md, docs/api/messages.md, ai state/report files required by project policy`
-Status: `IDLE — TASK-MESSAGES-WORKSPACE-REDESIGN-20260904 completed locally; no active task`
+Status: `IDLE — TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904 completed locally; live acceptance remains blocked by stale canonical backend and unavailable mandatory viewports`
 Last update: `2026-09-04`
 
-Completed task report: `ai/reports/TASK-MESSAGES-WORKSPACE-REDESIGN-20260904-report.md`
+Completed task report: `ai/reports/TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904-report.md`

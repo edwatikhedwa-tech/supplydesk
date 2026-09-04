@@ -3,6 +3,26 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-04 — MESSAGES PRODUCT ACCEPTANCE CORRECTION
+
+- `TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904`: corrected the
+  rejected `/messages` behavior and presentation over commit `c70e6d63`.
+- Added a shared repository business predicate so conversation views exclude
+  pre-send queue/cancel/failure records while retaining inbound, sent,
+  `delivery_unknown`, and post-transport failure/bounce evidence. Durable raw
+  mail records are not deleted.
+- Corrected detail width, compact request hierarchy, neutral unmatched preview,
+  visible metadata controls and bounced status presentation. Existing manual
+  linking and inline reply logic remain the source of truth.
+- Verified: visibility regression tests `5/5`, metadata tests `2/2`, transport
+  status tests `18/18`, the HTML/text rendering regression `1/1`, full
+  `test_mail*.py` exit code `0`, frontend typecheck/build, lint with the same
+  five unrelated warnings, and source diff checks.
+- Live/browser status is `BLOCKED`: canonical port `8000` serves stale code
+  (`POST /api/correspondence/metadata` -> `404`), the real pointer drag was
+  attempted but did not create a link, and mandatory viewport screenshots are
+  unavailable because the CUA browser exposes no viewport capability.
+
 ## 2026-09-04 — MESSAGES WORKSPACE REDESIGN + USER METADATA
 
 - `TASK-MESSAGES-WORKSPACE-REDESIGN-20260904`: redesigned `/messages` into a

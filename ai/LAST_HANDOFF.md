@@ -3,14 +3,38 @@ document_id: HANDOFF-018
 status: CURRENT
 canonical: false
 owner: project-control
-updated_at: 2026-09-03
-based_on_commit: TASK-ROOT-CAUSE-RUNTIME-FIX-20260903
+updated_at: 2026-09-04
+based_on_commit: c70e6d63a04640d8803eebc6aa878b7307f74984
 ---
 
 # Last Handoff
 
-This current handoff records `TASK-MESSAGES-WORKSPACE-REDESIGN-20260904`.
-The prior runtime-fix handoff remains below as historical context.
+This current handoff records
+`TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904`. The prior redesign and
+runtime-fix handoffs remain below as historical context.
+
+## Current correction status
+
+Source correction is complete, but the overall acceptance is `BLOCKED`.
+
+- Mail conversation visibility now uses a shared transport-aware predicate;
+  pre-send queued/sending/cancelled/failed attempts stay durable but do not
+  render as communication.
+- `/messages` detail uses the remaining width, with a compact B2B header and
+  request-link strip; unmatched previews are neutral and unknown companies are
+  explicitly labeled.
+- Flag and priority controls are visible in list/detail source and the
+  existing API contract remains unchanged. The running canonical backend is
+  stale: metadata POST returns `404`, so live persistence/reload acceptance is
+  not complete.
+- Manual link for inbox `79` → request `1061` was proven and rolled back. Real
+  pointer DnD was attempted without a resulting link and is `NOT VERIFIED`.
+- Only an authenticated canonical render at `1287×912` was inspected. CUA
+  exposes no viewport capability, so the required desktop/tablet/mobile matrix
+  is `NOT VERIFIED`; no approved reference image was found, therefore reference
+  matching is `PARTIAL`.
+
+Detailed evidence: `ai/reports/TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904-report.md`.
 
 ## Текущая задача
 

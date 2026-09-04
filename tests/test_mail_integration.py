@@ -333,6 +333,11 @@ class MailIntegrationTests(unittest.TestCase):
             supplier={"name": "ООО Тест", "email": "one@example.com", "host": "one.example"},
             subject="Запрос", body="Здравствуйте!",
         )
+        job = self.repo.claim_job()
+        self.assertIsNotNone(job)
+        assert job is not None
+        send_result = self.service.send_claimed_job(job)
+        self.repo.mark_job_sent(job["id"], job["message_id"], None, send_result.message_id, send_result.sent_at.isoformat())
         supplier = next(item for item in self.repo.list_suppliers(self.user["workspace_id"], None) if item["host"] == "one.example")
         messages = self.repo.thread_messages(self.user["workspace_id"], 1043, supplier["id"])
         self.assertTrue(messages)

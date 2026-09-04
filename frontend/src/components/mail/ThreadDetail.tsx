@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Loader2, RefreshCw, Reply, Send, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Link as LinkIcon, Loader2, RefreshCw, Reply, Send, ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn, displayCorrespondenceSupplierName, formatFullDate, getAvatarColor, getInitials } from '@/lib/utils';
 import { EmailRenderer } from '@/components/mail/EmailRenderer';
@@ -13,6 +13,7 @@ const OUTBOUND_STATUS_LABELS: Record<string, string> = {
   sent: 'отправлено',
   failed: 'ошибка отправки',
   delivery_unknown: 'отправка не подтверждена',
+  bounced: 'письмо возвращено',
 };
 
 interface ThreadDetailProps {
@@ -240,41 +241,39 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-[1180px] space-y-4 px-4 py-5 sm:px-6 lg:px-10 xl:px-12">
-          <div className="mb-2 rounded-xl border border-ink-200 bg-white p-3.5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-2xs font-semibold text-ink-600 uppercase tracking-wider mb-1">Заявка</p>
-                <p className="text-sm font-medium text-ink-900">{thread.request_name}</p>
-                <p className="mt-0.5 text-sm text-ink-600">{supplierLabel}</p>
-                {thread.manual_inbox_id != null && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <p className="text-xs font-medium text-accent-600">Письмо привязано вручную</p>
-                    {onUnlinkManual && (
-                      <button
-                        type="button"
-                        onClick={() => void unlinkManual()}
-                        disabled={unlinkBusy}
-                        aria-busy={unlinkBusy}
-                        className="inline-flex min-h-9 items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ink-600 ring-1 ring-ink-200 transition-colors hover:bg-ink-50 hover:text-ink-900 disabled:cursor-wait disabled:opacity-60"
-                      >
-                        {unlinkBusy ? 'Отвязываем…' : 'Отвязать письмо'}
-                      </button>
-                    )}
-                  </div>
+        <div className="w-full space-y-4 px-4 py-5 sm:px-6 lg:px-6 xl:px-8 2xl:px-10">
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-ink-200 bg-white px-3.5 py-3">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-ink-50 px-2 py-1 text-2xs font-semibold uppercase tracking-wide text-ink-600">
+              <LinkIcon size={13} aria-hidden="true" /> Связано с заявкой
+            </span>
+            <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ink-900" title={thread.request_name}>{thread.request_name}</p>
+            <span className="max-w-full truncate text-xs text-ink-500">{supplierLabel}</span>
+            {thread.manual_inbox_id != null && (
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs font-medium text-accent-600">вручную</p>
+                {onUnlinkManual && (
+                  <button
+                    type="button"
+                    onClick={() => void unlinkManual()}
+                    disabled={unlinkBusy}
+                    aria-busy={unlinkBusy}
+                    className="inline-flex min-h-9 items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ink-600 ring-1 ring-ink-200 transition-colors hover:bg-ink-50 hover:text-ink-900 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {unlinkBusy ? 'Отвязываем…' : 'Отвязать'}
+                  </button>
                 )}
-                {unlinkError && <p role="alert" className="mt-1.5 text-xs text-rose-700">{unlinkError}</p>}
               </div>
-              {onOpenRequest && (
-                <button
-                  onClick={() => onOpenRequest(thread.request_id)}
-                  className="inline-flex min-h-10 items-center gap-1 text-sm font-medium text-accent-600 hover:text-accent-700 shrink-0"
-                >
-                  Открыть заявку
-                  <ExternalLink size={13} />
-                </button>
-              )}
-            </div>
+            )}
+            {unlinkError && <p role="alert" className="basis-full text-xs text-rose-700">{unlinkError}</p>}
+            {onOpenRequest && (
+              <button
+                onClick={() => onOpenRequest(thread.request_id)}
+                className="inline-flex min-h-9 shrink-0 items-center gap-1 text-sm font-medium text-accent-600 hover:text-accent-700"
+              >
+                Открыть заявку
+                <ExternalLink size={13} />
+              </button>
+            )}
           </div>
 
           {messages.length === 0 && <p className="text-sm text-ink-400 py-8 text-center">В этой переписке пока нет сообщений</p>}
@@ -302,7 +301,7 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
                       <span className="text-sm font-medium text-ink-900 truncate">{fromName}</span>
                       <span className="shrink-0 text-2xs font-semibold uppercase tracking-wide text-ink-500">{msg.direction === 'inbound' ? 'Входящее' : 'Исходящее'}</span>
                       {msg.direction === 'outbound' && (
-                        <span className={cn('text-xs', msg.status === 'failed' ? 'text-rose-600' : msg.status === 'delivery_unknown' ? 'text-orange-800' : 'text-ink-600')}>
+                        <span className={cn('text-xs', ['failed', 'bounced'].includes(msg.status) ? 'text-rose-600' : msg.status === 'delivery_unknown' ? 'text-orange-800' : 'text-ink-600')}>
                           · {OUTBOUND_STATUS_LABELS[msg.status] ?? msg.status}
                         </span>
                       )}

@@ -2,6 +2,39 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-04 — TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904
+
+GAP ANALYSIS against the rejected acceptance: the previous implementation
+rendered every stored thread message, so a durable outbound `cancelled`
+pre-send attempt appeared as communication; detail used an artificial readable
+width; metadata controls had no live route on the currently running backend;
+real drop behavior and the required viewport matrix had not been proven; and
+the unmatched preview still carried too much warning-card emphasis.
+
+Correction: added `_communication_message_predicate` in
+`mail/repository.py` and applied it consistently to thread list counts, latest
+message fields and `thread_messages`. The predicate is transport-aware and
+does not delete raw rows. Updated the detail, header, request strip, preview,
+metadata controls and bounced status presentation in the `/messages` frontend.
+
+Evidence: canonical read-only DB inspection of thread `92` showed message
+`105` outbound/cancelled with no `sent_at` and `attempts=0`, message `204`
+outbound/sent with an irreversible timestamp, and message `274` inbound. The
+manual-link flow for inbox `79` to request `1061` succeeded and was explicitly
+rolled back; DB inspection showed no remaining link. A real pointer drag using
+the CUA accessibility gesture `[104,304] -> [270,535]` was attempted, but no
+confirmation, URL transition or database link followed, so DnD remains
+`NOT VERIFIED`.
+
+Verification: full `test_mail*.py` completed with exit code `0`; focused
+visibility/metadata/transport/rendering tests passed; frontend typecheck and
+build passed; lint had no errors and five pre-existing unrelated warnings.
+HTTP smoke returned Vite `200`, backend root `200`, `/api/auth/me` `200`,
+protected correspondence/thread list `401` without request headers, and the
+canonical metadata route `404`. Browser render inspection was limited to
+1287×912; the viewport matrix `1440×900`, `1920×1080`, `1024×768` and
+`390×844` is not verified because the CUA viewport capability is unavailable.
+
 ## 2026-09-04 — TASK-MESSAGES-WORKSPACE-REDESIGN-20260904
 
 State change: created an active task lock for the `/messages` redesign after

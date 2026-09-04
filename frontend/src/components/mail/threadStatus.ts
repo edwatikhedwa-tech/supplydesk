@@ -13,9 +13,10 @@ export interface ThreadDisplayStatus {
  * a later transport status, because the conversation still has useful history.
  */
 export function isPrimaryCorrespondence(thread: ThreadSummary): boolean {
-  return thread.last_outbound_status === 'sent'
-    || thread.replies_count > 0
-    || thread.last_message_direction === 'inbound';
+  // The API has already applied the transport boundary. A positive visible
+  // count keeps delivery_unknown and post-transport failures in the list
+  // while still rejecting queue-only technical attempts.
+  return thread.messages_count > 0;
 }
 
 /** A sent thread with no inbound message yet is the actionable waiting state. */
@@ -28,7 +29,7 @@ export function isAwaitingResponse(thread: ThreadSummary): boolean {
 /** Keep groups with unread or operationally important threads expanded. */
 export function needsThreadAttention(thread: ThreadSummary): boolean {
   return thread.unread_count > 0
-    || ['sending', 'queued', 'failed', 'delivery_unknown'].includes(thread.last_outbound_status ?? '');
+    || ['sending', 'queued', 'failed', 'delivery_unknown', 'bounced'].includes(thread.last_outbound_status ?? '');
 }
 
 /** Convert transport/reply facts into one compact, readable list status. */
@@ -83,6 +84,12 @@ export function getThreadDisplayStatus(thread: ThreadSummary): ThreadDisplayStat
         label: 'Нужна проверка',
         title: 'Результат передачи письма не подтверждён',
         className: 'bg-orange-50 text-orange-800 ring-orange-200/80',
+      };
+    case 'bounced':
+      return {
+        label: 'Возврат письма',
+        title: 'Почтовый сервер вернул отправленное письмо',
+        className: 'bg-rose-50 text-rose-700 ring-rose-200/80',
       };
     default:
       return {

@@ -15,22 +15,20 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-04` — `TASK-MESSAGES-WORKSPACE-REDESIGN-20260904` is implemented in
-the working tree: `/messages` now uses a procurement-oriented two-column
-layout, a compact unmatched preview, request-group search, keyboard-accessible
-flag/priority controls, and a safe desktop drag shortcut into the existing
-manual-link workflow. A new additive migration
-`migrations/034_thread_user_metadata.sql` and
-`POST /api/correspondence/metadata` persist user/workspace/request/supplier
-metadata without changing mail transport semantics. Targeted repository tests,
-frontend typecheck, lint and build are confirmed; browser rendering is
-confirmed in the authenticated canonical-session tab at 1287×912. The
-required `scripts/audit_toolchain.py` and repository browser-geometry runner
-are absent, and authenticated SAFE_TEST browser verification plus actual
-390×844/768×1024 screenshots remain `NOT VERIFIED`. The available backend
-verification profile is now `54` tests with `0` failures and `0` errors (one
-expected skip); frontend typecheck/build pass and lint has only five existing
-warnings outside this task.
+`2026-09-04` — `TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904`
+corrected the rejected `/messages` acceptance points in the working tree. The
+mail repository now applies one business predicate to conversation visibility:
+all inbound messages plus outbound messages that are sent, may have left the
+system (`delivery_unknown` or a post-transport failure), or are bounced after
+transmission; queued/sending/cancelled pre-send attempts, drafts and pre-send
+failures are excluded while remaining durable in storage. The frontend now
+uses the full remaining detail width with compact B2B hierarchy, neutral
+unmatched preview cards, visible semantic flag/priority controls and a compact
+request-link strip. Source tests, full `test_mail*.py`, frontend typecheck,
+lint and build pass. Live acceptance remains `BLOCKED`: the canonical backend
+PID 16228 on port 8000 is stale and returns `404` for the metadata route, the
+real pointer drag attempt produced no link evidence, and the CUA browser has
+no viewport capability; only the authenticated 1287×912 render was inspected.
 
 `2026-09-04` — Dellin registration was approved; the owner shared the real
 `DELLIN_API_KEY` and it was added to the local (gitignored) `.env`. A live

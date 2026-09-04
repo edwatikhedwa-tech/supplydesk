@@ -96,7 +96,9 @@ export function ThreadMetadataControls({ important, priority, onChange, compact 
             priority == null ? 'text-ink-400 hover:bg-ink-100 hover:text-ink-700' : 'bg-accent-50 text-accent-700 ring-1 ring-accent-200',
           )}
         >
-          {priority ?? '—'}
+          <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-2xs font-bold', priority == null ? 'bg-ink-100 text-ink-500' : 'bg-accent-100 text-accent-700')}>
+            {priority ?? '—'}
+          </span>
           <ChevronDown size={12} aria-hidden="true" />
         </button>
         {menuOpen && (

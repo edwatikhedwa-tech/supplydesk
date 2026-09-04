@@ -310,6 +310,13 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey, sear
                     const supplierLabel = displayCorrespondenceSupplierName(thread.supplier_name) || 'Поставщик не определён';
                     return (
                       <div key={key} className={cn('flex items-start', isSelected ? 'bg-accent-50/50' : 'hover:bg-ink-50')}>
+                        {thread.manual_inbox_id == null && (
+                          <ThreadMetadataControls
+                            important={thread.is_important}
+                            priority={thread.priority}
+                            onChange={(patch) => onMetadataChange(thread, patch)}
+                          />
+                        )}
                         <button
                           type="button"
                           onClick={() => onSelectThread(thread)}
@@ -347,13 +354,6 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey, sear
                           </div>
                           </div>
                         </button>
-                        {thread.manual_inbox_id == null && (
-                          <ThreadMetadataControls
-                            important={thread.is_important}
-                            priority={thread.priority}
-                            onChange={(patch) => onMetadataChange(thread, patch)}
-                          />
-                        )}
                       </div>
                     );
                   })}
