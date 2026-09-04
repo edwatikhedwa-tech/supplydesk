@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: operations
 updated_at: 2026-09-04
-source_commit: b4fc8efcbce3d470748572e2287c43ed190ee5b6
+source_commit: 878cf70292683fa8d9730ee353af78854746b2b1
 ---
 
 # Runbook: backend startup and safe HTTP probe

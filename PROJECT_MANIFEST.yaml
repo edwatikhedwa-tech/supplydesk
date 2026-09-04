@@ -1,13 +1,13 @@
 manifest_version: 1
 manifest_id: supplydesk-control-canonical-baseline-20260901
-reconciled_at: 2026-09-01
+reconciled_at: 2026-09-04
 status: CANONICAL_WITH_LIMITATIONS
 
 project:
   name: SupplyDesk
   repository: edwatikhedwa-tech/supplydesk
   visibility: private
-  canonical_branch: control/final-hygiene-acceptance-20260901
+  canonical_branch: integration/current-architecture-governance-20260903
   governance_branch: control/documentation-governance-20260901
   audit_branch: audit/repository-hygiene-reports-20260901
   audit_commit: b5a454f9b39f3cbf01d640d5b67e4231ca25733a

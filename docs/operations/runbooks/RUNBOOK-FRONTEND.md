@@ -4,7 +4,7 @@ status: CURRENT
 canonical: false
 owner: operations
 updated_at: 2026-09-04
-source_commit: 84083130e3a75eb5a6d4fa83957db6760724379b
+source_commit: 878cf70292683fa8d9730ee353af78854746b2b1
 ---
 
 # Runbook: frontend gates

@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: 0dcecc9
+based_on_commit: 878cf70292683fa8d9730ee353af78854746b2b1
 ---
 
 # Current State
