@@ -9,7 +9,38 @@ based_on_commit: 878cf70292683fa8d9730ee353af78854746b2b1
 
 # Last Handoff
 
-## Current: TASK-RUNTIME-SELECTION-HARD-GUARD-20260904
+## Current: TASK-PREPARE-SUPPLYDESK-FOR-EXTERNAL-UI-REDESIGN-20260904
+
+Canonical root is `C:\Users\edwat\SupplyDesk`; canonical branch is
+`integration/current-architecture-governance-20260903`. The expected functional
+HEAD `878cf70` was verified. Documentation-only commit `1a5acf2` reconciled
+the branch and commit anchors and was pushed with a normal fast-forward; local
+and remote HEADs matched at that point. The external base branch
+`ui/external-redesign-base-20260904` was created from that canonical HEAD and
+pushed without force. The current GitHub default branch is
+`claude/zen-goldwasser-022bb1`; it was not changed.
+
+Documentation audit: runtime guard, `LOCAL_CANONICAL` `:8000`, `SAFE_TEST`
+`:18000`, React/Vite/Tailwind frontend, `supplier_app.py`, `api/index.py`,
+SQLite paths, Yandex/Mail.ru boundaries and no-send rules match the source.
+Only stale branch/commit metadata was corrected. The root `README.md` is
+absent; `docs/CURRENT_STATE.md` is explicitly historical. Security scanning
+found no high-confidence key/token/private-key signatures in the current
+canonical history or staged documentation. Untracked `runtime/`,
+`docs/experiments/` and `frontend/src/pages/UiExperiment.tsx` were preserved
+and excluded from publication; their provenance is not verified.
+
+Verification: workspace guard PASS; docs/state/VibeCoding/traceability
+validators PASS; backend suite `91/91` PASS; canonical HTTP smoke `/` `200`,
+`/api/auth/me` `200`, unknown API `404`, frontend `:5173/` `200`. Doctor
+without `-Full` returned `NOT_VERIFIED` for intentionally unrun optional
+frontend/browser gates; no server or database write was performed.
+
+Non-goal: no UI implementation, reference-image matching, backend, API,
+database, OAuth, provider or mail change. Next step is STOP until an
+OWNER-APPROVED reference image is supplied.
+
+## Historical: TASK-RUNTIME-SELECTION-HARD-GUARD-20260904
 
 `scripts/runtime_guard.py` is now the single purpose-to-runtime authority.
 `OWNER_SESSION`, `VISUAL_ACCEPTANCE`, `OAUTH_CHECK` and

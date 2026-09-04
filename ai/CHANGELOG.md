@@ -1632,3 +1632,18 @@ Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH`
   canonical public-shell visual acceptance `1/1` PASS, frontend typecheck,
   lint, build, node config typecheck and state validators PASS. No backend
   business logic, OAuth, DB schema, provider or outgoing-mail behavior changed.
+
+## 2026-09-04 — PREPARE EXTERNAL UI REDESIGN BASE
+
+- `TASK-PREPARE-SUPPLYDESK-FOR-EXTERNAL-UI-REDESIGN-20260904`: audited the
+  canonical checkout, documentation contracts, runtime paths and publication
+  boundary without changing UI, backend or business logic.
+- Reconciled only stale canonical branch and functional commit anchors in the
+  manifest, current state, handoff, active-task sentinel and runtime runbooks.
+- Pushed canonical branch `integration/current-architecture-governance-20260903`
+  at `1a5acf2`, verified local/remote equality, then created and pushed the
+  code-identical `ui/external-redesign-base-20260904` branch. GitHub default
+  branch `claude/zen-goldwasser-022bb1` was not changed.
+- Verified workspace/docs/state/VibeCoding/traceability validators, backend
+  `91/91`, canonical HTTP smoke, and a clean staged security scan. Local
+  `runtime/` and `docs/experiments/` remained excluded and untouched.

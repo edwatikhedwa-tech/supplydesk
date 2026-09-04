@@ -1555,3 +1555,22 @@ tests PASS; safe `AUTOMATED_TEST` smoke `2/2` PASS; canonical
 node-config typecheck and validators PASS. SAFE_TEST rendered screenshots at
 `1440×900` and `360×800` were reviewed. Canonical authenticated `/messages`,
 OAuth callback, live provider and mail actions were not automated.
+
+## 2026-09-04 — TASK-PREPARE-SUPPLYDESK-FOR-EXTERNAL-UI-REDESIGN-20260904
+
+State change: revalidated the canonical root and branch after an external
+branch switch was detected during the audit. Continued only on
+`integration/current-architecture-governance-20260903`; the expected functional
+HEAD `878cf70` remained intact.
+
+State change: found and corrected only stale documentation anchors and the
+manifest canonical-branch pointer. No frontend, backend, API, database, auth,
+provider or mail file was changed. Untracked `runtime/` and
+`docs/experiments/` were preserved.
+
+Verification state: validators PASS; backend `91/91` PASS; canonical HTTP smoke
+(`8000` root `200`, auth/me `200`, unknown API `404`, frontend `5173` root `200`);
+staged security scan found no high-confidence secret signatures. One initial
+push attempt hit transient GitHub DNS failure, then the normal push succeeded.
+Canonical branch and remote matched at `1a5acf2`; external base was created and
+verified at the same SHA. GitHub default branch was observed but not changed.

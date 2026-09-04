@@ -15,6 +15,21 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-04` — `TASK-PREPARE-SUPPLYDESK-FOR-EXTERNAL-UI-REDESIGN-20260904`
+verified the canonical checkout at `C:\Users\edwat\SupplyDesk` and the
+canonical branch `integration/current-architecture-governance-20260903`.
+The expected owner-approved functional HEAD `878cf70` was confirmed; a
+documentation-only reconciliation commit `1a5acf2` was then pushed normally,
+and local/remote HEADs matched. The external base branch
+`ui/external-redesign-base-20260904` was created from that verified canonical
+HEAD and pushed without force. GitHub's current default branch is
+`claude/zen-goldwasser-022bb1`; it was not changed. The root `README.md` is
+absent; `docs/CURRENT_STATE.md` is explicitly historical and points to this
+file. No UI, backend, API, business logic, OAuth, database, provider or mail
+behavior changed. Untracked `runtime/`, `docs/experiments/` and
+`frontend/src/pages/UiExperiment.tsx` remain local, unstaged and unpublished
+because their provenance is not verified.
+
 `2026-09-04` — `TASK-RUNTIME-SELECTION-HARD-GUARD-20260904` added the
 dependency-free `scripts/runtime_guard.py` as the single runtime-selection
 authority. All six required purposes now map deterministically to
@@ -1210,6 +1225,12 @@ on this task's dedicated branch:
   hosted runner.
 
 ## Current next step
+
+Visual implementation remains stopped until the owner supplies an approved
+reference image. The external branch is intentionally a code-identical base
+for a future builder import; no redesign is authorized in this state.
+
+## Historical next step — retained context
 
 The bounded root refactor program (Passes 2-11) is complete. Pass 2 (CLI
 compatibility), Pass 3 (`dadata_client.py`), Pass 4 (`checko_client.py` +

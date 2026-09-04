@@ -9,15 +9,17 @@ based_on_commit: 878cf70292683fa8d9730ee353af78854746b2b1
 
 # Active Task
 
-Task ID: `TASK-RUNTIME-SELECTION-HARD-GUARD-20260904`
+Task ID: `TASK-PREPARE-SUPPLYDESK-FOR-EXTERNAL-UI-REDESIGN-20260904`
 Agent: `Codex`
 Mode: `CONTROL_PLANE`
 Started: `2026-09-04`
-Scope: `Unify runtime selection for backend, frontend, browser tests and acceptance; add the SAFE_TEST environment badge; preserve backend behavior, OAuth, database schema, provider settings and mail behavior.`
-Allowed files: `scripts/runtime_guard.py, scripts/start_local_canonical.ps1, scripts/start_test_runtime.ps1, scripts/test_runtime_entry.py, scripts/start_server_and_open.ps1, scripts/start_server.bat, scripts/recover_supplydesk.ps1, scripts/run_*.mjs, supplier_app.py, frontend runtime/config/package/Layout files, CI/runtime documentation, tests/diagnostics/test_runtime_guard.py, ai state/report files required by project policy`
-Status: `COMPLETE — hard guard, launcher wiring, controlled failure, safe badge and canonical/safe browser verification passed`
+Scope: `Verify canonical state, reconcile factual documentation metadata, run focused validation, publish the canonical branch, and create a code-identical external redesign base.`
+Allowed files: `PROJECT_MANIFEST.yaml, ai state/report files, docs/operations/runbooks/ runtime metadata only`
+Status: `COMPLETE — canonical push and external base verified; UI/backend scope remained unchanged`
 Last update: `2026-09-04`
 
+Previous completed task report: `ai/reports/TASK-RUNTIME-SELECTION-HARD-GUARD-20260904-report.md`
+Completed task report: `ai/reports/TASK-PREPARE-SUPPLYDESK-FOR-EXTERNAL-UI-REDESIGN-20260904-report.md`
 Previous completed task report: `ai/reports/TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904-report.md`
 Previous completed task report: `ai/reports/TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904-report.md`
 Completed task report: `ai/reports/TASK-SUPPLYDESK-UI-MODERNIZATION-20260904-report.md`
