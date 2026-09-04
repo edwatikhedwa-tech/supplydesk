@@ -4,37 +4,45 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: 2c5682d
+based_on_commit: d7b0e39
 ---
 
 # Last Handoff
 
 This current handoff records
-`TASK-SUPPLYDESK-UI-MODERNIZATION-20260904`. The prior acceptance-correction,
-redesign and runtime-fix handoffs remain below as historical context.
+`TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904`. The prior UI
+modernization, acceptance-correction, redesign and runtime-fix handoffs remain
+below as historical context.
 
-## Current modernization status
+## Current deep visual redesign status
 
-The frontend-only modernization is complete locally with rendered acceptance
-`PASS`; reference-image comparison is `PARTIAL` because no approved reference
-image was supplied and the before screenshot is inline-only.
+The frontend-only deep redesign is complete locally with rendered engineering
+acceptance `PASS`; artifact comparison is `PARTIAL` because the authenticated
+before screenshot is inline-only and no approved reference image was supplied.
 
-- Stage 0 audit confirmed React 18 + TypeScript + Vite, Tailwind CSS 3,
-  `lucide-react`, shared routes and inline component duplication.
-- Added local `Button`, `StatusBadge`/`Count` and `TextField` primitives without
-  installing a UI library or changing application architecture.
-- `/messages` now has a request-first hierarchy, calm search/navigation,
-  quiet counters, semantic statuses, neutral unmatched preview, separate queue,
-  and one obvious `Ответить` action. Existing reply/link/metadata/recovery
-  flows remain reachable.
-- Verification: typecheck/build pass; lint has 0 errors and 5 pre-existing
-  warnings; full Playwright rendered/a11y matrix is `88/88`; CUA list/detail
-  smoke is `PASS` at 1280×720 with no horizontal overflow.
+- Left navigator: `Мои заявки`, local search/filter, flat activity rows and a
+  compact unmatched preview.
+- Conversation detail: compact supplier/status/request context, timeline
+  messages, retained attachment/body behavior and sticky `Ответить поставщику`
+  next step.
+- Removed visual competition from row flags/priorities, message/reply counts,
+  repeated status badges and the standalone linked-request card; existing
+  action flows remain reachable in detail or secondary sections.
+- Verification: full Playwright rendered/a11y matrix `88/88`, geometry audit
+  `7/7`, typecheck/build pass, lint `0` errors with 5 existing warnings, and
+  authenticated CUA list/detail/search/filter/reply smoke at `1280×720` with
+  no horizontal overflow. Frontend `5173` and backend `8000` are running.
 - Backend, database, API contracts and unrelated working-tree edits were not
-  changed. The canonical stale metadata route remains outside this UI-only
-  task.
+  changed.
 
-Detailed evidence: `ai/reports/TASK-SUPPLYDESK-UI-MODERNIZATION-20260904-report.md`.
+Detailed evidence: `ai/reports/TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904-report.md`.
+
+## Historical: TASK-SUPPLYDESK-UI-MODERNIZATION-20260904
+
+The first modernization added the local Button, StatusBadge/Count and
+TextField foundations. It remains complete and is preserved in its detailed
+report; the deep visual redesign above is the current presentation source of
+truth.
 
 ## Historical: TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904
 

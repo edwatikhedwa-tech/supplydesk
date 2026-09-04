@@ -2,6 +2,36 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-04 — TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904
+
+State change: created the active task lock after revalidating the canonical
+workspace, branch `integration/current-architecture-governance-20260903`,
+HEAD `d7b0e39`, and unrelated enrichment/runtime working-tree changes.
+Read the frontend redesign skill and its audit, responsive, transformation and
+quality references. Captured the authenticated BEFORE `/messages` list and
+selected `ООО "ШАЛЕ"` detail at `1280×720` in CUA before editing.
+
+State change: kept the existing layout, routes, components and behaviors, but
+changed the visual composition: request-first navigator with local search,
+flat rows, quiet unmatched preview, compact conversation header, timeline
+message feed and sticky primary next-step footer. Removed visual noise from
+the main composition without creating UI primitives or changing technical
+component architecture.
+
+Evidence: authenticated CUA AFTER list/detail at the same `1280×720` scenario;
+search, filter, selection and reply-dialog smoke passed; live geometry reported
+`scrollWidth=clientWidth=1280` with no horizontal overflow. Full Playwright
+visual/a11y matrix passed `88/88`; matched-thread target passed `8/8`; the
+after fixture screenshots cover desktop/tablet/mobile, including desktop-user
+and mobile-small. HTTP smoke returned frontend `200`, backend `200`,
+`/api/auth/me` `200`, and protected correspondence without auth `401`.
+
+Limit: CUA provided the before image inline but no persisted local PNG path;
+no approved reference image was supplied. Lighthouse was not run because the
+available frontend quality toolchain did not expose a configured Lighthouse
+command. Backend, database, API contracts and unrelated working-tree edits
+were not changed.
+
 ## 2026-09-04 — TASK-SUPPLYDESK-UI-MODERNIZATION-20260904
 
 State change: created the UI modernization task lock after read-only discovery

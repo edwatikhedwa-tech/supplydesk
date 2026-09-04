@@ -13,6 +13,29 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-018 — Conversation-first visual hierarchy for `/messages`
+
+- Decision ID: `DECISION-018`
+- Date: `2026-09-04`
+- Status: `ACTIVE`
+- Context: The first `/messages` modernization introduced consistent UI
+  primitives, but the screen still carried the visual weight of a legacy CRM:
+  requests, messages, statuses, counters and row actions competed equally.
+- Decision: Treat the request-linked conversation as the primary product
+  object. Keep requests in a left navigator with search, filters and compact
+  activity rows; keep supplier, reply state and related request in one compact
+  conversation header; render messages as a timeline; reserve the sticky
+  footer for one main next step, `Ответить поставщику`. Keep unmatched mail,
+  outbox, metadata and delivery recovery as secondary but reachable flows.
+- Reason: This changes the user's visual path from scanning a mailbox to
+  continuing one procurement conversation, while preserving existing routes,
+  semantics and recovery actions. It is a presentation decision, not a new
+  data or component architecture.
+- Consequences: counts, row metadata controls and repeated statuses no longer
+  dominate the list; the linked request is a compact context relationship;
+  the visible primary action is stable at the bottom of the conversation.
+- Related task: `TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904`.
+
 ## DECISION-017 — Procurement workspace layout and user-scoped thread metadata
 
 - Decision ID: `DECISION-017`

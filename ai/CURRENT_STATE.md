@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: 2c5682d
+based_on_commit: d7b0e39
 ---
 
 # Current State
@@ -15,19 +15,31 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-04` — `TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904`
+completed a second, intentionally visual-only pass over `/messages`. The
+request is now the dominant object in the left navigator, while the center is
+a conversation workspace with one compact context line, a message timeline,
+and a sticky `Ответить поставщику` next step. Global search moved into the
+request navigator; per-row flags, priorities, counts, repeated status badges,
+and the large linked-request card were removed from the main composition.
+Existing reply, linking, metadata and delivery-recovery behavior remains
+reachable. No new UI primitives, technical component-unification pass,
+backend, database, API or business-logic changes were made. Final rendered
+verification is green: typecheck, build, lint (0 errors, 5 existing warnings),
+live CUA smoke at 1280×720, geometry audit `7/7`, and the full Playwright
+visual/a11y matrix `88/88` across desktop/tablet/mobile. The before screenshot
+was captured in the authenticated CUA session at the same desktop size but is
+not persisted as a local PNG; no approved reference image was supplied, so
+artifact comparison is `PARTIAL`. Local frontend and canonical backend remain
+running on ports `5173` and `8000`.
+
 `2026-09-04` — `TASK-SUPPLYDESK-UI-MODERNIZATION-20260904` completed the
 frontend-only modernization of `/messages` and added a local UI foundation.
 React/Vite/Tailwind/Lucide remain unchanged; no shadcn/Radix dependency was
 introduced. Shared Button, StatusBadge/Count and TextField primitives now give
-the mail workspace one action/status/input language. The `/messages` screen
-uses a calm request-first hierarchy, quiet counters, semantic statuses,
-separated unmatched/queue flows, and one obvious reply action. Final rendered
-verification is green: typecheck, build, live CUA smoke at 1280×720, and the
-full Playwright visual/a11y matrix `88/88` across desktop/tablet/mobile. The
-owner-facing before screenshot remains inline-only and no approved reference
-image was supplied, so comparison/reference match is `PARTIAL`. Canonical
-backend state was not changed; its previously observed stale metadata route
-remains outside this UI-only task.
+the mail workspace one action/status/input language. The prior rendered
+verification was `88/88`; the deeper visual pass above is the current source
+of truth for `/messages` presentation. Canonical backend state was not changed.
 
 `2026-09-04` — Dellin registration was approved; the owner shared the real
 `DELLIN_API_KEY` and it was added to the local (gitignored) `.env`. A live

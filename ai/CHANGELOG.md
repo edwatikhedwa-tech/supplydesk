@@ -3,6 +3,27 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-04 — MESSAGES DEEP VISUAL REDESIGN
+
+- `TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904`: made `/messages`
+  visibly request-first and conversation-led without introducing primitives,
+  changing component architecture, or touching backend/data behavior.
+- Moved search into the left request navigator; flattened request rows and
+  unmatched previews; removed per-row flags/priorities, message/reply counts,
+  repeated status badges and the large standalone linked-request card.
+- Reworked the detail composition into a compact supplier/context header, a
+  message timeline and one sticky `Ответить поставщику` next step. Existing
+  reply, manual-link, metadata and delivery-recovery actions remain reachable.
+- Verified: full Playwright visual/a11y matrix `88/88`, matched-thread target
+  `8/8`, typecheck, build, live CUA search/filter/select/reply smoke at
+  `1280×720`, geometry audit `7/7`, and HTTP smoke (`5173` root `200`, `8000`
+  root `200`, `/api/auth/me` `200`, protected correspondence without auth
+  `401`). Lint has 0 errors and 5 pre-existing warnings.
+- Before/after desktop states were captured in the same authenticated browser
+  scenario; the before image is inline-only and no approved reference image
+  was supplied, so local artifact comparison is `PARTIAL`. Backend/data and
+  unrelated working-tree edits were not changed.
+
 ## 2026-09-04 — SUPPLYDESK UI MODERNIZATION
 
 - `TASK-SUPPLYDESK-UI-MODERNIZATION-20260904`: audited the frontend stack and

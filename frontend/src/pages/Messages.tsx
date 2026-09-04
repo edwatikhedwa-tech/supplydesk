@@ -10,7 +10,6 @@ import { Composer, type MailComposerContext } from '@/components/mail/Composer';
 import { EmailRenderer } from '@/components/mail/EmailRenderer';
 import { InboxReplyComposer } from '@/components/mail/InboxReplyComposer';
 import { Button } from '@/components/ui/Button';
-import { TextField } from '@/components/ui/TextField';
 import type { InboxMessage, InboxSuggestion, MailMessage, ManualLinkRequestOption, ThreadSummary } from '@/lib/types';
 
 type Mode = 'requests' | 'unmatched' | 'outbox';
@@ -172,7 +171,7 @@ export function Messages() {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-1 flex-col overflow-hidden bg-ink-50 lg:h-screen">
       <header className="shrink-0 border-b border-ink-200 bg-white">
-        <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="px-4 py-4 sm:px-6">
           <div className="min-w-0">
             <p className="text-2xs font-bold uppercase tracking-[0.16em] text-accent-700">Рабочее пространство закупок</p>
             <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -180,18 +179,6 @@ export function Messages() {
               <p className="text-xs font-medium text-ink-500">Заявка <span aria-hidden="true">→</span> поставщик <span aria-hidden="true">→</span> переписка</p>
             </div>
           </div>
-          {mode !== 'unmatched' && (
-            <TextField
-              id="messages-search"
-              label="Поиск по поставщику, заявке, теме или адресу"
-              type="search"
-              value={navigatorSearch}
-              onChange={(event) => setNavigatorSearch(event.target.value)}
-              placeholder="Поставщик, заявка, тема или email"
-              icon={Search}
-              className="w-full lg:max-w-[430px]"
-            />
-          )}
         </div>
         <nav className="flex items-center gap-5 overflow-x-auto px-4 sm:px-6" aria-label="Разделы сообщений">
           {([
@@ -233,9 +220,9 @@ export function Messages() {
               onSelectThread={setSelectedThread}
               refreshKey={refreshKey}
               searchInput={navigatorSearch}
+              onSearchChange={setNavigatorSearch}
               onOpenUnmatched={openUnmatched}
               onDropUnmatched={handleDropUnmatched}
-              onMetadataChange={handleMetadataChange}
             />
             {selectedThread ? (
               <ThreadDetail
@@ -258,7 +245,7 @@ export function Messages() {
               onSelectThread={setSelectedThread}
               refreshKey={refreshKey}
               searchInput={navigatorSearch}
-              onMetadataChange={handleMetadataChange}
+              onSearchChange={setNavigatorSearch}
             />
             {selectedThread ? (
               <ThreadDetail

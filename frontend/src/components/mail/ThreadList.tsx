@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState, type DragEvent } from 'react';
-import { ChevronDown, ChevronRight, Clock3, Mail } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock3, Mail, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { cn, displayCorrespondenceSupplierName, formatRelativeDate, pluralize } from '@/lib/utils';
+import { cn, displayCorrespondenceSupplierName, formatRelativeDate } from '@/lib/utils';
 import type { ThreadSummary } from '@/lib/types';
 import { getThreadDisplayStatus, isAwaitingResponse, isPrimaryCorrespondence, needsThreadAttention } from '@/components/mail/threadStatus';
-import { ThreadMetadataControls } from '@/components/mail/ThreadMetadataControls';
 import { UnmatchedPreview } from '@/components/mail/UnmatchedPreview';
 import { Button } from '@/components/ui/Button';
-import { Count, StatusBadge } from '@/components/ui/StatusBadge';
+import { Count } from '@/components/ui/StatusBadge';
+import { TextField } from '@/components/ui/TextField';
 
 /** Переписка сгруппирована по заявке, а не сплошным списком.
  *
@@ -66,14 +66,14 @@ interface ThreadListProps {
   onSelectThread: (thread: ThreadSummary) => void;
   refreshKey: number;
   searchInput: string;
+  onSearchChange: (value: string) => void;
   onOpenUnmatched: (messageId?: number) => void;
   onDropUnmatched: (messageId: number, requestId: number) => Promise<void>;
-  onMetadataChange: (thread: ThreadSummary, patch: { important?: boolean; priority?: 1 | 2 | 3 | null }) => Promise<void>;
 }
 
 type ThreadFilter = 'primary' | 'awaiting-response';
 
-export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey, searchInput, onOpenUnmatched, onDropUnmatched, onMetadataChange }: ThreadListProps) {
+export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey, searchInput, onSearchChange, onOpenUnmatched, onDropUnmatched }: ThreadListProps) {
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -170,15 +170,28 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey, sear
 
   return (
     <div className={cn(
-      'w-full shrink-0 border-r border-ink-200 bg-white flex-col xl:w-[400px] 2xl:w-[420px] xl:flex',
+      'w-full shrink-0 border-r border-ink-200 bg-white flex-col xl:w-[360px] 2xl:w-[380px] xl:flex',
       selectedThreadKey ? 'hidden' : 'flex',
     )}>
-      <div className="shrink-0 border-b border-ink-100 bg-ink-50/70 px-4 pt-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-ink-900">Переписки</h2>
-          <Count value={primaryThreads.length} label="Количество переписок" />
+      <div className="shrink-0 border-b border-ink-200 bg-white px-4 pb-3 pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-2xs font-bold uppercase tracking-[0.16em] text-accent-700">Рабочий список</p>
+            <h2 className="mt-1 text-base font-bold tracking-tight text-ink-900">Мои заявки</h2>
+          </div>
+          <Count value={primaryThreads.length} label="Количество заявок с перепиской" />
         </div>
-        <div className="mt-3 flex items-center gap-4 border-b border-ink-200" role="group" aria-label="Фильтр по статусу">
+        <TextField
+          id="messages-search"
+          label="Поиск по поставщику, заявке, теме или адресу"
+          type="search"
+          value={searchInput}
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder="Поиск по заявке или поставщику"
+          icon={Search}
+          className="mt-3"
+        />
+        <div className="mt-3 flex items-center gap-4" role="group" aria-label="Фильтр по статусу">
           <Button
             size="sm"
             variant="ghost"
@@ -276,24 +289,14 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey, sear
                       <span className="truncate text-sm font-semibold text-ink-800" title={group.requestName}>
                         {group.requestName}
                       </span>
-                      <span className="shrink-0 text-xs text-ink-600">
-                        {group.threads.length}
-                      </span>
-                      {group.unreadCount > 0 && (
-                        <span
-                          title={`${group.unreadCount} ${pluralize(group.unreadCount, 'непрочитанный ответ', 'непрочитанных ответа', 'непрочитанных ответов')}`}
-                          className="shrink-0 rounded-full bg-emerald-50 px-1.5 py-px text-2xs font-semibold text-emerald-700 ring-1 ring-emerald-200/70"
-                        >
-                          {group.unreadCount}
-                        </span>
-                      )}
+                      <span className="shrink-0 text-2xs font-medium text-ink-500">{formatRelativeDate(group.lastMessageAt)}</span>
                     </button>
                     <Link
                       to={`/requests/${group.requestId}`}
                       title="Открыть заявку"
                       className="inline-flex min-h-10 shrink-0 items-center rounded px-1.5 py-0.5 text-xs font-medium text-accent-600 hover:bg-accent-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
                     >
-                      Заявка
+                      Открыть
                     </Link>
                     {draggedInboxId != null && dropTargetRequestId === group.requestId && <span className="hidden shrink-0 text-2xs font-semibold text-accent-700 sm:inline">Отпустите для привязки</span>}
                   </div>
@@ -303,56 +306,43 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey, sear
                       ? `manual:${thread.manual_inbox_id}`
                       : `${thread.request_id}:${thread.supplier_id}`;
                     const isSelected = selectedThreadKey === key;
-                    const hasReplies = thread.replies_count > 0;
                     // Подсвечиваем непрочитанное, а не «когда-либо отвечал»:
                     // иначе отметка не гаснет после открытия письма.
                     const isUnread = thread.unread_count > 0;
                     const status = getThreadDisplayStatus(thread);
                     const supplierLabel = displayCorrespondenceSupplierName(thread.supplier_name) || 'Поставщик не определён';
                     return (
-                      <div key={key} className={cn('flex items-start', isSelected ? 'bg-accent-50/50' : 'hover:bg-ink-50')}>
-                        {thread.manual_inbox_id == null && (
-                          <ThreadMetadataControls
-                            important={thread.is_important}
-                            priority={thread.priority}
-                            onChange={(patch) => onMetadataChange(thread, patch)}
-                          />
-                        )}
+                      <div key={key} className={cn('border-b border-ink-100', isSelected ? 'bg-accent-50/60' : 'hover:bg-ink-50')}>
                         <button
                           type="button"
                           onClick={() => onSelectThread(thread)}
                           aria-label={`${supplierLabel}: ${thread.subject}. ${status.label}`}
                           className={cn(
-                            'min-w-0 flex-1 border-l-2 py-2.5 pl-7 pr-1 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-400',
+                            'min-w-0 w-full border-l-2 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-400',
                             isSelected ? 'border-accent-500' : 'border-transparent'
                           )}
                         >
-                          <div className="flex items-start gap-2">
-                          <span
-                            title={isUnread ? 'Непрочитанный ответ поставщика' : undefined}
-                            className={cn('mt-1.5 block h-2 w-2 shrink-0 rounded-full', isUnread ? 'bg-emerald-500' : 'bg-transparent')}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="mb-0.5 flex items-center justify-between gap-2">
-                              <span className={cn('min-w-0 truncate text-sm', isUnread ? 'font-semibold text-ink-800' : 'font-medium text-ink-700')} title={thread.supplier_name || undefined}>
-                                {supplierLabel}
-                              </span>
-                              <span className="shrink-0 text-xs text-ink-600">{formatRelativeDate(thread.last_message_at)}</span>
+                          <div className="flex items-start gap-2.5">
+                            <span
+                              title={isUnread ? 'Непрочитанный ответ поставщика' : undefined}
+                              className={cn('mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full', isUnread ? 'bg-emerald-500' : 'bg-ink-200')}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <span className={cn('min-w-0 truncate text-sm', isUnread ? 'font-semibold text-ink-900' : 'font-medium text-ink-700')} title={thread.supplier_name || undefined}>
+                                  {supplierLabel}
+                                </span>
+                                <span className="shrink-0 text-2xs text-ink-500">{formatRelativeDate(thread.last_message_at)}</span>
+                              </div>
+                              <p className="mt-1 truncate text-xs text-ink-500">
+                                {thread.subject}
+                                {thread.manual_inbox_id != null && <span className="ml-1.5 text-accent-600">· вручную</span>}
+                              </p>
+                              <div className="mt-2 flex items-center gap-1.5 text-2xs font-medium text-ink-500">
+                                <span aria-hidden="true" className={cn('h-1.5 w-1.5 rounded-full', status.tone === 'success' ? 'bg-emerald-500' : status.tone === 'warning' ? 'bg-amber-500' : status.tone === 'danger' ? 'bg-rose-500' : 'bg-ink-300')} />
+                                <span title={status.title}>{status.label}</span>
+                              </div>
                             </div>
-                            <p className="truncate text-xs text-ink-500">
-                              {thread.subject}
-                              {thread.manual_inbox_id != null && <span className="ml-1.5 text-accent-600">· вручную</span>}
-                            </p>
-                            <div className="mt-1.5 flex min-w-0 items-center gap-2">
-                              {!isAwaitingResponse(thread) && (
-                                <StatusBadge label={status.label} tone={status.tone} title={status.title} />
-                              )}
-                              <span className="min-w-0 flex-1 truncate text-xs text-ink-600">
-                                {thread.messages_count} {pluralize(thread.messages_count, 'письмо', 'письма', 'писем')}
-                                {hasReplies && <> · {thread.replies_count} {pluralize(thread.replies_count, 'ответ', 'ответа', 'ответов')}</>}
-                              </span>
-                            </div>
-                          </div>
                           </div>
                         </button>
                       </div>

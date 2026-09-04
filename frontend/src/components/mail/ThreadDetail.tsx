@@ -218,75 +218,63 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
   const threadStatus = getThreadDisplayStatus(thread);
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-ink-50/50">
-      <div className="shrink-0 border-b border-ink-200 bg-white px-4 py-3.5 sm:px-5">
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-ink-50/60">
+      <div className="shrink-0 border-b border-ink-200 bg-white px-4 py-3.5 sm:px-6">
         <div className="flex items-start gap-3">
           <button aria-label="Вернуться к списку переписок" onClick={onBack} className="-ml-1.5 flex min-h-10 min-w-10 items-center justify-center rounded-lg p-1.5 text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900">
             <ArrowLeft size={18} />
           </button>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="truncate text-base font-bold text-ink-900" title={thread.supplier_name || undefined}>{supplierLabel}</h2>
+            <p className="text-2xs font-bold uppercase tracking-[0.16em] text-accent-700">Переписка</p>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+              <h2 className="truncate text-lg font-bold tracking-tight text-ink-900" title={thread.supplier_name || undefined}>{supplierLabel}</h2>
               <StatusBadge label={threadStatus.label} tone={threadStatus.tone} title={threadStatus.title} dot />
             </div>
-            <p className="mt-0.5 truncate text-sm text-ink-600">{thread.subject || 'Без темы'}</p>
-            <p className="mt-0.5 truncate text-xs text-ink-500">{thread.supplier_email || 'Адрес поставщика не указан'} · заявка №{thread.request_id}</p>
+            <p className="mt-1 truncate text-sm text-ink-600">{thread.subject || 'Без темы'}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-ink-500">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-ink-700">
+                <LinkIcon size={13} aria-hidden="true" />
+                <span className="sr-only">Связано с заявкой:</span>
+                <span className="max-w-[30rem] truncate" title={thread.request_name}>{thread.request_name}</span>
+              </span>
+              <span aria-hidden="true" className="text-ink-300">·</span>
+              <span>{thread.supplier_email || 'Адрес поставщика не указан'}</span>
+              <span aria-hidden="true" className="text-ink-300">·</span>
+              <span>заявка №{thread.request_id}</span>
+              {onOpenRequest && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => onOpenRequest(thread.request_id)}
+                  className="min-h-8 px-1 text-xs"
+                >
+                  Открыть заявку
+                  <ExternalLink size={13} />
+                </Button>
+              )}
+              {thread.manual_inbox_id != null && <span className="font-medium text-accent-600">Связано вручную</span>}
+              {thread.manual_inbox_id != null && onUnlinkManual && (
+                <button
+                  type="button"
+                  onClick={() => void unlinkManual()}
+                  disabled={unlinkBusy}
+                  aria-busy={unlinkBusy}
+                  className="min-h-8 rounded-lg px-2 text-xs font-semibold text-ink-600 hover:bg-ink-50 hover:text-ink-900 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {unlinkBusy ? 'Отвязываем…' : 'Отвязать'}
+                </button>
+              )}
+            </div>
+            {unlinkError && <p role="alert" className="mt-1 text-xs text-rose-700">{unlinkError}</p>}
           </div>
           {onMetadataChange && thread.manual_inbox_id == null && (
-            <ThreadMetadataControls important={thread.is_important} priority={thread.priority} compact={false} onChange={(patch) => onMetadataChange(thread, patch)} />
+            <ThreadMetadataControls important={thread.is_important} priority={thread.priority} onChange={(patch) => onMetadataChange(thread, patch)} />
           )}
-          {canReply ? (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => onReply?.(thread, lastMessage)}
-            >
-              <Reply size={15} />
-              Ответить
-            </Button>
-          ) : lastMessagePending ? (
-            <StatusBadge label="Письмо отправляется" tone="warning" title="Ответ станет доступен после завершения текущей отправки" dot />
-          ) : null}
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="w-full space-y-4 px-4 py-5 sm:px-6 lg:px-6 xl:px-8 2xl:px-10">
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-ink-200 bg-white px-3.5 py-3">
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-ink-50 px-2 py-1 text-2xs font-semibold uppercase tracking-wide text-ink-600">
-              <LinkIcon size={13} aria-hidden="true" /> Связано с заявкой
-            </span>
-            <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ink-900" title={thread.request_name}>{thread.request_name}</p>
-            <span className="max-w-full truncate text-xs text-ink-500">{supplierLabel}</span>
-            {thread.manual_inbox_id != null && (
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xs font-medium text-accent-600">вручную</p>
-                {onUnlinkManual && (
-                  <button
-                    type="button"
-                    onClick={() => void unlinkManual()}
-                    disabled={unlinkBusy}
-                    aria-busy={unlinkBusy}
-                    className="inline-flex min-h-9 items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ink-600 ring-1 ring-ink-200 transition-colors hover:bg-ink-50 hover:text-ink-900 disabled:cursor-wait disabled:opacity-60"
-                  >
-                    {unlinkBusy ? 'Отвязываем…' : 'Отвязать'}
-                  </button>
-                )}
-              </div>
-            )}
-            {unlinkError && <p role="alert" className="basis-full text-xs text-rose-700">{unlinkError}</p>}
-            {onOpenRequest && (
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => onOpenRequest(thread.request_id)}
-                className="min-h-9 shrink-0 px-2"
-              >
-                Открыть заявку
-                <ExternalLink size={13} />
-              </Button>
-            )}
-          </div>
+        <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 lg:px-10">
 
           {messages.length === 0 && <p className="text-sm text-ink-400 py-8 text-center">В этой переписке пока нет сообщений</p>}
 
@@ -297,11 +285,20 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
             const initials = getInitials(fromName);
 
             return (
-              <div key={msg.id} className="overflow-hidden rounded-xl border border-ink-200 bg-white">
-                <button onClick={() => toggleCollapse(msg.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-ink-50 transition-colors">
+              <div key={msg.id} className="relative pb-6 last:pb-0 sm:pl-12">
+                <div aria-hidden="true" className="absolute bottom-0 left-4 top-5 hidden w-px bg-ink-200 sm:block" />
+                <div
+                  className={cn(
+                    'absolute left-0 top-0 hidden h-9 w-9 items-center justify-center rounded-full text-xs font-semibold sm:flex',
+                    msg.direction === 'outbound' ? 'bg-ink-200 text-ink-600' : avatarColor,
+                  )}
+                >
+                  {initials}
+                </div>
+                <button onClick={() => toggleCollapse(msg.id)} className="group flex w-full items-center gap-3 rounded-xl px-1 py-1.5 text-left transition-colors hover:bg-white/70">
                   <div
                     className={cn(
-                      'w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0',
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold sm:hidden',
                       msg.direction === 'outbound' ? 'bg-ink-200 text-ink-600' : avatarColor
                     )}
                   >
@@ -326,8 +323,7 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
                 </button>
 
                 {!isCollapsed && (
-                  <div className="px-4 pb-5 sm:px-6">
-                    <div className="border-t border-ink-100 pt-4">
+                  <div className="mt-2 rounded-xl border border-ink-200/80 bg-white px-4 pb-5 pt-4 sm:px-6">
                       <EmailRenderer html={msg.body_html} text={msg.body_text} hasRemoteImages={msg.has_remote_images} />
                       {msg.error && <p className="mt-2 text-xs text-rose-600">Ошибка отправки: {msg.error}</p>}
                       {msg.direction === 'outbound' && msg.status === 'delivery_unknown' && (
@@ -391,7 +387,6 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
                           </div>
                         </div>
                       )}
-                    </div>
                   </div>
                 )}
               </div>
@@ -400,6 +395,31 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
 
         </div>
       </div>
+      {canReply ? (
+        <div className="shrink-0 border-t border-ink-200 bg-white/95 px-4 py-3.5 backdrop-blur-sm sm:px-8">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-2xs font-bold uppercase tracking-[0.16em] text-accent-700">Следующий шаг</p>
+              <p className="mt-0.5 truncate text-xs text-ink-500">Продолжите разговор с поставщиком</p>
+            </div>
+            <Button
+              variant="primary"
+              size="md"
+              aria-label="Ответить"
+              title="Ответить поставщику"
+              onClick={() => onReply?.(thread, lastMessage)}
+              className="shrink-0"
+            >
+              <Reply size={16} />
+              Ответить поставщику
+            </Button>
+          </div>
+        </div>
+      ) : lastMessagePending ? (
+        <div className="flex shrink-0 items-center justify-end border-t border-ink-200 bg-white px-4 py-3.5 sm:px-8">
+          <StatusBadge label="Письмо отправляется" tone="warning" title="Ответ станет доступен после завершения текущей отправки" dot />
+        </div>
+      ) : null}
     </div>
   );
 }
