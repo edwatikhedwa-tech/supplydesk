@@ -59,8 +59,8 @@ semantics не изменялись.
 | Before — список | Снимок показан inline в CUA до изменений: `Переписки`, большая секция `БЕЗ ПРИВЯЗКИ`, карточки, counters и повторяющиеся row controls. Отдельного PNG-пути нет. | `PARTIAL` |
 | Before — detail | Снимок показан inline в CUA до изменений: header reply button, отдельная большая карточка связи с заявкой, полноразмерные message cards. Отдельного PNG-пути нет. | `PARTIAL` |
 | After — live list/detail | Снимки показаны inline в CUA после изменений при том же размере: `Мои заявки`, local search, flat rows, compact context, timeline, sticky CTA. | `PASS` |
-| After — desktop fixture | [`desktop-user matched reader`](../../frontend/test-results/frontend-audit-matched-cor-24237-ide-email-inside-the-reader-desktop-user/desktop-user-matched-html-reader.png) | `PASS` |
-| After — mobile fixture | [`mobile-small matched reader`](../../frontend/test-results/frontend-audit-matched-cor-24237-ide-email-inside-the-reader-mobile-small/mobile-small-matched-html-reader.png) | `PASS` |
+| After — desktop fixture | Снимок был создан Playwright во время проверки, но test-results не являются постоянным артефактом checkout и отдельный PNG сейчас не сохранён. | `NOT RETAINED` |
+| After — mobile fixture | Снимок был создан Playwright во время проверки, но test-results не являются постоянным артефактом checkout и отдельный PNG сейчас не сохранён. | `NOT RETAINED` |
 
 ## UX решения
 

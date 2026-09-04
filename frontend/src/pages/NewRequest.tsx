@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AlertTriangle, ChevronRight, Plus, Save, Search, X } from 'lucide-react';
 import { ApiError, api } from '@/lib/api';
+import { PageFrame, PageIntro } from '@/components/PageFrame';
+import { Button } from '@/components/ui';
 
 interface DraftItem { id: string; name: string; }
 
@@ -81,20 +83,17 @@ export function NewRequest() {
   };
 
   return (
-    <div className="min-h-screen px-6 py-7 lg:px-10 lg:py-10 animate-fade-in">
-      <div className="mx-auto max-w-[760px] space-y-6">
+    <PageFrame width="narrow">
+      <div className="space-y-6">
         <nav aria-label="Хлебные крошки" className="flex items-center gap-1.5 text-xs text-ink-500">
           <Link to="/requests" className="transition-colors hover:text-ink-700">Мои заявки</Link>
           <ChevronRight className="h-3 w-3 text-ink-300" />
           <b className="text-ink-700">Новая заявка</b>
         </nav>
 
-        <div>
-          <h1 className="text-page-title font-bold">Новая заявка</h1>
-          <p className="mt-1 text-sm text-ink-500">Опишите, что нужно найти — остальное сделает поиск поставщиков.</p>
-        </div>
+        <PageIntro eyebrow="Новая закупка" title="Новая заявка" description="Опишите, что нужно найти — остальное сделает поиск поставщиков." />
 
-        <div className="space-y-6 rounded-2xl border border-ink-200/80 bg-white p-6 shadow-soft animate-slide-up">
+        <div className="sd-card space-y-6 p-6 animate-slide-up">
           <div>
             <label htmlFor="request-title" className="mb-1.5 block text-xs font-bold text-ink-700">
               Название заявки <span className="text-rose-500">*</span>
@@ -222,24 +221,24 @@ export function NewRequest() {
         )}
         {submitError && <p role="alert" className="text-right text-xs font-medium text-rose-600">{submitError}</p>}
         <div className="flex flex-col-reverse justify-end gap-3 sm:flex-row">
-          <button
+          <Button
             type="button"
             onClick={() => { void handleSubmit('draft'); }}
             disabled={submitting}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-ink-200 bg-white px-5 py-3 text-sm font-bold text-ink-700 shadow-soft transition hover:border-ink-300 hover:bg-ink-50 disabled:opacity-50"
+            variant="secondary"
           >
             <Save size={16} />Сохранить черновик
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => { void handleSubmit('searching'); }}
             disabled={submitting}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent-600 px-5 py-3 text-sm font-bold text-white shadow-panel transition hover:-translate-y-0.5 hover:bg-accent-700 hover:shadow-float disabled:opacity-50"
+            variant="primary"
           >
             <Search size={16} />Начать поиск поставщиков
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </PageFrame>
   );
 }

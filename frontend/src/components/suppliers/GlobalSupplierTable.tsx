@@ -177,7 +177,7 @@ export function GlobalSupplierTable({
   const someSelected = suppliers.some((s) => selected.has(s.id));
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-soft">
+    <div className="sd-table-shell">
       <div className="hidden overflow-x-auto 2xl:block">
         <div style={{ minWidth }}>
           <div

@@ -1,14 +1,32 @@
 :root {
   --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'SF Mono', 'Cascadia Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --sd-canvas: #f8fafc;
+  --sd-canvas: #f7f9fc;
   --sd-surface: #ffffff;
+  --sd-surface-subtle: #f8fafc;
+  --sd-surface-elevated: #ffffff;
   --sd-text: #0f172a;
+  --sd-text-secondary: #475569;
   --sd-muted: #64748b;
   --sd-border: #e2e8f0;
+  --sd-border-subtle: #eef2f7;
   --sd-action: #2563eb;
-  --sd-radius-control: 0.625rem;
-  --sd-radius-surface: 0.75rem;
+  --sd-action-strong: #1d4ed8;
+  --sd-success: #059669;
+  --sd-warning: #b45309;
+  --sd-danger: #e11d48;
+  --sd-info: #2563eb;
+  --sd-radius-sm: 6px;
+  --sd-radius-md: 10px;
+  --sd-radius-lg: 14px;
+  --sd-space-1: 4px;
+  --sd-space-2: 8px;
+  --sd-space-3: 12px;
+  --sd-space-4: 16px;
+  --sd-space-6: 24px;
+  --sd-space-8: 32px;
+  --sd-control-height: 40px;
+  --sd-shadow-popover: 0 12px 32px -8px rgba(15, 23, 42, 0.12), 0 4px 12px -4px rgba(15, 23, 42, 0.06);
 }
 
 @tailwind base;
@@ -28,6 +46,7 @@ body {
   font-family: var(--font-ui);
   font-size: 0.875rem;
   line-height: 1.4286;
+  min-width: 320px;
 }
 
 button,
@@ -40,10 +59,108 @@ select {
 .dashboard-shell { font-family: inherit; }
 .campaign-page .text-ink-400 { color: #475569; }
 .campaign-page .text-amber-900\/70 { color: #451a03; }
+@layer components {
+  .sd-page {
+    min-height: 100%;
+    padding: var(--sd-space-8) 40px 48px;
+    animation: sd-fade-in 180ms ease-out;
+  }
+
+  .sd-page-inner {
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  .sd-page-inner-content { max-width: 1180px; }
+  .sd-page-inner-narrow { max-width: 760px; }
+
+  .sd-page-intro {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--sd-space-6);
+    margin-bottom: var(--sd-space-6);
+  }
+
+  .sd-eyebrow {
+    margin-bottom: var(--sd-space-2);
+    color: var(--sd-action);
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    line-height: 1rem;
+    text-transform: uppercase;
+  }
+
+  .sd-page-title {
+    color: var(--sd-text);
+    font-size: clamp(1.5rem, 1.35rem + 0.45vw, 1.75rem);
+    font-weight: 750;
+    letter-spacing: -0.022em;
+    line-height: 1.15;
+  }
+
+  .sd-page-description {
+    max-width: 58rem;
+    margin-top: var(--sd-space-2);
+    color: var(--sd-text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .sd-page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sd-space-2); }
+
+  .sd-card,
+  .sd-table-shell {
+    overflow: hidden;
+    border: 1px solid var(--sd-border);
+    border-radius: var(--sd-radius-lg);
+    background: var(--sd-surface);
+  }
+
+  .sd-card-interactive { transition: border-color 160ms ease, background-color 160ms ease; }
+  .sd-card-interactive:hover { border-color: #cbd5e1; background: #fcfdff; }
+
+  .sd-table-shell table th:last-child,
+  .sd-table-shell table td:last-child { padding-right: 24px; }
+
+  .sd-email-workspace { background: var(--sd-canvas); }
+
+  .sd-skeleton {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--sd-radius-sm);
+    background: #eef2f7;
+  }
+
+  .sd-skeleton::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+    animation: sd-shimmer 1.5s infinite;
+  }
+}
+
+@keyframes sd-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sd-shimmer { to { transform: translateX(100%); } }
+
+@media (max-width: 640px) {
+  .sd-page { padding: var(--sd-space-6) 16px 40px; }
+  .sd-page-intro { align-items: flex-start; flex-direction: column; gap: var(--sd-space-4); margin-bottom: var(--sd-space-6); }
+  .sd-page-actions { width: 100%; }
+  .sd-page-actions > * { flex: 1 1 auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 8px; border: 2px solid #f8fafc; }
 ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-.skeleton { position: relative; overflow: hidden; background-color: #f1f5f9; }
+.skeleton { position: relative; overflow: hidden; background-color: #eef2f7; }
 .skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent); animation: shimmer 1.5s infinite; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }

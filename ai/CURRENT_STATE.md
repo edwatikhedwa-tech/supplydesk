@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: 4b89cc8
+based_on_commit: 0dcecc9
 ---
 
 # Current State
@@ -14,6 +14,17 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-04` — `TASK-SUPPLYDESK-UI-FOUNDATION-V1-20260904` extended the
+frontend-only UI foundation beyond `/messages`: semantic CSS/Tailwind roles,
+canonical local controls and state primitives, a shared `PageFrame`, skip-link
+shell behavior, and consistent page/table/modal usage now cover the main
+dashboard, requests, suppliers, blacklist, settings and new-request surfaces.
+`EmailWorkspace` now owns the mail split-shell boundary, while
+`frontend/src/lib/uiContracts.ts` defines future Notes/AI rendering contracts
+without API, backend, database, auth or business-logic changes. Typecheck,
+lint, build and the full rendered Playwright/a11y matrix are the required
+verification gates; five lint warnings remain pre-existing.
 
 `2026-09-04` — `TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904` changed only
 the opened `/messages` conversation composition in `ThreadDetail.tsx`. Inbound

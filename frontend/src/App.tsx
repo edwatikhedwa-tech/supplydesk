@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { Layout } from '@/components/Layout';
 import { RequestPage } from '@/components/RequestPage';
+import { LoadingState } from '@/components/ui';
 
 const Dashboard = lazy(() => import('@/pages/Dashboard').then(({ Dashboard: component }) => ({ default: component })));
 const RequestsList = lazy(() => import('@/pages/RequestsList').then(({ RequestsList: component }) => ({ default: component })));
@@ -18,9 +19,7 @@ const CampaignPage = lazy(() => import('@/pages/CampaignPage').then(({ CampaignP
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
   if (status === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-ink-400">Загрузка…</div>
-    );
+    return <LoadingState label="Загрузка рабочего пространства…" className="min-h-screen" />;
   }
   if (status === 'anonymous') return <Navigate to="/login" replace />;
   return <>{children}</>;
@@ -28,7 +27,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-ink-400">Загрузка…</div>}>
+    <Suspense fallback={<LoadingState label="Загрузка страницы…" className="min-h-screen" />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route

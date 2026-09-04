@@ -129,7 +129,7 @@ export function SupplierTable({ suppliers, itemNames, totalPositions, selectedId
   const someSelected = eligibleIds.some((id) => selectedIds.has(id));
 
   return (
-    <div className="mx-4 overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-soft sm:mx-6 lg:mx-10">
+    <div className="sd-table-shell mx-4 sm:mx-6 lg:mx-10">
       {/* Таблица нужна только там, где все её столбцы видны одновременно.
           На узком ноутбуке карточки честнее, чем обрезанные справа факты и
           внутренняя горизонтальная прокрутка. */}

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowUpRight, ChevronDown, ClipboardList, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, ClipboardList, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError, api } from '@/lib/api';
 import { formatRelativeDate, pluralize } from '@/lib/utils';
+import { PageFrame, PageIntro } from '@/components/PageFrame';
+import { Button, ErrorState, Input, Select } from '@/components/ui';
 import type { RequestListItem, RequestStatus } from '@/lib/types';
 
 const REQUEST_STATUS_META: Record<RequestStatus, { label: string; className: string }> = {
@@ -123,8 +125,8 @@ function RequestCard({ request }: { request: RequestListItem }) {
 
 function RequestsLoading() {
   return (
-    <div role="status" className="min-h-screen px-6 py-7 lg:px-10 lg:py-10" aria-busy="true" aria-label="Загрузка заявок">
-      <div className="mx-auto max-w-[1600px] space-y-6">
+    <PageFrame role="status" aria-busy="true" aria-label="Загрузка заявок">
+      <div className="space-y-6">
         <div className="space-y-3">
           <div className="skeleton h-8 w-48 rounded-lg" />
           <div className="skeleton h-4 w-96 max-w-full rounded" />
@@ -136,30 +138,12 @@ function RequestsLoading() {
           </div>
         </div>
       </div>
-    </div>
+    </PageFrame>
   );
 }
 
 function RequestsError({ message, onRetry, retrying }: { message: string; onRetry: () => void; retrying: boolean }) {
-  return (
-    <div className="flex min-h-screen items-center justify-center px-6 py-10 lg:px-10">
-      <div role="alert" className="w-full max-w-md rounded-2xl border border-rose-200 bg-white p-7 text-center shadow-panel">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
-          <AlertTriangle size={22} />
-        </div>
-        <h1 className="mt-5 text-lg font-bold text-ink-900">Не удалось загрузить заявки</h1>
-        <p className="mt-2 text-sm leading-6 text-ink-500">{message}</p>
-        <button
-          type="button"
-          onClick={onRetry}
-          disabled={retrying}
-          className="mt-6 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent-600 px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-accent-700 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
-        >
-          {retrying ? 'Загружаем…' : 'Повторить загрузку'}
-        </button>
-      </div>
-    </div>
-  );
+  return <PageFrame><ErrorState title="Не удалось загрузить заявки" message={message} retryLabel="Повторить загрузку" onRetry={onRetry} retrying={retrying} /></PageFrame>;
 }
 
 export function RequestsList() {
@@ -229,24 +213,16 @@ export function RequestsList() {
   }
 
   return (
-    <div className="dashboard-shell min-h-screen px-6 py-7 lg:px-10 lg:py-10 animate-fade-in">
-      <div className="mx-auto max-w-[1600px] space-y-6">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <h1 className="text-page-title font-bold">Мои заявки</h1>
-            <p className="mt-1 text-sm text-ink-500">
-              {requests.length} {pluralize(requests.length, 'заявка', 'заявки', 'заявок')} · {counts.error} {pluralize(counts.error, 'ошибка', 'ошибки', 'ошибок')}
-            </p>
-          </div>
-          <button
-            onClick={() => navigate('/requests/new')}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent-600 px-5 py-3 text-sm font-bold text-white shadow-panel transition hover:-translate-y-0.5 hover:bg-accent-700 hover:shadow-float focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
-          >
-            <Plus size={18} />Новая заявка
-          </button>
-        </div>
+    <PageFrame className="dashboard-shell">
+      <div className="space-y-6">
+        <PageIntro
+          eyebrow="Рабочее пространство"
+          title="Мои заявки"
+          description={`${requests.length} ${pluralize(requests.length, 'заявка', 'заявки', 'заявок')} · ${counts.error} ${pluralize(counts.error, 'ошибка', 'ошибки', 'ошибок')}`}
+          actions={<Button onClick={() => navigate('/requests/new')} variant="primary"><Plus size={18} />Новая заявка</Button>}
+        />
 
-        <section className="overflow-hidden rounded-2xl border border-ink-200/80 bg-white shadow-soft" aria-label="Список заявок">
+        <section className="sd-table-shell" aria-label="Список заявок">
             <div className="flex flex-col gap-4 border-b border-ink-100 px-5 py-4 sm:px-6 xl:flex-row xl:items-center xl:justify-between xl:gap-6">
             <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Фильтр заявок">
               {FILTERS.map((item) => {
@@ -271,16 +247,16 @@ export function RequestsList() {
               })}
             </div>
 
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:items-center sm:justify-end">
+            <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center sm:justify-end">
               <div className="relative min-w-0 sm:w-64">
-                <label htmlFor="request-search" className="sr-only">Поиск заявок по названию или номеру</label>
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
-                <input
+                <Input
                   id="request-search"
+                  aria-label="Поиск заявок по названию или номеру"
                   value={search}
                   onChange={(event) => setToolbarParam('q', event.target.value)}
                   placeholder="Поиск по названию или №…"
-                  className="h-10 w-full rounded-lg border border-ink-200 bg-ink-50/60 pl-8 pr-8 text-xs text-ink-700 placeholder:text-ink-500 transition-all focus:border-accent-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-100"
+                  className="h-10 pl-8 pr-8 text-xs"
                 />
                 {search && (
                   <button
@@ -294,21 +270,12 @@ export function RequestsList() {
                 )}
               </div>
 
-              <label className="relative inline-flex h-10 min-w-[132px] items-center gap-1.5 rounded-lg border border-ink-200 bg-white pl-2.5 pr-7 text-xs font-medium text-ink-600 transition hover:border-ink-300 hover:text-ink-800 focus-within:border-accent-400 focus-within:ring-2 focus-within:ring-accent-100">
-                <SlidersHorizontal className="h-3.5 w-3.5 shrink-0 text-ink-400" />
-                <span className="sr-only">Сортировка заявок</span>
-                <select
-                  aria-label="Сортировка заявок"
-                  value={sort}
-                  onChange={(event) => setToolbarParam('sort', event.target.value)}
-                  className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent pl-8 pr-7 text-xs font-medium text-ink-600 outline-none"
-                >
+              <div className="flex min-w-0 items-center gap-1.5 sm:min-w-[132px]">
+                <SlidersHorizontal className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
+                <Select aria-label="Сортировка заявок" value={sort} onChange={(event) => setToolbarParam('sort', event.target.value)} className="text-xs font-medium">
                   {SORTS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
-                </select>
-                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
-                  <ChevronDown className="h-3 w-3 text-ink-400" />
-                </span>
-              </label>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -407,6 +374,6 @@ export function RequestsList() {
           )}
         </section>
       </div>
-    </div>
+    </PageFrame>
   );
 }

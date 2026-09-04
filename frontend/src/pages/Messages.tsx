@@ -6,6 +6,7 @@ import { cn, formatFullDate, formatRelativeDate } from '@/lib/utils';
 import { ThreadList } from '@/components/mail/ThreadList';
 import { OutboxList } from '@/components/mail/OutboxList';
 import { ThreadDetail } from '@/components/mail/ThreadDetail';
+import { EmailWorkspace } from '@/components/mail/EmailWorkspace';
 import { Composer, type MailComposerContext } from '@/components/mail/Composer';
 import { EmailRenderer } from '@/components/mail/EmailRenderer';
 import { InboxReplyComposer } from '@/components/mail/InboxReplyComposer';
@@ -209,7 +210,7 @@ export function Messages() {
         )}
       </header>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <EmailWorkspace>
         {mode === 'requests' ? (
           <>
             {/* Без key={refreshKey}: перезагрузку списка уже делает сам
@@ -263,7 +264,7 @@ export function Messages() {
         ) : (
           <UnmatchedInbox preselectId={wantedInboxId} preselectRequestId={params.get('request') ? Number(params.get('request')) : null} />
         )}
-      </div>
+      </EmailWorkspace>
 
       {composerCtx && <Composer context={composerCtx} onClose={() => setComposerCtx(null)} onSent={handleSent} />}
     </div>

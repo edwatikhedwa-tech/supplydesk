@@ -57,8 +57,26 @@ without adding shadcn/Radix or another dependency:
 - `Count`: quiet numeric metadata for list headers and tabs.
 - `TextField`: consistent search/input surface with label, focus and error hooks.
 
-The first implementation slice uses the primitives in `/messages`; other pages
-will be migrated only after owner confirmation.
+The current foundation uses these primitives in `/messages` and the main
+operational pages. Product-specific status, mail rendering and data-fetching
+components remain local where their behavior is domain-specific.
+
+## Design System v1 foundation extension — 2026-09-04
+
+The semantic layer now also exposes canvas/surface/text/border/action/state
+roles, 4/8/12/16/24/32 spacing, 6/10/14 radii and shared control height in
+`frontend/src/index.css`, with matching Tailwind aliases. The canonical local
+inventory is:
+
+`Button`, `Input`, `Textarea`, `Select`, `Checkbox`, `Radio`, `Switch`,
+`Badge`/`StatusBadge`, `Tooltip`, `DropdownMenu`, `Dialog`, `Sheet`, `Tabs`,
+`Card`, `Skeleton`, `EmptyState`, `ErrorState`, `LoadingState`, `Toast`,
+`TableShell`, `TextField`, `Count`, `PageFrame` and `PageIntro`.
+
+The migration intentionally covered shared shell, dashboard, requests,
+suppliers, blacklist, settings, new request, edit modal, tables and list
+toolbar. No second UI dependency was added, and domain-specific mail states
+were not replaced with generic fake data.
 
 ## Reference synthesis
 

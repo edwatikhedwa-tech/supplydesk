@@ -4,6 +4,16 @@ export default {
   theme: {
     extend: {
       colors: {
+        surface: {
+          DEFAULT: 'var(--sd-surface)',
+          subtle: 'var(--sd-surface-subtle)',
+          elevated: 'var(--sd-surface-elevated)',
+        },
+        line: {
+          DEFAULT: 'var(--sd-border)',
+          subtle: 'var(--sd-border-subtle)',
+        },
+        'ink-text': 'var(--sd-text)',
         accent: {
           50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa',
           500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a',
@@ -23,6 +33,9 @@ export default {
         metric: ['clamp(1.75rem, 1.55rem + 0.45vw, 1.875rem)', { lineHeight: '1.1', letterSpacing: '-0.025em' }],
       },
       borderRadius: {
+        'sd-sm': 'var(--sd-radius-sm)',
+        'sd-md': 'var(--sd-radius-md)',
+        'sd-lg': 'var(--sd-radius-lg)',
         xl: '0.875rem',
         '2xl': '1.25rem',
       },

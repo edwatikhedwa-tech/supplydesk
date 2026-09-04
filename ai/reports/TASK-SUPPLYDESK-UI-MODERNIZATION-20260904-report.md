@@ -67,11 +67,10 @@ reference image владельцем не предоставлена.
 preview cards и пустая detail-area.
 
 `После`: inline CUA screenshots проверили list/empty state и selected thread;
-автоматические rendered artifacts сохранены существующим Playwright runner:
-
-- [after — queue/list responsive artifact](../../frontend/test-results/frontend-audit-messages-de-00dad-il-separate-from-the-outbox-desktop-user/desktop-user-messages-primary-and-outbox.png)
-- [after — opened thread](../../frontend/test-results/frontend-audit-matched-cor-24237-ide-email-inside-the-reader-desktop-user/desktop-user-matched-html-reader.png)
-- [after — mobile queue artifact](../../frontend/test-results/frontend-audit-messages-de-00dad-il-separate-from-the-outbox-mobile-small/mobile-small-messages-primary-and-outbox.png)
+автоматические rendered artifacts создавались существующим Playwright runner во
+время прогона, но `frontend/test-results/` очищается следующими прогонами и не
+является постоянным артефактом checkout. Отдельные PNG после этой итерации не
+сохранены.
 
 Смысловое сравнение: одна синяя кнопка и ясная иерархия вместо равноправных
 цветных сигналов; спокойные counters вместо badge-шума; request context

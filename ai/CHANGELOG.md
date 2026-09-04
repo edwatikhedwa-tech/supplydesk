@@ -1591,3 +1591,14 @@ Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH`
 - Product code, backend, frontend, browser, database, mail and provider state
   were not changed. Final publication and CI evidence remain in the closeout
   response because this report was prepared before the one allowed push.
+
+## 2026-09-04 — TASK-SUPPLYDESK-UI-FOUNDATION-V1-20260904
+
+- Added a dependency-free frontend Design System v1 layer with semantic roles,
+  shared controls, state primitives, page framing and table/modal foundations.
+- Migrated dashboard, requests, suppliers, blacklist, settings and new-request
+  surfaces to the shared shell/actions while preserving existing behavior.
+- Added the reusable `EmailWorkspace` shell and UI-only Notes/AI contracts;
+  backend, API, database, routing, auth and business logic were not changed.
+- Verification: typecheck, build, lint (0 errors; 5 existing warnings),
+  `git diff --check`, and rendered Playwright/a11y matrix `88/88` passed.

@@ -9,6 +9,28 @@ based_on_commit: 4b89cc8
 
 # Last Handoff
 
+## Current: TASK-SUPPLYDESK-UI-FOUNDATION-V1-20260904
+
+SupplyDesk now has a local dependency-free Design System v1 foundation: semantic
+CSS/Tailwind roles, canonical form/choice/overlay/table/state primitives, a
+shared `PageFrame`/`PageIntro`, skip-link shell support and consistent usage on
+the main operational pages. Existing product behavior, routes, API and data
+boundaries remain unchanged. `/messages` is wrapped by the reusable
+`EmailWorkspace` layout contract, and `uiContracts.ts` prepares Notes/AI UI
+inputs without implementing server behavior or model calls.
+
+Verification: workspace guard PASS; typecheck PASS; lint PASS with 0 errors and
+5 existing warnings; build PASS; full Playwright rendered/a11y matrix 88/88
+PASS across the repository desktop/tablet/mobile profiles. Reviewed after
+screenshots include 1440×900 and 360×800 mail states, a 1440×900 request state
+and a 360×800 supplier long-content state; no overlap or horizontal overflow
+was observed. A separate persisted pre-change screenshot is unavailable, so
+before/after transformation comparison remains PARTIAL. SAFE_TEST remains
+available on port 18000 and the existing frontend/backend processes on 5173
+and 8000 were not stopped.
+
+Rollback: revert the task commit; no database or mail data was changed.
+
 ## Current: TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904
 
 The opened `/messages` reader now follows the supplied message-pair direction:

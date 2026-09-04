@@ -76,5 +76,5 @@ export function useDialogFocus(
       document.removeEventListener('keydown', handleKeyDown);
       if (previousActive?.isConnected) previousActive.focus();
     };
-  }, [dialogRef, initialFocusRef]);
+  }, [dialogRef, initialFocusRef, canClose]);
 }

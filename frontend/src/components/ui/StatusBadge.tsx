@@ -34,6 +34,10 @@ export function StatusBadge({ label, tone = 'neutral', title, dot = false }: Sta
   );
 }
 
+/** Canonical semantic badge name for new screens; StatusBadge stays as the
+ * compatibility export used by existing mail and supplier flows. */
+export const Badge = StatusBadge;
+
 export function Count({ value, label }: { value: number | string; label?: string }) {
   return <span aria-label={label} className="tabular-nums text-xs font-medium text-ink-400">{value}</span>;
 }

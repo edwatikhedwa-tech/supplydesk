@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, FileText, Loader2, Mail, Paperclip, RefreshCw, Save, Unplug, X } from 'lucide-react';
 import { ApiError, api } from '@/lib/api';
 import type { MailAccount, MailTemplateAttachment } from '@/lib/types';
+import { PageFrame, PageIntro } from '@/components/PageFrame';
+import { Button } from '@/components/ui';
 
 const MAIL_ERROR_LABELS: Record<string, string> = {
   not_configured: 'Подключение к Яндекс.Почте сейчас недоступно на сервере.',
@@ -267,12 +269,9 @@ export function Settings() {
   };
 
   return (
-    <div className="min-h-screen px-6 py-7 lg:px-10 lg:py-10 animate-fade-in">
-      <div className="mx-auto max-w-[760px] space-y-6">
-        <div>
-          <h1 className="text-page-title font-bold">Настройки</h1>
-          <p className="mt-1 text-sm text-ink-500">Подключение почты и параметры рабочего пространства.</p>
-        </div>
+    <PageFrame width="narrow">
+      <div className="space-y-6">
+        <PageIntro eyebrow="Рабочее пространство" title="Настройки" description="Подключение почты и параметры рабочего пространства." />
 
         {justConnected && (
           <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
@@ -450,20 +449,20 @@ export function Settings() {
                 <p className="text-xs text-ink-600">
                   {templateUpdatedAt ? `Последнее сохранение: ${new Date(templateUpdatedAt).toLocaleString('ru-RU')}` : 'Используется базовый шаблон SupplyDesk.'}
                 </p>
-                <button
+                <Button
                   type="button"
                   onClick={() => { void handleSaveTemplate(); }}
                   disabled={templateSaving}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-accent-600 px-5 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-accent-700 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
+                  variant="primary"
                 >
                   {templateSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   {templateSaving ? 'Сохраняем…' : 'Сохранить шаблон'}
-                </button>
+                </Button>
               </div>
             </>
           )}
         </section>
       </div>
-    </div>
+    </PageFrame>
   );
 }

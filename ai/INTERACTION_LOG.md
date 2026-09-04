@@ -1506,3 +1506,16 @@ State change: neutral fresh child attempts for Claude and Codex contained no too
 names but returned no usable child trace; both owned hung processes were stopped
 by exact PID. Cold-start behavior is therefore `NOT VERIFIED`, not simulated or
 claimed from the parent session.
+
+## 2026-09-04 — TASK-SUPPLYDESK-UI-FOUNDATION-V1-20260904
+
+State change: extended the existing local UI foundation across the main
+frontend pages, introduced semantic tokens and canonical controls/states, and
+added a reusable email workspace boundary plus Notes/AI UI-only contracts.
+
+Verification state: workspace guard PASS; typecheck, lint, build,
+`git diff --check`, and the full rendered Playwright/a11y matrix `88/88` PASS.
+Reviewed desktop and narrow mobile screenshots show no overlap or horizontal
+overflow. A separate persisted before screenshot was unavailable, so the
+transformation comparison remains PARTIAL. No backend, API, database, auth,
+routing or business-logic changes were made.
