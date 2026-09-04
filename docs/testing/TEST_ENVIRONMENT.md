@@ -48,7 +48,7 @@ npm run lint
 npm run build
 if (-not (Test-Path "$env:USERPROFILE\AppData\Local\ms-playwright\chromium-*")) { npx playwright install chromium }
 Pop-Location
-powershell -ExecutionPolicy Bypass -File .\scripts\start_test_runtime.ps1 -Apply
+powershell -ExecutionPolicy Bypass -File .\scripts\start_test_runtime.ps1 -Apply -Purpose SAFE_TEST
 powershell -ExecutionPolicy Bypass -File .\scripts\doctor.ps1 -DryRun -Profile OFFLINE_TEST -Full
 ```
 
@@ -135,11 +135,11 @@ credentials/accounts и loopback-only socket guard. SMTP и IMAP connection path
 
 ```powershell
 .\scripts\start_test_runtime.ps1 -Plan
-.\scripts\start_test_runtime.ps1 -Apply
+.\scripts\start_test_runtime.ps1 -Apply -Purpose SAFE_TEST
 ```
 
-Порт по умолчанию — `18000`; если он занят, скрипт выбирает следующий свободный
-порт. Приложение настоящее, frontend берётся из собранного `frontend/dist`.
+Порт по умолчанию — `18000`; если он занят, запуск останавливается и другой
+порт не выбирается. Приложение настоящее, frontend берётся из собранного `frontend/dist`.
 Marker `runtime/test-runtime.json` содержит только machine/process evidence:
 `profile=OFFLINE_TEST`, `environment=test`, `database.kind=disposable_sqlite`,
 `outgoing_mail=disabled`, `external_providers=fake/blocked`,
@@ -161,13 +161,33 @@ Invoke-WebRequest http://127.0.0.1:18000/api/diagnostic-unknown
 
 ```powershell
 Push-Location .\frontend
+$env:RUNTIME_PURPOSE = 'AUTOMATED_TEST'
+$env:RUNTIME_MODE = 'SAFE_TEST'
+$env:RUNTIME_BACKEND_URL = 'http://127.0.0.1:18000'
 $env:AUDIT_BASE_URL = 'http://127.0.0.1:18000'
-npx playwright test tests/frontend-audit.spec.ts -g 'public shell' --workers=1
+npm test -- tests/frontend-audit.spec.ts -g 'public shell' --workers=1
 Pop-Location
 ```
 
+`npm test` проходит через `scripts/run_playwright.mjs` и обязательный guard.
 Этот тест проверяет все восемь существующих viewport-проектов. Тесты с route
 mock остаются unit/UI fixtures и не выдаются за live-route acceptance.
+
+Для визуальной приёмки рабочего интерфейса используется только canonical:
+
+```powershell
+Push-Location .\frontend
+$env:RUNTIME_PURPOSE = 'VISUAL_ACCEPTANCE'
+$env:RUNTIME_MODE = 'LOCAL_CANONICAL'
+$env:RUNTIME_BACKEND_URL = 'http://127.0.0.1:8000'
+$env:AUDIT_BASE_URL = 'http://127.0.0.1:8000'
+npm run test:visual -- -g 'public shell' --workers=1
+Pop-Location
+```
+
+SAFE_TEST предназначен для автоматических проверок и имеет заметный badge
+`SAFE TEST · DISPOSABLE DATA · PORT 18000`; этот badge не является доказательством
+визуальной приёмки canonical runtime.
 
 Остановка только помеченного test-процесса:
 

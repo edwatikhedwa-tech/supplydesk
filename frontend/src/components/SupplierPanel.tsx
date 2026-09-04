@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Ban, X, Mail, Phone, Building2, ChevronRight, Globe, Send, ShieldOff, ExternalLink, Loader2 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
-import type { Supplier } from '@/lib/types';
+import type { LogisticsQuote, Supplier } from '@/lib/types';
 import { MailStatusBadges } from '@/components/MailStatusBadges';
 import { DELIVERY_META } from '@/useRequestState';
 import { displaySupplierName } from '@/lib/utils';
@@ -29,6 +29,19 @@ export function SupplierPanel({ supplier, requestId, itemNames, onClose, onWrite
   const [blacklisting, setBlacklisting] = useState(false);
   const [blacklistError, setBlacklistError] = useState('');
 
+  const [routeFrom, setRouteFrom] = useState('');
+  const [routeTo, setRouteTo] = useState('');
+  const [cargoPlaces, setCargoPlaces] = useState('');
+  const [cargoWeightKg, setCargoWeightKg] = useState('');
+  const [cargoVolumeM3, setCargoVolumeM3] = useState('');
+  const [cargoMaxLength, setCargoMaxLength] = useState('');
+  const [cargoMaxWidth, setCargoMaxWidth] = useState('');
+  const [cargoMaxHeight, setCargoMaxHeight] = useState('');
+  const [calculatingLogistics, setCalculatingLogistics] = useState(false);
+  const [logisticsError, setLogisticsError] = useState('');
+  const [logisticsQuote, setLogisticsQuote] = useState<LogisticsQuote | null>(null);
+  const [logisticsMessage, setLogisticsMessage] = useState('');
+
   useEffect(() => {
     if (!supplier) return;
     setInnInput(supplier.inn || '');
@@ -37,10 +50,25 @@ export function SupplierPanel({ supplier, requestId, itemNames, onClose, onWrite
     setBlacklistOpen(false);
     setBlacklistReason('');
     setBlacklistError('');
+    setRouteFrom('');
+    setRouteTo('');
+    setCargoPlaces('');
+    setCargoWeightKg('');
+    setCargoVolumeM3('');
+    setCargoMaxLength('');
+    setCargoMaxWidth('');
+    setCargoMaxHeight('');
+    setLogisticsError('');
+    setLogisticsMessage('');
+    setLogisticsQuote(null);
+    let cancelled = false;
+    void api.getLogisticsQuote(requestId, supplier.id).then((result) => {
+      if (!cancelled) setLogisticsQuote(result.quote);
+    }).catch(() => undefined);
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [supplier?.id, onClose]);
+    return () => { cancelled = true; window.removeEventListener('keydown', handleKey); };
+  }, [supplier?.id, requestId, onClose]);
 
   if (!supplier) return null;
   const contactEmails = supplier.contact_emails?.length ? supplier.contact_emails : (supplier.email ? [supplier.email] : []);
@@ -73,6 +101,46 @@ export function SupplierPanel({ supplier, requestId, itemNames, onClose, onWrite
       setInnError(error instanceof ApiError ? error.message : 'Не удалось сохранить ИНН.');
     } finally {
       setSavingInn(false);
+    }
+  };
+
+  const logisticsGateReady = Boolean(
+    routeFrom.trim() && routeTo.trim() &&
+    Number(cargoPlaces) > 0 && Number(cargoWeightKg) > 0 && Number(cargoVolumeM3) > 0 &&
+    Number(cargoMaxLength) > 0 && Number(cargoMaxWidth) > 0 && Number(cargoMaxHeight) > 0,
+  );
+
+  const logisticsStatusFallback: Record<string, string> = {
+    unavailable: 'Не удалось получить тариф у перевозчика.',
+    invalid_input: 'Деловые Линии отклонили запрос — проверьте маршрут и параметры груза.',
+    rate_limited: 'Превышен лимит запросов к Деловым Линиям, попробуйте позже.',
+    provider_error: 'Деловые Линии временно недоступны, попробуйте позже.',
+  };
+
+  const calculateLogistics = async () => {
+    if (!logisticsGateReady) return;
+    setLogisticsError('');
+    setLogisticsMessage('');
+    setCalculatingLogistics(true);
+    try {
+      const result = await api.calculateLogistics(requestId, supplier.id, {
+        route_from: routeFrom.trim(),
+        route_to: routeTo.trim(),
+        cargo: {
+          places: Number(cargoPlaces),
+          weight_kg: Number(cargoWeightKg),
+          volume_m3: Number(cargoVolumeM3),
+          max_length_cm: Number(cargoMaxLength),
+          max_width_cm: Number(cargoMaxWidth),
+          max_height_cm: Number(cargoMaxHeight),
+        },
+      });
+      setLogisticsQuote(result.quote);
+      setLogisticsMessage(result.message || (result.quote.status !== 'success' ? logisticsStatusFallback[result.quote.status] || '' : ''));
+    } catch (error) {
+      setLogisticsError(error instanceof ApiError ? error.message : 'Не удалось рассчитать доставку.');
+    } finally {
+      setCalculatingLogistics(false);
     }
   };
 
@@ -153,6 +221,99 @@ export function SupplierPanel({ supplier, requestId, itemNames, onClose, onWrite
           <p id="supplier-inn-help" className="mt-1.5 text-2xs leading-relaxed text-ink-500">После сохранения система запросит реквизиты и статус в Checko.</p>
           {innMessage && <p role="status" className="mt-2 break-words text-xs font-medium text-emerald-700">{innMessage}</p>}
           {innError && <p role="alert" className="mt-2 break-words text-xs font-medium text-rose-600">{innError}</p>}
+        </section>
+
+        <section className="border-b border-ink-100 px-4 py-4 sm:px-6" aria-labelledby="logistics-label">
+          <label id="logistics-label" className="text-xs font-semibold uppercase tracking-wider text-ink-500">Логистика</label>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <input
+              value={routeFrom}
+              onChange={(event) => setRouteFrom(event.target.value)}
+              placeholder="Город/терминал отправления"
+              aria-label="Город или терминал отправления"
+              className="min-w-0 rounded-lg border border-ink-200 px-3 py-2 text-sm text-ink-800 outline-none transition focus:border-accent-500 focus:ring-2 focus:ring-accent-100"
+            />
+            <input
+              value={routeTo}
+              onChange={(event) => setRouteTo(event.target.value)}
+              placeholder="Город/терминал назначения"
+              aria-label="Город или терминал назначения"
+              className="min-w-0 rounded-lg border border-ink-200 px-3 py-2 text-sm text-ink-800 outline-none transition focus:border-accent-500 focus:ring-2 focus:ring-accent-100"
+            />
+            <input
+              value={cargoPlaces}
+              onChange={(event) => setCargoPlaces(event.target.value.replace(/[^\d]/g, ''))}
+              inputMode="numeric"
+              placeholder="Мест, шт"
+              aria-label="Число грузовых мест"
+              className="min-w-0 rounded-lg border border-ink-200 px-3 py-2 text-sm tabular-nums text-ink-800 outline-none transition focus:border-accent-500 focus:ring-2 focus:ring-accent-100"
+            />
+            <input
+              value={cargoWeightKg}
+              onChange={(event) => setCargoWeightKg(event.target.value.replace(/[^\d.,]/g, ''))}
+              inputMode="decimal"
+              placeholder="Общий вес, кг"
+              aria-label="Общий вес груза в килограммах"
+              className="min-w-0 rounded-lg border border-ink-200 px-3 py-2 text-sm tabular-nums text-ink-800 outline-none transition focus:border-accent-500 focus:ring-2 focus:ring-accent-100"
+            />
+            <input
+              value={cargoVolumeM3}
+              onChange={(event) => setCargoVolumeM3(event.target.value.replace(/[^\d.,]/g, ''))}
+              inputMode="decimal"
+              placeholder="Общий объём, м³"
+              aria-label="Общий объём груза в кубических метрах"
+              className="min-w-0 rounded-lg border border-ink-200 px-3 py-2 text-sm tabular-nums text-ink-800 outline-none transition focus:border-accent-500 focus:ring-2 focus:ring-accent-100"
+            />
+            <div className="grid grid-cols-3 gap-1">
+              <input
+                value={cargoMaxLength}
+                onChange={(event) => setCargoMaxLength(event.target.value.replace(/[^\d.,]/g, ''))}
+                inputMode="decimal"
+                placeholder="Д, см"
+                aria-label="Максимальная длина одного места в сантиметрах"
+                className="min-w-0 rounded-lg border border-ink-200 px-2 py-2 text-sm tabular-nums text-ink-800 outline-none transition focus:border-accent-500 focus:ring-2 focus:ring-accent-100"
+              />
+              <input
+                value={cargoMaxWidth}
+                onChange={(event) => setCargoMaxWidth(event.target.value.replace(/[^\d.,]/g, ''))}
+                inputMode="decimal"
+                placeholder="Ш, см"
+                aria-label="Максимальная ширина одного места в сантиметрах"
+                className="min-w-0 rounded-lg border border-ink-200 px-2 py-2 text-sm tabular-nums text-ink-800 outline-none transition focus:border-accent-500 focus:ring-2 focus:ring-accent-100"
+              />
+              <input
+                value={cargoMaxHeight}
+                onChange={(event) => setCargoMaxHeight(event.target.value.replace(/[^\d.,]/g, ''))}
+                inputMode="decimal"
+                placeholder="В, см"
+                aria-label="Максимальная высота одного места в сантиметрах"
+                className="min-w-0 rounded-lg border border-ink-200 px-2 py-2 text-sm tabular-nums text-ink-800 outline-none transition focus:border-accent-500 focus:ring-2 focus:ring-accent-100"
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void calculateLogistics()}
+            disabled={!logisticsGateReady || calculatingLogistics}
+            className="mt-2 inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-accent-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-accent-700 disabled:opacity-60"
+          >
+            {calculatingLogistics && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {calculatingLogistics ? 'Считаем' : 'Рассчитать доставку'}
+          </button>
+          <p className="mt-1.5 text-2xs leading-relaxed text-ink-500">Расчёт выполняется по калькулятору Деловых Линий. Все поля маршрута и груза обязательны.</p>
+          {logisticsQuote && logisticsQuote.status === 'success' && (
+            <div role="status" className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+              <p className="font-semibold">{logisticsQuote.carrier === 'dellin' ? 'Деловые Линии' : logisticsQuote.carrier}: {logisticsQuote.price?.toLocaleString('ru-RU')} {logisticsQuote.currency}</p>
+              <p className="mt-0.5">{logisticsQuote.term_days != null ? `Срок: ${logisticsQuote.term_days} дн.` : 'Срок доставки не рассчитан.'}</p>
+              <p className="mt-0.5 text-emerald-700">Рассчитано {new Date(logisticsQuote.calculated_at).toLocaleString('ru-RU')}</p>
+            </div>
+          )}
+          {logisticsQuote && logisticsQuote.status !== 'success' && (
+            <p role="status" className="mt-2 break-words text-xs font-medium text-rose-600">
+              {logisticsMessage || logisticsStatusFallback[logisticsQuote.status] || 'Не удалось получить тариф.'}
+            </p>
+          )}
+          {logisticsError && <p role="alert" className="mt-2 break-words text-xs font-medium text-rose-600">{logisticsError}</p>}
         </section>
 
         <div className="group/row space-y-3 px-4 py-5 text-sm text-ink-700 sm:px-6">

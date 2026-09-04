@@ -1,4 +1,11 @@
 import { defineConfig } from '@playwright/test';
+import { assertRuntime } from './runtimeGuard';
+
+const runtime = assertRuntime({
+  surface: 'browser',
+  baseUrl: process.env.AUDIT_BASE_URL,
+  backendUrl: process.env.RUNTIME_BACKEND_URL,
+});
 
 export default defineConfig({
   testDir: './tests',
@@ -6,7 +13,7 @@ export default defineConfig({
   timeout: 60_000,
   workers: 1,
   use: {
-    baseURL: process.env.AUDIT_BASE_URL ?? 'http://127.0.0.1:8010',
+    baseURL: runtime.baseUrl,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

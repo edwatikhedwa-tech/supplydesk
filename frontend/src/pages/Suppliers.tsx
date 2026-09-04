@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Send } from 'lucide-react';
 import { api } from '@/lib/api';
 import { pluralize } from '@/lib/utils';
+import { PageFrame, PageIntro } from '@/components/PageFrame';
+import { Button, TextField } from '@/components/ui';
 import { GlobalSupplierTable } from '@/components/suppliers/GlobalSupplierTable';
 import { SupplierPanel } from '@/components/suppliers/SupplierPanel';
 import type { GlobalSupplierSummary } from '@/lib/types';
@@ -118,15 +120,9 @@ export function Suppliers() {
   };
 
   return (
-    <div className="min-h-screen px-6 py-7 lg:px-10 lg:py-10 pb-24 animate-fade-in">
-      <div className="mx-auto max-w-[1600px]">
-      <div className="mb-6">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Поставщики
-        </div>
-        <h1 className="text-page-title font-bold">Поставщики</h1>
-        <p className="mt-1 text-sm text-ink-500">{suppliers.length} {pluralize(suppliers.length, 'поставщик', 'поставщика', 'поставщиков')} в базе</p>
-      </div>
+    <PageFrame className="pb-24">
+      <div>
+      <PageIntro eyebrow="Справочник поставщиков" title="Поставщики" description={`${suppliers.length} ${pluralize(suppliers.length, 'поставщик', 'поставщика', 'поставщиков')} в базе`} />
 
       <div className="flex items-center gap-3 mb-5 flex-wrap">
         <div className="flex items-center gap-1.5 bg-white border border-ink-200 rounded-xl p-1 shadow-soft flex-wrap">
@@ -146,15 +142,13 @@ export function Suppliers() {
           ))}
         </div>
         <div className="relative flex-1 min-w-[240px] max-w-xs">
-          <Search className="w-4 h-4 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <label htmlFor="suppliers-search" className="sr-only">Поиск по названию, ИНН или сайту</label>
-          <input
+          <TextField
             id="suppliers-search"
-            type="text"
+            label="Поиск по названию, ИНН или сайту"
+            icon={Search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск по названию, ИНН, сайту…"
-            className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-ink-200 rounded-xl text-ink-800 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-accent-200 focus:border-accent-400 transition-all"
           />
         </div>
       </div>
@@ -175,14 +169,14 @@ export function Suppliers() {
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-accent-600 flex items-center justify-center text-white text-sm font-bold">{selected.size}</div>
             <span className="text-sm text-ink-700">Выбрано <span className="font-semibold text-ink-900">{selected.size}</span> поставщиков</span>
-            <button onClick={() => setSelected(new Set())} className="ml-2 min-h-10 px-2 text-xs text-ink-400 transition-colors hover:text-ink-800">Снять выбор</button>
+            <Button onClick={() => setSelected(new Set())} variant="ghost" size="sm" className="ml-2">Снять выбор</Button>
           </div>
-          <button
+          <Button
             onClick={createRequestWithSelected}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-600 text-white text-sm font-medium hover:bg-accent-700 transition-colors shadow-soft"
+            variant="primary"
           >
             <Send className="w-4 h-4" />Создать заявку с выбранными
-          </button>
+          </Button>
         </div>
       )}
 
@@ -193,6 +187,6 @@ export function Suppliers() {
         />
       )}
       </div>
-    </div>
+    </PageFrame>
   );
 }

@@ -23,6 +23,11 @@ current runtime state; use `ai/CURRENT_STATE.md` for that.
 Product overview, domain glossary, user workflows, and links to approved
 requirements.
 
+## Current workflows
+
+- [`messages-workspace.md`](messages-workspace.md) — procurement-oriented
+  correspondence workspace and safe unmatched workflow.
+
 ## Status
 
 `CURRENT` as a documentation entrypoint; detailed artifacts are added only when

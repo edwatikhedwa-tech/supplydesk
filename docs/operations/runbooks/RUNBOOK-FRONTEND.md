@@ -3,8 +3,8 @@ document_id: RUNBOOK-FRONTEND-001
 status: CURRENT
 canonical: false
 owner: operations
-updated_at: 2026-09-02
-source_commit: 84083130e3a75eb5a6d4fa83957db6760724379b
+updated_at: 2026-09-04
+source_commit: 878cf70292683fa8d9730ee353af78854746b2b1
 ---
 
 # Runbook: frontend gates
@@ -13,8 +13,18 @@ source_commit: 84083130e3a75eb5a6d4fa83957db6760724379b
 
 In an approved controlled worktree, use the manifest commands: `npm ci
 --no-audit --fund=false`, `npm run typecheck`, `npm run lint`, `npm run
-build`, then the public-shell Playwright test. The runner checks the manifest
+build`, then the public-shell Playwright test. `npm run dev` and every browser
+script load `scripts/runtime_guard.py`; the runner checks the manifest
 by default and runs these gates only with explicit opt-in.
+
+`npm run dev` defaults to `OWNER_SESSION` and therefore targets the canonical
+backend at `http://127.0.0.1:8000`. `npm test` defaults to `AUTOMATED_TEST`
+and therefore requires `SAFE_TEST` at `http://127.0.0.1:18000`.
+`npm run test:visual` and `npm run lhci` default to `VISUAL_ACCEPTANCE` and
+therefore require `LOCAL_CANONICAL`. Before browser acceptance the guard prints
+`RUNTIME_PURPOSE`, `RUNTIME_MODE`, `BASE_URL`, `DATABASE_CLASS` and `AUTH_MODE`.
+An incompatible purpose/runtime pair is `FAIL + STOP`; there is no silent
+fallback to the safe runtime.
 
 ## Failure labels
 

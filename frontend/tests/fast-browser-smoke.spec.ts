@@ -16,3 +16,13 @@ test('real login route starts and accepts a provider interaction', async ({ page
 
   expect(pageErrors).toEqual([]);
 });
+
+test('SAFE_TEST runtime displays its environment badge on the app shell', async ({ page }) => {
+  const login = await page.request.post('/api/auth/login', {
+    data: { email: 'test.user@example.invalid', password: 'TestOnly-Synthetic-20260901' },
+  });
+  expect(login.status()).toBe(200);
+
+  await page.goto('/messages', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('[data-runtime-badge]')).toHaveText('SAFE TEST · DISPOSABLE DATA · PORT 18000');
+});

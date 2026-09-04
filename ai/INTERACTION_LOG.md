@@ -2,6 +2,347 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-04 — TASK-SUPPLYDESK-TYPOGRAPHY-SHIMMER-20260904
+
+State change: started a scoped `REDESIGN` task after reviewing the owner’s
+assistant-ui tw-shimmer and AI Elements Shimmer references. The implementation
+kept the existing React/Tailwind stack and did not add a dependency or remote
+font request. The app-wide UI stack now prefers `Public Sans`, `Geist` and
+local system fallbacks; embedded sender HTML remains isolated.
+
+Implementation: raised shared page titles to `28px` mobile / `32px` desktop and
+display titles to `32px` / `36px`; applied `sd-shimmer-heading` to primary
+screen headings in the shared page intro, request detail, campaign, login,
+messages and fallback screens. The CSS effect uses a low-noise blue gradient
+sweep and explicitly restores solid readable text under `prefers-reduced-motion`.
+
+Evidence: typecheck, lint, build, full rendered Playwright/a11y matrix `88/88`,
+related frontend suites `226 passed / 6 skipped`, HTTP smoke (`5173` root `200`,
+SAFE_TEST root and `/api/auth/me` `200`, unknown API `404`), computed-style
+checks for desktop/mobile/reduced motion, and reviewed screenshots in
+`frontend/artifacts/typography-shimmer-20260904/`. No horizontal overflow or
+console errors were observed. Exact font-file parity with the hosted references
+is not claimed because the local stack intentionally has no external font load.
+
+## 2026-09-04 — TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904
+
+State change: started a narrow `REDESIGN` task over commit `ae557ba` after
+reviewing the supplied assistant-ui Message pair reference. The reference
+uses a right-aligned user bubble, a lighter left assistant reply and actions
+that stay secondary until hover/focus. The product adaptation keeps email
+sender/date metadata, HTML email rendering, collapse behavior and safety
+actions; assistant-ui was not installed.
+
+Implementation: changed only `frontend/src/components/mail/ThreadDetail.tsx`.
+The conversation no longer uses the old timeline spine and repeated equal
+weight cards. Inbound and outbound messages now have directional alignment,
+compact metadata and asymmetric bubble corners using existing ink/accent
+tokens. Delivery-unknown recovery remains visible and unchanged in behavior.
+
+Rendered evidence: the initial iteration found two axe contrast violations
+(`Исходящее` and outbound send error on the accent surface); colors were
+corrected and the same six message/delivery tests passed across desktop,
+compact laptop and mobile. The matched HTML-email scenario passed on the same
+three viewports, for `9/9` targeted checks. The full existing visual/a11y
+matrix passed `88/88` in `4.9m`. Reviewed after-render PNGs for desktop-wide,
+desktop-compact and mobile-large; no clipping, overlap or horizontal overflow
+was visible.
+
+Limit: this iteration has after screenshots but no persisted before PNG, so
+the transformation comparison is `NOT VERIFIED` at artifact level. The
+authenticated SAFE_TEST conversation is empty; evidence uses the existing
+route-controlled Playwright visual fixtures and does not submit mailbox data.
+
+## 2026-09-04 — TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904
+
+State change: created the active pilot lock after revalidating the canonical
+root, branch `integration/current-architecture-governance-20260903`, HEAD
+`6206c95806a8caf1dc5191e9c03762151d332ea5`, the clean scope boundary and
+unrelated enrichment/runtime changes. Read the frontend product engineering
+and evidence-first research instructions, then checked official Applitools
+Playwright integration, advanced-usage and MCP documentation.
+
+Compatibility assessment: `PASS`. Installed the official
+`@applitools/eyes-playwright@1.48.4`; its peer range accepts the existing
+Playwright `1.62.1`. Added a separate classic-runner config with only the
+required desktop, laptop and mobile viewports, plus a single real `/messages`
+flow covering list, conversation and reply composer. The test captures local
+Playwright images beside Eyes checkpoints, uses a Dynamic match level for
+timestamps, and does not mock the correspondence API.
+
+Evidence: workspace guard `PASS`; package `npm ci --dry-run` `PASS`; frontend
+typecheck `PASS`; Applitools config lists exactly three tests; no-key run
+completed with `3 skipped` in `1.22s` and made no Eyes request. SAFE_TEST
+login/API smoke was previously confirmed (`login 200`, authenticated `/me`
+`200`, correspondence `200` with `0` items); therefore the real conversation
+flow cannot be exercised yet.
+
+Limit: `APPLITOOLS_API_KEY` was checked only for presence and was not read,
+printed or stored. No real mailbox data was submitted. Baseline, controlled
+regression, screenshot comparison, MCP spike and owner value assessment are
+`NOT VERIFIED` pending a sanitized disposable conversation and owner-managed
+key configuration. No UI, backend, API, database, business logic or global
+governance files were changed.
+
+## 2026-09-04 — TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904
+
+State change: created the active task lock after revalidating the canonical
+workspace, branch `integration/current-architecture-governance-20260903`,
+HEAD `d7b0e39`, and unrelated enrichment/runtime working-tree changes.
+Read the frontend redesign skill and its audit, responsive, transformation and
+quality references. Captured the authenticated BEFORE `/messages` list and
+selected `ООО "ШАЛЕ"` detail at `1280×720` in CUA before editing.
+
+State change: kept the existing layout, routes, components and behaviors, but
+changed the visual composition: request-first navigator with local search,
+flat rows, quiet unmatched preview, compact conversation header, timeline
+message feed and sticky primary next-step footer. Removed visual noise from
+the main composition without creating UI primitives or changing technical
+component architecture.
+
+Evidence: authenticated CUA AFTER list/detail at the same `1280×720` scenario;
+search, filter, selection and reply-dialog smoke passed; live geometry reported
+`scrollWidth=clientWidth=1280` with no horizontal overflow. Full Playwright
+visual/a11y matrix passed `88/88`; matched-thread target passed `8/8`; the
+after fixture screenshots cover desktop/tablet/mobile, including desktop-user
+and mobile-small. HTTP smoke returned frontend `200`, backend `200`,
+`/api/auth/me` `200`, and protected correspondence without auth `401`.
+
+Limit: CUA provided the before image inline but no persisted local PNG path;
+no approved reference image was supplied. Lighthouse was not run because the
+available frontend quality toolchain did not expose a configured Lighthouse
+command. Backend, database, API contracts and unrelated working-tree edits
+were not changed.
+
+## 2026-09-04 — TASK-SUPPLYDESK-UI-MODERNIZATION-20260904
+
+State change: created the UI modernization task lock after read-only discovery
+confirmed React 18 + TypeScript + Vite, Tailwind CSS 3, `lucide-react`, the
+shared layout and the active `/messages` routes. Preserved pre-existing
+enrichment edits and `runtime/`.
+
+State change: added local UI primitives and applied them to `/messages` only.
+The visual direction is a calm procurement desk: graphite navigation, white
+work surfaces, one blue action color, quiet counts and semantic state badges.
+The request-first split view now makes the request relation and next reply
+action explicit while preserving unmatched linking, queue, metadata and
+delivery recovery behaviors.
+
+Evidence: live CUA list/detail/search/filter smoke passed at 1280×720 with
+`scrollWidth=clientWidth=1280`; full `AUDIT_BASE_URL=http://127.0.0.1:5173
+npm run test:visual` passed `88/88` across the configured desktop/tablet/mobile
+profiles, including axe accessibility. Typecheck and build pass; lint has 0
+errors and the same 5 unrelated warnings. Before screenshot is inline-only,
+no approved reference image was supplied, and canonical backend/API state was
+not changed.
+
+## 2026-09-04 — TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904
+
+GAP ANALYSIS against the rejected acceptance: the previous implementation
+rendered every stored thread message, so a durable outbound `cancelled`
+pre-send attempt appeared as communication; detail used an artificial readable
+width; metadata controls had no live route on the currently running backend;
+real drop behavior and the required viewport matrix had not been proven; and
+the unmatched preview still carried too much warning-card emphasis.
+
+Correction: added `_communication_message_predicate` in
+`mail/repository.py` and applied it consistently to thread list counts, latest
+message fields and `thread_messages`. The predicate is transport-aware and
+does not delete raw rows. Updated the detail, header, request strip, preview,
+metadata controls and bounced status presentation in the `/messages` frontend.
+
+Evidence: canonical read-only DB inspection of thread `92` showed message
+`105` outbound/cancelled with no `sent_at` and `attempts=0`, message `204`
+outbound/sent with an irreversible timestamp, and message `274` inbound. The
+manual-link flow for inbox `79` to request `1061` succeeded and was explicitly
+rolled back; DB inspection showed no remaining link. A real pointer drag using
+the CUA accessibility gesture `[104,304] -> [270,535]` was attempted, but no
+confirmation, URL transition or database link followed, so DnD remains
+`NOT VERIFIED`.
+
+Verification: full `test_mail*.py` completed with exit code `0`; focused
+visibility/metadata/transport/rendering tests passed; frontend typecheck and
+build passed; lint had no errors and five pre-existing unrelated warnings.
+HTTP smoke returned Vite `200`, backend root `200`, `/api/auth/me` `200`,
+protected correspondence/thread list `401` without request headers, and the
+canonical metadata route `404`. Browser render inspection was limited to
+1287×912; the viewport matrix `1440×900`, `1920×1080`, `1024×768` and
+`390×844` is not verified because the CUA viewport capability is unavailable.
+
+## 2026-09-04 — TASK-MESSAGES-WORKSPACE-REDESIGN-20260904
+
+State change: created an active task lock for the `/messages` redesign after
+confirming the workspace guard, branch, HEAD and pre-existing untracked
+`runtime/` boundary. Read-only discovery confirmed the current request-grouped
+mail list, existing manual unmatched workflow, queue/delivery safeguards, and
+the unchanged global sidebar.
+
+State change: added `migrations/034_thread_user_metadata.sql`,
+`mail/thread_metadata.py`, repository composition, per-session metadata fields
+on correspondence/outbox summaries, and one CSRF-protected metadata route.
+The storage is additive and user-specific; invalid priorities, cross-workspace
+requests and unknown threads are rejected. Existing manual-link routes remain
+the source of truth.
+
+State change: implemented the product UI changes in `Messages.tsx`,
+`ThreadList.tsx`, `ThreadDetail.tsx`, `OutboxList.tsx`, and two focused mail
+components. The compact unmatched preview reuses `/api/mail/inbox/preview`;
+drag-and-drop calls suggestions first and directly links only one exact sender
+match. All other outcomes navigate to the existing manual flow without
+guessing a supplier.
+
+Evidence: targeted backend tests passed (`python -m unittest
+tests.test_thread_metadata tests.test_messages_visibility`, 6 tests); the
+frontend typecheck and production build passed; lint reported 0 errors and the
+same 5 warnings in unrelated existing files. The new migration exists in the
+disposable SAFE_TEST database after a guarded runtime restart. An authenticated
+desktop render was inspected in the existing canonical-session tab at
+1287×912; mobile/tablet viewport override did not take effect in the current
+in-app browser, so those screenshots are `NOT VERIFIED`.
+
+## 2026-09-03 — TASK-ROOT-CAUSE-RUNTIME-FIX-20260903
+
+State change: performed a read-only root-cause analysis of why a prior
+session in this conversation confused `SAFE_TEST` (port 18000, always
+credential-blanked) with `LOCAL_CANONICAL` (port 8000, the port actually
+registered with Yandex) when building a "start the server" desktop
+shortcut. Root cause: `PROJECT_MANIFEST.yaml` already had both port facts
+but no explicit rule connecting either to the owner's actual intent, and the
+prior session picked the port already proven working in-session instead of
+re-consulting the manifest.
+
+State change: added `DECISION-016` and a minimal, causally-linked governance
+fix — `PROJECT_MANIFEST.yaml` gained a `runtime_modes` block naming
+`LOCAL_CANONICAL`/`SAFE_TEST` explicitly (first source of truth);
+`docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md` now gives one
+unambiguous start command per mode instead of a vague pointer;
+`ai/AI_CONTRACT.md` rule 14 requires classifying `RUNTIME_MODE` before any
+backend start; `ai/VIBECODING_RULES.md` and `CLAUDE.md` each got one
+cross-reference line. No new governance subsystem was created.
+
+State change: by the owner's explicit, separately-given authorization, the
+canonical checkout's `.env` was fully and automatically recovered
+(byte-for-byte, no manual per-secret selection, no secret value ever
+printed to chat/logs/report) from the legacy recovery-only checkout. The
+prior partial `.env` was backed up locally first (`.env.backup-<timestamp>`,
+gitignored). Two variables pointing at the legacy checkout's own database
+(`SUPPLYDESK_CANONICAL_DB_PATH`, `MAIL_DB_PATH`) were removed so the app
+falls back to its own canonical default; no `DATABASE_URL` was present.
+Non-secret `LOCAL_CANONICAL` values (`APP_HOST`, `PORT`, `APP_BASE_URL`,
+`SUPPLYDESK_ENV=development`) were set explicitly; `MAIL_OUTGOING_DISABLED=1`
+was already present and left untouched.
+
+State change: while patching the file, a self-caused encoding bug was found
+via the harness's own external-file-change notification and fixed
+immediately — a Windows PowerShell 5.1 `Get-Content -Raw`/`Set-Content
+-Encoding UTF8` round-trip had corrupted the file's Cyrillic comments (same
+defect class as an earlier same-session `.ps1` bug). Fixed by re-reading the
+original source with an explicit UTF-8 (no BOM) encoding and rewriting from
+scratch; verified no `U+FFFD` marker remained.
+
+State change: started the real `LOCAL_CANONICAL` runtime
+(`python supplier_app.py`, not the test script) and verified `/` → 200,
+`/api/auth/me` → 200, `/api/auth/yandex/start` → 302 with
+`redirect_uri=http://127.0.0.1:8000/oauth/yandex/callback`, byte-identical
+to the legacy `YANDEX_REDIRECT_URI`. Confirmed no listener on port 18000 at
+verification time. Left the server running per the owner's stated goal
+(normal local use). Not attempted: completing the actual Yandex login (needs
+the owner's own credentials) and confirming the redirect URI is still
+registered in the live Yandex OAuth console (not opened).
+
+Added `DECISION-016` to `ai/DECISIONS.md`, updated `ai/CURRENT_STATE.md` and
+`ai/LAST_HANDOFF.md`, wrote
+`ai/reports/TASK-ROOT-CAUSE-RUNTIME-FIX-20260903-report.md`.
+
+## 2026-09-03 — TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903
+
+State change: added a manual, per-request/per-supplier shipping-cost
+calculator against the Деловые Линии (Dellin) public calculator API — real
+product/API/schema change, by explicit owner instruction with its own Task
+ID, scope and non-goals (not a documentation-only task). New backend
+integration/domain modules, a new `LogisticsQuotesMixin` in
+`mail/logistics_quotes.py`, a new migration
+(`migrations/033_logistics_quotes.sql`, executed under explicit one-migration
+owner authorization), new HTTP routes in `backend/http_requests.py`, and a
+new "Логистика" section in `frontend/src/components/SupplierPanel.tsx`.
+
+State change: the Dellin request/response schema was verified against the
+official documentation before writing code. `dev.dellin.ru` itself returns
+401/a bot-block page on direct automated fetches; the same official pages
+were read through the public Wayback Machine archive
+(`web.archive.org/web/20240221125337/...`) instead — a legal public archive
+of the same first-party content, not a bypass of the site's own protection.
+No request/response field was invented from memory.
+
+State change: official backend suite went from the previously recorded
+baseline `tests=504, failures=0, errors=9, skipped=1` to `tests=515,
+failures=0, errors=9, skipped=1` — 11 new tests added by this task, the
+9 pre-existing errors unchanged (not this task's regression, not fixed by
+it either). Frontend `typecheck`/`build` passed clean; `lint` reported
+`0 errors, 5 warnings`, no new lint errors (one pre-existing `useEffect`
+dependency-array warning pattern in `SupplierPanel.tsx`, confirmed present
+before this task via `git show HEAD:...`).
+
+State change: manually verified the full flow in a real browser against the
+safe `OFFLINE_TEST` runtime (`scripts/start_test_runtime.ps1`, disposable
+SQLite, outgoing mail disabled, no real provider keys) — the calculate
+button stayed disabled until all required fields were filled, the request
+round-tripped through the real HTTP route into a real saved
+`logistics_quotes` row with `status='unavailable'` and `price=NULL` (no
+`DELLIN_API_KEY` configured in this environment — the app correctly showed
+an explicit unavailable message, never `0 ₽`), and reopening the same
+supplier panel reloaded that saved quote via the `GET` route without
+recalculating. A real call to the live Dellin API with an actual API key
+was **not** performed (no key, no verified network path) and is recorded as
+`NOT VERIFIED`, together with whether commercial use of the Dellin API in a
+paid SaaS product is contractually authorized (also explicitly
+`NOT VERIFIED`, per the task's own instruction).
+
+Added `DECISION-015` to `ai/DECISIONS.md`, updated `ai/CURRENT_STATE.md` and
+`ai/LAST_HANDOFF.md`, wrote
+`ai/reports/TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903-report.md`.
+
+## 2026-09-03 — TASK-ARCHITECTURE-REFACTOR-SERIES-PAUSE-20260903
+
+State change: recorded a read-only recovery audit result
+(`NO_UNFINISHED_REFACTOR_FOUND`, branch
+`integration/current-architecture-governance-20260903` @
+`a88334deb59f32d43f79afca63f71fc7bf263da0`) and the owner's decision to close
+the current bounded-refactor series and pause the remaining architecture
+program until a new direct owner instruction. Added `DECISION-014` to
+`ai/DECISIONS.md`, updated `ai/CURRENT_STATE.md` and `ai/LAST_HANDOFF.md`.
+
+State change: no product code, frontend, backend, test or dependency file was
+changed. `ai/DEFERRED_FINDINGS.md` was intentionally left unchanged — no
+existing `FINDING-*` entry required a cross-reference under the current
+contract, and no finding's status was closed or lowered. Cited the exact
+suite result already established earlier in this session
+(`tests=504, failures=0, errors=9, skipped=1`) without rerunning the full
+product test suite, matching the state-only closeout scope.
+
+State change: `ai/ACTIVE_TASK.md` updated and kept `IDLE` after this
+closeout.
+
+## 2026-09-03 — TASK-COLD-START-WORKSPACE-HARD-GATE-20260903
+
+- Read-only discovery confirmed two checkouts: the legacy OneDrive checkout
+  was dirty and the canonical `C:\Users\edwat\SupplyDesk` checkout was the
+  intended project root. No user data, database, runtime or mail paths were
+  changed.
+- A fresh Claude legacy trace before the adapter update launched project-root
+  audit work instead of stopping, confirming the bootstrap gap. The exact
+  child was interrupted; unrelated Claude processes were left untouched.
+- Updated the canonical gate/contract/adapters/manifest and focused diagnostics
+  in one task-scoped commit. Updated only the legacy adapter/contract/marker
+  locally so a fresh agent entering the stale checkout receives a stop signal.
+- Post-fix Codex Canary 1 blocked the legacy checkout before project analysis
+  and passed the canonical checkout before continuing a read-only audit.
+  Claude A/B attempts returned an API 200 malformed-response error with no
+  usable post-fix behavioral trace.
+- Local validators, the guard, focused tests and `doctor -Plan` were run.
+  Publication is a separate final action after the commit and is recorded in
+  the owner response.
+
 ## 2026-09-03 — TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903
 
 - Owner instruction: "почини, а потом продолжи рефакторинг!" — first
@@ -1169,3 +1510,76 @@ was unavailable; remote SHA and FAST CI were not checked.
 State change: after DNS access recovered, the same task branch was published;
 remote SHA matches `301934fb0daa1f49cad8c793c9a5acbd30b10152`, and FAST Control CI
 run `33645377974` passed. Full product suites were skipped by report-only scope.
+
+## 2026-09-03 — TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903
+
+State change: added the canonical default operating model, automatic minimum
+sufficient tool selection, owner-reminder independence, causal-scope delivery,
+real-stop-only handling and minimum owner prompt rules. Replaced the conflicting
+file-count change-budget wording with the causal review thresholds.
+
+State change: static policy validator, documentation/state validators,
+`git diff --check` and `18/18` focused governance tests passed. Candidate commit
+`2678370f` was created with a clean tree. The current task's direct scope was
+limited to governance and evidence; no product code, runtime, database, mail,
+provider or frontend state changed.
+
+State change: neutral fresh child attempts for Claude and Codex contained no tool
+names but returned no usable child trace; both owned hung processes were stopped
+by exact PID. Cold-start behavior is therefore `NOT VERIFIED`, not simulated or
+claimed from the parent session.
+
+## 2026-09-04 — TASK-SUPPLYDESK-UI-FOUNDATION-V1-20260904
+
+State change: extended the existing local UI foundation across the main
+frontend pages, introduced semantic tokens and canonical controls/states, and
+added a reusable email workspace boundary plus Notes/AI UI-only contracts.
+
+Verification state: workspace guard PASS; typecheck, lint, build,
+`git diff --check`, and the full rendered Playwright/a11y matrix `88/88` PASS.
+Reviewed desktop and narrow mobile screenshots show no overlap or horizontal
+overflow. A separate persisted before screenshot was unavailable, so the
+transformation comparison remains PARTIAL. No backend, API, database, auth,
+routing or business-logic changes were made.
+
+## 2026-09-04 — TASK-RUNTIME-SELECTION-HARD-GUARD-20260904
+
+State change: introduced the centralized purpose/runtime guard, canonical and
+safe launch wrappers, guarded frontend/browser tooling and a SAFE_TEST badge.
+The intentional `VISUAL_ACCEPTANCE + SAFE_TEST` demonstration stopped with
+guard failure; no fallback was attempted.
+
+Verification state: workspace guard PASS; runtime matrix and controlled-failure
+tests PASS; safe `AUTOMATED_TEST` smoke `2/2` PASS; canonical
+`VISUAL_ACCEPTANCE` public shell `1/1` PASS; frontend typecheck, lint, build,
+node-config typecheck and validators PASS. SAFE_TEST rendered screenshots at
+`1440×900` and `360×800` were reviewed. Canonical authenticated `/messages`,
+OAuth callback, live provider and mail actions were not automated.
+
+## 2026-09-04 — TASK-PREPARE-SUPPLYDESK-FOR-EXTERNAL-UI-REDESIGN-20260904
+
+State change: revalidated the canonical root and branch after an external
+branch switch was detected during the audit. Continued only on
+`integration/current-architecture-governance-20260903`; the expected functional
+HEAD `878cf70` remained intact.
+
+State change: found and corrected only stale documentation anchors and the
+manifest canonical-branch pointer. No frontend, backend, API, database, auth,
+provider or mail file was changed. Untracked `runtime/` and
+`docs/experiments/` were preserved.
+
+Verification state: validators PASS; backend `91/91` PASS; canonical HTTP smoke
+(`8000` root `200`, auth/me `200`, unknown API `404`, frontend `5173` root `200`);
+staged security scan found no high-confidence secret signatures. One initial
+push attempt hit transient GitHub DNS failure, then the normal push succeeded.
+Canonical branch and remote matched at `1a5acf2`; external base was created and
+verified at the same SHA. Final documentation boundary commit `b70c4cf` was
+pushed and the external base was fast-forwarded to the same SHA; GitHub default
+branch was observed but not changed.
+
+State change: after synchronization, a final status check found unverified
+worktree drift: unstaged `frontend/src/App.tsx` and untracked
+`frontend/src/pages/UiExperiment.tsx`, `frontend/src/styles/`,
+`docs/experiments/` and `runtime/`. These paths were not inspected, staged,
+committed, pushed or deleted, preserving the owner's UI work and the stop-UI
+boundary.

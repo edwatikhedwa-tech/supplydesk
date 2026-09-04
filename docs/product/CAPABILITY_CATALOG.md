@@ -3,8 +3,8 @@ document_id: CAPABILITY-CATALOG-001
 status: CURRENT
 canonical: false
 owner: product-docs
-updated_at: 2026-09-01
-source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
+updated_at: 2026-09-04
+source_commit: 78484108ed010e152ab0e3e04d2490e8c4137d6c
 ---
 
 # Product Capability Catalog
@@ -31,7 +31,8 @@ VERIFIED` is deliberately not counted as a delivered capability.
 | CAP-DELIVERY-001 | Delivery status and uncertainty semantics | CONFIRMED | `mail/deliverability.py`; `tests/test_mail_status_semantics.py` | DOC-004, DOC-005 |
 | CAP-SUPPRESSION-001 | Bounce and suppression handling | CONFIRMED | `mail/bounce.py`; `tests/test_mail_status_semantics.py` | DOC-004, DOC-005 |
 | CAP-CAMPAIGN-001 | Campaign stages, pause/stop and safe retry preview | CONFIRMED | `supplier_app.py` campaign routes; `tests/test_mail_deliverability.py` | DOC-004, DOC-005 |
-| CAP-DATABASE-001 | SQLite persistence, migrations and integrity checks | PARTIAL | `mail/repository.py`; `migrations/001..032`; runtime DB absent in this worktree | DOC-003 |
+| CAP-DATABASE-001 | SQLite persistence, migrations and integrity checks | PARTIAL | `mail/repository.py`; `migrations/001..033`; runtime DB absent in this worktree | DOC-003 |
+| CAP-LOGISTICS-001 | Manual shipping-cost calculator (one request/one supplier, Dellin) | CONFIRMED | `backend/integrations/logistics/dellin_client.py`; `backend/domain/logistics/quote_service.py`; `mail/logistics_quotes.py`; `tests/test_logistics_quote.py`; live-verified 2026-09-04 against `api.dellin.ru` (real `status: "success"`, non-zero price) | — |
 | CAP-FRONTEND-001 | Frontend shell, product views and responsive acceptance | CONFIRMED | `frontend/src/`; `frontend/tests/`; inherited 8-pass shell evidence | DOC-006 |
 | CAP-RUNTIME-001 | Canonical runtime lock, provenance and session manifests | CONFIRMED | `mail/runtime.py`; `tests/test_canonical_runtime.py` | DOC-001, DOC-004 |
 | CAP-DIAGNOSTIC-001 | Read-only environment, contract and safety diagnostics | PARTIAL | `scripts/doctor.ps1` before this task; V1 artifacts created here | DOC-001..DOC-010 |

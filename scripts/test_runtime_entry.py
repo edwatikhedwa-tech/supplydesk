@@ -10,8 +10,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts.runtime_guard import RuntimeSelectionError, print_runtime_context, validate_runtime_selection
 
 
 class TestRuntimeSafetyError(RuntimeError):
@@ -108,12 +110,14 @@ def write_marker(path: Path, *, status: str, db_path: Path) -> None:
     payload = {
         "schema_version": 1,
         "profile": "OFFLINE_TEST",
+        "runtime_purpose": os.environ.get("RUNTIME_PURPOSE", "SAFE_TEST"),
+        "runtime_mode": "SAFE_TEST",
         "status": status,
         "environment": "test",
         "pid": os.getpid(),
         "port": int(os.environ.get("PORT", "0")),
         "base_url": os.environ.get("APP_BASE_URL", "http://127.0.0.1:0"),
-        "database": {"kind": "disposable_sqlite", "path": str(db_path), "canonical": False},
+        "database": {"kind": "disposable_sqlite", "path": str(db_path), "canonical": False, "class": "DISPOSABLE_SQLITE"},
         "outgoing_mail": "disabled",
         "external_providers": "fake/blocked",
         "network": {"mode": "loopback_only", "external_connections": "blocked"},
@@ -127,6 +131,19 @@ def write_marker(path: Path, *, status: str, db_path: Path) -> None:
 def main() -> int:
     env = dict(os.environ)
     try:
+        runtime = validate_runtime_selection(
+            purpose=env.get("RUNTIME_PURPOSE"),
+            mode=env.get("RUNTIME_MODE"),
+            base_url=env.get("APP_BASE_URL"),
+            database_class=env.get("RUNTIME_DATABASE_CLASS"),
+            auth_mode=env.get("RUNTIME_AUTH_MODE"),
+            database_path=env.get("MAIL_DB_PATH"),
+            application_env=env.get("SUPPLYDESK_ENV"),
+            mail_outgoing_disabled=env.get("MAIL_OUTGOING_DISABLED"),
+            surface="backend",
+            root=ROOT,
+        )
+        print_runtime_context(runtime)
         db_path, marker_path = validate_test_runtime_config(env)
         db_path.parent.mkdir(parents=True, exist_ok=True)
         install_loopback_only_network_guard()
@@ -144,7 +161,7 @@ def main() -> int:
             raise TestRuntimeSafetyError("runtime outgoing gate unexpectedly allowed mail")
         app.run()
         return 0
-    except (TestRuntimeSafetyError, OSError, ValueError) as exc:
+    except (TestRuntimeSafetyError, RuntimeSelectionError, OSError, ValueError) as exc:
         print(f"TEST_RUNTIME_SAFETY_BLOCK: {exc}", file=sys.stderr)
         return 3
 

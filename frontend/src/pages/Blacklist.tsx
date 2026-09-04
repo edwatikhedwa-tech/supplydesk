@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RotateCcw, Search } from 'lucide-react';
 import { api } from '@/lib/api';
 import { pluralize } from '@/lib/utils';
+import { PageFrame, PageIntro } from '@/components/PageFrame';
+import { Button, TextField } from '@/components/ui';
 import { GlobalSupplierTable } from '@/components/suppliers/GlobalSupplierTable';
 import { SupplierPanel } from '@/components/suppliers/SupplierPanel';
 import type { BlacklistEntry, GlobalSupplierSummary } from '@/lib/types';
@@ -86,18 +88,13 @@ export function Blacklist() {
   };
 
   return (
-    <div className="min-h-screen px-6 py-7 lg:px-10 lg:py-10 pb-24 animate-fade-in">
-      <div className="mx-auto max-w-[1600px]">
-      <div className="mb-6">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />Чёрный список
-        </div>
-        <h1 className="text-page-title font-bold">Чёрный список</h1>
-        <p className="mt-1 text-sm text-ink-500">
-          {blacklisted.length} {pluralize(blacklisted.length, 'поставщик', 'поставщика', 'поставщиков')}
-          {domains.length > 0 && <> · {domains.length} {pluralize(domains.length, 'домен', 'домена', 'доменов')}</>}
-        </p>
-      </div>
+    <PageFrame className="pb-24">
+      <div>
+      <PageIntro
+        eyebrow="Контроль рисков"
+        title="Чёрный список"
+        description={<>{blacklisted.length} {pluralize(blacklisted.length, 'поставщик', 'поставщика', 'поставщиков')}{domains.length > 0 && <> · {domains.length} {pluralize(domains.length, 'домен', 'домена', 'доменов')}</>}</>}
+      />
 
       <div className="mb-5 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
         Поставщики из чёрного списка не участвуют в автопоиске и недоступны для выбора при создании новой заявки.
@@ -105,15 +102,13 @@ export function Blacklist() {
 
       <div className="mb-5">
         <div className="relative flex-1 min-w-[240px] max-w-xs">
-          <Search className="w-4 h-4 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <label htmlFor="blacklist-search" className="sr-only">Поиск по названию или ИНН</label>
-          <input
+          <TextField
             id="blacklist-search"
-            type="text"
+            label="Поиск по названию или ИНН"
+            icon={Search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск по названию, ИНН…"
-            className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-ink-200 rounded-xl text-ink-800 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-accent-200 focus:border-accent-400 transition-all"
           />
         </div>
       </div>
@@ -162,14 +157,14 @@ export function Blacklist() {
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-accent-600 flex items-center justify-center text-white text-sm font-bold">{selected.size}</div>
             <span className="text-sm text-ink-700">Выбрано <span className="font-semibold text-ink-900">{selected.size}</span> поставщиков</span>
-            <button onClick={() => setSelected(new Set())} className="min-h-10 px-2 text-xs text-ink-400 transition-colors hover:text-ink-800">Снять выбор</button>
+            <Button onClick={() => setSelected(new Set())} variant="ghost" size="sm">Снять выбор</Button>
           </div>
-          <button
+          <Button
             onClick={restoreSelected}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-accent-600 px-5 py-2.5 text-sm font-medium text-white shadow-soft transition-colors hover:bg-accent-700"
+            variant="primary"
           >
             <RotateCcw className="w-4 h-4" />Вернуть выбранных
-          </button>
+          </Button>
         </div>
       )}
 
@@ -180,6 +175,6 @@ export function Blacklist() {
         />
       )}
       </div>
-    </div>
+    </PageFrame>
   );
 }

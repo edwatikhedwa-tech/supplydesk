@@ -16,7 +16,9 @@ from uuid import uuid4
 
 from .auth import new_token
 from .auth_accounts import AuthAccountsMixin
+from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
+from .thread_metadata import ThreadMetadataMixin
 from .bounce import classify_bounce, failed_recipients
 from .content import (
     clean_email_text,
@@ -112,6 +114,39 @@ _DELIVERY_STATUS_KEYS = (
 )
 
 
+def _communication_message_predicate(alias: str = "m") -> str:
+    """Return the business predicate for messages shown as communication.
+
+    Queue attempts remain durable for operations, but only inbound messages and
+    outbound events that reached SMTP (or could have reached it) belong in the
+    conversation history. The integrity marker is the transport boundary for
+    a failed attempt: a pre-DATA failure has no ``irreversible_at`` timestamp.
+    """
+    return f"""(
+        {alias}.direction='inbound'
+        OR (
+            {alias}.direction='outbound'
+            AND (
+                {alias}.status IN ('sent', 'delivery_unknown')
+                OR (
+                    {alias}.status IN ('failed', 'bounced')
+                    AND (
+                        {alias}.sent_at IS NOT NULL
+                        OR EXISTS (
+                            SELECT 1
+                            FROM mail_jobs visibility_job
+                            JOIN mail_job_integrity visibility_integrity
+                              ON visibility_integrity.job_id=visibility_job.id
+                            WHERE visibility_job.message_id={alias}.id
+                              AND visibility_integrity.irreversible_at IS NOT NULL
+                        )
+                    )
+                )
+            )
+        )
+    )"""
+
+
 def _normalized_mail_address(value: Any) -> str:
     return str(value or "").strip().lower()
 
@@ -176,7 +211,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-class MailRepository(AuthAccountsMixin, MailTemplatesMixin):
+class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
         self.db_path = Path(db_path).expanduser().resolve()
@@ -1677,14 +1712,19 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin):
                 {"supplier_ids": sorted(target_ids)},
             )
 
-    def list_threads(self, workspace_id: int, *, include_queue_only: bool = False) -> list[dict[str, Any]]:
+    def list_threads(self, workspace_id: int, user_id: int | None = None, *, include_queue_only: bool = False) -> list[dict[str, Any]]:
         with self.connect() as connection:
             rows = connection.execute(
-                """SELECT * FROM (
-                     SELECT t.id, t.request_id, t.supplier_id, t.subject, t.last_message_at, t.created_at,
+                f"""SELECT * FROM (
+                     SELECT t.id, t.request_id, t.supplier_id, t.subject,
+                            COALESCE((SELECT m.created_at FROM mail_messages m WHERE m.thread_id=t.id
+                               AND {_communication_message_predicate("m")}
+                               ORDER BY m.created_at DESC, m.id DESC LIMIT 1), t.created_at) AS last_message_at,
+                            t.created_at,
                             r.name AS request_name, s.name AS supplier_name, s.email AS supplier_email,
                             s.host AS supplier_host, s.external_key AS supplier_external_key,
-                            (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id) AS messages_count,
+                            (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id
+                               AND {_communication_message_predicate("m")}) AS messages_count,
                             (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='inbound' AND lower(COALESCE(m.from_email,'')) NOT LIKE 'mailer-daemon@%' AND lower(COALESCE(m.from_email,'')) NOT LIKE 'postmaster@%') AS replies_count,
                             -- Непрочитанные ответы — отдельно от общего числа ответов.
                             (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='inbound'
@@ -1692,17 +1732,18 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin):
                                AND lower(COALESCE(m.from_email,'')) NOT LIKE 'postmaster@%'
                                AND NOT EXISTS (SELECT 1 FROM mail_message_reads mr WHERE mr.message_id=m.id)) AS unread_count,
                             (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='outbound' AND m.status IN ('queued', 'sending')) AS pending_outbound_count,
-                            (SELECT m.status FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='outbound' ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_outbound_status,
-                            (SELECT m.direction FROM mail_messages m WHERE m.thread_id=t.id ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_direction,
+                            (SELECT m.status FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='outbound'
+                               AND (? = 1 OR {_communication_message_predicate("m")})
+                               ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_outbound_status,
+                            (SELECT m.direction FROM mail_messages m WHERE m.thread_id=t.id
+                               AND {_communication_message_predicate("m")}
+                               ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_direction,
                             NULL AS manual_inbox_id
                      FROM mail_threads t JOIN requests r ON r.id=t.request_id JOIN suppliers s ON s.id=t.supplier_id
-                     WHERE t.workspace_id=? AND (? = 1 OR EXISTS (
-                         SELECT 1 FROM mail_messages visible_m
-                         WHERE visible_m.thread_id=t.id AND (
-                             visible_m.direction='inbound'
-                             OR (visible_m.direction='outbound' AND visible_m.status IN ('sent', 'failed', 'delivery_unknown'))
-                         )
-                     ))
+                      WHERE t.workspace_id=? AND (? = 1 OR EXISTS (
+                          SELECT 1 FROM mail_messages visible_m
+                          WHERE visible_m.thread_id=t.id AND {_communication_message_predicate("visible_m")}
+                      ))
                      UNION ALL
                      SELECT -link.id AS id, link.request_id, COALESCE(link.supplier_id, 0) AS supplier_id,
                             inbox.subject, inbox.received_at AS last_message_at, link.created_at,
@@ -1720,12 +1761,19 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin):
                      JOIN requests r ON r.id=link.request_id
                      LEFT JOIN suppliers s ON s.id=link.supplier_id
                      WHERE link.workspace_id=? AND link.active=1 AND inbox.status='matched'
-                ) ORDER BY COALESCE(last_message_at, created_at) DESC""",
-                (workspace_id, int(include_queue_only), workspace_id),
+                 ) ORDER BY COALESCE(last_message_at, created_at) DESC""",
+                 (int(include_queue_only), workspace_id, int(include_queue_only), workspace_id),
             ).fetchall()
-        return [dict(row) for row in rows]
+        items = [dict(row) for row in rows]
+        metadata = self.list_thread_metadata(workspace_id, user_id) if user_id is not None else {}
+        for item in items:
+            item.update(metadata.get((int(item["request_id"]), int(item["supplier_id"])), {
+                "is_important": False,
+                "priority": None,
+            }))
+        return items
 
-    def list_outbox_threads(self, workspace_id: int) -> list[dict[str, Any]]:
+    def list_outbox_threads(self, workspace_id: int, user_id: int | None = None) -> list[dict[str, Any]]:
         """Return request threads that still contain an outbound queue item.
 
         The correspondence view intentionally excludes queue-only threads, but
@@ -1733,7 +1781,7 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin):
         summary contract keeps the outbox and correspondence views consistent.
         """
         return [
-            item for item in self.list_threads(workspace_id, include_queue_only=True)
+            item for item in self.list_threads(workspace_id, user_id, include_queue_only=True)
             if item.get("manual_inbox_id") is None and int(item.get("pending_outbound_count") or 0) > 0
         ]
 
@@ -8040,7 +8088,7 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin):
     def thread_messages(self, workspace_id: int, request_id: int, supplier_id: int) -> list[dict[str, Any]]:
         with self.connect() as connection:
             rows = connection.execute(
-                "SELECT id, direction, from_email, to_email, subject, body_text, body_html, status, error, message_id, in_reply_to, references_header, created_at, sent_at FROM mail_messages WHERE workspace_id=? AND request_id=? AND supplier_id=? ORDER BY created_at",
+                f"SELECT id, direction, from_email, to_email, subject, body_text, body_html, status, error, message_id, in_reply_to, references_header, created_at, sent_at FROM mail_messages WHERE workspace_id=? AND request_id=? AND supplier_id=? AND {_communication_message_predicate('mail_messages')} ORDER BY created_at",
                 (workspace_id, request_id, supplier_id),
             ).fetchall()
             # Opening a thread is how a reply gets acknowledged — feeds the

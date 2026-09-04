@@ -118,21 +118,54 @@ class WebLookup:
         domain_confirmed=False — вызывающий код обязан требовать более строгое
         подтверждение (например, факт, что сам ИНН зарегистрирован на этот
         домен по данным Checko), а не просто «не опровергнуто».
+
+        Найдено 2026-09-04 на живой заявке: раньше «домен упомянут в
+        сниппете» засчитывалось для ЛЮБОГО источника, а не только доверенного
+        каталога. Запрос всегда содержит сам домен, поэтому его эхо в
+        заголовке/сниппете есть почти у каждого результата — включая
+        доменные агрегаторы вроде tapki.com, которые просто повторяют
+        искомый домен в заголовке страницы и не являются реестром или его
+        отражением. Так `puls-stroy.ru` получил чужой ИНН из tapki.com
+        только потому, что тот процитировал сам домен. Теперь упоминание в
+        тексте подтверждает домен, только если источник — сам сайт компании
+        или один из `DIRECTORY_DOMAINS` (Rusprofile, list-org и т.п. — те,
+        что действительно отражают данные реестра, а не произвольный
+        доменный агрегатор).
+
+        Второй найденный в тот же день случай: `gkz.ru` (кирпичный завод в
+        Голицыно, ИНН 5032000108) — среди результатов также нашлось
+        постороннее ФБУ «ГКЗ» в Москве (ИНН 7706030458, случайное совпадение
+        сокращения), и оно тоже прошло проверку через доверенный каталог
+        (Rusprofile). Раньше функция брала первое подтверждённое совпадение
+        и останавливалась — из 7 источников в выдаче 6 указывали на верный
+        ИНН и только 1 на посторонний, но порядок результатов решал не в
+        пользу большинства. Теперь собираются ВСЕ подтверждённые кандидаты
+        по всей выдаче, и побеждает тот, у кого больше независимых
+        подтверждений; при равенстве предпочтение отдаётся варианту, где
+        среди источников есть сам сайт компании.
+
+        Запрос вида `"ИНН {host}"` (порядок слов, а не `"{host} ИНН ОГРН
+        реквизиты"`) на практике чаще выводит сам сайт компании в первую
+        тройку результатов — полезный сигнал для `is_own_site` выше.
         """
         root = root_domain(host)
-        query = f"{company_name} ИНН" if company_name else f"{host} ИНН ОГРН реквизиты"
+        query = f"{company_name} ИНН" if company_name else f"ИНН {host}"
         docs = self._search(query)
+        confirmed: dict[str, list[InnHit]] = {}
         fallback: InnHit | None = None
         for doc in docs:
             blob = f"{doc.title} {doc.snippet}"
             source_host = host_of(doc.url)
-            # Домен упомянут в самой странице каталога, либо страница найдена
-            # прямо на сайте компании — это и есть первичное подтверждение.
-            confirmed = (
-                root in blob.lower()
-                or host.lower() in blob.lower()
-                or source_host == root
-                or root_domain(source_host) == root
+            source_root = root_domain(source_host)
+            # Страница найдена прямо на сайте компании — сильнейшее
+            # подтверждение. Иначе домен, упомянутый в тексте, подтверждает
+            # что-либо, только если источник — известный реестр/каталог, а
+            # не произвольный агрегатор, который просто эхом повторяет
+            # искомую строку запроса.
+            is_own_site = source_host == root or source_root == root
+            is_trusted_directory = source_host in DIRECTORY_DOMAINS or source_root in DIRECTORY_DOMAINS
+            is_confirmed = is_own_site or (
+                is_trusted_directory and (root in blob.lower() or host.lower() in blob.lower())
             )
             for m in re.finditer(r"ИНН[\s:№-]*(\d{10}|\d{12})(?!\d)", blob, re.IGNORECASE):
                 inn = normalize_inn(m.group(1))
@@ -142,12 +175,21 @@ class WebLookup:
                     inn=inn, source_url=doc.url, method="web",
                     evidence=" ".join(blob.split())[:300],
                     checksum_ok=True, kind=inn_kind(inn),
-                    domain_confirmed=confirmed,
+                    domain_confirmed=is_confirmed,
                 )
-                if confirmed:
-                    return hit
-                if fallback is None:
+                if is_confirmed:
+                    confirmed.setdefault(inn, []).append(hit)
+                elif fallback is None:
                     fallback = hit
+        if confirmed:
+            best_inn = max(
+                confirmed,
+                key=lambda candidate: (
+                    len(confirmed[candidate]),
+                    any(host_of(h.source_url) == root for h in confirmed[candidate]),
+                ),
+            )
+            return confirmed[best_inn][0]
         return fallback
 
     # ------------------------------------------------------------------ частности

@@ -6,9 +6,11 @@ import { cn, formatFullDate, formatRelativeDate } from '@/lib/utils';
 import { ThreadList } from '@/components/mail/ThreadList';
 import { OutboxList } from '@/components/mail/OutboxList';
 import { ThreadDetail } from '@/components/mail/ThreadDetail';
+import { EmailWorkspace } from '@/components/mail/EmailWorkspace';
 import { Composer, type MailComposerContext } from '@/components/mail/Composer';
 import { EmailRenderer } from '@/components/mail/EmailRenderer';
 import { InboxReplyComposer } from '@/components/mail/InboxReplyComposer';
+import { Button } from '@/components/ui/Button';
 import type { InboxMessage, InboxSuggestion, MailMessage, ManualLinkRequestOption, ThreadSummary } from '@/lib/types';
 
 type Mode = 'requests' | 'unmatched' | 'outbox';
@@ -26,6 +28,10 @@ export function Messages() {
   const [selectedThread, setSelectedThread] = useState<ThreadSummary | null>(null);
   const [composerCtx, setComposerCtx] = useState<MailComposerContext | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [navigatorSearch, setNavigatorSearch] = useState('');
+  const [linkNotice, setLinkNotice] = useState('');
+  const [linkError, setLinkError] = useState('');
+  const [lastDragLink, setLastDragLink] = useState<{ inboxId: number; requestId: number } | null>(null);
 
   /** Открыть конкретный тред по ссылке `/messages?thread=<заявка>:<поставщик>`.
    *  Так статус «Ответ получен» в таблице заявки ведёт прямо в письмо, а не
@@ -89,7 +95,65 @@ export function Messages() {
   const changeMode = (nextMode: Mode) => {
     setMode(nextMode);
     setSelectedThread(null);
+    setLinkNotice('');
+    setLinkError('');
   };
+
+  const handleMetadataChange = useCallback(async (thread: ThreadSummary, patch: { important?: boolean; priority?: 1 | 2 | 3 | null }) => {
+    const result = await api.updateThreadMetadata(thread.request_id, thread.supplier_id, patch);
+    setSelectedThread((current) => current && threadKey(current) === threadKey(thread)
+      ? { ...current, is_important: result.is_important, priority: result.priority }
+      : current);
+    setRefreshKey((value) => value + 1);
+  }, []);
+
+  const openUnmatched = useCallback((messageId?: number) => {
+    setMode('unmatched');
+    setSelectedThread(null);
+    setLinkError('');
+    navigate(messageId != null ? `/messages?tab=unmatched&inbox=${messageId}` : '/messages?tab=unmatched');
+  }, [navigate]);
+
+  const handleDropUnmatched = useCallback(async (messageId: number, requestId: number) => {
+    setLinkError('');
+    setLinkNotice('');
+    try {
+      const suggestions = await api.inboxSuggestions(messageId);
+      const exact = suggestions.items.filter((item) => item.request_id === requestId && item.match === 'exact');
+      if (exact.length === 1) {
+        await api.manuallyLinkInboxMessage({
+          inbox_message_id: messageId,
+          request_id: requestId,
+          supplier_id: exact[0].supplier_id,
+          confirmed: true,
+        });
+        setLastDragLink({ inboxId: messageId, requestId });
+        setLinkNotice(`Письмо связано с заявкой №${requestId}.`);
+        setRefreshKey((value) => value + 1);
+        window.dispatchEvent(new CustomEvent('supplydesk:unmatched-mail-changed', { detail: { delta: -1 } }));
+        return;
+      }
+      // Domain-only or multiple matches never become an automatic link. The
+      // existing manual dialog remains the authority for the final choice.
+      navigate(`/messages?tab=unmatched&inbox=${messageId}&request=${requestId}`);
+    } catch (err) {
+      setLinkError(err instanceof ApiError ? err.message : 'Не удалось проверить письмо. Откройте ручную привязку.');
+      openUnmatched(messageId);
+    }
+  }, [navigate, openUnmatched]);
+
+  const undoDragLink = useCallback(async () => {
+    if (!lastDragLink) return;
+    try {
+      await api.unlinkManualInboxMessage(lastDragLink.inboxId);
+      setLastDragLink(null);
+      setLinkNotice('Связь отменена. Письмо снова в списке без привязки.');
+      setRefreshKey((value) => value + 1);
+      window.dispatchEvent(new CustomEvent('supplydesk:unmatched-mail-changed', { detail: { delta: 1 } }));
+    } catch (err) {
+      setLinkError(err instanceof ApiError ? err.message : 'Не удалось отменить связь.');
+    }
+  }, [lastDragLink]);
 
   /** Открытие треда помечает его входящие прочитанными на сервере
    *  (MailRepository.thread_messages), поэтому список нужно перезапросить —
@@ -106,41 +170,47 @@ export function Messages() {
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden h-screen">
-      <div className="flex min-h-[76px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-ink-200/70 bg-white px-4 py-3 sm:h-[76px] sm:flex-nowrap sm:px-8 sm:py-0">
-        <div className="min-w-0">
-          <h1 className="text-page-title font-bold text-ink-900">Переписка</h1>
-          <p className="text-xs text-ink-500 mt-0.5">Переписка по заявкам, очередь отправки и письма без привязки</p>
+    <div className="flex h-[calc(100vh-3.5rem)] flex-1 flex-col overflow-hidden bg-ink-50 lg:h-screen">
+      <header className="shrink-0 border-b border-ink-200 bg-white">
+        <div className="px-4 py-4 sm:px-6">
+          <div className="min-w-0">
+            <p className="text-2xs font-bold uppercase tracking-[0.16em] text-accent-700">Рабочее пространство закупок</p>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h1 className="sd-shimmer-heading text-page-title font-semibold tracking-tight text-ink-900">Сообщения</h1>
+              <p className="text-xs font-medium text-ink-500">Заявка <span aria-hidden="true">→</span> поставщик <span aria-hidden="true">→</span> переписка</p>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center bg-ink-100 rounded-lg p-0.5">
-          <button
-            type="button"
-            aria-pressed={mode === 'requests'}
-            onClick={() => changeMode('requests')}
-            className={cn('min-h-10 px-4 py-1.5 text-sm font-medium rounded-md transition-all', mode === 'requests' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
-          >
-            По заявкам
-          </button>
-          <button
-            type="button"
-            aria-pressed={mode === 'unmatched'}
-            onClick={() => changeMode('unmatched')}
-            className={cn('min-h-10 px-4 py-1.5 text-sm font-medium rounded-md transition-all', mode === 'unmatched' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
-          >
-            Без привязки
-          </button>
-          <button
-            type="button"
-            aria-pressed={mode === 'outbox'}
-            onClick={() => changeMode('outbox')}
-            className={cn('min-h-10 px-4 py-1.5 text-sm font-medium rounded-md transition-all', mode === 'outbox' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:text-ink-800')}
-          >
-            Очередь
-          </button>
-        </div>
-      </div>
+        <nav className="flex items-center gap-5 overflow-x-auto px-4 sm:px-6" aria-label="Разделы сообщений">
+          {([
+            ['requests', 'По заявкам'],
+            ['unmatched', 'Без привязки'],
+            ['outbox', 'Очередь'],
+          ] as const).map(([key, label]) => (
+            <Button
+              key={key}
+              variant="ghost"
+              size="sm"
+              aria-pressed={mode === key}
+              onClick={() => changeMode(key)}
+              className={cn(
+                'relative min-h-10 rounded-none px-0 text-sm after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-transparent',
+                mode === key ? 'text-ink-900 after:bg-accent-600' : 'text-ink-500 hover:bg-transparent hover:text-ink-800',
+              )}
+            >
+              {label}
+            </Button>
+          ))}
+        </nav>
+        {(linkNotice || linkError) && (
+          <div className="mt-3 flex flex-wrap items-center gap-2" role={linkError ? 'alert' : 'status'}>
+            <p className={cn('text-xs font-semibold', linkError ? 'text-rose-700' : 'text-emerald-700')}>{linkError || linkNotice}</p>
+            {lastDragLink && linkNotice && <Button size="sm" variant="secondary" onClick={() => void undoDragLink()}>Отменить связь</Button>}
+          </div>
+        )}
+      </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <EmailWorkspace>
         {mode === 'requests' ? (
           <>
             {/* Без key={refreshKey}: перезагрузку списка уже делает сам
@@ -150,6 +220,10 @@ export function Messages() {
               selectedThreadKey={selectedThread ? threadKey(selectedThread) : null}
               onSelectThread={setSelectedThread}
               refreshKey={refreshKey}
+              searchInput={navigatorSearch}
+              onSearchChange={setNavigatorSearch}
+              onOpenUnmatched={openUnmatched}
+              onDropUnmatched={handleDropUnmatched}
             />
             {selectedThread ? (
               <ThreadDetail
@@ -159,6 +233,7 @@ export function Messages() {
                 onOpenRequest={(requestId) => navigate(`/requests/${requestId}`)}
                 onUnlinkManual={selectedThread.manual_inbox_id != null ? handleManualUnlink : undefined}
                 onRead={handleThreadRead}
+                onMetadataChange={handleMetadataChange}
               />
             ) : (
               <EmptyState className="hidden xl:flex" />
@@ -170,6 +245,8 @@ export function Messages() {
               selectedThreadKey={selectedThread ? threadKey(selectedThread) : null}
               onSelectThread={setSelectedThread}
               refreshKey={refreshKey}
+              searchInput={navigatorSearch}
+              onSearchChange={setNavigatorSearch}
             />
             {selectedThread ? (
               <ThreadDetail
@@ -178,15 +255,16 @@ export function Messages() {
                 onReply={selectedThread.manual_inbox_id == null ? handleReply : undefined}
                 onOpenRequest={(requestId) => navigate(`/requests/${requestId}`)}
                 onRead={handleThreadRead}
+                onMetadataChange={handleMetadataChange}
               />
             ) : (
               <EmptyState className="hidden xl:flex" />
             )}
           </>
         ) : (
-          <UnmatchedInbox preselectId={wantedInboxId} />
+          <UnmatchedInbox preselectId={wantedInboxId} preselectRequestId={params.get('request') ? Number(params.get('request')) : null} />
         )}
-      </div>
+      </EmailWorkspace>
 
       {composerCtx && <Composer context={composerCtx} onClose={() => setComposerCtx(null)} onSent={handleSent} />}
     </div>
@@ -195,16 +273,17 @@ export function Messages() {
 
 function EmptyState({ className = '' }: { className?: string }) {
   return (
-    <div className={cn('flex flex-1 flex-col items-center justify-center bg-ink-50/50 px-6 text-center', className)}>
-      <div className="w-16 h-16 rounded-2xl bg-white border border-ink-200 flex items-center justify-center mb-4 shadow-sm">
-        <Mail size={28} className="text-ink-300" />
+    <div className={cn('flex flex-1 flex-col items-center justify-center bg-ink-50 px-6 text-center', className)}>
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-ink-200 bg-white text-ink-300">
+        <Mail size={22} aria-hidden="true" />
       </div>
-      <p className="text-sm font-medium text-ink-500">Выберите письмо, чтобы прочитать его</p>
+      <p className="text-sm font-semibold text-ink-700">Выберите переписку</p>
+      <p className="mt-1 max-w-xs text-xs leading-5 text-ink-400">Здесь появится история общения с поставщиком и следующий доступный шаг.</p>
     </div>
   );
 }
 
-function UnmatchedInbox({ preselectId }: { preselectId?: number | null }) {
+function UnmatchedInbox({ preselectId, preselectRequestId }: { preselectId?: number | null; preselectRequestId?: number | null }) {
   const [items, setItems] = useState<InboxMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState(false);
@@ -259,6 +338,17 @@ function UnmatchedInbox({ preselectId }: { preselectId?: number | null }) {
     }, 180);
     return () => window.clearTimeout(timer);
   }, [linkModalOpen, linkQuery, requestRetryToken]);
+
+  useEffect(() => {
+    if (!linkModalOpen || selectedRequest || preselectRequestId == null) return;
+    const option = requestOptions.find((item) => item.id === preselectRequestId);
+    if (option) {
+      setSelectedRequest(option);
+      // A drag target identifies the request, not the supplier. Supplier
+      // selection remains explicit so a domain match can never be guessed.
+      setSelectedSupplierId(null);
+    }
+  }, [linkModalOpen, preselectRequestId, requestOptions, selectedRequest]);
 
   useEffect(() => {
     if (!linkModalOpen) return undefined;
@@ -369,7 +459,7 @@ function UnmatchedInbox({ preselectId }: { preselectId?: number | null }) {
   return (
     <>
       <div className={cn(
-        'w-full shrink-0 border-r border-ink-200 bg-white flex-col xl:w-[360px] xl:flex',
+        'w-full shrink-0 border-r border-ink-200 bg-white flex-col xl:w-[400px] 2xl:w-[420px] xl:flex',
         selected ? 'hidden' : 'flex',
       )}>
         <div className="px-3 pt-3 pb-2.5 border-b border-ink-100 shrink-0">
@@ -503,7 +593,7 @@ function UnmatchedInbox({ preselectId }: { preselectId?: number | null }) {
             </div>
           )}
           <div ref={detailScrollRef} className="flex-1 overflow-y-auto">
-            <div className="mx-auto w-full max-w-[1180px] space-y-4 px-4 py-5 sm:px-6 lg:px-10 xl:px-12">
+            <div className="w-full space-y-4 px-4 py-5 sm:px-6 lg:px-6 xl:px-8 2xl:px-10">
               <div className="rounded-2xl border border-ink-200 bg-white px-5 py-4 shadow-sm sm:px-6">
                 <p className="text-2xs font-semibold uppercase tracking-wider text-ink-600">Входящее письмо</p>
                 <div className="mt-2 flex min-w-0 items-start justify-between gap-4">

@@ -8,6 +8,7 @@ import type {
   InboxConversation,
   InboxPreview,
   InboxSuggestion,
+  LogisticsQuote,
   ManualLinkRequestOption,
   MailMessage,
   MailTemplate,
@@ -115,6 +116,21 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ inn }),
     }),
+  getLogisticsQuote: (requestId: number, supplierId: number) =>
+    request<{ quote: LogisticsQuote | null }>(`/api/requests/${requestId}/suppliers/${supplierId}/logistics`),
+  calculateLogistics: (
+    requestId: number,
+    supplierId: number,
+    input: {
+      route_from: string;
+      route_to: string;
+      cargo: { places: number; weight_kg: number; volume_m3: number; max_length_cm: number; max_width_cm: number; max_height_cm: number };
+    },
+  ) =>
+    request<{ quote: LogisticsQuote; message: string }>(`/api/requests/${requestId}/suppliers/${supplierId}/logistics`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
 
   listSuppliers: (params: { requestId?: number; query?: string } = {}) => {
     const search = new URLSearchParams();
@@ -131,6 +147,20 @@ export const api = {
 
   listThreads: () => request<{ items: ThreadSummary[] }>('/api/correspondence'),
   listOutboxThreads: () => request<{ items: ThreadSummary[] }>('/api/mail/queue/messages'),
+  updateThreadMetadata: (
+    requestId: number,
+    supplierId: number,
+    input: { important?: boolean; priority?: 1 | 2 | 3 | null },
+  ) => request<{
+    ok: true;
+    request_id: number;
+    supplier_id: number;
+    is_important: boolean;
+    priority: 1 | 2 | 3 | null;
+  }>('/api/correspondence/metadata', {
+    method: 'POST',
+    body: JSON.stringify({ request_id: requestId, supplier_id: supplierId, ...input }),
+  }),
   threadMessages: (requestId: number, supplierId: number) =>
     request<{ items: MailMessage[] }>(`/api/mail/threads?request_id=${requestId}&supplier_id=${supplierId}`),
   listInbox: () => request<{ items: InboxMessage[] }>('/api/mail/inbox'),

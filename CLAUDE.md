@@ -35,6 +35,10 @@ the relevant files were actually connected or read.
 
 ## Workspace guard
 
+Before project-specific analysis or execution, including read-only work, enforce
+the canonical `SESSION_WORKSPACE_HARD_GATE` from
+[`ai/VIBECODING_RULES.md`](ai/VIBECODING_RULES.md). Only after it passes may the
+agent read project state, classify the task or select project-analysis tools.
 Before any file change, state/report update, backend start, frontend build,
 database write, migration, artifact-producing test, commit or push, run:
 
@@ -48,6 +52,17 @@ worktree or CI checkout must pass its exact absolute root explicitly with
 never changes directory, branch or files. If it prints
 `BLOCKED_WRONG_WORKSPACE`, stop immediately, even when local state files appear
 valid.
+
+Before starting a backend runtime specifically, classify `RUNTIME_MODE`
+(`LOCAL_CANONICAL` / `SAFE_TEST` / `CI` / `OTHER`) against
+`PROJECT_MANIFEST.yaml`'s `runtime_modes` block, then
+[`docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md`](docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md),
+before choosing a start command or port — see
+[`ai/AI_CONTRACT.md`](ai/AI_CONTRACT.md) rule 14. `SAFE_TEST` (default port
+`18000`) never has real provider credentials by design and must not be used
+for the owner's normal work session; do not substitute it for
+`LOCAL_CANONICAL` (port `8000`) just because it is the mode already proven
+working earlier in the session.
 
 The legacy root `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS` is
 recovery-only. Do not run ordinary coding tasks, the backend, frontend builds
@@ -150,6 +165,26 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
   composition-entrypoint program). `class SupplierApp(EnrichmentOrchestratorMixin)` composes it
   in, so every method still resolves `self.repository`/`self.service`/`self.llm_*` exactly as
   before — no behavior change, no new public surface.
+- `backend/integrations/logistics/dellin_client.py` — `DellinClient`: transport client for the
+  Деловые Линии (Dellin) shipping-cost calculator (`https://api.dellin.ru/v2/calculator.json`).
+  In-memory rate limiter (45/min, 1600/hour), retries only on 429/5xx (capped at 2), never on
+  other 4xx. Reads `DELLIN_API_KEY` from the environment; raises if absent.
+- `backend/domain/logistics/quote_service.py` — `LogisticsQuoteService`: hard gate on missing
+  required route/cargo fields, a sha256 input-hash cache held for the process lifetime, and
+  response parsing into `carrier/price/currency/term_days/cost_breakdown/status/input_hash/
+  calculated_at`. A provider error, contract price or rate limit always resolves to an explicit
+  non-success status with a message — never a `0 ₽` price. One `LogisticsQuoteService` instance
+  lives on `SupplierApp` (`self.logistics_quote_service`) for the process's lifetime, so the
+  client's rate limiter and the quote cache persist across requests.
+- `mail/logistics_quotes.py` — `LogisticsQuotesMixin`: `save_logistics_quote`/
+  `get_latest_logistics_quote`/`list_logistics_quotes_for_request`, same zero-coupling
+  extraction pattern as `mail/mail_templates.py`. `class MailRepository(AuthAccountsMixin,
+  MailTemplatesMixin, LogisticsQuotesMixin)` composes it in. Persists to
+  `logistics_quotes` (`migrations/033_logistics_quotes.sql`), scoped by joining
+  `requests.workspace_id` — the table itself has no `workspace_id` column, the same pattern
+  `request_supplier_states` already uses.
+  `GET`/`POST /api/requests/{id}/suppliers/{supplier_id}/logistics` live in the existing
+  `backend/http_requests.py` sub-router (`RequestRouteMixin`).
 - `collect_inn.py` stays at root as a thinned CLI (argparse, crawl/LLM/web/DaData
   orchestration, CSV output) importing its extracted pipeline back — this is deliberate
   structure, not an oversight. Three operator CLIs already moved with thin root compatibility

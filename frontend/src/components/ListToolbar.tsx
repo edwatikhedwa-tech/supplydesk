@@ -1,11 +1,51 @@
-import { useState } from 'react';
-import { Search, SlidersHorizontal, ChevronDown, X } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { FILTERS, SORTS, type FilterKey, type SortKey } from '@/useRequestState';
+import { Button, DropdownMenu, TextField } from '@/components/ui';
 
-interface Props { filter: FilterKey; setFilter: (f: FilterKey) => void; search: string; setSearch: (s: string) => void; sort: SortKey; setSort: (s: SortKey) => void; counts: { found: number; withContacts: number; withoutContacts: number; notSent: number; selected: number; queued: number; accepted: number; waiting: number; answered: number; error: number; bounced: number; deliveryUnknown: number; }; }
-const FILTER_COUNTS: Record<FilterKey, keyof Props['counts']> = { all: 'found', with_contacts: 'withContacts', without_contacts: 'withoutContacts', not_sent: 'notSent', selected: 'selected', queued: 'queued', accepted: 'accepted', waiting: 'waiting', answered: 'answered', error: 'error', bounce: 'bounced', delivery_unknown: 'deliveryUnknown' };
+interface Props {
+  filter: FilterKey;
+  setFilter: (filter: FilterKey) => void;
+  search: string;
+  setSearch: (search: string) => void;
+  sort: SortKey;
+  setSort: (sort: SortKey) => void;
+  counts: { found: number; withContacts: number; withoutContacts: number; notSent: number; selected: number; queued: number; accepted: number; waiting: number; answered: number; error: number; bounced: number; deliveryUnknown: number };
+}
+
+const FILTER_COUNTS: Record<FilterKey, keyof Props['counts']> = {
+  all: 'found',
+  with_contacts: 'withContacts',
+  without_contacts: 'withoutContacts',
+  not_sent: 'notSent',
+  selected: 'selected',
+  queued: 'queued',
+  accepted: 'accepted',
+  waiting: 'waiting',
+  answered: 'answered',
+  error: 'error',
+  bounce: 'bounced',
+  delivery_unknown: 'deliveryUnknown',
+};
+
 export function ListToolbar({ filter, setFilter, search, setSearch, sort, setSort, counts }: Props) {
-  const [sortOpen, setSortOpen] = useState(false); const currentSort = SORTS.find((s) => s.key === sort)!;
-  const visibleFilters = FILTERS.filter((f) => f.key !== 'delivery_unknown' || counts.deliveryUnknown > 0 || filter === 'delivery_unknown');
-  return <div data-supplier-toolbar className="sticky top-14 z-10 flex flex-col gap-3 border-b border-ink-200/70 bg-ink-50 px-4 py-3 sm:px-6 lg:top-0 lg:px-10"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"><div className="flex items-baseline gap-2"><h2 className="text-sm font-semibold text-ink-800">Компании</h2><span className="text-xs text-ink-400">· {counts.found}</span></div><div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center"><div className="relative min-w-0 w-full sm:w-auto"><Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск компании, ИНН, сайта…" className="h-9 w-full rounded-lg border border-ink-200 bg-ink-50/60 pl-8 pr-7 text-xs text-ink-700 placeholder:text-ink-400 transition-all focus:border-accent-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-100 sm:w-64" />{search && <button type="button" aria-label="Очистить поиск" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-600"><X className="h-3.5 w-3.5" /></button>}</div><div className="relative self-end sm:self-auto"><button type="button" onClick={() => setSortOpen((v) => !v)} onBlur={() => setTimeout(() => setSortOpen(false), 120)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 text-xs font-medium text-ink-600 transition-all hover:border-ink-300 hover:text-ink-800"><SlidersHorizontal className="h-3.5 w-3.5 text-ink-400" />{currentSort.label}<ChevronDown className="h-3 w-3 text-ink-400" /></button>{sortOpen && <div className="absolute right-0 top-10 z-20 w-44 animate-scale-in rounded-lg border border-ink-200 bg-white py-1 shadow-panel">{SORTS.map((s) => <button type="button" key={s.key} onMouseDown={() => { setSort(s.key); setSortOpen(false); }} className={`block w-full px-3 py-1.5 text-left text-xs transition-colors hover:bg-ink-50 ${s.key === sort ? 'font-medium text-accent-600' : 'text-ink-600'}`}>{s.label}</button>)}</div>}</div></div></div><div className="flex flex-wrap items-center gap-1.5">{visibleFilters.map((f) => { const active = f.key === filter; const count = counts[FILTER_COUNTS[f.key]]; return <button type="button" key={f.key} onClick={() => setFilter(f.key)} className={['inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all', active ? 'bg-ink-800 text-white shadow-sm' : 'bg-ink-100/70 text-ink-600 hover:bg-ink-200/70 hover:text-ink-800'].join(' ')}>{f.label}<span className={['rounded-full px-1.5 py-px text-2xs font-semibold tabular-nums', active ? 'bg-white/20 text-white' : 'bg-white text-ink-500'].join(' ')}>{count}</span></button>; })}</div></div>;
+  const currentSort = SORTS.find((item) => item.key === sort)!;
+  const visibleFilters = FILTERS.filter((item) => item.key !== 'delivery_unknown' || counts.deliveryUnknown > 0 || filter === 'delivery_unknown');
+  return (
+    <div data-supplier-toolbar className="sticky top-14 z-10 flex flex-col gap-3 border-b border-ink-200/70 bg-ink-50 px-4 py-3 sm:px-6 lg:top-0 lg:px-10">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex items-baseline gap-2"><h2 className="text-sm font-semibold text-ink-800">Компании</h2><span className="text-xs text-ink-400">· {counts.found}</span></div>
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+          <TextField label="Поиск компании, ИНН или сайта" icon={Search} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск компании, ИНН, сайта…" className="w-full sm:w-64" />
+          <DropdownMenu label="Сортировка" items={SORTS.map((item) => ({ id: item.key, label: item.label }))} value={currentSort.key} onSelect={(value) => setSort(value as SortKey)} />
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Фильтр компаний">
+        {visibleFilters.map((item) => {
+          const active = item.key === filter;
+          const count = counts[FILTER_COUNTS[item.key]];
+          return <Button key={item.key} type="button" variant="ghost" size="sm" aria-pressed={active} onClick={() => setFilter(item.key)} className={active ? 'bg-ink-800 text-white hover:bg-ink-800 hover:text-white' : 'bg-ink-100/70 text-ink-600 hover:bg-ink-200/70 hover:text-ink-800'}>{item.label}<span className={active ? 'rounded-full bg-white/20 px-1.5 py-px text-2xs text-white' : 'rounded-full bg-white px-1.5 py-px text-2xs text-ink-500'}>{count}</span></Button>;
+        })}
+      </div>
+    </div>
+  );
 }

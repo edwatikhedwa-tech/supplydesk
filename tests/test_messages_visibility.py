@@ -116,14 +116,58 @@ class MessagesVisibilityTests(unittest.TestCase):
         self.assertEqual(queued["last_outbound_status"], "queued")
         self.assertEqual(queued["pending_outbound_count"], 1)
 
-    def test_sent_and_failed_threads_remain_visible_with_explicit_transport_status(self) -> None:
+    def test_only_transmitted_outbound_threads_are_visible(self) -> None:
         _, sent_supplier_id = self._thread("sent", "sent", offset=1)
         _, failed_supplier_id = self._thread("failed", "failed", offset=2)
+        _, unknown_supplier_id = self._thread("unknown", "delivery_unknown", offset=3)
 
         items = {item["supplier_id"]: item for item in self.repo.list_threads(self.user["workspace_id"])}
         self.assertEqual(items[sent_supplier_id]["last_outbound_status"], "sent")
         self.assertEqual(items[sent_supplier_id]["last_message_direction"], "outbound")
-        self.assertEqual(items[failed_supplier_id]["last_outbound_status"], "failed")
+        self.assertNotIn(failed_supplier_id, items)
+        self.assertEqual(items[unknown_supplier_id]["last_outbound_status"], "delivery_unknown")
+
+        with self.repo.connect() as connection:
+            failed_row = connection.execute(
+                "SELECT status, sent_at FROM mail_messages WHERE supplier_id=?",
+                (failed_supplier_id,),
+            ).fetchone()
+        self.assertEqual(failed_row["status"], "failed")
+        self.assertIsNone(failed_row["sent_at"])
+
+    def test_pre_send_cancelled_attempt_stays_durable_but_not_in_conversation(self) -> None:
+        thread_id, supplier_id = self._thread("cancelled-after-sent", "sent", offset=4)
+        with self.repo.connect() as connection:
+            connection.execute(
+                """INSERT INTO mail_messages(
+                       thread_id, workspace_id, user_id, request_id, supplier_id,
+                       mail_account_id, from_email, to_email, subject, body_text,
+                       body_html, status, direction, created_at, sent_at, error
+                   ) VALUES (?, ?, ?, 1043, ?, ?, 'messages@example.com', ?, ?, 'Не отправлено', '<p>Не отправлено</p>', 'cancelled', 'outbound', ?, NULL, 'cancelled before transport')""",
+                (
+                    thread_id,
+                    self.user["workspace_id"],
+                    self.user["id"],
+                    supplier_id,
+                    self.account_id,
+                    f"cancelled-after-sent@example.com",
+                    "Запрос cancelled-after-sent",
+                    self._time(5),
+                ),
+            )
+            cancelled_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+
+        items = {item["supplier_id"]: item for item in self.repo.list_threads(self.user["workspace_id"])}
+        self.assertEqual(items[supplier_id]["messages_count"], 1)
+        messages = self.repo.thread_messages(self.user["workspace_id"], 1043, supplier_id)
+        self.assertEqual([message["status"] for message in messages], ["sent"])
+
+        with self.repo.connect() as connection:
+            durable = connection.execute(
+                "SELECT status FROM mail_messages WHERE id=?",
+                (cancelled_id,),
+            ).fetchone()
+        self.assertEqual(durable["status"], "cancelled")
 
     def test_inbound_reply_is_unread_until_thread_is_opened(self) -> None:
         thread_id, supplier_id = self._thread("reply", "sent", offset=1)

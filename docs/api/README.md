@@ -24,6 +24,11 @@ and verification status remain in `ai/CURRENT_STATE.md` and task evidence.
 Endpoint contracts, request/response examples without secrets, error catalogs,
 and traceability to tests.
 
+## Current contracts
+
+- [`messages.md`](messages.md) — correspondence workspace, user-scoped
+  metadata and unmatched-linking boundaries.
+
 ## Status
 
 `CURRENT` as an entrypoint; unverified routes must be labeled `NOT VERIFIED`.

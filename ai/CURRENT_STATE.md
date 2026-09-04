@@ -3,8 +3,8 @@ document_id: STATE-001
 status: CURRENT
 canonical: true
 owner: project-control
-updated_at: 2026-09-03
-based_on_commit: 0efbdaf
+updated_at: 2026-09-04
+based_on_commit: 878cf70292683fa8d9730ee353af78854746b2b1
 ---
 
 # Current State
@@ -14,6 +14,306 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-04` — `TASK-PREPARE-SUPPLYDESK-FOR-EXTERNAL-UI-REDESIGN-20260904`
+verified the canonical checkout at `C:\Users\edwat\SupplyDesk` and the
+canonical branch `integration/current-architecture-governance-20260903`.
+The expected owner-approved functional HEAD `878cf70` was confirmed; a
+documentation-only reconciliation commit `1a5acf2` was pushed normally, then
+the final documentation boundary commit `b70c4cf` was pushed normally as well;
+local/remote HEADs match at `b70c4cf`. The external base branch
+`ui/external-redesign-base-20260904` was created from the verified canonical
+HEAD and fast-forwarded to the same final SHA without force. GitHub's current
+default branch is
+`claude/zen-goldwasser-022bb1`; it was not changed. The root `README.md` is
+absent; `docs/CURRENT_STATE.md` is explicitly historical and points to this
+file. No UI, backend, API, business logic, OAuth, database, provider or mail
+behavior changed. Untracked `runtime/`, `docs/experiments/` and
+`frontend/src/pages/UiExperiment.tsx` remain local, unstaged and unpublished
+because their provenance is not verified. A later final status check also found
+unstaged `frontend/src/App.tsx` and untracked `frontend/src/styles/`; these
+worktree changes are outside the published HEAD and were preserved untouched.
+
+`2026-09-04` — `TASK-RUNTIME-SELECTION-HARD-GUARD-20260904` added the
+dependency-free `scripts/runtime_guard.py` as the single runtime-selection
+authority. All six required purposes now map deterministically to
+`LOCAL_CANONICAL` (`:8000`) or `SAFE_TEST` (`:18000`); mismatches print
+`FAIL + STOP`, and no alternate safe port is selected. Backend launchers,
+Vite, Playwright, Lighthouse, Storybook, CI and Doctor browser checks now use
+the guard. SAFE_TEST app shell has a visible disposable-data badge. Guarded
+verification passed: matrix/controlled-failure unit tests, safe browser smoke
+`2/2`, full frontend/browser suite `322 passed, 6 skipped`, canonical
+public-shell visual acceptance `1/1`, frontend typecheck, lint, build and Vite
+node-config typecheck. No backend business logic, OAuth, DB schema, provider
+configuration or outgoing-mail behavior changed. Remaining limits are direct
+imports, already-running unmarked processes, custom runners and serverless
+imports outside guarded launcher paths.
+
+`2026-09-04` — `TASK-SUPPLYDESK-TYPOGRAPHY-SHIMMER-20260904` completed a
+frontend-only typography pass across screen titles. The UI now prefers the
+`Public Sans`/`Geist` reference stack with local system fallbacks, uses shared
+`page-title`/`display-title` sizes (`28→32px` and `32→36px` across mobile to
+desktop), and applies a restrained CSS gradient shimmer to primary screen
+`h1` elements. The effect has a static `prefers-reduced-motion` fallback;
+error headings, metadata, status labels and embedded sender HTML remain
+unchanged. No dependency, external font request, route, API, backend,
+database, auth or business logic changed. Rendered SAFE_TEST checks passed on
+desktop/mobile, including request detail and login; full Playwright and related
+frontend suites remain green.
+
+`2026-09-04` — `TASK-SUPPLYDESK-UI-FOUNDATION-V1-20260904` extended the
+frontend-only UI foundation beyond `/messages`: semantic CSS/Tailwind roles,
+canonical local controls and state primitives, a shared `PageFrame`, skip-link
+shell behavior, and consistent page/table/modal usage now cover the main
+dashboard, requests, suppliers, blacklist, settings and new-request surfaces.
+`EmailWorkspace` now owns the mail split-shell boundary, while
+`frontend/src/lib/uiContracts.ts` defines future Notes/AI rendering contracts
+without API, backend, database, auth or business-logic changes. Typecheck,
+lint, build and the full rendered Playwright/a11y matrix are the required
+verification gates; five lint warnings remain pre-existing.
+
+`2026-09-04` — `TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904` changed only
+the opened `/messages` conversation composition in `ThreadDetail.tsx`. Inbound
+mail now reads as a left-aligned sender lane with a light surface; outbound
+mail reads as a compact right-aligned accent bubble, with metadata and collapse
+control kept accessible. The existing email iframe renderer, remote-image
+privacy notice, delivery recovery actions, reply composer and API contracts
+remain unchanged. Final rendered verification is green: typecheck, build,
+targeted desktop/laptop/mobile message states `9/9`, and the full existing
+Playwright visual/a11y matrix `88/88`; no horizontal overflow was reported.
+The before screenshot for this narrow iteration was not persisted, so a
+pixel-level before/after artifact comparison is `NOT VERIFIED`.
+
+`2026-09-04` — `TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904` added an
+opt-in Applitools Eyes Playwright pilot scoped only to `/messages`. The
+official SDK `@applitools/eyes-playwright@1.48.4` is installed and peer
+compatible with the existing Playwright `1.62.1`; the separate config defines
+only `1440×900`, `1280×720` and `390×844` projects and checks the real list,
+conversation and reply-composer states without API route mocking. The actual
+Eyes run is `BLOCKED`: `APPLITOOLS_API_KEY` is not configured and SAFE_TEST
+has no synthetic correspondence, so no external Eyes request, baseline or
+controlled-regression result exists. No UI, backend, API, database or business
+logic changed; MCP and global VibeCoding governance remain untouched.
+
+`2026-09-04` — `TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904`
+completed a second, intentionally visual-only pass over `/messages`. The
+request is now the dominant object in the left navigator, while the center is
+a conversation workspace with one compact context line, a message timeline,
+and a sticky `Ответить поставщику` next step. Global search moved into the
+request navigator; per-row flags, priorities, counts, repeated status badges,
+and the large linked-request card were removed from the main composition.
+Existing reply, linking, metadata and delivery-recovery behavior remains
+reachable. No new UI primitives, technical component-unification pass,
+backend, database, API or business-logic changes were made. Final rendered
+verification is green: typecheck, build, lint (0 errors, 5 existing warnings),
+live CUA smoke at 1280×720, geometry audit `7/7`, and the full Playwright
+visual/a11y matrix `88/88` across desktop/tablet/mobile. The before screenshot
+was captured in the authenticated CUA session at the same desktop size but is
+not persisted as a local PNG; no approved reference image was supplied, so
+artifact comparison is `PARTIAL`. Local frontend and canonical backend remain
+running on ports `5173` and `8000`.
+
+`2026-09-04` — `TASK-SUPPLYDESK-UI-MODERNIZATION-20260904` completed the
+frontend-only modernization of `/messages` and added a local UI foundation.
+React/Vite/Tailwind/Lucide remain unchanged; no shadcn/Radix dependency was
+introduced. Shared Button, StatusBadge/Count and TextField primitives now give
+the mail workspace one action/status/input language. The prior rendered
+verification was `88/88`; the deeper visual pass above is the current source
+of truth for `/messages` presentation. Canonical backend state was not changed.
+
+`2026-09-04` — Dellin registration was approved; the owner shared the real
+`DELLIN_API_KEY` and it was added to the local (gitignored) `.env`. A live
+calculation against the real `api.dellin.ru` (Moscow → Saint Petersburg, a
+real request/supplier from the recovered database) returned `status:
+"success"`, `price: 15422.0 RUB` — the first genuine non-mocked proof that
+`TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903`'s integration works end-to-end.
+That same live call surfaced a real gap:
+`backend/domain/logistics/quote_service.py`'s `_compute_term_days` only
+looked at `orderDates.giveoutFromOspReceiver`, which the live response did
+not include for this address-to-address route (it had
+`derivalFromOspReceiver`/`arrivalToOspReceiver` instead) — `term_days` came
+back `None` even though a real term was derivable. Fixed by trying
+`giveoutFromOspReceiver` → `derivalFromOspReceiver` → `arrivalToOspReceiver`
+in that priority order instead of only the first; re-verified against the
+same live route afterward — `term_days: 2`. Two new tests cover the
+fallback and the still-`None` case when no ready-date field is present at
+all; official logistics suite: `13 tests, all pass` (was `11`). Commercial
+authorization to use the Dellin API in a paid SaaS product remains
+`NOT VERIFIED` — this key confirms registration/technical access only, not
+a commercial-use decision.
+
+`2026-09-03` — `TASK-ROOT-CAUSE-RUNTIME-FIX-20260903`: root-cause fix for a
+Yandex OAuth callback-mismatch the owner hit against a prior session's
+"start the server" desktop shortcut. That shortcut used the `SAFE_TEST`
+runtime (`scripts/start_test_runtime.ps1`, default port `18000`, real
+provider credentials always blanked by design) because it was the one path
+already proven working in-session — without re-checking
+`PROJECT_MANIFEST.yaml`, which already listed both `backend_default_port:
+8000` and a separate port-`18000` audit URL, just with no explicit rule
+tying either to "what the owner actually means." `DECISION-016` names two
+mutually exclusive runtime modes as the fix: `PROJECT_MANIFEST.yaml` gained
+a `runtime_modes` block (`LOCAL_CANONICAL`: port `8000`, `python
+supplier_app.py`, real credentials only by explicit owner task;
+`SAFE_TEST`: port `18000`, `scripts/start_test_runtime.ps1 -Apply`,
+disposable DB, credentials always blanked) as the first source of truth;
+`docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md` now gives one
+unambiguous command per mode instead of a vague pointer; `ai/AI_CONTRACT.md`
+rule 14 requires classifying `RUNTIME_MODE` before any backend start;
+`ai/VIBECODING_RULES.md` and `CLAUDE.md` got one cross-reference line each.
+No new governance subsystem was created.
+
+By the owner's explicit, separately-given authorization, the canonical
+checkout's local `.env` (previously absent, then partially reconstructed in
+this session from memory of the underlying values) was fully replaced with
+an automatic, byte-for-byte copy of the real `.env` from the legacy
+recovery-only checkout (`C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`,
+read-only source, nothing executed or changed there) — 20 variables carried
+over with no manual per-secret selection and no secret value ever printed to
+chat, logs or this file. The pre-existing partial `.env` was preserved as a
+timestamped local backup outside git first. Two variables
+(`SUPPLYDESK_CANONICAL_DB_PATH`, `MAIL_DB_PATH`) that pointed into the
+legacy checkout's own database were removed so the canonical app falls back
+to its own default (`mail-data/supplier.sqlite3` under this checkout, not
+the legacy one); no `DATABASE_URL` was present in the source (no
+Postgres-redirect risk). Non-secret runtime settings were set explicitly to
+the `LOCAL_CANONICAL` contract: `APP_HOST=127.0.0.1`, `PORT=8000`,
+`APP_BASE_URL=http://127.0.0.1:8000`, `SUPPLYDESK_ENV` changed from
+`production` to `development` (this is real local development, not a
+deployment); `MAIL_OUTGOING_DISABLED=1` was already present and left as is.
+While patching the file, a self-caused encoding bug was found and fixed
+immediately: a Windows PowerShell 5.1 `Get-Content -Raw`/`Set-Content
+-Encoding UTF8` round-trip corrupted the file's Cyrillic comments (the same
+class of defect as an earlier same-session `.ps1` encoding bug) — caught via
+the harness's own external-file-change notification, fixed by re-reading the
+original source with an explicit UTF-8 (no BOM) `System.Text.Encoding` and
+rewriting from scratch; the final file was verified to contain no `U+FFFD`
+replacement-character marker.
+
+The real `LOCAL_CANONICAL` runtime (`python supplier_app.py`, not the test
+script) was started and verified: `GET /` → `200`, `GET /api/auth/me` →
+`200`, `GET /api/auth/yandex/start` → `302` to `oauth.yandex.ru` with
+`redirect_uri=http://127.0.0.1:8000/oauth/yandex/callback` — byte-identical
+to the `YANDEX_REDIRECT_URI` recovered from the legacy `.env`. Port `18000`
+had no listener at verification time (`SAFE_TEST` not running). **NOT
+VERIFIED**: whether this redirect URI is still the one actually registered
+in the Yandex OAuth application console right now (not opened — no owner
+Yandex login available to this session) and whether a full OAuth code
+exchange completes (needs the owner's own Yandex login, not attempted).
+`ai/tools/validate_docs.py`/`validate_state.py`/`validate_vibecoding.py`:
+all `PASS`; `PROJECT_MANIFEST.yaml` re-parsed as valid YAML after the edit.
+Full report:
+[`ai/reports/TASK-ROOT-CAUSE-RUNTIME-FIX-20260903-report.md`](reports/TASK-ROOT-CAUSE-RUNTIME-FIX-20260903-report.md).
+
+`2026-09-03` — `TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903` added an MVP
+shipping-cost calculator for one request/one supplier, using the public
+Дeловые Линии (Dellin) calculator API — real product code, API and schema
+change, explicitly out of scope for the documentation-only restriction. New:
+`backend/integrations/logistics/dellin_client.py` (transport client — appkey
+auth, in-memory rate limiter at 45/min and 1600/hour, retries only on
+429/5xx, capped at 2, never on other 4xx), `backend/domain/logistics/
+quote_service.py` (hard gate on missing required fields, sha256 input-hash
+cache in process memory, response parsing into `carrier/price/currency/
+term_days/cost_breakdown/status/input_hash/calculated_at`), `mail/
+logistics_quotes.py` (`LogisticsQuotesMixin`, same zero-coupling pattern as
+`mail/mail_templates.py`; `class MailRepository(AuthAccountsMixin,
+MailTemplatesMixin, LogisticsQuotesMixin)`), `migrations/
+033_logistics_quotes.sql` (executed with explicit one-migration owner
+authorization for this task only), `GET`/`POST
+/api/requests/{id}/suppliers/{supplier_id}/logistics` in the existing
+`backend/http_requests.py` sub-router, and a "Логистика" section in
+`frontend/src/components/SupplierPanel.tsx` right after the ИНН block, same
+visual style, calculate button disabled until every required field is
+filled (client-side mirror of the backend hard gate). The Dellin request/
+response schema was verified against the official documentation before
+writing code (`dev.dellin.ru` itself returns 401/bot-block on direct
+fetch — the documentation was read through the public Wayback Machine
+archive of the same official pages, snapshot `20240221125337`, not by
+bypassing the site's own protection); fields were not guessed from memory.
+A contract/unknown price from the provider, a provider error, or a local/
+provider rate limit all resolve to `status="unavailable"`/`"provider_error"`/
+`"rate_limited"` with an explicit message — never a `0 ₽` price. Official
+suite: `tests=515, failures=0, errors=9, skipped=1` (`504` prior baseline +
+`11` new tests in `tests/test_logistics_quote.py`; the `9` errors are the
+same pre-existing `pwsh`-gap, not increased). Frontend `typecheck`/`build`
+clean; `lint`: `0 errors, 5 warnings` (no new lint errors; one pre-existing
+`useEffect` dependency-array warning pattern already present in
+`SupplierPanel.tsx` before this task, confirmed via `git show HEAD:...`).
+Manually verified end-to-end in a real browser against the safe
+`OFFLINE_TEST` runtime (disposable SQLite, outgoing mail disabled, no real
+provider keys): the calculate button stayed disabled until all fields were
+filled, the request round-tripped through the real HTTP route into a real
+saved `logistics_quotes` row (`status='unavailable'`, `price=NULL` — no
+`DELLIN_API_KEY` configured in this environment), and reopening the same
+supplier panel correctly reloaded the saved quote via the `GET` route
+without a new calculation. **NOT VERIFIED**: a real call to
+`api.dellin.ru` with an actual `DELLIN_API_KEY` (no key or verified network
+path to the live API in this environment); and — recorded explicitly, per
+task instruction — whether commercial use of the Dellin API inside a paid
+SaaS product is contractually authorized is **NOT VERIFIED** and must stay
+that way until the product owner confirms it separately. Full report:
+[`ai/reports/TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903-report.md`](reports/TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903-report.md).
+
+`2026-09-03` — `TASK-ARCHITECTURE-REFACTOR-SERIES-PAUSE-20260903` (state-only
+closeout; no product code changed): a read-only recovery audit on this branch
+@ `a88334deb59f32d43f79afca63f71fc7bf263da0` returned `NO_UNFINISHED_REFACTOR_FOUND`
+— recorded as `DECISION-014`. The owner closed the current bounded-refactor
+series: `TASK-BOUNDED-SUPPLIER-APP-CONFIG-EXTRACT-20260903`,
+`TASK-BOUNDED-SUPPLIER-APP-ENRICHMENT-EXTRACT-20260903`,
+`TASK-BOUNDED-MAIL-REPOSITORY-DB-COMPAT-EXTRACT-20260903`,
+`TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903`,
+`TASK-BOUNDED-SUPPLIER-APP-ROUTE-HELPERS-EXTRACT-20260903`,
+`TASK-BOUNDED-MAIL-REPOSITORY-AUTH-ACCOUNTS-EXTRACT-20260903`, and
+`TASK-BOUNDED-MAIL-REPOSITORY-TEMPLATES-EXTRACT-20260903` are all complete and
+already integrated in this HEAD. Classifier-selected CI (`33763726815`: Change
+Classification, Fast Control, Backend Full, Full Control, CI Summary) is
+`SUCCESS` on this HEAD. Exact suite result: `tests=504, failures=0, errors=9,
+skipped=1` — the `9` errors are the same pre-existing `pwsh`-gap documented
+across every prior task on this line and were **not** fixed by this closeout;
+no new regression from the completed bounded passes was found. The remaining
+architecture program (campaign lifecycle extraction, queue/send-attempt
+refactor, inbox-reply refactor, `supplier_app.py` mail HTTP batch C,
+dispatch-table conversion, further architecture-enforcement changes) is
+`PAUSED` — zero commits exist for any of them anywhere in the repository —
+and needs a new direct owner instruction with its own Task ID, scope,
+non-goals, allowed files and acceptance criteria before either agent starts
+it; `ai/CURRENT_STATE.md`, `ai/NEXT_STAGES.md`, a report or a
+`ai/DEFERRED_FINDINGS.md` entry do not by themselves authorize resumption.
+Open `FINDING-*` entries in `ai/DEFERRED_FINDINGS.md` are unchanged by this
+closeout and remain independent technical debt.
+
+`2026-09-03` — `TASK-COLD-START-WORKSPACE-HARD-GATE-20260903` is complete with
+`PASS_WITH_LIMITATIONS`. The canonical policy defines
+`SESSION_WORKSPACE_HARD_GATE` before any project-specific analysis, including
+`READ_ONLY`; a mismatch is `BLOCKED_WRONG_WORKSPACE`, and the legacy marker
+means `STOP_PROJECT_WORK_HERE`. Codex Canary 1 passed in both canonical and
+legacy contexts; the Claude post-fix harness returned an API 200
+malformed-response error in both contexts, so Claude behavioral proof remains
+`NOT VERIFIED`. Focused governance coverage is `8/8`; product code and runtime
+were not touched. The task commit is recorded in the task report.
+
+`2026-09-03` — `TASK-COLD-START-WORKSPACE-HARD-GATE-20260903` was in progress.
+The canonical policy now defines `SESSION_WORKSPACE_HARD_GATE` before any
+project-specific analysis, including `READ_ONLY`; a mismatch is
+`BLOCKED_WRONG_WORKSPACE`, and the legacy marker means
+`STOP_PROJECT_WORK_HERE`. `AGENTS.md` and `CLAUDE.md` point to that single
+policy surface, the manifest separates stable physical workspace identity from
+task-dependent branch state, and focused governance coverage is now `8/8`.
+Fresh Claude/Codex Canary 1 evidence is pending; product code and runtime were
+not touched.
+
+`2026-09-03` — `TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903` added the
+canonical default operating model to [`ai/VIBECODING_RULES.md`](VIBECODING_RULES.md):
+healthy-session inheritance, automatic minimum-sufficient tool selection without
+owner reminders, causal-scope delivery, `REAL_STOP_ONLY`, `NOT_NEEDED`
+discipline and `OWNER_PROMPT_MINIMUM`. The shared AI contract points to that
+single owner surface; adapters and the factual registry were not duplicated or
+changed. The change-budget rule now treats file count as an early-warning review
+and keeps direct causal dependencies in scope. Validator coverage and governance
+tests pass (`18/18`); the candidate commit is `2678370f`. Fresh Claude and Codex
+child invocations were attempted with neutral prompts but produced no usable
+trace, so behavioral cold-start proof is `NOT VERIFIED`; no tracked product file
+was changed by the attempts. See the task report for exact commands, prompts and
+limitations.
 
 `2026-09-03` — `TASK-BOUNDED-MAIL-REPOSITORY-TEMPLATES-EXTRACT-20260903`
 (Pass 3 of splitting `mail/repository.py`): `get_mail_template`/
@@ -457,8 +757,9 @@ quarantine filename copies require separate owner review.
   verified VibeCoding policy HEAD `9d3e58232230b276396f3bc127e2d937bed8482d`.
 - Cleanup Batch 2 branch: `control/safe-cleanup-batch2-20260901`, retained as
   the immediately preceding evidence branch.
-- Current task branch: `audit/frontend-knip-20260902`; this task's published
-  commit is `dc93a181c85c175863a84ddddb1c71c9172a98bb`.
+- Current task branch: `audit/frontend-knip-20260902`; the current working tree
+  is clean after the candidate governance commit, with final publication
+  evidence recorded by Git and the task report.
 - Canonical development checkout: `C:\Users\edwat\SupplyDesk`.
 - Historical legacy checkout: `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`, marked
   `LEGACY_WORKSPACE_DO_NOT_DEVELOP_HERE.txt`.
@@ -546,6 +847,12 @@ quarantine filename copies require separate owner review.
   Governance Freeze, One-Shot Delivery, Tool Audit Batching and stronger
   report/state minimization and verification-budget semantics. Its validator
   checks these policy markers rather than agent cognition.
+- `TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903` extends V1.3 with the default
+  project operating model, automatic tool selection, owner-reminder independence,
+  causal-scope autonomous delivery, real-stop-only handling and minimum owner
+  prompt rules. The validator checks their static markers; the attempted Claude
+  and Codex cold-start processes yielded no child trace, so behavioral proof is
+  explicitly partial.
 - Workspace Guard V1 adds `scripts/assert_workspace.ps1`, which compares the
   real Git root with the canonical local default or an explicit absolute
   `-ExpectedRoot` for CI and intentional worktrees without changing directory,
@@ -923,6 +1230,12 @@ on this task's dedicated branch:
 
 ## Current next step
 
+Visual implementation remains stopped until the owner supplies an approved
+reference image. The external branch is intentionally a code-identical base
+for a future builder import; no redesign is authorized in this state.
+
+## Historical next step — retained context
+
 The bounded root refactor program (Passes 2-11) is complete. Pass 2 (CLI
 compatibility), Pass 3 (`dadata_client.py`), Pass 4 (`checko_client.py` +
 immutability migration), Pass 5 (LLM integrations), Pass 6 (supplier
@@ -948,6 +1261,7 @@ limitations.
 - Decisions: [`ai/DECISIONS.md`](DECISIONS.md).
 - Deferred findings: [`ai/DEFERRED_FINDINGS.md`](DEFERRED_FINDINGS.md).
 - Latest governance report: [`ai/reports/TASK-DOCUMENTATION-GOVERNANCE-20260901-report.md`](reports/TASK-DOCUMENTATION-GOVERNANCE-20260901-report.md).
+- Default agent operating model report: [`ai/reports/TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903-report.md`](reports/TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903-report.md).
 - Diagnostic report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1-20260901-report.md).
 - Browser Full stability report: [`ai/reports/TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902-report.md`](reports/TASK-BROWSER-FULL-STABILITY-MAGICRINGS-20260902-report.md).
 - Diagnostic V1.1 report: [`ai/reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md`](reports/TASK-DIAGNOSTIC-CONTROL-PLANE-V1.1-20260901-report.md).
@@ -991,4 +1305,3 @@ limitations.
 - Canonical duplicate audit: [`ai/reports/CANONICAL_DUPLICATES_BATCH2.md`](reports/CANONICAL_DUPLICATES_BATCH2.md).
 - Batch 2 cleanup manifest: [`ai/reports/CLEANUP_BATCH2_MANIFEST.csv`](reports/CLEANUP_BATCH2_MANIFEST.csv).
 - Audit pointer: [`ai/audits/2026-09-01-repository-hygiene/README.md`](audits/2026-09-01-repository-hygiene/README.md).
-

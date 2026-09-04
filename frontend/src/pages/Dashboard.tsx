@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ApiError, api } from '@/lib/api';
 import { formatFullDate, pluralize } from '@/lib/utils';
 import { EmailRenderer } from '@/components/mail/EmailRenderer';
+import { PageFrame, PageIntro } from '@/components/PageFrame';
+import { Button, EmptyState, ErrorState } from '@/components/ui';
 import type { DashboardSummary, InboxConversation, InboxPreview, RequestListItem, RequestStatus } from '@/lib/types';
 
 const REQUEST_STATUS_META: Record<RequestStatus, { label: string; className: string }> = {
@@ -41,8 +43,8 @@ function Metric({
 
 function DashboardLoading() {
   return (
-    <div className="dashboard-shell min-h-screen px-4 py-6 sm:px-6 lg:px-10 lg:py-10" aria-label="Загрузка дашборда">
-      <div className="mx-auto max-w-[1600px] space-y-8">
+    <PageFrame className="dashboard-shell" aria-label="Загрузка дашборда">
+      <div className="space-y-8">
         <div className="space-y-3">
           <div className="skeleton h-8 w-44 rounded-lg" />
           <div className="skeleton h-4 w-80 max-w-full rounded" />
@@ -57,31 +59,12 @@ function DashboardLoading() {
           </div>
         </div>
       </div>
-    </div>
+    </PageFrame>
   );
 }
 
 function DashboardError({ message, onRetry, retrying }: { message: string; onRetry: () => void; retrying: boolean }) {
-  return (
-    <div className="dashboard-shell flex min-h-screen items-center justify-center px-4 py-10 sm:px-6">
-      <div role="alert" className="w-full max-w-md rounded-xl border border-rose-200 bg-white p-7 text-center shadow-panel">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
-          <AlertTriangle size={22} />
-        </div>
-        <h1 className="mt-5 text-lg font-bold text-ink-900">Не удалось загрузить дашборд</h1>
-        <p className="mt-2 text-sm leading-6 text-ink-500">{message}</p>
-        <button
-          type="button"
-          onClick={onRetry}
-          disabled={retrying}
-          className="mt-6 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent-600 px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-accent-700 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
-        >
-          <RefreshCw size={16} className={retrying ? 'animate-spin' : ''} />
-          Повторить
-        </button>
-      </div>
-    </div>
-  );
+  return <PageFrame className="dashboard-shell"><ErrorState title="Не удалось загрузить дашборд" message={message} onRetry={onRetry} retrying={retrying} /></PageFrame>;
 }
 
 function RequestStatus({ request }: { request: RequestListItem }) {
@@ -307,15 +290,9 @@ export function Dashboard() {
     : 'Данные ещё не обновлялись';
 
   return (
-    <div className="dashboard-shell min-h-screen px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
-      <div className="mx-auto max-w-[1600px] space-y-8">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <h1 className="text-page-title font-bold">Дашборд</h1>
-            <p className="mt-1 text-sm text-ink-500">Всё важное по текущим заявкам — в одном месте.</p>
-          </div>
-          <span className="text-xs font-medium text-ink-400" aria-live="polite">{updatedLabel}</span>
-        </div>
+    <PageFrame className="dashboard-shell">
+      <div className="space-y-8">
+        <PageIntro eyebrow="Операционный обзор" title="Дашборд" description="Всё важное по текущим заявкам — в одном месте." actions={<span className="text-xs font-medium text-ink-400" aria-live="polite">{updatedLabel}</span>} />
 
         {errorMessage && summary && (
           <div role="alert" className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
@@ -323,9 +300,9 @@ export function Dashboard() {
               <AlertTriangle size={17} className="mt-0.5 shrink-0 text-amber-600" />
               <span>Не удалось обновить данные. Показана последняя успешная версия.</span>
             </div>
-            <button type="button" onClick={() => { void load(); }} disabled={retrying} className="inline-flex min-h-9 items-center justify-center gap-1.5 self-start rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50 sm:self-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
+            <Button type="button" onClick={() => { void load(); }} disabled={retrying} variant="secondary" size="sm" className="self-start border-amber-300 text-amber-800 hover:border-amber-400 hover:bg-amber-100 sm:self-auto">
               <RefreshCw size={14} className={retrying ? 'animate-spin' : ''} />Повторить
-            </button>
+            </Button>
           </div>
         )}
 
@@ -376,17 +353,13 @@ export function Dashboard() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Link to="/requests" className="inline-flex min-h-10 items-center rounded-lg px-2 py-2 text-xs font-bold text-accent-700 hover:bg-accent-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2">Все заявки</Link>
-              <button type="button" onClick={() => navigate('/requests/new')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent-600 px-4 py-2.5 text-xs font-bold text-white shadow-soft transition hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2">
+              <Button type="button" onClick={() => navigate('/requests/new')} variant="primary" size="sm">
                 <Plus size={16} />Новая заявка
-              </button>
+              </Button>
             </div>
           </div>
           {requests.length === 0 ? (
-            <div className="px-6 py-16 text-center">
-              <p className="text-sm font-semibold text-ink-700">Заявок пока нет</p>
-              <p className="mt-1 text-xs text-ink-500">Создайте первую заявку, чтобы начать поиск поставщиков.</p>
-              <Link to="/requests/new" className="mt-5 inline-flex min-h-10 items-center rounded-lg bg-accent-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2">Создать заявку</Link>
-            </div>
+            <EmptyState title="Заявок пока нет" description="Создайте первую заявку, чтобы начать поиск поставщиков." action={<Link to="/requests/new" className="inline-flex min-h-10 items-center justify-center rounded-lg bg-accent-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2">Создать заявку</Link>} />
           ) : (
             <>
               <div className="hidden overflow-hidden xl:block">
@@ -425,6 +398,6 @@ export function Dashboard() {
           )}
         </section>
       </div>
-    </div>
+    </PageFrame>
   );
 }

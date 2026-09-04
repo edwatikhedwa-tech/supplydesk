@@ -13,6 +13,212 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-018 — Conversation-first visual hierarchy for `/messages`
+
+- Decision ID: `DECISION-018`
+- Date: `2026-09-04`
+- Status: `ACTIVE`
+- Context: The first `/messages` modernization introduced consistent UI
+  primitives, but the screen still carried the visual weight of a legacy CRM:
+  requests, messages, statuses, counters and row actions competed equally.
+- Decision: Treat the request-linked conversation as the primary product
+  object. Keep requests in a left navigator with search, filters and compact
+  activity rows; keep supplier, reply state and related request in one compact
+  conversation header; render messages as a timeline; reserve the sticky
+  footer for one main next step, `Ответить поставщику`. Keep unmatched mail,
+  outbox, metadata and delivery recovery as secondary but reachable flows.
+- Reason: This changes the user's visual path from scanning a mailbox to
+  continuing one procurement conversation, while preserving existing routes,
+  semantics and recovery actions. It is a presentation decision, not a new
+  data or component architecture.
+- Consequences: counts, row metadata controls and repeated statuses no longer
+  dominate the list; the linked request is a compact context relationship;
+  the visible primary action is stable at the bottom of the conversation.
+- Related task: `TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904`.
+
+## DECISION-017 — Procurement workspace layout and user-scoped thread metadata
+
+- Decision ID: `DECISION-017`
+- Date: `2026-09-04`
+- Status: `ACTIVE`
+- Context: The `/messages` page needed to support procurement triage without
+  turning correspondence into a generic mailbox. The existing request-grouped
+  list, manual unmatched workflow, outbox and delivery safeguards are already
+  product contracts and must remain authoritative.
+- Decision: Keep a desktop two-column layout (request/supplier navigator plus
+  conversation detail) and a list-to-detail mobile layout. Add a compact
+  unmatched preview and HTML5 drag-and-drop only as a shortcut into the current
+  manual-link workflow. Direct drag linking is allowed only for one exact
+  sender match; domain-only, ambiguous and unknown cases require explicit
+  manual selection. Store the important marker and priority separately in
+  `mail_thread_user_metadata`, keyed by workspace, user, request and supplier;
+  they never overwrite mail transport or delivery status.
+- Reason: This reuses the existing mail identity and linking APIs, keeps
+  decisions reversible, makes shared-workspace presentation personal to the
+  operator, and prevents a UI gesture from silently guessing a supplier.
+- Consequences: `GET /api/correspondence` and the outbox include the current
+  user's metadata; `POST /api/correspondence/metadata` is the single write
+  route. A future thread identity change must update this scope deliberately,
+  rather than adding a second flag/priority store.
+- Related task: `TASK-MESSAGES-WORKSPACE-REDESIGN-20260904`.
+
+## DECISION-016 — Name and separate LOCAL_CANONICAL (port 8000) from SAFE_TEST (port 18000) runtime modes
+
+- Decision ID: `DECISION-016`
+- Date: `2026-09-03`
+- Status: `ACTIVE`
+- Context: A prior session built a "start the server" desktop shortcut wired
+  to the `SAFE_TEST` runtime (`scripts/start_test_runtime.ps1`, default port
+  `18000`, real provider credentials always blanked) because it was the one
+  path already proven working in that session, without re-checking
+  `PROJECT_MANIFEST.yaml` (which already listed `backend_default_port: 8000`
+  and a separate `browser_acceptance.audit_live_route_url: 18000`, just
+  without an explicit rule tying "which mode does the owner actually mean"
+  to either). The owner then tried "Sign in with Yandex" against port 18000
+  and got Yandex's callback-mismatch error, since the registered OAuth
+  redirect URI is for port 8000.
+- Decision: `PROJECT_MANIFEST.yaml` gets one new `runtime_modes` block naming
+  exactly two mutually exclusive modes — `LOCAL_CANONICAL` (port `8000`,
+  `python supplier_app.py`, real credentials via a local `.env` only by
+  explicit owner task) and `SAFE_TEST` (port `18000`,
+  `scripts/start_test_runtime.ps1 -Apply`, disposable DB, provider
+  credentials always blanked by the script itself). This is the first
+  source of truth. `docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md`
+  gives one unambiguous command per mode. `ai/AI_CONTRACT.md` rule 14 now
+  requires classifying `RUNTIME_MODE` (`LOCAL_CANONICAL`/`SAFE_TEST`/`CI`/
+  `OTHER`) against the manifest before choosing a start command or port, and
+  forbids inferring the mode from "whatever already worked earlier in the
+  session."
+- Reason: the ambiguity was real and already latent in the manifest (two
+  ports, no named relationship); the fix reuses the existing
+  `LOCAL_CANONICAL` name already used by `scripts/doctor.ps1`'s diagnostic
+  profiles (cross-referenced, not duplicated) instead of inventing a new
+  term or a new governance subsystem.
+- Consequences: any future "start/use the app" request must be classified
+  before a script or port is chosen. `SAFE_TEST` must never be offered as a
+  substitute for the owner's normal local session, and `LOCAL_CANONICAL`
+  must never be used for a test/browser/diagnostic run.
+- Related task: `TASK-ROOT-CAUSE-RUNTIME-FIX-20260903`.
+
+## DECISION-015 — Dellin logistics MVP: address-search routing, no workspace_id on logistics_quotes
+
+- Decision ID: `DECISION-015`
+- Date: `2026-09-03`
+- Status: `ACTIVE`
+- Context: `TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903` added a manual shipping-cost
+  calculator against the Дeловые Линии (Dellin) public calculator API
+  (`https://api.dellin.ru/v2/calculator.json`). The official docs
+  (`dev.dellin.ru`) block direct automated fetches (401/bot-block); the
+  request/response schema was verified through the public Wayback Machine
+  archive of the same official documentation (snapshot `20240221125337`)
+  instead of guessing fields or bypassing the site's own protection.
+- Decision:
+  1. Route input is a free-text city/terminal string per side, sent as
+     `delivery.derival/arrival.address.search` with `variant: "address"`.
+     The separate terminal-search method
+     (`https://api.dellin.ru/v1/public/request_terminals.json`) is
+     deliberately **not** implemented — it needs a KLADR city code from yet
+     another lookup, which the MVP's manual free-text UI does not need.
+  2. `deliveryType.type` is fixed to `"auto"` — the form does not let the
+     user pick a delivery mode in this MVP.
+  3. `migrations/033_logistics_quotes.sql`'s `logistics_quotes` table has no
+     `workspace_id` column; workspace isolation is enforced by joining
+     `requests.workspace_id` in every mixin query, the same pattern already
+     used by `request_supplier_states`.
+  4. `vat_included` is stored as `NULL` (unknown) — the documentation section
+     that was actually read does not expose a VAT field; it must not be
+     assumed `true`/`false`.
+  5. The rate limiter (45/min, 1600/hour) and the input-hash cache both live
+     in one process-lifetime `LogisticsQuoteService` instance held by
+     `SupplierApp`, not a distributed store — matches the single-process
+     local backend and the task's explicit "no Redis/queue" instruction.
+- Reason: keeps the MVP to exactly the calculator call the manual-entry UI
+  needs, avoids inventing undocumented fields, and reuses an established
+  workspace-isolation pattern instead of adding a redundant column.
+- Consequences: adding a terminal picker, a delivery-type selector, or a
+  distributed rate limiter/cache later is a new, separately scoped task, not
+  an extension implied by this one. Commercial authorization to use the
+  Dellin API inside a paid SaaS product is `NOT VERIFIED` and is not implied
+  by this decision.
+- Related task: `TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903`.
+
+## DECISION-014 — Close the current bounded-refactor series and pause the remaining architecture program
+
+- Decision ID: `DECISION-014`
+- Date: `2026-09-03`
+- Status: `ACTIVE`
+- Context: A read-only recovery audit on `integration/current-architecture-governance-20260903`
+  @ `a88334deb59f32d43f79afca63f71fc7bf263da0` found `NO_UNFINISHED_REFACTOR_FOUND`:
+  all seven bounded `supplier_app.py`/`mail/repository.py` extraction passes
+  reached full close (implement, tests, report, `ACTIVE_TASK: IDLE`) and are
+  already integrated; the remaining architecture-program passes (campaign
+  lifecycle extraction, queue/send-attempt refactor, inbox-reply refactor,
+  `supplier_app.py` mail HTTP batch C, dispatch-table conversion, further
+  architecture-enforcement changes) have zero commits anywhere in the
+  repository — only prose next-step language in task reports and
+  `ai/CURRENT_STATE.md`.
+- Decision: The owner declares the current bounded-refactor series closed.
+  The remaining architecture program is paused. Neither Codex nor Claude Code
+  may start any of the listed paused directions on the basis of
+  `ai/CURRENT_STATE.md`, `ai/NEXT_STAGES.md`, a task report, an
+  `ai/DEFERRED_FINDINGS.md` entry, or "next step" wording alone. Resumption
+  requires a new, direct owner instruction naming a Task ID, scope,
+  non-goals, allowed files and acceptance criteria.
+- Reason: Prevents an agent from treating documented next-step prose as
+  standing authorization, matching the recovery audit's own finding that
+  further passes were already scoped by their own reports as requiring a
+  separate owner decision.
+- Consequences: `ai/ACTIVE_TASK.md` remains `IDLE`. Open `FINDING-*` entries
+  in `ai/DEFERRED_FINDINGS.md` remain independent technical debt, are not
+  part of this pause, and do not block ordinary product work unless a future
+  task's files overlap them. The nine pre-existing `errors=9` in the official
+  suite remain unresolved and out of this closeout's scope.
+- Related task: `TASK-ARCHITECTURE-REFACTOR-SERIES-PAUSE-20260903`.
+
+## DECISION-013 — Make the workspace gate a pre-analysis stop
+
+- Decision ID: `DECISION-013`
+- Date: `2026-09-03`
+- Status: `ACTIVE`
+- Context: The prior gate was described before mutations and runtime/build
+  actions, but a read-only or architecture/cleanup task could begin in the
+  wrong checkout. The legacy checkout also had stale adapter instructions.
+- Decision: Require `SESSION_WORKSPACE_HARD_GATE` as the first project action,
+  including `READ_ONLY`. Permit only root identity, the guard, the canonical
+  pointer and a legacy marker before the gate; a failed guard is a hard stop.
+  Keep the physical canonical workspace stable while treating branch identity
+  as task-dependent. Update the legacy adapter/marker locally without
+  synchronizing the legacy checkout into the canonical branch.
+- Reason: It prevents analysis and tool selection from operating on a stale or
+  user-modified checkout, while preserving explicit worktree/CI use through
+  `-ExpectedRoot`.
+- Consequences: Wrong-root read-only audits are intentionally blocked; a fresh
+  Claude proof remains unavailable while its non-interactive API harness
+  returns malformed HTTP 200 responses. No product behavior changes.
+- Related task: `TASK-COLD-START-WORKSPACE-HARD-GATE-20260903`.
+
+## DECISION-012 — Make the project operating model the default agent contract
+
+- Decision ID: `DECISION-012`
+- Date: `2026-09-03`
+- Status: `ACTIVE`
+- Context: The project had canonical preflight, tool-selection, verification and
+  delivery rules, but ordinary prompts could still be interpreted as requiring
+  the owner to repeat tool names or approve direct causal updates.
+- Decision: After successful Session Preflight, agents inherit the canonical
+  project operating model for the healthy session. The agent selects the
+  minimum sufficient tools, expands only direct causal dependencies, continues
+  delivery under the declared mode, and stops for real owner decisions only.
+  The full behavior is owned by `ai/VIBECODING_RULES.md`; `ai/AI_CONTRACT.md`
+  keeps the compatibility pointer and safety boundary.
+- Reason: One canonical default removes repeated prompt boilerplate while
+  preserving destructive, security, live-external and upstream approval gates.
+- Consequences: A neutral fresh-session canary is required to prove behavior;
+  static policy consistency alone cannot be reported as universal behavioral
+  proof. The existing browser split, Code Rot role, Bug Reproducer gates,
+  Skill Doctor periodic policy and tool-usage reporting remain unchanged.
+- Related task: `TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903`.
+
 ## DECISION-011 — Keep architecture lifecycle and browser auth boundaries explicit
 
 - Decision ID: `DECISION-011`
@@ -119,6 +325,31 @@ log. Superseded and older decision prose is preserved in
 - Consequences: Reports and current state must name the counted entity and evidence source.
 - Related requirements: mail and campaign documentation contract.
 - Related commits: `c076e1be385c3ae6da2716159e1f46fc2fce23d7`.
+
+## DECISION-019 — Hard runtime selection by purpose
+
+- Decision ID: `DECISION-019`
+- Date: `2026-09-04`
+- Status: `ACTIVE`
+- Context: Multiple backend, Vite, Playwright and visual-acceptance commands
+  could select a port by convention, including a previous automatic fallback
+  from canonical `:8000` to disposable `:18000`.
+- Decision: `scripts/runtime_guard.py` is the single runtime-selection
+  authority. `OWNER_SESSION`, `VISUAL_ACCEPTANCE`, `OAUTH_CHECK` and
+  `MAIL_PROVIDER_CHECK` require `LOCAL_CANONICAL`; `SAFE_TEST` and
+  `AUTOMATED_TEST` require `SAFE_TEST`. Mismatches fail and stop. Browser
+  entrypoints print purpose, mode, URL, database class and auth mode before
+  running. No automatic fallback is allowed. SAFE_TEST UI shows an explicit
+  disposable-data badge.
+- Reason: A visible, machine-checkable purpose/mode contract prevents an
+  owner session or visual acceptance from silently using synthetic data.
+- Consequences: Canonical work remains on `http://127.0.0.1:8000`; automated
+  work remains on `http://127.0.0.1:18000`. Direct imports, already-running
+  unmarked processes, custom browser runners and serverless imports remain
+  outside the guarded launcher path and must be treated as unverified.
+- Non-goals: Backend business logic, OAuth callback/settings, database schema,
+  provider configuration and outgoing-mail behavior were not changed.
+- Related task: `TASK-RUNTIME-SELECTION-HARD-GUARD-20260904`.
 
 ## DECISION-005 — Irreversible mail actions require an explicit gate
 

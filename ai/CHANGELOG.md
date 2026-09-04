@@ -3,6 +3,238 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-04 — TYPOGRAPHY AND HEADING SHIMMER
+
+- `TASK-SUPPLYDESK-TYPOGRAPHY-SHIMMER-20260904`: aligned the app-wide UI font
+  stack with the supplied assistant-ui reference direction by preferring
+  `Public Sans`/`Geist` and local system fallbacks; no remote font or package
+  was added.
+- Increased shared screen title roles to `28→32px` and login display titles to
+  `32→36px` across mobile-to-desktop, then applied a restrained CSS gradient
+  shimmer to primary screen `h1` elements. Reduced-motion users get a static
+  readable fallback; errors, metadata, statuses and embedded email HTML stay
+  unchanged.
+- Verified workspace guard, typecheck, lint (0 errors, 5 existing warnings),
+  build, full Playwright `88/88`, related frontend suites `226 passed / 6
+  skipped`, HTTP smoke and real SAFE_TEST screenshots at `1440×900` and
+  `360×800`. No backend, API, database, auth or business logic changed.
+
+## 2026-09-04 — MESSAGES MESSAGE-PAIR READER
+
+- `TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904`: adapted the opened
+  `/messages` conversation to the supplied assistant-ui message-pair
+  reference. Incoming messages use a quiet left reading lane; outgoing
+  messages use a restrained right-aligned accent bubble.
+- Removed the old vertical timeline spine and repetitive full-width message
+  cards from the primary reading composition. Kept sender identity, direction,
+  timestamp, collapse/expand behavior, email HTML rendering, remote-image
+  notice, delivery-recovery actions and reply CTA.
+- The first rendered pass exposed two contrast violations in the new outbound
+  surface; both were corrected. Final checks: typecheck/build, targeted
+  message scenarios `9/9` across `1440×900`, `1280×720` and `390×844`, and
+  full Playwright visual/a11y matrix `88/88`. No backend, API, database or
+  business-logic changes were made.
+
+## 2026-09-04 — APPLITOOLS VISUAL QA PILOT
+
+- `TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904`: added an independent,
+  opt-in Applitools Eyes layer for `/messages` only, using the official
+  fixture-based Playwright integration and SDK `1.48.4` with the existing
+  Playwright `1.62.1`.
+- Added three representative projects (`1440×900`, `1280×720`, `390×844`)
+  and real-application checkpoints for request list, conversation and reply
+  composer. Local Playwright screenshots are captured alongside Eyes checks;
+  no `/messages` API route mocking or second E2E framework was introduced.
+- Compatibility, typecheck, config listing, dependency dry-run and the
+  no-key safety run passed. The real Eyes run is `BLOCKED` because the key is
+  absent and SAFE_TEST contains no disposable correspondence; baseline,
+  controlled regression and Eyes-vs-Playwright value comparison are therefore
+  `NOT VERIFIED`. MCP and global governance were intentionally not changed.
+
+## 2026-09-04 — MESSAGES DEEP VISUAL REDESIGN
+
+- `TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904`: made `/messages`
+  visibly request-first and conversation-led without introducing primitives,
+  changing component architecture, or touching backend/data behavior.
+- Moved search into the left request navigator; flattened request rows and
+  unmatched previews; removed per-row flags/priorities, message/reply counts,
+  repeated status badges and the large standalone linked-request card.
+- Reworked the detail composition into a compact supplier/context header, a
+  message timeline and one sticky `Ответить поставщику` next step. Existing
+  reply, manual-link, metadata and delivery-recovery actions remain reachable.
+- Verified: full Playwright visual/a11y matrix `88/88`, matched-thread target
+  `8/8`, typecheck, build, live CUA search/filter/select/reply smoke at
+  `1280×720`, geometry audit `7/7`, and HTTP smoke (`5173` root `200`, `8000`
+  root `200`, `/api/auth/me` `200`, protected correspondence without auth
+  `401`). Lint has 0 errors and 5 pre-existing warnings.
+- Before/after desktop states were captured in the same authenticated browser
+  scenario; the before image is inline-only and no approved reference image
+  was supplied, so local artifact comparison is `PARTIAL`. Backend/data and
+  unrelated working-tree edits were not changed.
+
+## 2026-09-04 — SUPPLYDESK UI MODERNIZATION
+
+- `TASK-SUPPLYDESK-UI-MODERNIZATION-20260904`: audited the frontend stack and
+  real routes, then added a local UI foundation with `Button`,
+  `StatusBadge`/`Count` and `TextField` primitives without adding shadcn,
+  Radix or another dependency.
+- Modernized `/messages` into a request-first procurement workspace: calm
+  header/search, lightweight section navigation, quiet counters, semantic
+  statuses, neutral unmatched preview, separate outbox and a single primary
+  reply action. Existing reply, manual-link, metadata and recovery behaviors
+  remain available.
+- Added current audit/design-system docs and final report. `typecheck`, lint
+  (0 errors, 5 pre-existing warnings), build and rendered Playwright/a11y
+  matrix pass `88/88`; live CUA list/detail smoke passes at 1280×720.
+- Before screenshot remains inline-only and no approved reference image was
+  supplied; reference matching is `PARTIAL`. Backend and data were not changed.
+
+## 2026-09-04 — MESSAGES PRODUCT ACCEPTANCE CORRECTION
+
+- `TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904`: corrected the
+  rejected `/messages` behavior and presentation over commit `c70e6d63`.
+- Added a shared repository business predicate so conversation views exclude
+  pre-send queue/cancel/failure records while retaining inbound, sent,
+  `delivery_unknown`, and post-transport failure/bounce evidence. Durable raw
+  mail records are not deleted.
+- Corrected detail width, compact request hierarchy, neutral unmatched preview,
+  visible metadata controls and bounced status presentation. Existing manual
+  linking and inline reply logic remain the source of truth.
+- Verified: visibility regression tests `5/5`, metadata tests `2/2`, transport
+  status tests `18/18`, the HTML/text rendering regression `1/1`, full
+  `test_mail*.py` exit code `0`, frontend typecheck/build, lint with the same
+  five unrelated warnings, and source diff checks.
+- Live/browser status is `BLOCKED`: canonical port `8000` serves stale code
+  (`POST /api/correspondence/metadata` -> `404`), the real pointer drag was
+  attempted but did not create a link, and mandatory viewport screenshots are
+  unavailable because the CUA browser exposes no viewport capability.
+
+## 2026-09-04 — MESSAGES WORKSPACE REDESIGN + USER METADATA
+
+- `TASK-MESSAGES-WORKSPACE-REDESIGN-20260904`: redesigned `/messages` into a
+  procurement workspace with a desktop navigator/detail split, mobile
+  list-to-detail behavior in code, global conversation search, request-group
+  attention expansion, a three-item unmatched preview, accessible flag and
+  priority controls, and shortened presentation-only supplier names.
+- Added additive `mail_thread_user_metadata` persistence and
+  `POST /api/correspondence/metadata`. The flag and priority are independent,
+  scoped to user/workspace/request/supplier, optimistic in the UI, and do not
+  alter mail or delivery statuses. Added a safe drag shortcut that only links a
+  single exact sender match; ambiguous/domain/unknown cases remain manual.
+- Confirmed: targeted backend tests (`6`, all pass), frontend typecheck/build,
+  lint with the existing `5` warnings and no errors, migration creation in the
+  disposable runtime, and an authenticated canonical-session desktop render.
+- `NOT VERIFIED`: authenticated SAFE_TEST browser flow, real drag/drop against
+  a disposable seeded correspondence, tablet/mobile screenshot matrix, and
+  the absent repository `scripts/audit_toolchain.py`/geometry runner.
+
+## 2026-09-04 — LOGISTICS: LIVE DELLIN KEY CONNECTED, TERM_DAYS FALLBACK FIX
+
+- Owner shared the real `DELLIN_API_KEY` (Dellin registration approved);
+  added to the local `.env` only. A real calculation against `api.dellin.ru`
+  returned `status: "success"`, `price: 15422.0 RUB` — first genuine
+  non-mocked proof the MVP integration works.
+- The same live call showed `term_days` came back `None` because
+  `_compute_term_days` only checked `orderDates.giveoutFromOspReceiver`,
+  absent in this real response. Fixed to fall back through
+  `giveoutFromOspReceiver` → `derivalFromOspReceiver` → `arrivalToOspReceiver`;
+  re-verified live — `term_days: 2`. Two new tests added; logistics suite
+  now `13 tests, all pass`.
+- Commercial authorization to use the Dellin API in a paid SaaS product
+  remains `NOT VERIFIED` — unaffected by this key.
+
+## 2026-09-03 — RUNTIME MODE ROOT-CAUSE FIX + FULL .ENV RECOVERY
+
+- `TASK-ROOT-CAUSE-RUNTIME-FIX-20260903`: fixed the root cause of a Yandex
+  OAuth callback-mismatch — a prior session's "start the server" shortcut
+  used the `SAFE_TEST` runtime (port `18000`, credentials always blanked)
+  instead of `LOCAL_CANONICAL` (port `8000`, the port actually registered
+  with Yandex), without re-checking `PROJECT_MANIFEST.yaml`.
+- `DECISION-016`: `PROJECT_MANIFEST.yaml` now names both runtime modes
+  explicitly in a new `runtime_modes` block (first source of truth);
+  `docs/operations/runbooks/RUNBOOK-BACKEND-STARTUP.md` gives one
+  unambiguous start command per mode; `ai/AI_CONTRACT.md` rule 14 now
+  requires classifying `RUNTIME_MODE` before any backend start.
+- By explicit separate owner authorization, `.env` at the canonical checkout
+  root was fully, automatically recovered (byte-for-byte, no manual secret
+  selection) from the legacy recovery-only checkout, with the previous
+  partial `.env` backed up locally first, two legacy-pointing DB-path
+  variables removed, and non-secret `LOCAL_CANONICAL` runtime values set
+  explicitly. No secret value was ever printed to chat, logs or a report.
+- Verified against a real `LOCAL_CANONICAL` run (`python supplier_app.py`,
+  port 8000): root/`auth/me` 200, `/api/auth/yandex/start` redirects with
+  `redirect_uri=http://127.0.0.1:8000/oauth/yandex/callback`, matching the
+  legacy `YANDEX_REDIRECT_URI` exactly. Port 18000 confirmed not in use.
+- Report: [`ai/reports/TASK-ROOT-CAUSE-RUNTIME-FIX-20260903-report.md`](reports/TASK-ROOT-CAUSE-RUNTIME-FIX-20260903-report.md).
+
+## 2026-09-03 — LOGISTICS: DELLIN SHIPPING-COST CALCULATOR MVP
+
+- `TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903`: added a manual shipping-cost
+  calculator for one request/one supplier against the Деловые Линии (Dellin)
+  public calculator API. New `backend/integrations/logistics/dellin_client.py`,
+  `backend/domain/logistics/quote_service.py`, `mail/logistics_quotes.py`
+  (`LogisticsQuotesMixin`), `migrations/033_logistics_quotes.sql` (executed
+  under explicit one-migration owner authorization), a "Логистика" section in
+  `SupplierPanel.tsx`, and `tests/test_logistics_quote.py` (11 tests).
+- Dellin's request/response schema was verified against the official
+  documentation via the public Wayback Machine archive (`dev.dellin.ru`
+  itself blocks direct automated fetches) before writing any code — no field
+  was guessed from memory.
+- A hard gate blocks calculation until every required field is present; a
+  contract/unknown price, provider error or rate limit always resolves to an
+  explicit non-success status with a message, never a `0 ₽` price.
+- Official suite: `515 tests, failures=0, errors=9 (pre-existing, unchanged),
+  skipped=1`. Frontend typecheck/build clean, lint 0 errors/5 warnings (no
+  new errors). Manually verified end-to-end against the safe `OFFLINE_TEST`
+  runtime in a real browser.
+- `NOT VERIFIED`: a real call to `api.dellin.ru` with an actual
+  `DELLIN_API_KEY`, and whether commercial use of the Dellin API in a paid
+  SaaS product is contractually authorized.
+- Report: [`ai/reports/TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903-report.md`](reports/TASK-LOGISTICS-DELLIN-QUOTE-MVP-20260903-report.md).
+
+## 2026-09-03 — REFACTOR SERIES CLOSEOUT + ARCHITECTURE PROGRAM PAUSED
+
+- A read-only recovery audit on `integration/current-architecture-governance-20260903`
+  @ `a88334deb59f32d43f79afca63f71fc7bf263da0` found `NO_UNFINISHED_REFACTOR_FOUND`:
+  every bounded extraction pass reached full close and is already integrated;
+  the remaining architecture program has zero commits anywhere in the
+  repository — only prose next-step language.
+- Owner decision recorded as `DECISION-014`: the current bounded-refactor
+  series (`TASK-BOUNDED-SUPPLIER-APP-CONFIG-EXTRACT-20260903`,
+  `TASK-BOUNDED-SUPPLIER-APP-ENRICHMENT-EXTRACT-20260903`,
+  `TASK-BOUNDED-MAIL-REPOSITORY-DB-COMPAT-EXTRACT-20260903`,
+  `TASK-BOUNDED-SUPPLIER-APP-AUTH-EXTRACT-20260903`,
+  `TASK-BOUNDED-SUPPLIER-APP-ROUTE-HELPERS-EXTRACT-20260903`,
+  `TASK-BOUNDED-MAIL-REPOSITORY-AUTH-ACCOUNTS-EXTRACT-20260903`,
+  `TASK-BOUNDED-MAIL-REPOSITORY-TEMPLATES-EXTRACT-20260903`) is closed. The
+  remaining architecture program (campaign lifecycle extraction,
+  queue/send-attempt refactor, inbox-reply refactor, `supplier_app.py` mail
+  HTTP batch C, dispatch-table conversion, further architecture-enforcement
+  changes) is `PAUSED` pending a new direct owner instruction with its own
+  Task ID, scope, non-goals, allowed files and acceptance criteria.
+- Classifier-selected CI (`33763726815`) on this HEAD is `SUCCESS`. Exact
+  suite result: `tests=504, failures=0, errors=9, skipped=1` — the 9 errors
+  are the same pre-existing `pwsh`-gap documented across every prior task on
+  this line and were **not** fixed here; not in this closeout's scope.
+- State-only task: no product code, frontend, backend, test or dependency
+  file changed; `ai/DEFERRED_FINDINGS.md` unchanged; `ai/ACTIVE_TASK.md`
+  remains `IDLE`.
+
+## 2026-09-03 — COLD-START WORKSPACE HARD GATE
+
+- Added `SESSION_WORKSPACE_HARD_GATE` before all project analysis, including
+  read-only tasks. The guard now has one explicit stop outcome:
+  `BLOCKED_WRONG_WORKSPACE`.
+- Unified the canonical policy pointers in `AGENTS.md`, `CLAUDE.md`,
+  `PROJECT_MANIFEST.yaml` and `ai/AI_CONTRACT.md`; added 5 focused governance
+  tests, bringing the guard-focused set to `8/8`.
+- Updated the legacy checkout's local marker and adapters to point to
+  `C:\Users\edwat\SupplyDesk` and stop project work there. Those local safety
+  changes were not synchronized or published.
+- Codex fresh canary passed in canonical and legacy contexts. Claude fresh
+  behavior is `NOT VERIFIED` because both post-fix CLI attempts ended with the
+  same API 200 malformed-response error. See the task report.
+
 ## 2026-09-03 — CI CAPACITY FIX CONFIRMED + NEW FLAKY TEST FOUND
 
 - The Windows Defender exclusion fix (`6af2af1`) is now `CONFIRMED`, not
@@ -1354,3 +1586,71 @@ Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH_REPORT_ONLY`
   report-only classifier.
 - Ruff/Vulture were not available without installation and remain outside this
   diagnostic.
+
+## 2026-09-03 — TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903
+
+Task ID: `TASK-DEFAULT-AGENT-OPERATING-MODEL-20260903`
+Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH`
+
+- Added one canonical default project operating model to `ai/VIBECODING_RULES.md`
+  and a compatibility pointer in `ai/AI_CONTRACT.md`; adapters and the factual
+  registry were kept unchanged.
+- Replaced the old file-count change-budget stop with the causal-scope model:
+  `<=125%`, `125–150%` internal review and `>150%` stop only for a broken causal
+  chain or a new category/subsystem.
+- Added static validator coverage and two focused governance cases; policy,
+  docs/state validators and `18/18` governance tests passed.
+- Created candidate commit `2678370f`. Neutral Claude and Codex child launches
+  were attempted without tool/skill names in their prompts, but neither returned
+  a usable child trace; no tracked product file changed and no canary was
+  simulated as proof.
+- Product code, backend, frontend, browser, database, mail and provider state
+  were not changed. Final publication and CI evidence remain in the closeout
+  response because this report was prepared before the one allowed push.
+
+## 2026-09-04 — TASK-SUPPLYDESK-UI-FOUNDATION-V1-20260904
+
+- Added a dependency-free frontend Design System v1 layer with semantic roles,
+  shared controls, state primitives, page framing and table/modal foundations.
+- Migrated dashboard, requests, suppliers, blacklist, settings and new-request
+  surfaces to the shared shell/actions while preserving existing behavior.
+- Added the reusable `EmailWorkspace` shell and UI-only Notes/AI contracts;
+  backend, API, database, routing, auth and business logic were not changed.
+- Verification: typecheck, build, lint (0 errors; 5 existing warnings),
+  `git diff --check`, and rendered Playwright/a11y matrix `88/88` passed.
+
+## 2026-09-04 — TASK-RUNTIME-SELECTION-HARD-GUARD-20260904
+
+- Added the dependency-free `scripts/runtime_guard.py` with the six required
+  purposes and a strict purpose-to-runtime matrix.
+- Routed canonical/safe backend launchers, `supplier_app.py`, Vite, Playwright,
+  Lighthouse, Storybook, Doctor browser checks and CI through the guard.
+- Removed automatic SAFE_TEST alternate-port selection and canonical-to-safe
+  launcher fallback; mismatches now emit `FAIL + STOP`.
+- Added the SAFE_TEST disposable-data badge and an automated badge assertion.
+- Verification: controlled mismatch test PASS, safe browser smoke `2/2` PASS,
+  canonical public-shell visual acceptance `1/1` PASS, frontend typecheck,
+  lint, build, node config typecheck and state validators PASS. No backend
+  business logic, OAuth, DB schema, provider or outgoing-mail behavior changed.
+
+## 2026-09-04 — PREPARE EXTERNAL UI REDESIGN BASE
+
+- `TASK-PREPARE-SUPPLYDESK-FOR-EXTERNAL-UI-REDESIGN-20260904`: audited the
+  canonical checkout, documentation contracts, runtime paths and publication
+  boundary without changing UI, backend or business logic.
+- Reconciled only stale canonical branch and functional commit anchors in the
+  manifest, current state, handoff, active-task sentinel and runtime runbooks.
+- Pushed canonical branch `integration/current-architecture-governance-20260903`
+  at `1a5acf2`, verified local/remote equality, then created and pushed the
+  code-identical `ui/external-redesign-base-20260904` branch. GitHub default
+  branch `claude/zen-goldwasser-022bb1` was not changed.
+- Verified workspace/docs/state/VibeCoding/traceability validators, backend
+  `91/91`, canonical HTTP smoke, and a clean staged security scan. Local
+  `runtime/` and `docs/experiments/` remained excluded and untouched.
+- A later shared-worktree check found unverified unstaged/untracked UI paths
+  (`frontend/src/App.tsx`, `frontend/src/pages/UiExperiment.tsx` and
+  `frontend/src/styles/`) plus local `docs/experiments/` and `runtime/`; they
+  remain outside the published branches and were not inspected or changed.
+- Final documentation boundary commit `b70c4cf` was pushed to canonical and
+  the external base was fast-forwarded to the same SHA; both refs were
+  rechecked equal.

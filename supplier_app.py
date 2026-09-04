@@ -38,12 +38,14 @@ from backend.http_static import (  # noqa: F401 -- load_fixture_data re-exported
 # Reused as-is from the already-tested CLI tools; nothing here is new logic. The
 # pipeline's own orchestration methods live in EnrichmentOrchestratorMixin,
 # composed into SupplierApp below.
+from backend.domain.logistics.quote_service import LogisticsQuoteService
 from backend.integrations.registry.checko_client import CheckoClient
 from backend.domain.supplier_identity.inn_extractor import validate_inn_checksum
 from backend.domain.supplier_enrichment.orchestrator import EnrichmentOrchestratorMixin
 from backend.http_auth import AuthHandlerMixin
 from backend.http_global_suppliers import GlobalSupplierRouteMixin
 from backend.http_requests import RequestRouteMixin
+from scripts.runtime_guard import RuntimeSelectionError, print_runtime_context, validate_runtime_selection
 
 log = logging.getLogger("supplier_app")
 
@@ -144,7 +146,7 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                 # после ручного нажатия «Синхронизировать» в «Настройках».
                 # Вызов ограничен по частоте, поэтому повторные F5 не ждут IMAP.
                 self.app.maybe_sync_incoming(session["user_id"], session["workspace_id"])
-                self._json(200, {"items": self.app.repository.list_threads(session["workspace_id"])})
+                self._json(200, {"items": self.app.repository.list_threads(session["workspace_id"], session["user_id"])})
             return
         if parsed.path == "/api/mail/template":
             session = self._require_session()
@@ -204,7 +206,7 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
         if parsed.path == "/api/mail/queue/messages":
             session = self._require_session()
             if session:
-                self._json(200, {"items": self.app.repository.list_outbox_threads(session["workspace_id"])})
+                self._json(200, {"items": self.app.repository.list_outbox_threads(session["workspace_id"], session["user_id"])})
             return
         if parsed.path.startswith("/api/mail/campaigns/"):
             session = self._require_session()
@@ -538,6 +540,22 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                     supplier_id,
                     confirmed=body.get("confirmed") is True,
                 ))
+            elif parsed.path == "/api/correspondence/metadata":
+                important = body.get("important") if "important" in body else None
+                if important is not None and type(important) is not bool:
+                    raise ValueError("important должен быть логическим значением true или false.")
+                priority = body.get("priority") if "priority" in body else None
+                if "priority" in body and priority not in (None, 1, 2, 3):
+                    raise ValueError("priority должен быть равен 1, 2, 3 или null.")
+                metadata_kwargs = {"important": important}
+                if "priority" in body:
+                    metadata_kwargs["priority"] = priority
+                result = self.app.repository.update_thread_metadata(
+                    session["workspace_id"], session["user_id"],
+                    int(body.get("request_id", 0)), int(body.get("supplier_id", 0)),
+                    **metadata_kwargs,
+                )
+                self._json(200, {"ok": True, **result})
             elif parsed.path == "/api/mail/inbox/manual-unlink":
                 self._json(200, self.app.repository.unlink_manual_inbox_message(
                     session["workspace_id"], session["user_id"], int(body.get("inbox_message_id", 0)),
@@ -785,6 +803,10 @@ class SupplierApp(EnrichmentOrchestratorMixin):
         )
         self.rate_lock = threading.Lock()
         self.rate_events: dict[str, list[float]] = {}
+        # Один экземпляр на процесс: держит и ограничитель частоты запросов к
+        # Деловым Линиям (внутри DellinClient), и кэш расчётов по хэшу
+        # входных данных — оба должны переживать отдельные HTTP-запросы.
+        self.logistics_quote_service = LogisticsQuoteService()
         # Фоновая синхронизация входящих. Без неё отбойник (письмо не
         # доставлено) попадал в систему, только когда пользователь сам нажимал
         # «Синхронизировать входящие» на «Настройках»: до этого поставщик
@@ -1031,6 +1053,22 @@ def main() -> None:
         datefmt="%H:%M:%S",
     )
     config = Config.from_env()
+    try:
+        runtime = validate_runtime_selection(
+            purpose=os.getenv("RUNTIME_PURPOSE"),
+            mode=os.getenv("RUNTIME_MODE"),
+            base_url=config.base_url,
+            database_class=os.getenv("RUNTIME_DATABASE_CLASS"),
+            auth_mode=os.getenv("RUNTIME_AUTH_MODE"),
+            database_path=config.db_path,
+            application_env=config.environment,
+            mail_outgoing_disabled=os.getenv("MAIL_OUTGOING_DISABLED"),
+            surface="backend",
+            root=ROOT,
+        )
+    except RuntimeSelectionError as exc:
+        raise SystemExit(f"FAIL: RUNTIME_SELECTION_GUARD\nSTOP: {exc}") from exc
+    print_runtime_context(runtime)
     SupplierApp(config).run()
 
 

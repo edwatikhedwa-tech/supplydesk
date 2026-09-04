@@ -1,4 +1,10 @@
 import { defineConfig } from '@playwright/test';
+import { assertRuntime } from './runtimeGuard';
+
+const runtime = assertRuntime({
+  surface: 'storybook',
+  baseUrl: 'http://127.0.0.1:6006',
+});
 
 export default defineConfig({
   testDir: './tests',
@@ -14,7 +20,7 @@ export default defineConfig({
   },
   reporter: [['list'], ['html', { outputFolder: 'artifacts/storybook-playwright-report', open: 'never' }]],
   use: {
-    baseURL: 'http://127.0.0.1:6006',
+    baseURL: runtime.baseUrl,
     trace: 'retain-on-failure',
   },
   webServer: {

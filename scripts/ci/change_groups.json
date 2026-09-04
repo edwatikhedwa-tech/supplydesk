@@ -21,7 +21,8 @@
     "^frontend/src/",
     "^frontend/tests/",
     "^frontend/playwright[^/]*\\.(ts|js)$",
-    "^frontend/lighthouserc\\.[^/]+$"
+    "^frontend/lighthouserc\\.[^/]+$",
+    "^scripts/run_(playwright|lhci|storybook)\\.mjs$"
   ],
   "mail": [
     "^mail/",
@@ -41,7 +42,10 @@
   "api_shared_runtime": [
     "^api/",
     "^supplier_app\\.py$",
-    "^scripts/(assert_workspace|bootstrap_supplydesk|doctor|recover_supplydesk|setup_test_env|start_test_runtime|stop_test_runtime)\\.ps1$",
+    "^scripts/(assert_workspace|bootstrap_supplydesk|doctor|recover_supplydesk|setup_test_env|start_local_canonical|start_test_runtime|stop_test_runtime)\\.ps1$",
+    "^scripts/runtime_guard\\.py$",
+    "^scripts/test_runtime_entry\\.py$",
+    "^scripts/run_(frontend_dev|playwright|lhci|storybook)\\.mjs$",
     "^tests/run-tests\\.ps1$"
   ],
   "security": [
@@ -64,7 +68,11 @@
     "^docs/",
     "^tests/diagnostics/",
     "^tests/run-tests\\.ps1$",
-    "^scripts/(assert_workspace|bootstrap_supplydesk|doctor|recover_supplydesk|setup_test_env|start_test_runtime|stop_test_runtime)\\.ps1$",
+    "^scripts/(assert_workspace|bootstrap_supplydesk|doctor|recover_supplydesk|setup_test_env|start_local_canonical|start_test_runtime|stop_test_runtime)\\.ps1$",
+    "^scripts/runtime_guard\\.py$",
+    "^scripts/test_runtime_entry\\.py$",
+    "^scripts/run_(frontend_dev|playwright|lhci|storybook)\\.mjs$",
+    "^scripts/(start_server_and_open|start_server)\\.(ps1|bat)$",
     "^scripts/ci/",
     "^(AGENTS|CLAUDE)\\.md$",
     "^PROJECT_MANIFEST\\.yaml$",
@@ -77,7 +85,9 @@
     "^api/",
     "^supplier_app\\.py$",
     "^migrations/",
-    "^scripts/(assert_workspace|bootstrap_supplydesk|doctor|recover_supplydesk|setup_test_env|start_test_runtime|stop_test_runtime)\\.ps1$",
+    "^scripts/(assert_workspace|bootstrap_supplydesk|doctor|recover_supplydesk|setup_test_env|start_local_canonical|start_test_runtime|stop_test_runtime)\\.ps1$",
+    "^scripts/runtime_guard\\.py$",
+    "^scripts/test_runtime_entry\\.py$",
     "^tests/run-tests\\.ps1$",
     "^scripts/diagnostics/",
     "^\\.github/",

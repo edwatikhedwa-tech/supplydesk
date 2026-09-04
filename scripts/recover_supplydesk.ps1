@@ -64,6 +64,17 @@ if (-not (Test-Path -LiteralPath $python)) {
     exit 2
 }
 
+$runtimeGuard = Join-Path $root 'scripts\runtime_guard.py'
+$guardArgs = @(
+    $runtimeGuard, '--surface', 'backend', '--purpose', 'OWNER_SESSION',
+    '--mode', 'LOCAL_CANONICAL', '--base-url', 'http://127.0.0.1:8000',
+    '--database-class', 'CANONICAL_SQLITE', '--auth-mode', 'OWNER_SESSION',
+    '--database-path', (Join-Path $root 'mail-data\supplier.sqlite3'),
+    '--application-env', 'development', '--mail-outgoing-disabled', '1', '--root', $root
+)
+& $python @guardArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 $runtime = Join-Path $root 'runtime'
 New-Item -ItemType Directory -Path $runtime -Force | Out-Null
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -71,6 +82,11 @@ $stdout = Join-Path $runtime "supplier_app.recovery.$stamp.out.log"
 $stderr = Join-Path $runtime "supplier_app.recovery.$stamp.err.log"
 $previousOutgoing = [Environment]::GetEnvironmentVariable('MAIL_OUTGOING_DISABLED', 'Process')
 $env:MAIL_OUTGOING_DISABLED = '1'
+$env:RUNTIME_PURPOSE = 'OWNER_SESSION'
+$env:RUNTIME_MODE = 'LOCAL_CANONICAL'
+$env:RUNTIME_DATABASE_CLASS = 'CANONICAL_SQLITE'
+$env:RUNTIME_AUTH_MODE = 'OWNER_SESSION'
+$env:RUNTIME_BASE_URL = 'http://127.0.0.1:8000'
 $process = $null
 
 try {
