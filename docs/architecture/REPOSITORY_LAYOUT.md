@@ -3,8 +3,8 @@ document_id: REPOSITORY-LAYOUT-001
 status: CURRENT
 canonical: false
 owner: engineering
-updated_at: 2026-09-03
-source_commit: 6af2af1822820e996f1126b8a1b26d19be0000f0
+updated_at: 2026-09-04
+source_commit: 78484108ed010e152ab0e3e04d2490e8c4137d6c
 ---
 
 # Repository Layout
@@ -18,8 +18,8 @@ not a target structure. For behavioral component ownership, see
 |---|---|
 | root composition entrypoints | `supplier_app.py` (local backend entrypoint); `serp_parser.py` (thin CLI-compatibility wrapper, implementation moved) and `collect_inn.py` (thinned CLI, implementation partly extracted) still at root; the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
 | `api/` | `api/index.py` — the Vercel serverless adapter around `supplier_app.py` |
-| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — LLM/provider transport moved out of the root flat package (`llm_fallback.py`, `routerai_client.py`); `backend/integrations/search/` — SERP/web-lookup integrations moved out of the root flat package (`web_lookup.py`, `xmlriver_client.py`, `serp_parser.py`, the last with a thin root CLI-compatibility wrapper); `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the root flat package (`email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`); `backend/domain/supplier_enrichment/` — supplier-enrichment logic split out of the root flat package: `contact_crawler.py` (moved) and `pipeline.py` (extracted from `collect_inn.py`'s reusable ИНН/ОГРН parsing, shared by `supplier_app.py` and the CLI) |
-| `mail/` | Real Yandex IMAP/SMTP integration and SQLite-backed mail repository |
+| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — LLM/provider transport moved out of the root flat package (`llm_fallback.py`, `routerai_client.py`); `backend/integrations/search/` — SERP/web-lookup integrations moved out of the root flat package (`web_lookup.py`, `xmlriver_client.py`, `serp_parser.py`, the last with a thin root CLI-compatibility wrapper); `backend/integrations/logistics/` — Деловые Линии (Dellin) shipping-cost calculator client (`dellin_client.py`), new, not a move; `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the root flat package (`email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`); `backend/domain/supplier_enrichment/` — supplier-enrichment logic split out of the root flat package: `contact_crawler.py` (moved) and `pipeline.py` (extracted from `collect_inn.py`'s reusable ИНН/ОГРН parsing, shared by `supplier_app.py` and the CLI); `backend/domain/logistics/` — `quote_service.py`, the shipping-cost business rule (hard gate, cache, response parsing), new, not a move |
+| `mail/` | Real Yandex IMAP/SMTP integration and SQLite-backed mail repository, including `logistics_quotes.py` (`LogisticsQuotesMixin`, persistence for manual shipping-cost quotes) |
 | `migrations/` | Versioned SQL schema DDL |
 | `frontend/` | React/Vite SPA (TypeScript, Tailwind) |
 | `scripts/` | Operator/control tooling, plus one moved CLI implementation (`scripts/collect_contacts.py`) with a root compatibility wrapper |

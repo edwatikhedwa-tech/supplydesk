@@ -165,6 +165,26 @@ in `_archive/` or a proper subfolder once their useful content is extracted.
   composition-entrypoint program). `class SupplierApp(EnrichmentOrchestratorMixin)` composes it
   in, so every method still resolves `self.repository`/`self.service`/`self.llm_*` exactly as
   before — no behavior change, no new public surface.
+- `backend/integrations/logistics/dellin_client.py` — `DellinClient`: transport client for the
+  Деловые Линии (Dellin) shipping-cost calculator (`https://api.dellin.ru/v2/calculator.json`).
+  In-memory rate limiter (45/min, 1600/hour), retries only on 429/5xx (capped at 2), never on
+  other 4xx. Reads `DELLIN_API_KEY` from the environment; raises if absent.
+- `backend/domain/logistics/quote_service.py` — `LogisticsQuoteService`: hard gate on missing
+  required route/cargo fields, a sha256 input-hash cache held for the process lifetime, and
+  response parsing into `carrier/price/currency/term_days/cost_breakdown/status/input_hash/
+  calculated_at`. A provider error, contract price or rate limit always resolves to an explicit
+  non-success status with a message — never a `0 ₽` price. One `LogisticsQuoteService` instance
+  lives on `SupplierApp` (`self.logistics_quote_service`) for the process's lifetime, so the
+  client's rate limiter and the quote cache persist across requests.
+- `mail/logistics_quotes.py` — `LogisticsQuotesMixin`: `save_logistics_quote`/
+  `get_latest_logistics_quote`/`list_logistics_quotes_for_request`, same zero-coupling
+  extraction pattern as `mail/mail_templates.py`. `class MailRepository(AuthAccountsMixin,
+  MailTemplatesMixin, LogisticsQuotesMixin)` composes it in. Persists to
+  `logistics_quotes` (`migrations/033_logistics_quotes.sql`), scoped by joining
+  `requests.workspace_id` — the table itself has no `workspace_id` column, the same pattern
+  `request_supplier_states` already uses.
+  `GET`/`POST /api/requests/{id}/suppliers/{supplier_id}/logistics` live in the existing
+  `backend/http_requests.py` sub-router (`RequestRouteMixin`).
 - `collect_inn.py` stays at root as a thinned CLI (argparse, crawl/LLM/web/DaData
   orchestration, CSV output) importing its extracted pipeline back — this is deliberate
   structure, not an oversight. Three operator CLIs already moved with thin root compatibility

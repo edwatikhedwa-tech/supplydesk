@@ -3,8 +3,8 @@ document_id: COMPONENT-MAP-001
 status: CURRENT
 canonical: false
 owner: engineering
-updated_at: 2026-09-02
-source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
+updated_at: 2026-09-04
+source_commit: 78484108ed010e152ab0e3e04d2490e8c4137d6c
 ---
 
 # Component Map
@@ -30,6 +30,7 @@ source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
 | COMP-BOUNCE | `mail/bounce.py` | Bounce classification and suppression | Delivery-history boundary |
 | COMP-DISCOVERY | `supplier_discovery_v2/` | Query planning, read-only HTTP, adapters, evidence and qualification | Discovery boundary; no live lookup in diagnostics |
 | COMP-MIGRATION | `migrations/` | Versioned schema DDL | Read-only schema inspection only in diagnostics |
+| COMP-LOGISTICS | `backend/integrations/logistics/` + `backend/domain/logistics/` + `mail/logistics_quotes.py` | Manual shipping-cost calculator (Dellin) for one request/one supplier: transport client, hard-gate/cache business rule, persistence | `tests/test_logistics_quote.py`; live-verified 2026-09-04 against `api.dellin.ru` |
 | COMP-FRONTEND | `frontend/` | Product client and browser tests | `package.json`, `frontend/src/`, `frontend/tests/` |
 | COMP-WORKSPACE | `scripts/assert_workspace.ps1` | Checkout boundary guard | Compares real Git root with canonical default or explicit absolute worktree root |
 | COMP-DOCTOR | `scripts/doctor.ps1` | Windows operator entrypoint | Plan/DryRun/Apply all invoke read-only V1 checks after the workspace guard |
