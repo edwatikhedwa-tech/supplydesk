@@ -4,14 +4,39 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: c70e6d63a04640d8803eebc6aa878b7307f74984
+based_on_commit: 2c5682d
 ---
 
 # Last Handoff
 
 This current handoff records
-`TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904`. The prior redesign and
-runtime-fix handoffs remain below as historical context.
+`TASK-SUPPLYDESK-UI-MODERNIZATION-20260904`. The prior acceptance-correction,
+redesign and runtime-fix handoffs remain below as historical context.
+
+## Current modernization status
+
+The frontend-only modernization is complete locally with rendered acceptance
+`PASS`; reference-image comparison is `PARTIAL` because no approved reference
+image was supplied and the before screenshot is inline-only.
+
+- Stage 0 audit confirmed React 18 + TypeScript + Vite, Tailwind CSS 3,
+  `lucide-react`, shared routes and inline component duplication.
+- Added local `Button`, `StatusBadge`/`Count` and `TextField` primitives without
+  installing a UI library or changing application architecture.
+- `/messages` now has a request-first hierarchy, calm search/navigation,
+  quiet counters, semantic statuses, neutral unmatched preview, separate queue,
+  and one obvious `Ответить` action. Existing reply/link/metadata/recovery
+  flows remain reachable.
+- Verification: typecheck/build pass; lint has 0 errors and 5 pre-existing
+  warnings; full Playwright rendered/a11y matrix is `88/88`; CUA list/detail
+  smoke is `PASS` at 1280×720 with no horizontal overflow.
+- Backend, database, API contracts and unrelated working-tree edits were not
+  changed. The canonical stale metadata route remains outside this UI-only
+  task.
+
+Detailed evidence: `ai/reports/TASK-SUPPLYDESK-UI-MODERNIZATION-20260904-report.md`.
+
+## Historical: TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904
 
 ## Current correction status
 

@@ -1,22 +1,23 @@
 import type { ThreadSummary } from '@/lib/types';
+import type { StatusBadgeTone } from '@/components/ui/StatusBadge';
 
 export interface ThreadDisplayStatus {
   label: string;
   title: string;
   className: string;
+  tone: StatusBadgeTone;
 }
 
 /**
  * The primary correspondence list is for mail that reached the provider or
- * has a supplier reply. Queue-only mail belongs to the dedicated outbox.
- * Keep a thread with a reply visible even if its newest outbound attempt has
- * a later transport status, because the conversation still has useful history.
+ * has a supplier reply. Queue-only and unresolved transport states belong to
+ * the dedicated outbox/direct-action flows so the inbox stays focused on
+ * conversations that are ready to read.
  */
 export function isPrimaryCorrespondence(thread: ThreadSummary): boolean {
-  // The API has already applied the transport boundary. A positive visible
-  // count keeps delivery_unknown and post-transport failures in the list
-  // while still rejecting queue-only technical attempts.
-  return thread.messages_count > 0;
+  return thread.last_message_direction === 'inbound'
+    || thread.last_outbound_status === 'sent'
+    || (thread.last_outbound_status == null && thread.messages_count > 0);
 }
 
 /** A sent thread with no inbound message yet is the actionable waiting state. */
@@ -39,6 +40,7 @@ export function getThreadDisplayStatus(thread: ThreadSummary): ThreadDisplayStat
       label: 'Новый ответ',
       title: `${thread.unread_count} непрочитанный ответ поставщика`,
       className: 'bg-emerald-50 text-emerald-700 ring-emerald-200/80',
+      tone: 'success',
     };
   }
 
@@ -47,6 +49,7 @@ export function getThreadDisplayStatus(thread: ThreadSummary): ThreadDisplayStat
       label: 'Ответ получен',
       title: 'Ответ поставщика уже прочитан',
       className: 'bg-accent-100 text-accent-800 ring-accent-300 shadow-sm',
+      tone: 'info',
     };
   }
 
@@ -55,6 +58,7 @@ export function getThreadDisplayStatus(thread: ThreadSummary): ThreadDisplayStat
       label: 'Отправляется',
       title: 'Письмо сейчас передаётся почтовому серверу',
       className: 'bg-amber-50 text-amber-800 ring-amber-200/80',
+      tone: 'warning',
     };
   }
 
@@ -63,6 +67,7 @@ export function getThreadDisplayStatus(thread: ThreadSummary): ThreadDisplayStat
       label: 'В очереди',
       title: 'Письмо ещё не передано поставщику',
       className: 'bg-amber-50 text-amber-800 ring-amber-200/80',
+      tone: 'warning',
     };
   }
 
@@ -72,30 +77,35 @@ export function getThreadDisplayStatus(thread: ThreadSummary): ThreadDisplayStat
         label: 'Ожидает ответа',
         title: 'Почтовый сервер принял письмо; ответа пока нет',
         className: 'bg-ink-100 text-ink-700 ring-ink-200/80',
+        tone: 'neutral',
       };
     case 'failed':
       return {
         label: 'Ошибка отправки',
         title: 'Письмо не удалось отправить',
         className: 'bg-rose-50 text-rose-700 ring-rose-200/80',
+        tone: 'danger',
       };
     case 'delivery_unknown':
       return {
         label: 'Нужна проверка',
         title: 'Результат передачи письма не подтверждён',
         className: 'bg-orange-50 text-orange-800 ring-orange-200/80',
+        tone: 'warning',
       };
     case 'bounced':
       return {
         label: 'Возврат письма',
         title: 'Почтовый сервер вернул отправленное письмо',
         className: 'bg-rose-50 text-rose-700 ring-rose-200/80',
+        tone: 'danger',
       };
     default:
       return {
         label: 'Переписка',
         title: 'Письмо в переписке',
         className: 'bg-ink-100 text-ink-600 ring-ink-200/80',
+        tone: 'neutral',
       };
   }
 }

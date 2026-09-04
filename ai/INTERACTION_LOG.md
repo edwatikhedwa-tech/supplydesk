@@ -2,6 +2,28 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-04 — TASK-SUPPLYDESK-UI-MODERNIZATION-20260904
+
+State change: created the UI modernization task lock after read-only discovery
+confirmed React 18 + TypeScript + Vite, Tailwind CSS 3, `lucide-react`, the
+shared layout and the active `/messages` routes. Preserved pre-existing
+enrichment edits and `runtime/`.
+
+State change: added local UI primitives and applied them to `/messages` only.
+The visual direction is a calm procurement desk: graphite navigation, white
+work surfaces, one blue action color, quiet counts and semantic state badges.
+The request-first split view now makes the request relation and next reply
+action explicit while preserving unmatched linking, queue, metadata and
+delivery recovery behaviors.
+
+Evidence: live CUA list/detail/search/filter smoke passed at 1280×720 with
+`scrollWidth=clientWidth=1280`; full `AUDIT_BASE_URL=http://127.0.0.1:5173
+npm run test:visual` passed `88/88` across the configured desktop/tablet/mobile
+profiles, including axe accessibility. Typecheck and build pass; lint has 0
+errors and the same 5 unrelated warnings. Before screenshot is inline-only,
+no approved reference image was supplied, and canonical backend/API state was
+not changed.
+
 ## 2026-09-04 — TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904
 
 GAP ANALYSIS against the rejected acceptance: the previous implementation

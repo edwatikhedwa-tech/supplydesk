@@ -1,6 +1,14 @@
 :root {
   --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'SF Mono', 'Cascadia Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --sd-canvas: #f8fafc;
+  --sd-surface: #ffffff;
+  --sd-text: #0f172a;
+  --sd-muted: #64748b;
+  --sd-border: #e2e8f0;
+  --sd-action: #2563eb;
+  --sd-radius-control: 0.625rem;
+  --sd-radius-surface: 0.75rem;
 }
 
 @tailwind base;
@@ -15,8 +23,8 @@ html {
 }
 
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--sd-canvas);
+  color: var(--sd-text);
   font-family: var(--font-ui);
   font-size: 0.875rem;
   line-height: 1.4286;

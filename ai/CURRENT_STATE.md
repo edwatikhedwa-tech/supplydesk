@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: 0efbdaf
+based_on_commit: 2c5682d
 ---
 
 # Current State
@@ -15,20 +15,19 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
-`2026-09-04` — `TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904`
-corrected the rejected `/messages` acceptance points in the working tree. The
-mail repository now applies one business predicate to conversation visibility:
-all inbound messages plus outbound messages that are sent, may have left the
-system (`delivery_unknown` or a post-transport failure), or are bounced after
-transmission; queued/sending/cancelled pre-send attempts, drafts and pre-send
-failures are excluded while remaining durable in storage. The frontend now
-uses the full remaining detail width with compact B2B hierarchy, neutral
-unmatched preview cards, visible semantic flag/priority controls and a compact
-request-link strip. Source tests, full `test_mail*.py`, frontend typecheck,
-lint and build pass. Live acceptance remains `BLOCKED`: the canonical backend
-PID 16228 on port 8000 is stale and returns `404` for the metadata route, the
-real pointer drag attempt produced no link evidence, and the CUA browser has
-no viewport capability; only the authenticated 1287×912 render was inspected.
+`2026-09-04` — `TASK-SUPPLYDESK-UI-MODERNIZATION-20260904` completed the
+frontend-only modernization of `/messages` and added a local UI foundation.
+React/Vite/Tailwind/Lucide remain unchanged; no shadcn/Radix dependency was
+introduced. Shared Button, StatusBadge/Count and TextField primitives now give
+the mail workspace one action/status/input language. The `/messages` screen
+uses a calm request-first hierarchy, quiet counters, semantic statuses,
+separated unmatched/queue flows, and one obvious reply action. Final rendered
+verification is green: typecheck, build, live CUA smoke at 1280×720, and the
+full Playwright visual/a11y matrix `88/88` across desktop/tablet/mobile. The
+owner-facing before screenshot remains inline-only and no approved reference
+image was supplied, so comparison/reference match is `PARTIAL`. Canonical
+backend state was not changed; its previously observed stale metadata route
+remains outside this UI-only task.
 
 `2026-09-04` — Dellin registration was approved; the owner shared the real
 `DELLIN_API_KEY` and it was added to the local (gitignored) `.env`. A live

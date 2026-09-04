@@ -7,6 +7,8 @@ import type { ThreadSummary } from '@/lib/types';
 import { getThreadDisplayStatus, isAwaitingResponse, isPrimaryCorrespondence, needsThreadAttention } from '@/components/mail/threadStatus';
 import { ThreadMetadataControls } from '@/components/mail/ThreadMetadataControls';
 import { UnmatchedPreview } from '@/components/mail/UnmatchedPreview';
+import { Button } from '@/components/ui/Button';
+import { Count, StatusBadge } from '@/components/ui/StatusBadge';
 
 /** Переписка сгруппирована по заявке, а не сплошным списком.
  *
@@ -171,37 +173,36 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey, sear
       'w-full shrink-0 border-r border-ink-200 bg-white flex-col xl:w-[400px] 2xl:w-[420px] xl:flex',
       selectedThreadKey ? 'hidden' : 'flex',
     )}>
-      <div className="shrink-0 border-b border-ink-100 px-3 pt-3 pb-2.5">
-        <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="Фильтр по статусу">
-          <button
-            type="button"
+      <div className="shrink-0 border-b border-ink-100 bg-ink-50/70 px-4 pt-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-ink-900">Переписки</h2>
+          <Count value={primaryThreads.length} label="Количество переписок" />
+        </div>
+        <div className="mt-3 flex items-center gap-4 border-b border-ink-200" role="group" aria-label="Фильтр по статусу">
+          <Button
+            size="sm"
+            variant="ghost"
             aria-pressed={filter === 'primary'}
             onClick={() => setFilter('primary')}
             className={cn(
-              'inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400',
-              filter === 'primary' ? 'bg-ink-800 text-white shadow-sm' : 'bg-ink-100 text-ink-600 hover:bg-ink-200 hover:text-ink-800',
+              'relative min-h-9 rounded-none px-0 text-xs after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-transparent',
+              filter === 'primary' ? 'text-ink-900 after:bg-accent-600' : 'text-ink-500 hover:bg-transparent hover:text-ink-800',
             )}
           >
-            Отправленные и ответы
-            <span className={cn('rounded-full px-1.5 py-px text-2xs tabular-nums', filter === 'primary' ? 'bg-white/20 text-white' : 'bg-white text-ink-500')}>
-              {primaryThreads.length}
-            </span>
-          </button>
-          <button
-            type="button"
+            Отправленные и ответы <Count value={primaryThreads.length} />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
             aria-pressed={filter === 'awaiting-response'}
             onClick={() => setFilter('awaiting-response')}
             className={cn(
-              'inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400',
-              filter === 'awaiting-response' ? 'bg-accent-700 text-white shadow-sm' : 'bg-accent-50 text-accent-800 ring-1 ring-accent-200 hover:bg-accent-100',
+              'relative min-h-9 rounded-none px-0 text-xs after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-transparent',
+              filter === 'awaiting-response' ? 'text-ink-900 after:bg-accent-600' : 'text-ink-500 hover:bg-transparent hover:text-ink-800',
             )}
           >
-            <Clock3 size={13} aria-hidden="true" />
-            Ожидает ответа
-            <span className={cn('rounded-full px-1.5 py-px text-2xs tabular-nums', filter === 'awaiting-response' ? 'bg-white/20 text-white' : 'bg-white text-accent-700')}>
-              {awaitingCount}
-            </span>
-          </button>
+            <Clock3 size={13} aria-hidden="true" />Ожидает ответа <Count value={awaitingCount} />
+          </Button>
         </div>
       </div>
 
@@ -344,7 +345,7 @@ export function ThreadList({ selectedThreadKey, onSelectThread, refreshKey, sear
                             </p>
                             <div className="mt-1.5 flex min-w-0 items-center gap-2">
                               {!isAwaitingResponse(thread) && (
-                                <span title={status.title} className={cn('inline-flex shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1', status.className)}>{status.label}</span>
+                                <StatusBadge label={status.label} tone={status.tone} title={status.title} />
                               )}
                               <span className="min-w-0 flex-1 truncate text-xs text-ink-600">
                                 {thread.messages_count} {pluralize(thread.messages_count, 'письмо', 'письма', 'писем')}

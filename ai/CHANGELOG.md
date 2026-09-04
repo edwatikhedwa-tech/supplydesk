@@ -3,6 +3,23 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-04 — SUPPLYDESK UI MODERNIZATION
+
+- `TASK-SUPPLYDESK-UI-MODERNIZATION-20260904`: audited the frontend stack and
+  real routes, then added a local UI foundation with `Button`,
+  `StatusBadge`/`Count` and `TextField` primitives without adding shadcn,
+  Radix or another dependency.
+- Modernized `/messages` into a request-first procurement workspace: calm
+  header/search, lightweight section navigation, quiet counters, semantic
+  statuses, neutral unmatched preview, separate outbox and a single primary
+  reply action. Existing reply, manual-link, metadata and recovery behaviors
+  remain available.
+- Added current audit/design-system docs and final report. `typecheck`, lint
+  (0 errors, 5 pre-existing warnings), build and rendered Playwright/a11y
+  matrix pass `88/88`; live CUA list/detail smoke passes at 1280×720.
+- Before screenshot remains inline-only and no approved reference image was
+  supplied; reference matching is `PARTIAL`. Backend and data were not changed.
+
 ## 2026-09-04 — MESSAGES PRODUCT ACCEPTANCE CORRECTION
 
 - `TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904`: corrected the

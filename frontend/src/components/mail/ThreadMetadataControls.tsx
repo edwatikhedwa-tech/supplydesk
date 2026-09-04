@@ -79,7 +79,7 @@ export function ThreadMetadataControls({ important, priority, onChange, compact 
         )}
       >
         <Flag size={15} fill={localImportant ? 'currentColor' : 'none'} aria-hidden="true" />
-        {!compact && <span className="ml-1.5 text-xs font-semibold">Важное</span>}
+          {!compact && <span className="ml-1.5 text-xs font-semibold text-ink-600">Важное</span>}
       </button>
 
       <div ref={menuRef} className="relative">

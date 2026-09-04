@@ -5,6 +5,8 @@ import { cn, displayCorrespondenceSupplierName, formatRelativeDate } from '@/lib
 import type { ThreadSummary } from '@/lib/types';
 import { getThreadDisplayStatus } from '@/components/mail/threadStatus';
 import { ThreadMetadataControls } from '@/components/mail/ThreadMetadataControls';
+import { Button } from '@/components/ui/Button';
+import { Count, StatusBadge } from '@/components/ui/StatusBadge';
 
 interface OutboxListProps {
   selectedThreadKey: string | null;
@@ -47,7 +49,7 @@ export function OutboxList({ selectedThreadKey, onSelectThread, refreshKey, sear
             <h2 className="text-sm font-semibold text-ink-900">Очередь отправки</h2>
             <p className="mt-0.5 text-xs text-ink-500">Письма ещё не переданы поставщикам</p>
           </div>
-          {!loading && !error && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">{visibleThreads.length}</span>}
+          {!loading && !error && <Count value={visibleThreads.length} label="Количество писем в очереди" />}
         </div>
       </div>
 
@@ -58,9 +60,9 @@ export function OutboxList({ selectedThreadKey, onSelectThread, refreshKey, sear
           <div className="flex flex-col items-center px-6 py-16 text-center">
             <Mail size={30} className="mb-3 text-ink-300" />
             <p className="text-sm text-ink-500">Не удалось загрузить очередь</p>
-            <button type="button" onClick={() => window.location.reload()} className="mt-3 inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-accent-700 hover:bg-accent-50">
+            <Button size="sm" variant="secondary" onClick={() => window.location.reload()} className="mt-3">
               <RefreshCw size={14} /> Повторить
-            </button>
+            </Button>
           </div>
         ) : visibleThreads.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-16 text-center">
@@ -91,7 +93,7 @@ export function OutboxList({ selectedThreadKey, onSelectThread, refreshKey, sear
                     </div>
                     <p className="mt-0.5 truncate text-xs text-ink-600">{thread.subject}</p>
                     <div className="mt-1.5 flex min-w-0 items-center gap-2">
-                      <span title={status.title} className={cn('inline-flex shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1', status.className)}>{status.label}</span>
+                      <StatusBadge label={status.label} tone={status.tone} title={status.title} />
                       <span className="min-w-0 flex-1 truncate text-xs text-ink-500">{thread.request_name}</span>
                     </div>
                   </div>

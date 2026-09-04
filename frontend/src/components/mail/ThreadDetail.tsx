@@ -5,6 +5,8 @@ import { cn, displayCorrespondenceSupplierName, formatFullDate, getAvatarColor, 
 import { EmailRenderer } from '@/components/mail/EmailRenderer';
 import { ThreadMetadataControls } from '@/components/mail/ThreadMetadataControls';
 import { getThreadDisplayStatus } from '@/components/mail/threadStatus';
+import { Button } from '@/components/ui/Button';
+import { StatusBadge, type StatusBadgeTone } from '@/components/ui/StatusBadge';
 import type { InboxConversation, MailMessage, ThreadSummary } from '@/lib/types';
 
 const OUTBOUND_STATUS_LABELS: Record<string, string> = {
@@ -15,6 +17,13 @@ const OUTBOUND_STATUS_LABELS: Record<string, string> = {
   delivery_unknown: 'отправка не подтверждена',
   bounced: 'письмо возвращено',
 };
+
+function outboundStatusTone(status: string): StatusBadgeTone {
+  if (status === 'sent') return 'neutral';
+  if (status === 'delivery_unknown') return 'warning';
+  if (status === 'failed' || status === 'bounced') return 'danger';
+  return 'warning';
+}
 
 interface ThreadDetailProps {
   thread: ThreadSummary;
@@ -195,9 +204,9 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
         <p className="text-sm text-ink-500">Не удалось загрузить переписку</p>
-        <button type="button" onClick={() => void loadMessages()} className="mt-3 inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-accent-700 hover:bg-accent-50">
+        <Button size="sm" variant="secondary" onClick={() => void loadMessages()} className="mt-3">
           <RefreshCw size={14} /> Повторить
-        </button>
+        </Button>
       </div>
     );
   }
@@ -218,7 +227,7 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-base font-bold text-ink-900" title={thread.supplier_name || undefined}>{supplierLabel}</h2>
-              <span title={threadStatus.title} className={cn('inline-flex shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold ring-1', threadStatus.className)}>{threadStatus.label}</span>
+              <StatusBadge label={threadStatus.label} tone={threadStatus.tone} title={threadStatus.title} dot />
             </div>
             <p className="mt-0.5 truncate text-sm text-ink-600">{thread.subject || 'Без темы'}</p>
             <p className="mt-0.5 truncate text-xs text-ink-500">{thread.supplier_email || 'Адрес поставщика не указан'} · заявка №{thread.request_id}</p>
@@ -227,15 +236,16 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
             <ThreadMetadataControls important={thread.is_important} priority={thread.priority} compact={false} onChange={(patch) => onMetadataChange(thread, patch)} />
           )}
           {canReply ? (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => onReply?.(thread, lastMessage)}
-              className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg bg-ink-50 px-3 py-1.5 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-100"
             >
               <Reply size={15} />
-              <span className="hidden sm:inline">Ответить</span>
-            </button>
+              Ответить
+            </Button>
           ) : lastMessagePending ? (
-            <span title="Ответ станет доступен после завершения текущей отправки" className="inline-flex min-h-10 shrink-0 items-center rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">Письмо отправляется</span>
+            <StatusBadge label="Письмо отправляется" tone="warning" title="Ответ станет доступен после завершения текущей отправки" dot />
           ) : null}
         </div>
       </div>
@@ -266,27 +276,28 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
             )}
             {unlinkError && <p role="alert" className="basis-full text-xs text-rose-700">{unlinkError}</p>}
             {onOpenRequest && (
-              <button
+              <Button
+                variant="link"
+                size="sm"
                 onClick={() => onOpenRequest(thread.request_id)}
-                className="inline-flex min-h-9 shrink-0 items-center gap-1 text-sm font-medium text-accent-600 hover:text-accent-700"
+                className="min-h-9 shrink-0 px-2"
               >
                 Открыть заявку
                 <ExternalLink size={13} />
-              </button>
+              </Button>
             )}
           </div>
 
           {messages.length === 0 && <p className="text-sm text-ink-400 py-8 text-center">В этой переписке пока нет сообщений</p>}
 
-          {messages.map((msg, idx) => {
+          {messages.map((msg) => {
             const isCollapsed = collapsed.has(msg.id);
-            const isLast = idx === messages.length - 1;
             const fromName = msg.direction === 'outbound' ? 'Вы' : (thread.supplier_name || msg.from_email);
             const avatarColor = getAvatarColor(fromName);
             const initials = getInitials(fromName);
 
             return (
-              <div key={msg.id} className={cn('overflow-hidden rounded-2xl border border-ink-200 bg-white transition-all duration-200', isLast && 'shadow-sm')}>
+              <div key={msg.id} className="overflow-hidden rounded-xl border border-ink-200 bg-white">
                 <button onClick={() => toggleCollapse(msg.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-ink-50 transition-colors">
                   <div
                     className={cn(
@@ -301,9 +312,7 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
                       <span className="text-sm font-medium text-ink-900 truncate">{fromName}</span>
                       <span className="shrink-0 text-2xs font-semibold uppercase tracking-wide text-ink-500">{msg.direction === 'inbound' ? 'Входящее' : 'Исходящее'}</span>
                       {msg.direction === 'outbound' && (
-                        <span className={cn('text-xs', ['failed', 'bounced'].includes(msg.status) ? 'text-rose-600' : msg.status === 'delivery_unknown' ? 'text-orange-800' : 'text-ink-600')}>
-                          · {OUTBOUND_STATUS_LABELS[msg.status] ?? msg.status}
-                        </span>
+                        <StatusBadge label={OUTBOUND_STATUS_LABELS[msg.status] ?? msg.status} tone={outboundStatusTone(msg.status)} />
                       )}
                     </div>
                     <p className="text-xs text-ink-600 truncate">
@@ -389,14 +398,6 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
             );
           })}
 
-          {messages.length > 0 && canReply && (
-            <button
-              onClick={() => onReply?.(thread, lastMessage)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 rounded-xl transition-colors"
-            >
-              <Reply size={15} />Ответить
-            </button>
-          )}
         </div>
       </div>
     </div>

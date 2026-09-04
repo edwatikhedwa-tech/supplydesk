@@ -3,6 +3,7 @@ import { GripVertical, Link as LinkIcon, Mail, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn, formatRelativeDate } from '@/lib/utils';
 import type { InboxPreview } from '@/lib/types';
+import { Button } from '@/components/ui/Button';
 
 interface UnmatchedPreviewProps {
   refreshKey: number;
@@ -41,12 +42,12 @@ export function UnmatchedPreview({ refreshKey, onShowAll, onOpenMessage, onDragS
           </div>
           {items.length > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-50 px-1.5 text-2xs font-bold text-amber-700 ring-1 ring-amber-200">{items.length}</span>}
         </div>
-        <button type="button" onClick={onShowAll} className="min-h-9 shrink-0 rounded-lg px-2 text-xs font-semibold text-accent-700 hover:bg-accent-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400">Показать все <span aria-hidden="true">→</span></button>
+        <Button size="sm" variant="link" onClick={onShowAll} className="px-2">Показать все <span aria-hidden="true">→</span></Button>
       </div>
       {loading ? (
         <div className="mt-2 flex items-center gap-2 text-xs text-ink-500" role="status"><RefreshCw size={13} className="animate-spin" />Загружаем новые письма…</div>
       ) : error ? (
-        <p role="alert" className="mt-2 text-xs text-rose-700">Не удалось загрузить превью.</p>
+        <p role="status" aria-live="polite" className="mt-2 text-xs text-rose-700">Не удалось загрузить превью.</p>
       ) : (
         <div className="mt-2 space-y-1.5">
           {items.map((item) => (
@@ -71,7 +72,7 @@ export function UnmatchedPreview({ refreshKey, onShowAll, onOpenMessage, onDragS
                 <p className="text-2xs font-medium text-ink-600">Компания не определена</p>
                 <p className="truncate text-2xs text-ink-500">{item.subject || '(без темы)'}</p>
               </button>
-              <button type="button" onClick={() => onOpenMessage?.(item.id)} aria-label={`Связать письмо от ${item.from_email}`} className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-2xs font-bold text-accent-700 hover:bg-accent-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"><LinkIcon size={12} aria-hidden="true" />Связать</button>
+              <Button size="sm" variant="link" onClick={() => onOpenMessage?.(item.id)} aria-label={`Связать письмо от ${item.from_email}`} className="min-h-9 px-2 text-2xs"><LinkIcon size={12} aria-hidden="true" />Связать</Button>
             </div>
           ))}
         </div>
