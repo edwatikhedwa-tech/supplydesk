@@ -2,6 +2,35 @@
 
 This log records agent work interactions. It is append-only.
 
+## 2026-09-04 — TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904
+
+State change: started a narrow `REDESIGN` task over commit `ae557ba` after
+reviewing the supplied assistant-ui Message pair reference. The reference
+uses a right-aligned user bubble, a lighter left assistant reply and actions
+that stay secondary until hover/focus. The product adaptation keeps email
+sender/date metadata, HTML email rendering, collapse behavior and safety
+actions; assistant-ui was not installed.
+
+Implementation: changed only `frontend/src/components/mail/ThreadDetail.tsx`.
+The conversation no longer uses the old timeline spine and repeated equal
+weight cards. Inbound and outbound messages now have directional alignment,
+compact metadata and asymmetric bubble corners using existing ink/accent
+tokens. Delivery-unknown recovery remains visible and unchanged in behavior.
+
+Rendered evidence: the initial iteration found two axe contrast violations
+(`Исходящее` and outbound send error on the accent surface); colors were
+corrected and the same six message/delivery tests passed across desktop,
+compact laptop and mobile. The matched HTML-email scenario passed on the same
+three viewports, for `9/9` targeted checks. The full existing visual/a11y
+matrix passed `88/88` in `4.9m`. Reviewed after-render PNGs for desktop-wide,
+desktop-compact and mobile-large; no clipping, overlap or horizontal overflow
+was visible.
+
+Limit: this iteration has after screenshots but no persisted before PNG, so
+the transformation comparison is `NOT VERIFIED` at artifact level. The
+authenticated SAFE_TEST conversation is empty; evidence uses the existing
+route-controlled Playwright visual fixtures and does not submit mailbox data.
+
 ## 2026-09-04 — TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904
 
 State change: created the active pilot lock after revalidating the canonical

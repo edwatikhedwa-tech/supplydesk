@@ -4,10 +4,30 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: 5dd23d5
+based_on_commit: 4b89cc8
 ---
 
 # Last Handoff
+
+## Current: TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904
+
+The opened `/messages` reader now follows the supplied message-pair direction:
+inbound supplier mail is a left-aligned reading lane, while outbound buyer
+mail is a restrained right-aligned bubble. The old timeline spine and repeated
+full-width message cards were removed from the primary composition. Sender,
+direction, timestamp, collapse/expand control, HTML email renderer, remote
+image notice, delivery recovery and reply action remain available.
+
+Only `frontend/src/components/mail/ThreadDetail.tsx` changed for the UI. No
+assistant-ui dependency, API, backend, database or business-logic change was
+introduced. The first render found and fixed two contrast issues; final
+typecheck/build, targeted message checks `9/9`, and the full Playwright
+visual/a11y matrix `88/88` pass. Reviewed screenshots cover `1440×900`,
+`1280×720` and `390×844`; no horizontal overflow or overlap was observed.
+
+Before-image comparison is `NOT VERIFIED` because a persisted before PNG was
+not available for this narrow iteration. Detailed evidence:
+`ai/reports/TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904-report.md`.
 
 ## Current: TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904
 

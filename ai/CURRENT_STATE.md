@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: 5dd23d5
+based_on_commit: 4b89cc8
 ---
 
 # Current State
@@ -14,6 +14,18 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-04` — `TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904` changed only
+the opened `/messages` conversation composition in `ThreadDetail.tsx`. Inbound
+mail now reads as a left-aligned sender lane with a light surface; outbound
+mail reads as a compact right-aligned accent bubble, with metadata and collapse
+control kept accessible. The existing email iframe renderer, remote-image
+privacy notice, delivery recovery actions, reply composer and API contracts
+remain unchanged. Final rendered verification is green: typecheck, build,
+targeted desktop/laptop/mobile message states `9/9`, and the full existing
+Playwright visual/a11y matrix `88/88`; no horizontal overflow was reported.
+The before screenshot for this narrow iteration was not persisted, so a
+pixel-level before/after artifact comparison is `NOT VERIFIED`.
 
 `2026-09-04` — `TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904` added an
 opt-in Applitools Eyes Playwright pilot scoped only to `/messages`. The

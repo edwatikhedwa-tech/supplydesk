@@ -4,20 +4,21 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-04
-based_on_commit: TASK-ROOT-CAUSE-RUNTIME-FIX-20260903
+based_on_commit: ae557ba
 ---
 
 # Active Task
 
-Task ID: `TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904`
+Task ID: `TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904`
 Agent: `Codex`
-Mode: `EXTEND`
+Mode: `REDESIGN`
 Started: `2026-09-04`
-Scope: `Independent Applitools Eyes visual QA pilot for real /messages only; no UI redesign, no backend, API, database or business-logic changes, no global governance requirement, no MCP installation.`
-Allowed files: `frontend/package.json, frontend/package-lock.json, frontend/playwright.applitools.config.ts, frontend/tests/visual/messages.visual.spec.ts, ai state/report files required by project policy`
-Status: `IN_PROGRESS — compatibility assessment PASS; SDK and pilot implementation verified; Eyes execution BLOCKED by missing key and empty SAFE_TEST data`
+Scope: `Visual redesign of the opened /messages conversation into a message-pair reading pattern; preserve existing email rendering, actions, API, backend, database and business logic.`
+Allowed files: `frontend/src/components/mail/ThreadDetail.tsx, ai state/report files required by project policy`
+Status: `COMPLETE — message-pair visual direction implemented; rendered desktop/tablet/mobile and accessibility verification PASS`
 Last update: `2026-09-04`
 
+Previous completed task report: `ai/reports/TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904-report.md`
 Previous completed task report: `ai/reports/TASK-MESSAGES-PRODUCT-ACCEPTANCE-CORRECTION-20260904-report.md`
 Completed task report: `ai/reports/TASK-SUPPLYDESK-UI-MODERNIZATION-20260904-report.md`
 Completed task report: `ai/reports/TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904-report.md`

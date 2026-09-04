@@ -3,6 +3,22 @@
 This is an append-only chronology. Existing entries must never be deleted or
 rewritten.
 
+## 2026-09-04 — MESSAGES MESSAGE-PAIR READER
+
+- `TASK-SUPPLYDESK-MESSAGES-MESSAGE-PAIR-20260904`: adapted the opened
+  `/messages` conversation to the supplied assistant-ui message-pair
+  reference. Incoming messages use a quiet left reading lane; outgoing
+  messages use a restrained right-aligned accent bubble.
+- Removed the old vertical timeline spine and repetitive full-width message
+  cards from the primary reading composition. Kept sender identity, direction,
+  timestamp, collapse/expand behavior, email HTML rendering, remote-image
+  notice, delivery-recovery actions and reply CTA.
+- The first rendered pass exposed two contrast violations in the new outbound
+  surface; both were corrected. Final checks: typecheck/build, targeted
+  message scenarios `9/9` across `1440×900`, `1280×720` and `390×844`, and
+  full Playwright visual/a11y matrix `88/88`. No backend, API, database or
+  business-logic changes were made.
+
 ## 2026-09-04 — APPLITOOLS VISUAL QA PILOT
 
 - `TASK-APPLITOOLS-VISUAL-QA-PILOT-20260904`: added an independent,

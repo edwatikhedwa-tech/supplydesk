@@ -280,53 +280,65 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
 
           {messages.map((msg) => {
             const isCollapsed = collapsed.has(msg.id);
-            const fromName = msg.direction === 'outbound' ? 'Вы' : (thread.supplier_name || msg.from_email);
+            const isOutbound = msg.direction === 'outbound';
+            const fromName = isOutbound ? 'Вы' : (thread.supplier_name || msg.from_email);
             const avatarColor = getAvatarColor(fromName);
             const initials = getInitials(fromName);
+            const messagePanelId = `message-body-${msg.id}`;
+            const collapsedPreview = (msg.body_text || '').replace(/\s+/g, ' ').trim().slice(0, 80);
 
             return (
-              <div key={msg.id} className="relative pb-6 last:pb-0 sm:pl-12">
-                <div aria-hidden="true" className="absolute bottom-0 left-4 top-5 hidden w-px bg-ink-200 sm:block" />
-                <div
-                  className={cn(
-                    'absolute left-0 top-0 hidden h-9 w-9 items-center justify-center rounded-full text-xs font-semibold sm:flex',
-                    msg.direction === 'outbound' ? 'bg-ink-200 text-ink-600' : avatarColor,
-                  )}
-                >
-                  {initials}
-                </div>
-                <button onClick={() => toggleCollapse(msg.id)} className="group flex w-full items-center gap-3 rounded-xl px-1 py-1.5 text-left transition-colors hover:bg-white/70">
-                  <div
+              <article key={msg.id} className={cn('group/message relative flex pb-8 last:pb-0', isOutbound ? 'justify-end' : 'justify-start')}>
+                <div className={cn('min-w-0 w-full', isOutbound ? 'max-w-3xl' : 'max-w-4xl')}>
+                  <button
+                    type="button"
+                    aria-expanded={!isCollapsed}
+                    aria-controls={messagePanelId}
+                    aria-label={`${isCollapsed ? 'Развернуть' : 'Свернуть'} сообщение от ${fromName}`}
+                    onClick={() => toggleCollapse(msg.id)}
                     className={cn(
-                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold sm:hidden',
-                      msg.direction === 'outbound' ? 'bg-ink-200 text-ink-600' : avatarColor
+                      'flex w-full items-center gap-2 px-1.5 py-1 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2',
+                      isOutbound ? 'justify-end text-right' : 'justify-start',
                     )}
                   >
-                    {initials}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-ink-900 truncate">{fromName}</span>
-                      <span className="shrink-0 text-2xs font-semibold uppercase tracking-wide text-ink-500">{msg.direction === 'inbound' ? 'Входящее' : 'Исходящее'}</span>
-                      {msg.direction === 'outbound' && (
-                        <StatusBadge label={OUTBOUND_STATUS_LABELS[msg.status] ?? msg.status} tone={outboundStatusTone(msg.status)} />
-                      )}
-                    </div>
-                    <p className="text-xs text-ink-600 truncate">
-                      {isCollapsed
-                        ? (msg.body_text || '').replace(/\s+/g, ' ').trim().slice(0, 80) || (msg.direction === 'outbound' ? msg.to_email : msg.from_email)
-                        : (msg.direction === 'outbound' ? msg.to_email : msg.from_email)}
-                    </p>
-                  </div>
-                  <span className="text-xs text-ink-600 shrink-0">{formatFullDate(msg.sent_at || msg.created_at)}</span>
-                  {messages.length > 1 && <div className="shrink-0 text-ink-400">{isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}</div>}
-                </button>
+                    {!isOutbound && (
+                      <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-2xs font-semibold', avatarColor)} aria-hidden="true">
+                        {initials}
+                      </span>
+                    )}
+                    <span className={cn('min-w-0', isOutbound ? 'order-1' : '')}>
+                      <span className={cn('flex items-center gap-2', isOutbound ? 'justify-end' : '')}>
+                        <span className="truncate text-sm font-semibold text-ink-900">{fromName}</span>
+                        <span className="shrink-0 text-2xs font-semibold uppercase tracking-[0.12em] text-ink-500">{isOutbound ? 'Исходящее' : 'Входящее'}</span>
+                        {isOutbound && (
+                          <StatusBadge label={OUTBOUND_STATUS_LABELS[msg.status] ?? msg.status} tone={outboundStatusTone(msg.status)} />
+                        )}
+                      </span>
+                      <span className="mt-0.5 block truncate text-xs text-ink-500">
+                        {isCollapsed ? collapsedPreview || (isOutbound ? msg.to_email : msg.from_email) : (isOutbound ? msg.to_email : msg.from_email)}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-xs text-ink-500">{formatFullDate(msg.sent_at || msg.created_at)}</span>
+                    {messages.length > 1 && (
+                      <span className="shrink-0 text-ink-400 transition-colors group-hover/message:text-ink-700 group-focus-within/message:text-ink-700" aria-hidden="true">
+                        {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                      </span>
+                    )}
+                  </button>
 
-                {!isCollapsed && (
-                  <div className="mt-2 rounded-xl border border-ink-200/80 bg-white px-4 pb-5 pt-4 sm:px-6">
+                  {!isCollapsed && (
+                    <div
+                      id={messagePanelId}
+                      className={cn(
+                        'mt-2 min-w-0 overflow-hidden px-4 pb-5 pt-4 shadow-soft sm:px-5',
+                        isOutbound
+                          ? 'rounded-2xl rounded-tr-md bg-accent-50 ring-1 ring-accent-100'
+                          : 'rounded-2xl rounded-tl-md bg-white/80 ring-1 ring-ink-200/70',
+                      )}
+                    >
                       <EmailRenderer html={msg.body_html} text={msg.body_text} hasRemoteImages={msg.has_remote_images} />
-                      {msg.error && <p className="mt-2 text-xs text-rose-600">Ошибка отправки: {msg.error}</p>}
-                      {msg.direction === 'outbound' && msg.status === 'delivery_unknown' && (
+                      {msg.error && <p className="mt-2 text-xs text-rose-700">Ошибка отправки: {msg.error}</p>}
+                      {isOutbound && msg.status === 'delivery_unknown' && (
                         <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50/80 p-3.5" role="alert">
                           <div className="flex items-start gap-2.5">
                             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-700" />
@@ -387,9 +399,10 @@ export function ThreadDetail({ thread, onBack, onReply, onOpenRequest, onUnlinkM
                           </div>
                         </div>
                       )}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  )}
+                </div>
+              </article>
             );
           })}
 
