@@ -5,13 +5,41 @@ import tempfile
 import unittest
 from io import BytesIO
 from pathlib import Path
+from types import SimpleNamespace
 
 from backend.integrations.registry.checko_client import Company
+from backend.integrations.search.web_lookup import WebLookup
+from backend.domain.supplier_enrichment.orchestrator import EnrichmentOrchestratorMixin
 from backend.domain.supplier_enrichment.pipeline import extract_for_site, extract_legal_ids_for_site
 from backend.domain.supplier_enrichment.contact_crawler import ContactCrawler, SiteResult
+from backend.domain.supplier_identity.email_extractor import extract_from_html
 from backend.domain.supplier_identity.inn_extractor import extract_inn_from_html, extract_legal_ids_from_html
 from backend.domain.supplier_identity.inn_resolver import collect_name_hints_from_pages, resolve_inn_by_legal_ids
 from mail.repository import MailRepository
+
+
+class FakeSerp:
+    """Minimal SERP client stub — one canned page of results per query."""
+
+    first_page = 0
+
+    def __init__(self, docs: list) -> None:
+        self._docs = docs
+
+    def search(self, _query: str, _page: int):
+        return SimpleNamespace(docs=self._docs)
+
+
+class _EnrichmentRunner(EnrichmentOrchestratorMixin):
+    """Минимальная обёртка вокруг EnrichmentOrchestratorMixin для тестов —
+    методы ниже трогают только self.repository, self.llm_budget_rub,
+    self.llm_spent_rub и self.llm_spent_day."""
+
+    def __init__(self, repository: MailRepository) -> None:
+        self.repository = repository
+        self.llm_budget_rub = 0.0
+        self.llm_spent_rub = 0.0
+        self.llm_spent_day = ""
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -157,6 +185,94 @@ class EnrichmentBenchmarkTests(unittest.TestCase):
         self.assertIn("INN 6686161923", result[0])
 
 
+class WebLookupFindInnTests(unittest.TestCase):
+    """Regression for the puls-stroy.ru false-attribution bug (found
+    2026-09-04, third distinct source of the same class of error): the query
+    to find_inn() always embeds the target host (`"{host} ИНН ОГРН
+    реквизиты"`), so almost any result echoes that domain back in its own
+    title/snippet — including domain-info aggregators (tapki.com and
+    similar) that carry no legal-registry authority at all. Treating any
+    domain mention as "confirmed" let puls-stroy.ru inherit a stranger's ИНН
+    from tapki.com purely because the snippet repeated the queried domain.
+    """
+
+    def test_domain_echo_from_untrusted_aggregator_is_not_confirmed(self) -> None:
+        docs = [SimpleNamespace(
+            url="https://tapki.com/ru/domain/puls-stroy.ru",
+            title="puls-stroy.ru — Контакты, деятельность, организации",
+            snippet="puls-stroy.ru — контакты и реквизиты. ИНН: 9718232607. ОГРН: 1237700560327.",
+        )]
+        hit = WebLookup(FakeSerp(docs), pages=1).find_inn("puls-stroy.ru")
+        self.assertIsNotNone(hit)
+        assert hit is not None
+        self.assertEqual(hit.inn, "9718232607")
+        self.assertFalse(hit.domain_confirmed, "an untrusted aggregator echoing the query is not confirmation")
+
+    def test_trusted_directory_mentioning_the_domain_is_confirmed(self) -> None:
+        docs = [SimpleNamespace(
+            url="https://www.rusprofile.ru/id/1234567",
+            title="ООО Ромашка — puls-stroy.ru — реквизиты",
+            snippet="Сайт: puls-stroy.ru. ИНН 7731374981, ОГРН 1177746672366.",
+        )]
+        hit = WebLookup(FakeSerp(docs), pages=1).find_inn("puls-stroy.ru")
+        self.assertIsNotNone(hit)
+        assert hit is not None
+        self.assertEqual(hit.inn, "7731374981")
+        self.assertTrue(hit.domain_confirmed, "a known legal-entity directory naming the domain is confirmation")
+
+    def test_result_hosted_on_the_target_domain_itself_is_confirmed(self) -> None:
+        docs = [SimpleNamespace(
+            url="https://puls-stroy.ru/requisites/",
+            title="Реквизиты — Пульс Строй",
+            snippet="ООО РТД-ТЕХ, ИНН 7731374981, ОГРН 1177746672366.",
+        )]
+        hit = WebLookup(FakeSerp(docs), pages=1).find_inn("puls-stroy.ru")
+        self.assertIsNotNone(hit)
+        assert hit is not None
+        self.assertTrue(hit.domain_confirmed, "a page on the company's own domain is the strongest confirmation")
+
+    def test_majority_of_confirmed_sources_wins_over_first_match(self) -> None:
+        """Regression for the gkz.ru false-attribution risk (found
+        2026-09-04, live search): both the real brick factory (ОАО «ГКЗ»,
+        Голицыно, ИНН 5032000108) and an unrelated Moscow federal institution
+        that happens to share the "ГКЗ" abbreviation (ФБУ «ГКЗ», ИНН
+        7706030458) pass the trusted-directory confirmation check — each has
+        its own, otherwise-legitimate Rusprofile/list-org page. The old
+        first-match-wins logic returned whichever came first in the SERP
+        (here, the wrong Moscow entity), even though 3 of 4 independent
+        sources in this fixture — and 6 of 7 in the real live search —
+        agreed on the brick factory. Majority across all confirmed sources
+        must win instead.
+        """
+        docs = [
+            SimpleNamespace(
+                url="https://www.audit-it.ru/contragent/1027739217770_fbu-gkz",
+                title="ФБУ \"ГКЗ\", Москва, проверка по ИНН 7706030458",
+                snippet="Подробная информация о юридическом лице ФБУ \"ГКЗ\" (ИНН 7706030458): gkz.ru",
+            ),
+            SimpleNamespace(
+                url="https://www.audit-it.ru/contragent/1025004058860_oao-gkz",
+                title="ОАО \"ГКЗ\", Голицыно, проверка по ИНН 5032000108",
+                snippet="Подробная информация о юридическом лице ОАО \"ГКЗ\" (ИНН 5032000108): gkz.ru",
+            ),
+            SimpleNamespace(
+                url="https://www.rusprofile.ru/id/1068238",
+                title="ОАО \"ГКЗ\" Голицыно (ИНН 5032000108) адрес",
+                snippet="ОАО \"ГКЗ\" (ИНН 5032000108) Голицыно реквизиты и официальный сайт gkz.ru",
+            ),
+            SimpleNamespace(
+                url="https://www.list-org.com/company/4091",
+                title="ОАО \"ГКЗ\", ОКПО 05073771",
+                snippet="Компании присвоен ОГРН 1025004058860 и выдан ИНН 5032000108, сайт gkz.ru",
+            ),
+        ]
+        hit = WebLookup(FakeSerp(docs), pages=1).find_inn("gkz.ru")
+        self.assertIsNotNone(hit)
+        assert hit is not None
+        self.assertEqual(hit.inn, "5032000108", "3 independent confirmations must outvote 1, regardless of order")
+        self.assertTrue(hit.domain_confirmed)
+
+
 class EnrichmentPersistenceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -221,6 +337,101 @@ class EnrichmentPersistenceTests(unittest.TestCase):
         rows = self.repo.list_enrichment_jobs(self.workspace_id)
         self.assertEqual(rows[0]["stage"], "web")
         self.assertEqual(rows[0]["status"], "queued")
+
+    def test_page_labeled_inn_survives_when_registry_cannot_confirm_the_ogrn(self) -> None:
+        """Regression for the kirpichblock.ru/meakir.ru/stroybaza24.ru class of
+        bug (found 2026-09-04): a checksum-valid ИНН labeled directly on the
+        supplier's own page, right next to a checksum-valid ОГРН, must not be
+        discarded just because the registry (Checko) couldn't confirm that
+        exact ОГРН — whether it genuinely isn't in the registry, or the
+        registry is simply unreachable (dead key, network outage). Only a
+        weaker, web-search-sourced candidate should be dropped in that case;
+        see the domain_confirmed guard further down in _enrich_one for that.
+        """
+        self.repo.upsert_search_result(
+            self.workspace_id, self.request_id, "p1", host="requisites.example",
+            title="Requisites", snippet="fixture",
+        )
+        html = (
+            "<html><body>"
+            "<p>Общество с ограниченной ответственностью «КБК СМ»</p>"
+            "<p>ИНН/КПП 5022058229/502201001</p>"
+            "<p>ОГРН 1195022002878</p>"
+            '<a href="mailto:sale@requisites.example">sale@requisites.example</a>'
+            "</body></html>"
+        )
+        email_hits, _rejected = extract_from_html(html, "https://requisites.example/contact/")
+        site = SiteResult(
+            host="requisites.example", root="requisites.example", status="ok",
+            hits=email_hits, html_pages={"https://requisites.example/contact/": html},
+        )
+        # Пустой реестр = ОГРН не подтверждён (тот же ответ, что и от
+        # реально недействительного ключа Checko: company.found остаётся False).
+        checko = FakeChecko({})
+        runner = _EnrichmentRunner(self.repo)
+        outcome = runner._enrich_one(self.workspace_id, site, None, checko, None)
+        self.assertFalse(outcome.needs_retry)
+        with self.repo.connect() as connection:
+            row = connection.execute(
+                "SELECT p.inn FROM supplier_profiles p JOIN suppliers s ON s.id = p.supplier_id "
+                "WHERE s.workspace_id = ? AND s.external_key = ?",
+                (self.workspace_id, "requisites.example"),
+            ).fetchone()
+        self.assertIsNotNone(row)
+        self.assertEqual(row["inn"], "5022058229")
+
+    def test_unconfirmed_web_inn_is_rejected_when_checko_is_dead(self) -> None:
+        """Regression for the kirpichblock.ru false-attribution bug (found
+        2026-09-04): checko.lookup() NEVER returns None — on any failure
+        (invalid key, network, "not found") it returns Company(found=False),
+        a real object. The old guard checked `checko_company is None`, which
+        can never be true here, so an unconfirmed web-search ИНН (e.g. from
+        an unrelated company's Rusprofile page matching only on search-term
+        overlap) sailed through unguarded whenever the registry was dead —
+        exactly when the guard is needed most. Must now be rejected."""
+        self.repo.upsert_search_result(
+            self.workspace_id, self.request_id, "p1", host="unreachable.example",
+            title="Unreachable", snippet="fixture",
+        )
+        site = SiteResult(host="unreachable.example", root="unreachable.example", status="unreachable")
+
+        class DeadChecko:
+            def __init__(self) -> None:
+                self.errors: list[tuple[str, str]] = [("permanent", "API key invalid")]
+
+            def lookup(self, inn: str) -> Company:
+                return Company(inn=inn, found=False, error="API key invalid")
+
+        class FakeWebLookup:
+            def find_contacts(self, host: str):
+                from backend.integrations.search.web_lookup import WebFinding
+                return WebFinding(host=host)
+
+            def find_inn(self, host: str):
+                from backend.domain.supplier_identity.inn_extractor import InnHit
+                # Unconfirmed: found via an unrelated directory page, domain
+                # never actually mentioned — exactly the master-water.ru class
+                # of weak evidence this guard exists to reject.
+                return InnHit(
+                    inn="9714053621", source_url="https://focus.kontur.ru/entity?query=1247700471919",
+                    method="web", evidence="ООО \"РВБ\", Подольск, ИНН 9714053621",
+                    checksum_ok=True, domain_confirmed=False,
+                )
+
+        runner = _EnrichmentRunner(self.repo)
+        outcome = runner._enrich_one(
+            self.workspace_id, site, None, DeadChecko(), FakeWebLookup(),
+            retry_unreachable=False,
+        )
+        self.assertFalse(outcome.needs_retry)
+        with self.repo.connect() as connection:
+            row = connection.execute(
+                "SELECT p.inn FROM supplier_profiles p JOIN suppliers s ON s.id = p.supplier_id "
+                "WHERE s.workspace_id = ? AND s.external_key = ?",
+                (self.workspace_id, "unreachable.example"),
+            ).fetchone()
+        self.assertIsNotNone(row)
+        self.assertEqual(row["inn"], "", "unconfirmed web ИНН must not be applied just because Checko is dead")
 
 
 if __name__ == "__main__":

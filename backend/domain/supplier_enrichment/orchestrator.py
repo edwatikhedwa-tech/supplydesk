@@ -787,9 +787,19 @@ class EnrichmentOrchestratorMixin:
                 )
                 checko_company = checko.lookup(resolved.inn)
             else:
-                # Наличие точного ОГРН/ОГРНИП запрещает принимать рядом
-                # найденный ИНН, пока реестр не подтвердил эту точную связь.
-                best_inn = None
+                # Реестр не подтвердил именно этот ОГРН/ОГРНИП (в том числе
+                # если Checko вообще недоступен — недействительный ключ тоже
+                # приходит сюда как "resolved is None"). Раньше это всегда
+                # обнуляло best_inn, даже когда сам ИНН был найден напрямую
+                # на той же странице сайта (не веб-поиском) с верной
+                # контрольной суммой — живой пример: kirpichblock.ru,
+                # meakir.ru, stroybaza24.ru и др. публикуют ИНН и ОГРН рядом
+                # в одном блоке реквизитов, Checko был мёртв неделями, и
+                # карточка оставалась пустой, хотя цифры были прямо на сайте.
+                # Веб-найденный (менее надёжный) кандидат по-прежнему
+                # выбрасывается — ему нужен реестр или подтверждение домена.
+                page_inn = best_inn if (best_inn is not None and best_inn.method != "web") else None
+                best_inn = page_inn
                 retry = self._checko_retry_since(checko, error_cursor, {
                     "legal_ids": [self._legal_id_context(hit) for hit in legal_hits],
                     "name_hints": list(name_hints),
@@ -797,9 +807,9 @@ class EnrichmentOrchestratorMixin:
                 })
                 if retry.needs_retry:
                     outcome = retry
-                    # Не сохраняем непроверенный ИНН рядом с точным ОГРН,
-                    # пока реестр временно недоступен.
-                    best_inn = None
+                    # Реестр временно недоступен (квота/сеть) — durable-очередь
+                    # уточнит позже, но пока показываем то, что уже нашли на
+                    # самой странице, а не оставляем карточку пустой на недели.
 
         if (
             not legal_hits and best_inn is not None
@@ -885,7 +895,19 @@ class EnrichmentOrchestratorMixin:
 
         # Web-кандидат без реестрового подтверждения никогда не становится
         # фактом только потому, что название похоже.
-        if best_inn is not None and best_inn.method == "web" and not best_inn.domain_confirmed and checko_company is None:
+        #
+        # Баг, найденный 2026-09-04 на живой заявке: `checko.lookup()` НИКОГДА
+        # не возвращает None — при любой неудаче (мёртвый ключ, 401, сеть,
+        # "не найден") она отдаёт `Company(found=False)`, обычный объект.
+        # Проверка `checko_company is None` поэтому никогда не срабатывала,
+        # пока Checko был недоступен — а именно тогда защита нужна больше
+        # всего. Итог на практике: web-найденный, неподтверждённый ИНН
+        # (`domain_confirmed=False`) проходил без единой проверки и подписывал
+        # карточку случайным юрлицом из выдачи — например, kirpichblock.ru
+        # получил ИНН ООО «РВБ» (юрлицо Wildberries), никак не связанного с
+        # сайтом, только потому что оба слова совпали в поисковом сниппете.
+        checko_confirmed = checko_company is not None and checko_company.found
+        if best_inn is not None and best_inn.method == "web" and not best_inn.domain_confirmed and not checko_confirmed:
             best_inn = None
 
         email_value = best_email.email if best_email else ""
