@@ -1647,3 +1647,7 @@ Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH`
 - Verified workspace/docs/state/VibeCoding/traceability validators, backend
   `91/91`, canonical HTTP smoke, and a clean staged security scan. Local
   `runtime/` and `docs/experiments/` remained excluded and untouched.
+- A later shared-worktree check found unverified unstaged/untracked UI paths
+  (`frontend/src/App.tsx`, `frontend/src/pages/UiExperiment.tsx` and
+  `frontend/src/styles/`) plus local `docs/experiments/` and `runtime/`; they
+  remain outside the published branches and were not inspected or changed.

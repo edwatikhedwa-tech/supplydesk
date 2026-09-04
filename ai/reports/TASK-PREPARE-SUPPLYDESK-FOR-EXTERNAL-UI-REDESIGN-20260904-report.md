@@ -92,6 +92,15 @@ Why: this is the verified canonical branch used for the owner-approved
 functional baseline and the external redesign base. The default branch was not
 changed automatically.
 
+## Late worktree drift
+
+After the final documentation closeout and branch synchronization, the shared
+worktree reported unstaged `frontend/src/App.tsx` and untracked
+`frontend/src/pages/UiExperiment.tsx`, `frontend/src/styles/`,
+`docs/experiments/` and `runtime/`. Their provenance is not verified. They
+were not inspected, staged, committed, pushed or deleted. The published
+canonical and external branch SHAs remain the documentation-only state above.
+
 ## Stop state
 
 The repository is prepared for an external UI-builder import from the pushed

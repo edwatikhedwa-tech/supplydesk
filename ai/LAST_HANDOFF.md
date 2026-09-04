@@ -28,7 +28,10 @@ absent; `docs/CURRENT_STATE.md` is explicitly historical. Security scanning
 found no high-confidence key/token/private-key signatures in the current
 canonical history or staged documentation. Untracked `runtime/`,
 `docs/experiments/` and `frontend/src/pages/UiExperiment.tsx` were preserved
-and excluded from publication; their provenance is not verified.
+and excluded from publication; their provenance is not verified. A later
+status check also found unstaged `frontend/src/App.tsx` and untracked
+`frontend/src/styles/`; these unverified UI changes must remain outside any
+future commit until owner review.
 
 Verification: workspace guard PASS; docs/state/VibeCoding/traceability
 validators PASS; backend suite `91/91` PASS; canonical HTTP smoke `/` `200`,

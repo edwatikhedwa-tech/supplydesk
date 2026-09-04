@@ -28,7 +28,9 @@ absent; `docs/CURRENT_STATE.md` is explicitly historical and points to this
 file. No UI, backend, API, business logic, OAuth, database, provider or mail
 behavior changed. Untracked `runtime/`, `docs/experiments/` and
 `frontend/src/pages/UiExperiment.tsx` remain local, unstaged and unpublished
-because their provenance is not verified.
+because their provenance is not verified. A later final status check also found
+unstaged `frontend/src/App.tsx` and untracked `frontend/src/styles/`; these
+worktree changes are outside the published HEAD and were preserved untouched.
 
 `2026-09-04` — `TASK-RUNTIME-SELECTION-HARD-GUARD-20260904` added the
 dependency-free `scripts/runtime_guard.py` as the single runtime-selection

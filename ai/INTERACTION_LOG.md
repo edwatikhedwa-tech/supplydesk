@@ -1574,3 +1574,10 @@ staged security scan found no high-confidence secret signatures. One initial
 push attempt hit transient GitHub DNS failure, then the normal push succeeded.
 Canonical branch and remote matched at `1a5acf2`; external base was created and
 verified at the same SHA. GitHub default branch was observed but not changed.
+
+State change: after synchronization, a final status check found unverified
+worktree drift: unstaged `frontend/src/App.tsx` and untracked
+`frontend/src/pages/UiExperiment.tsx`, `frontend/src/styles/`,
+`docs/experiments/` and `runtime/`. These paths were not inspected, staged,
+committed, pushed or deleted, preserving the owner's UI work and the stop-UI
+boundary.
