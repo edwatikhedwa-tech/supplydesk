@@ -25,6 +25,7 @@ export default defineConfig({
     // available port when another preview process is already running.
     port: Number(process.env.PORT || process.env.VITE_PORT || 5173),
     strictPort: false,
+    allowedHosts: ['.vercel.run'],
     proxy: {
       '/api': runtime.baseUrl,
       '/oauth': runtime.baseUrl,
