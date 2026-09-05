@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from '@/lib/auth';
 import { Layout } from '@/components/Layout';
 import { RequestPage } from '@/components/RequestPage';
 import { LoadingState } from '@/components/ui';
+import { isUiPreviewMode } from '@/lib/previewFixtures';
 
 const Dashboard = lazy(() => import('@/pages/Dashboard').then(({ Dashboard: component }) => ({ default: component })));
 const RequestsList = lazy(() => import('@/pages/RequestsList').then(({ RequestsList: component }) => ({ default: component })));
@@ -25,11 +26,22 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function PreviewOnly({ children }: { children: React.ReactNode }) {
+  return isUiPreviewMode ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<LoadingState label="Загрузка страницы…" className="min-h-screen" />}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route
+          element={<PreviewOnly><Layout /></PreviewOnly>}
+        >
+          <Route path="/preview/requests" element={<RequestsList />} />
+          <Route path="/preview/requests/example" element={<Navigate to="/preview/requests/2401" replace />} />
+          <Route path="/preview/requests/2401" element={<RequestPage />} />
+        </Route>
         <Route
           element={
             <RequireAuth>

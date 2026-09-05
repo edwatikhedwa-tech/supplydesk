@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, setCsrfToken } from '@/lib/api';
 import type { AuthUser } from '@/lib/types';
+import { isUiPreviewMode, previewUser } from '@/lib/previewFixtures';
 
 interface AuthState {
   status: 'loading' | 'authenticated' | 'anonymous';
@@ -30,6 +31,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (isUiPreviewMode) {
+      setUser(previewUser);
+      setStatus('authenticated');
+      return undefined;
+    }
     let cancelled = false;
     const keepSession = () => {
       refresh().catch(() => {

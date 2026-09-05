@@ -1,3 +1,4 @@
+import { isUiPreviewMode, previewDetailFor, previewRequests, previewUser } from '@/lib/previewFixtures';
 import type {
   AuthUser,
   BlacklistEntry,
@@ -77,7 +78,7 @@ export interface MeResponse {
 }
 
 export const api = {
-  me: () => request<MeResponse>('/api/auth/me'),
+  me: async (): Promise<MeResponse> => (isUiPreviewMode ? { authenticated: true, csrf_token: '', user: previewUser } : request<MeResponse>('/api/auth/me')),
   login: (email: string, password: string) =>
     request<{ authenticated: true; csrf_token: string; user: AuthUser }>('/api/auth/login', {
       method: 'POST',
@@ -89,8 +90,8 @@ export const api = {
   stepEnrichment: () =>
     request<{ ok: true; processed: boolean; status: string }>('/api/enrichment/step', { method: 'POST' }),
 
-  listRequests: () => request<{ items: RequestListItem[] }>('/api/requests'),
-  getRequest: (id: number) => request<RequestDetail>(`/api/requests/${id}`),
+  listRequests: () => (isUiPreviewMode ? Promise.resolve({ items: previewRequests }) : request<{ items: RequestListItem[] }>('/api/requests')),
+  getRequest: (id: number) => (isUiPreviewMode ? Promise.resolve(previewDetailFor(id)) : request<RequestDetail>(`/api/requests/${id}`)),
   createRequest: (input: { name: string; description?: string; deadline?: string; search_depth?: number; positions: { name: string; quantity?: string }[] }) =>
     request<{ ok: true; request_id: number }>('/api/requests', { method: 'POST', body: JSON.stringify(input) }),
   deleteRequest: (id: number) => request<{ ok: true }>(`/api/requests/${id}`, { method: 'DELETE' }),
