@@ -312,10 +312,10 @@ export function RequestsList() {
             </div>
           ) : (
             <>
-              <div className="divide-y divide-ink-100 min-[1536px]:hidden">
+              <div className="divide-y divide-ink-100 lg:hidden">
                 {visibleRequests.map((request) => <RequestCard key={request.id} request={request} />)}
               </div>
-              <div className="hidden overflow-x-auto min-[1536px]:block">
+              <div className="hidden overflow-x-auto lg:block">
                 <table className="w-full min-w-[1040px] table-fixed text-left">
                   <colgroup>
                     <col />

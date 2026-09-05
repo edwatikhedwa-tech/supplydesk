@@ -1,21 +1,21 @@
 :root {
   --font-ui: 'Public Sans', 'Geist', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', 'Cascadia Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --sd-canvas: #f7f9fc;
+  --sd-canvas: #f4f7fb;
   --sd-surface: #ffffff;
   --sd-surface-subtle: #f8fafc;
   --sd-surface-elevated: #ffffff;
-  --sd-text: #0f172a;
-  --sd-text-secondary: #475569;
-  --sd-muted: #64748b;
-  --sd-border: #e2e8f0;
-  --sd-border-subtle: #eef2f7;
-  --sd-action: #2563eb;
-  --sd-action-strong: #1d4ed8;
-  --sd-success: #059669;
-  --sd-warning: #b45309;
-  --sd-danger: #e11d48;
-  --sd-info: #2563eb;
+  --sd-text: #10233f;
+  --sd-text-secondary: #52647b;
+  --sd-muted: #718198;
+  --sd-border: #dce5f0;
+  --sd-border-subtle: #edf2f7;
+  --sd-action: #1769e0;
+  --sd-action-strong: #0f55bd;
+  --sd-success: #0b8f74;
+  --sd-warning: #a96800;
+  --sd-danger: #cf3d5d;
+  --sd-info: #1769e0;
   --sd-radius-sm: 6px;
   --sd-radius-md: 10px;
   --sd-radius-lg: 14px;
@@ -62,7 +62,7 @@ select {
 @layer components {
   .sd-page {
     min-height: 100%;
-    padding: var(--sd-space-8) 40px 48px;
+    padding: 36px 48px 56px;
     animation: sd-fade-in 180ms ease-out;
   }
 
@@ -95,10 +95,10 @@ select {
 
   .sd-page-title {
     color: var(--sd-text);
-    font-size: clamp(1.75rem, 1.55rem + 0.55vw, 2rem);
-    font-weight: 600;
-    letter-spacing: -0.022em;
-    line-height: 1.15;
+    font-size: clamp(1.8rem, 1.5rem + 0.8vw, 2.35rem);
+    font-weight: 650;
+    letter-spacing: -0.035em;
+    line-height: 1.08;
   }
 
   .sd-shimmer-heading {
