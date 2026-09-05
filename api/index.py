@@ -28,9 +28,11 @@ from supplier_app import (  # noqa: E402
 # values from Vercel Environment Variables; the file is excluded from deploys.
 load_dotenv(PROJECT_ROOT / ".env")
 
-# Vercel Functions have an ephemeral writable /tmp. This fallback keeps local
-# and misconfigured previews runnable; production must provide DATABASE_URL for
-# shared durable storage.
+# Vercel Functions have an ephemeral writable /tmp. These defaults keep a
+# preview from failing during module import when optional project variables are
+# not configured yet. Shared production storage and credentials should still
+# be supplied through Vercel Environment Variables.
+os.environ.setdefault("SUPPLYDESK_ENV", "production")
 os.environ.setdefault("MAIL_DB_PATH", "/tmp/supplydesk.sqlite3")
 
 # Preview deployments get a usable callback fallback. Production should set
