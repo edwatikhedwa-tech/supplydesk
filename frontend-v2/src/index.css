@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "ProcureSans";
+  src: url("/fonts/ProcureSans-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "ProcureSans";
+  src: url("/fonts/ProcureSans-Semibold.otf") format("opentype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "ProcureSans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* Neutral surfaces */
+  --color-canvas: #f6f6f8;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f1f1f4;
+  --color-border: #e3e3e8;
+  --color-border-strong: #d1d1d9;
+
+  /* Ink */
+  --color-ink: #16181d;
+  --color-ink-soft: #4b4f58;
+  --color-ink-muted: #80838c;
+  --color-ink-faint: #aeb1b9;
+  --color-ink-inverse: #f4f4f6;
+
+  /* Accent (single, reserved for primary action / active / focus) */
+  --color-accent: #4338ca;
+  --color-accent-hover: #372ea8;
+  --color-accent-subtle: #eeecfd;
+  --color-accent-border: #c7c2f4;
+
+  /* Semantic ramp — meaning only, never decoration */
+  --color-danger: #c8321f;
+  --color-danger-subtle: #fbeae7;
+  --color-danger-border: #f0c2b9;
+
+  --color-warning: #a15c00;
+  --color-warning-subtle: #fbf0dc;
+  --color-warning-border: #efd6a1;
+
+  --color-success: #157f4d;
+  --color-success-subtle: #e3f5eb;
+  --color-success-border: #b9e3cb;
+
+  --color-info: #2563a8;
+  --color-info-subtle: #e8f1fb;
+  --color-info-border: #bdd8f2;
+
+  /* Navigation rail (dark, persistent) */
+  --color-rail: #14151a;
+  --color-rail-hover: #1e2027;
+  --color-rail-active: #262933;
+  --color-rail-border: #24262d;
+  --color-rail-text: #b7b9c3;
+  --color-rail-text-dim: #6f7280;
+  --color-rail-text-active: #ffffff;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  #root {
+    min-height: 100svh;
+  }
+
+  ::selection {
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
+  }
+
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
