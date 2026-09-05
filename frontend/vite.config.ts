@@ -21,8 +21,10 @@ export default defineConfig({
   },
   server: {
     host: '127.0.0.1',
-    port: 5173,
-    strictPort: true,
+    // Keep 5173 as the preferred preview port, but let Vite choose the next
+    // available port when another preview process is already running.
+    port: Number(process.env.PORT || process.env.VITE_PORT || 5173),
+    strictPort: false,
     proxy: {
       '/api': runtime.baseUrl,
       '/oauth': runtime.baseUrl,
