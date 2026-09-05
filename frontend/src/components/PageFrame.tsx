@@ -6,5 +6,5 @@ export function PageFrame({ children, width = 'wide', className, ...props }: { c
 }
 
 export function PageIntro({ eyebrow, title, description, actions }: { eyebrow?: string; title: string; description?: ReactNode; actions?: ReactNode }) {
-  return <div className="sd-page-intro"><div className="min-w-0"><div className="sd-eyebrow">{eyebrow || 'Рабочее пространство'}</div><h1 className="sd-page-title sd-shimmer-heading">{title}</h1>{description && <p className="sd-page-description">{description}</p>}</div>{actions && <div className="sd-page-actions">{actions}</div>}</div>;
+  return <div className="sd-page-intro"><div className="min-w-0"><div className="sd-eyebrow">{eyebrow || 'Рабочее пространство'}</div><h1 className="sd-page-title text-balance">{title}</h1>{description && <p className="sd-page-description">{description}</p>}</div>{actions && <div className="sd-page-actions">{actions}</div>}</div>;
 }

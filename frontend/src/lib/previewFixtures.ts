@@ -1,6 +1,8 @@
 import type { RequestDetail, RequestListItem, Supplier } from '@/lib/types';
 
-export const isUiPreviewMode = import.meta.env.DEV && import.meta.env.VITE_UI_PREVIEW_MODE === 'true';
+const isExplicitPreviewRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/preview/');
+
+export const isUiPreviewMode = import.meta.env.DEV && (import.meta.env.VITE_UI_PREVIEW_MODE === 'true' || isExplicitPreviewRoute);
 
 const requestNames = [
   'Комплектующие для промышленного шкафа управления насосной станцией',

@@ -81,6 +81,31 @@ function RequestStatus({ request }: { request: RequestListItem }) {
   return <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${meta.className}`}>{meta.label}</span>;
 }
 
+function RequestProgress({ request, compact = false }: { request: RequestListItem; compact?: boolean }) {
+  if (request.search_total <= 0) return <span className="text-ink-300">—</span>;
+  const current = Math.min(request.search_progress, request.search_total);
+  const percent = Math.round((current / request.search_total) * 100);
+
+  return (
+    <div className={compact ? 'mt-4' : 'min-w-0'}>
+      <div className="flex items-center justify-between gap-2 text-2xs font-medium tabular-nums text-ink-500">
+        <span>{current} из {request.search_total}</span>
+        <span>{percent}%</span>
+      </div>
+      <div
+        role="progressbar"
+        aria-label={`Обработано ${current} из ${request.search_total}`}
+        aria-valuemin={0}
+        aria-valuemax={request.search_total}
+        aria-valuenow={current}
+        className="mt-1 h-1 overflow-hidden rounded-full bg-ink-100"
+      >
+        <div className="h-full rounded-full bg-accent-600" style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}
+
 function RequestCard({ request }: { request: RequestListItem }) {
   return (
     <Link
@@ -96,6 +121,8 @@ function RequestCard({ request }: { request: RequestListItem }) {
         </div>
         <RequestStatus request={request} />
       </div>
+
+      <RequestProgress request={request} compact />
 
       <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 text-xs sm:grid-cols-4">
         <div>
@@ -316,10 +343,11 @@ export function RequestsList() {
                 {visibleRequests.map((request) => <RequestCard key={request.id} request={request} />)}
               </div>
               <div className="hidden overflow-x-auto lg:block">
-                <table className="w-full min-w-[1040px] table-fixed text-left">
+                <table className="w-full min-w-[1160px] table-fixed text-left">
                   <colgroup>
                     <col />
                     <col className="w-28" />
+                    <col className="w-32" />
                     <col className="w-24" />
                     <col className="w-24" />
                     <col className="w-20" />
@@ -330,6 +358,7 @@ export function RequestsList() {
                     <tr className="border-b border-ink-200 bg-ink-50 text-2xs font-semibold uppercase tracking-wider text-ink-600">
                       <th scope="col" className="w-full px-6 py-3.5">Название</th>
                       <th scope="col" className="w-28 px-4 py-3.5">Статус</th>
+                      <th scope="col" className="w-32 px-4 py-3.5">Прогресс</th>
                       <th scope="col" className="w-24 px-4 py-3.5">Создана</th>
                       <th scope="col" className="w-24 px-4 py-3.5">Дедлайн</th>
                       <th scope="col" className="w-20 px-4 py-3.5 text-center">Позиций</th>
@@ -350,6 +379,7 @@ export function RequestsList() {
                           </div>
                         </td>
                         <td className="px-4 py-4"><RequestStatus request={request} /></td>
+                        <td className="px-4 py-4"><RequestProgress request={request} /></td>
                         <td className="whitespace-nowrap px-4 py-4 text-xs text-ink-500" title={new Date(request.created_at).toLocaleString('ru-RU')}>
                           {formatRelativeDate(request.created_at)}
                         </td>

@@ -114,15 +114,25 @@ export function RequestPage() {
               <span className="text-xs text-ink-400">{state.detail.positions.length}</span>
             </div>
             <div className="overflow-hidden rounded-xl border border-ink-200 bg-white">
-              <table className="w-full text-left text-sm">
+              <table className="w-full table-fixed text-left text-sm">
+                <colgroup>
+                  <col />
+                  <col className="w-28 sm:w-36" />
+                  <col className="hidden w-40 sm:table-column" />
+                </colgroup>
                 <thead className="border-b border-ink-100 bg-ink-50 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-500">
-                  <tr><th className="px-4 py-3 sm:px-5">Позиция</th><th className="px-4 py-3 text-right sm:px-5">Код</th></tr>
+                  <tr>
+                    <th className="px-4 py-3 sm:px-5">Позиция / спецификация</th>
+                    <th className="px-4 py-3 text-right sm:px-5">Количество</th>
+                    <th className="hidden px-4 py-3 text-right sm:table-cell sm:px-5">Код</th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-ink-100">
                   {state.detail.positions.map((position) => (
                     <tr key={position.position_key}>
-                      <td className="max-w-[720px] px-4 py-3.5 font-medium text-ink-800 sm:px-5">{position.name}</td>
-                      <td className="px-4 py-3.5 text-right font-mono text-xs text-ink-400 sm:px-5">{position.position_key}</td>
+                      <td className="px-4 py-3.5 font-medium leading-5 text-ink-800 sm:px-5">{position.name}</td>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-right font-semibold tabular-nums text-ink-700 sm:px-5">{position.quantity || '—'}</td>
+                      <td className="hidden px-4 py-3.5 text-right font-mono text-xs text-ink-400 sm:table-cell sm:px-5">{position.position_key}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -78,7 +78,7 @@ export function PageHeader({ request, counts, onRetrySearch, onEdit, onDelete, d
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-2 sm:flex-nowrap">
-            <h1 className="sd-shimmer-heading min-w-0 basis-full flex-1 text-page-title font-semibold text-ink-900 sm:basis-auto">{request.name}</h1>
+            <h1 className="min-w-0 basis-full flex-1 text-balance text-page-title font-semibold text-ink-900 sm:basis-auto">{request.name}</h1>
             <span className="text-sm font-medium text-ink-400">№{request.id}</span>
             <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge.className}`}>
               {request.status === 'searching' && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent-600" />}
