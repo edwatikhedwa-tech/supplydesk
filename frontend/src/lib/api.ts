@@ -1,4 +1,5 @@
 import { isUiPreviewMode, previewDetailFor, previewRequests, previewUser } from '@/lib/previewFixtures';
+import { getSupabaseAccessToken } from '@/lib/supabase';
 import type {
   AuthUser,
   BlacklistEntry,
@@ -50,6 +51,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (method !== 'GET') {
     headers.set('X-CSRF-Token', csrfToken);
   }
+  const accessToken = await getSupabaseAccessToken();
+  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
   if (options.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }

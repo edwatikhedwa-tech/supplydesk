@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { api, setCsrfToken } from '@/lib/api';
 import type { AuthUser } from '@/lib/types';
 import { isUiPreviewMode, previewUser } from '@/lib/previewFixtures';
+import { mapSupabaseUser, supabase } from '@/lib/supabase';
 
 interface AuthState {
   status: 'loading' | 'authenticated' | 'anonymous';
@@ -18,6 +19,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   const refresh = useCallback(async () => {
+    if (supabase) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user) {
+        setUser(mapSupabaseUser(data.session.user));
+        setStatus('authenticated');
+        return;
+      }
+    }
+
     const me = await api.me();
     if (me.authenticated && me.user) {
       setCsrfToken(me.csrf_token || '');
@@ -54,6 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const login = useCallback(async (email: string, password: string) => {
+    if (supabase) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error || !data.user) throw new Error('Неверный email или пароль');
+      setUser(mapSupabaseUser(data.user));
+      setStatus('authenticated');
+      return;
+    }
+
     const result = await api.login(email, password);
     setCsrfToken(result.csrf_token);
     setUser(result.user);
@@ -61,7 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await api.logout();
+    if (supabase) await supabase.auth.signOut();
+    else await api.logout();
     setCsrfToken('');
     setUser(null);
     setStatus('anonymous');

@@ -1,5 +1,6 @@
-import { lazy, Suspense, useState, type CSSProperties } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { lazy, Suspense, useState, type CSSProperties, type FormEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/lib/auth';
 import { ShieldCheck } from 'lucide-react';
 /** Фон входа тянет three.js (~600 КБ). Экран входа открывают один раз за
  *  сессию, а бандл до этой правки грузился на каждой странице приложения.
@@ -94,11 +95,30 @@ const PROVIDERS: Array<{ id: Provider; name: string; color: string; icon: () => 
 
 export function Login() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [ringsSupported, setRingsSupported] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const yandexErrorCode = searchParams.get('error');
   const [error, setError] = useState(
     yandexErrorCode ? YANDEX_ERROR_LABELS[yandexErrorCode] ?? 'Не удалось войти через Яндекс.' : '',
   );
+
+  const handlePasswordLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+    setIsSubmitting(true);
+    try {
+      await login(email.trim(), password);
+      navigate('/', { replace: true });
+    } catch {
+      setError('Неверный email или пароль.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSocialLogin = (provider: Provider) => {
     if (provider === 'yandex') {
@@ -195,6 +215,40 @@ export function Login() {
               {error}
             </p>
           )}
+
+          <form onSubmit={handlePasswordLogin} className="flex flex-col gap-3 text-left">
+            <label className="flex flex-col gap-1.5 text-xs font-medium text-slate-300">
+              Email
+              <input
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="rounded-xl border border-white/15 bg-white/10 px-3.5 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-300/80 focus:ring-2 focus:ring-blue-300/20"
+                placeholder="you@company.com"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-xs font-medium text-slate-300">
+              Пароль
+              <input
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="rounded-xl border border-white/15 bg-white/10 px-3.5 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-300/80 focus:ring-2 focus:ring-blue-300/20"
+                placeholder="Введите пароль"
+              />
+            </label>
+            <button type="submit" disabled={isSubmitting} className="mt-2 rounded-xl bg-blue-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-60">
+              {isSubmitting ? 'Проверяем…' : 'Войти'}
+            </button>
+          </form>
+
+          <div className="my-5 flex items-center gap-3 text-2xs uppercase tracking-[0.2em] text-slate-500">
+            <span className="h-px flex-1 bg-white/10" /> или <span className="h-px flex-1 bg-white/10" />
+          </div>
 
           <div className="flex items-center justify-center gap-4 sm:gap-5">
             {PROVIDERS.map((provider) => {
