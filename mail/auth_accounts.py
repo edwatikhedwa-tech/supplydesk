@@ -119,10 +119,19 @@ class AuthAccountsMixin:
 
     @staticmethod
     def _seed_request(connection: sqlite3.Connection, workspace_id: int) -> None:
+        existing = connection.execute(
+            "SELECT 1 FROM requests WHERE workspace_id=? LIMIT 1", (workspace_id,)
+        ).fetchone()
+        if existing:
+            return
+        request_id = int(connection.execute(
+            "SELECT COALESCE(MAX(id), 1042) + 1 FROM requests"
+        ).fetchone()[0])
         connection.execute(
-            """INSERT OR IGNORE INTO requests(id, workspace_id, name, description, sender_name, company_name, created_at)
-               VALUES (1043, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO requests(id, workspace_id, name, description, sender_name, company_name, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
+                request_id,
                 workspace_id,
                 "Строительные материалы",
                 "Кирпич облицовочный — 12 000 шт; кирпич рядовой — 20 000 шт; печной шамотный — 800 шт; газобетонный блок D500 — 40 м³.",
@@ -286,6 +295,9 @@ class AuthAccountsMixin:
                 )
             else:
                 workspace_id = workspace["id"]
+            # OAuth users must see the same initial workspace request as password users.
+            # The helper exits early for workspaces that already contain requests.
+            self._seed_request(connection, workspace_id)
             self._seed_default_blacklist(connection, workspace_id, row["id"])
             return {"id": row["id"], "email": row["email"], "display_name": row["display_name"], "workspace_id": workspace_id}
 

@@ -446,6 +446,7 @@ class MailIntegrationTests(unittest.TestCase):
         self.assertEqual(created["id"], again["id"])
         self.assertEqual(created["workspace_id"], again["workspace_id"])
         self.assertNotEqual(created["workspace_id"], self.user["workspace_id"])
+        self.assertEqual(len(self.repo.list_requests(created["workspace_id"])), 1)
 
     def test_queue_creates_separate_thread_and_message_for_each_supplier(self) -> None:
         result = self.service.queue_bulk(

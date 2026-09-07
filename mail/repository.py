@@ -550,6 +550,9 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin
 
     def list_requests(self, workspace_id: int) -> list[dict[str, Any]]:
         with self.connect() as connection:
+            # Keep an OAuth-created workspace usable even when its session
+            # predates workspace initialization.
+            AuthAccountsMixin._seed_request(connection, workspace_id)
             rows = connection.execute(
                 f"""SELECT {self._REQUEST_SELECT_COLUMNS}
                    FROM requests r {self._REQUEST_SELECT_JOIN}
