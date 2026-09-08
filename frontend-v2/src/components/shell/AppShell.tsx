@@ -22,15 +22,15 @@ export function AppShell() {
     <div className="flex h-screen w-screen overflow-hidden bg-canvas text-ink">
       <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="flex h-11 shrink-0 items-center border-b border-border bg-surface px-4">
+        <div className="flex h-14 shrink-0 items-center border-b border-border bg-surface px-4">
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className="flex h-7 w-full max-w-[360px] items-center gap-2 rounded-md border border-border-strong bg-canvas px-2.5 text-[12.5px] text-ink-faint hover:text-ink-soft"
+            className="flex h-9 w-full max-w-[440px] items-center gap-2 rounded-lg border border-border-strong bg-canvas px-3 text-[13px] text-ink-faint transition-colors hover:border-accent-border hover:text-ink-soft"
           >
-            <Search size={13} />
-            <span className="flex-1 text-left">Заявки, поставщики, переписки, текст письма…</span>
-            <kbd className="rounded border border-border-strong px-1 text-[10px] text-ink-faint">⌘K</kbd>
+            <Search size={14} className="shrink-0" />
+            <span className="min-w-0 flex-1 truncate text-left">Поиск: заявки, поставщики, переписки, текст письма…</span>
+            <kbd className="shrink-0 rounded border border-border-strong px-1.5 py-0.5 text-[10px] text-ink-faint">⌘K</kbd>
           </button>
         </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

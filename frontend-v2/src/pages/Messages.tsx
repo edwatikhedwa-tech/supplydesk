@@ -39,17 +39,22 @@ import { useApiData } from '../lib/useApiData';
 type Selection = { type: 'thread'; id: number } | { type: 'unmatched'; id: number } | null;
 type AsyncState<T> = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: T };
 
-const AI_CONTEXT_BODY_LIMIT = 900;
+const AI_CONTEXT_PER_MESSAGE_LIMIT = 700;
+// Total transcript budget, not per-message -- keeps a long back-and-forth from
+// blowing past the cheap model's context and the per-user daily spend cap.
+const AI_CONTEXT_TOTAL_BUDGET = 3500;
 
-function trimBody(text: string | null): string {
+function trimBody(text: string | null, limit = AI_CONTEXT_PER_MESSAGE_LIMIT): string {
   if (!text) return '';
   const clean = text.trim().replace(/\s+/g, ' ');
-  return clean.length > AI_CONTEXT_BODY_LIMIT ? `${clean.slice(0, AI_CONTEXT_BODY_LIMIT)}…` : clean;
+  return clean.length > limit ? `${clean.slice(0, limit)}…` : clean;
 }
 
-/** Feeds the AI assistant the actual last message text, not just the request/
- * supplier names -- without it the model has nothing concrete to reason
- * about and falls back to guessing from the request's internal title. */
+/** Feeds the AI assistant the real conversation, not just the request/supplier
+ * names -- without it the model has nothing concrete to reason about and
+ * falls back to guessing from the request's internal title. Walks newest to
+ * oldest so a long thread keeps its most recent messages when it must be
+ * truncated to fit the budget, then restores chronological order. */
 function buildAiContext(
   activeThread: ThreadSummary | null,
   messagesState: AsyncState<MailMessage[]>,
@@ -59,9 +64,17 @@ function buildAiContext(
   if (activeThread) {
     const header = `Заявка «${activeThread.request_name}» (это просто название заявки в системе, не техническое требование), поставщик ${formatCompanyName(activeThread.supplier_name)}.`;
     if (messagesState.status === 'ready' && messagesState.data.length > 0) {
-      const last = messagesState.data[messagesState.data.length - 1];
-      const who = last.direction === 'outbound' ? 'Отправлено поставщику нами' : 'Получено от поставщика';
-      return `${header}\n${who} (${formatDateTime(last.sent_at ?? last.created_at)}):\n${trimBody(last.body_text)}`;
+      const lines: string[] = [];
+      let used = 0;
+      for (let i = messagesState.data.length - 1; i >= 0; i--) {
+        const m = messagesState.data[i];
+        const who = m.direction === 'outbound' ? 'Мы' : 'Поставщик';
+        const line = `${who} (${formatDateTime(m.sent_at ?? m.created_at)}): ${trimBody(m.body_text)}`;
+        if (used + line.length > AI_CONTEXT_TOTAL_BUDGET && lines.length > 0) break;
+        lines.unshift(line);
+        used += line.length;
+      }
+      return `${header}\nПереписка целиком, от старых сообщений к новым:\n${lines.join('\n\n')}`;
     }
     return header;
   }
@@ -207,6 +220,7 @@ export function Messages() {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [manualLinkOpen, setManualLinkOpen] = useState(false);
   const [ignoring, setIgnoring] = useState(false);
+  const [confirmingIgnore, setConfirmingIgnore] = useState(false);
   const [unmatchedDraft, setUnmatchedDraft] = useState('');
   const [unmatchedReplyError, setUnmatchedReplyError] = useState('');
   const [sendingUnmatchedReply, setSendingUnmatchedReply] = useState(false);
@@ -253,8 +267,10 @@ export function Messages() {
       setLinkError(e instanceof ApiError ? e.message : 'Не удалось скрыть письмо.');
     } finally {
       setIgnoring(false);
+      setConfirmingIgnore(false);
     }
   }
+  useEffect(() => setConfirmingIgnore(false), [activeUnmatchedId]);
 
   async function sendUnmatchedReply() {
     if (!activeUnmatchedId || conversationState.status !== 'ready' || !conversationState.data || !unmatchedDraft.trim()) return;
@@ -577,12 +593,32 @@ export function Messages() {
 
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Button variant="secondary" size="sm" icon={<Ban size={13} />} disabled={ignoring} onClick={() => void ignoreUnmatched()}>
-                            {ignoring ? 'Скрываем…' : 'Игнорировать'}
-                          </Button>
-                          <Button variant="secondary" size="sm" icon={<Link2 size={13} />} onClick={() => setManualLinkOpen(true)}>
-                            Связать вручную
-                          </Button>
+                          {confirmingIgnore ? (
+                            <>
+                              <span className="text-[12px] text-ink-muted">Скрыть это письмо насовсем?</span>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="border-danger-border text-danger hover:bg-danger-subtle"
+                                disabled={ignoring}
+                                onClick={() => void ignoreUnmatched()}
+                              >
+                                {ignoring ? 'Скрываем…' : 'Да, скрыть'}
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => setConfirmingIgnore(false)}>
+                                Отмена
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button variant="secondary" size="sm" icon={<Ban size={13} />} onClick={() => setConfirmingIgnore(true)}>
+                                Игнорировать
+                              </Button>
+                              <Button variant="secondary" size="sm" icon={<Link2 size={13} />} onClick={() => setManualLinkOpen(true)}>
+                                Связать вручную
+                              </Button>
+                            </>
+                          )}
                           {suggestionsState.status === 'ready' && suggestionsState.data.length > 0 && (
                             <Button variant="primary" size="sm" icon={<Link2 size={13} />} onClick={linkSuggestion} disabled={linking}>
                               {linking ? 'Связываем…' : 'Связать с найденной заявкой'}

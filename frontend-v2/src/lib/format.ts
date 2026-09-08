@@ -65,6 +65,32 @@ export function formatPercent(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
 }
 
+/** Compact RUB amount for supplier finance figures: "15.4 млн ₽", "290 тыс ₽". */
+export function formatMoney(value: number | null): string {
+  if (value === null) return '—';
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1).replace(/\.0$/, '')} млн ₽`;
+  if (abs >= 1_000) return `${sign}${Math.round(abs / 1_000)} тыс ₽`;
+  return `${sign}${Math.round(abs)} ₽`;
+}
+
+function pluralYears(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${n} год`;
+  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return `${n} года`;
+  return `${n} лет`;
+}
+
+/** Company age from its registry registration date -- an ОГРН-backed signal
+ * of how established a supplier is, shown alongside revenue/profit. */
+export function companyAge(registeredAt: string | null | undefined): string | null {
+  if (!registeredAt) return null;
+  const years = now().getFullYear() - new Date(registeredAt).getFullYear();
+  return years >= 0 ? pluralYears(years) : null;
+}
+
 const LEGAL_FORM_ABBREVIATIONS: [RegExp, string][] = [
   [/ОБЩЕСТВО\s+С\s+ОГРАНИЧЕННОЙ\s+ОТВЕТСТВЕННОСТЬЮ/gi, 'ООО'],
   [/ПУБЛИЧНОЕ\s+АКЦИОНЕРНОЕ\s+ОБЩЕСТВО/gi, 'ПАО'],

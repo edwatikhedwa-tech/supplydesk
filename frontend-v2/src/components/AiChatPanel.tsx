@@ -60,12 +60,6 @@ export function AiChatPanel({ context, onClose }: { context: string; onClose: ()
         </button>
       </div>
 
-      {context && (
-        <div className="border-b border-border bg-surface-hover px-3.5 py-2 text-[11px] text-ink-muted">
-          Контекст: <span className="text-ink-soft">{context}</span>
-        </div>
-      )}
-
       <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto p-3">
         {entries.length === 0 && (
           <p className="text-[12px] text-ink-faint">Спросите что-нибудь про эту заявку или поставщика.</p>

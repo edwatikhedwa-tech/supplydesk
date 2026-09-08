@@ -1,13 +1,5 @@
-import {
-  createColumnHelper,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table';
 import clsx from 'clsx';
-import { Ban, Search, Star, Truck } from 'lucide-react';
+import { Ban, ExternalLink, Search, Star, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/shell/PageHeader';
@@ -15,7 +7,7 @@ import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { api } from '../lib/api';
-import { now, formatCompanyName, formatPercent, formatRelativeTime } from '../lib/format';
+import { now, companyAge, formatCompanyName, formatMoney, formatPercent, formatRelativeTime } from '../lib/format';
 import type { GlobalSupplierSummary } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
 
@@ -54,13 +46,22 @@ function matchesFilter(s: GlobalSupplierSummary, filter: FilterKey): boolean {
   }
 }
 
-const columnHelper = createColumnHelper<GlobalSupplierSummary>();
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div>
+      <p className="text-[10.5px] uppercase tracking-wide text-ink-faint">{label}</p>
+      <p className="text-[13px] text-ink">
+        {value}
+        {sub && <span className="ml-1 text-[11px] text-ink-faint">{sub}</span>}
+      </p>
+    </div>
+  );
+}
 
 export function Suppliers() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'total_requests', desc: true }]);
 
   const state = useApiData(() => api.listGlobalSuppliers().then((r) => r.items), []);
   const suppliers = state.status === 'ready' ? state.data : [];
@@ -70,11 +71,7 @@ export function Suppliers() {
     return suppliers.filter((s) => {
       if (!matchesFilter(s, filter)) return false;
       if (!q) return true;
-      return (
-        s.name.toLowerCase().includes(q) ||
-        s.categories.some((c) => c.toLowerCase().includes(q)) ||
-        s.inn.includes(q)
-      );
+      return s.name.toLowerCase().includes(q) || s.inn.includes(q) || s.site.toLowerCase().includes(q);
     });
   }, [suppliers, search, filter]);
 
@@ -86,81 +83,6 @@ export function Suppliers() {
       >,
     [suppliers],
   );
-
-  const columns = useMemo(
-    () => [
-      columnHelper.accessor('name', {
-        header: 'Компания',
-        cell: (ctx) => (
-          <div className="min-w-0">
-            <p className="truncate font-medium text-ink">{formatCompanyName(ctx.getValue())}</p>
-            <p className="truncate text-[11.5px] text-ink-muted">
-              ИНН {ctx.row.original.inn} · {ctx.row.original.site}
-            </p>
-          </div>
-        ),
-      }),
-      columnHelper.accessor('total_requests', {
-        header: 'Заявки',
-        cell: (ctx) => <span className="tabular-nums text-ink-soft">{ctx.getValue()}</span>,
-      }),
-      columnHelper.accessor('response_rate', {
-        header: 'Отвечаемость',
-        cell: (ctx) => {
-          const rate = ctx.getValue();
-          const total = ctx.row.original.total_requests;
-          if (total === 0) return <span className="text-ink-faint">—</span>;
-          const tone = rate >= 70 ? 'success' : rate > 0 ? 'warning' : 'danger';
-          return (
-            <div className="flex items-center gap-1.5">
-              <Badge tone={tone}>{formatPercent(rate / 100)}</Badge>
-              {ctx.row.original.avg_response_hours != null && (
-                <span className="text-[11px] text-ink-faint">~{ctx.row.original.avg_response_hours} ч</span>
-              )}
-            </div>
-          );
-        },
-      }),
-      columnHelper.accessor('last_contact_at', {
-        header: 'Последний контакт',
-        cell: (ctx) => {
-          const v = ctx.getValue();
-          return <span className="text-ink-muted">{v ? formatRelativeTime(v) : 'Не было'}</span>;
-        },
-      }),
-      columnHelper.accessor('relationship_status', {
-        header: 'Отношения',
-        cell: (ctx) => {
-          const status = ctx.getValue();
-          if (status === 'favorite')
-            return (
-              <Badge tone="accent">
-                <Star size={10} className="fill-current" /> Избранный
-              </Badge>
-            );
-          if (status === 'blacklisted')
-            return (
-              <span title={ctx.row.original.blacklist_reason ?? undefined}>
-                <Badge tone="danger">
-                  <Ban size={10} /> Чёрный список
-                </Badge>
-              </span>
-            );
-          return <span className="text-ink-faint">—</span>;
-        },
-      }),
-    ],
-    [],
-  );
-
-  const table = useReactTable({
-    data: filtered,
-    columns,
-    state: { sorting },
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-  });
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -175,8 +97,8 @@ export function Suppliers() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Поиск поставщиков по компании, продукции или ИНН"
-            placeholder="Компания, продукция или ИНН…"
+            aria-label="Поиск поставщиков по компании, сайту или ИНН"
+            placeholder="Компания, сайт или ИНН…"
             className="h-8 w-full rounded-md border border-border-strong bg-surface pl-8 pr-3 text-[12.5px] outline-none placeholder:text-ink-faint focus:border-accent focus:ring-1 focus:ring-accent-border"
           />
         </div>
@@ -205,38 +127,69 @@ export function Suppliers() {
         ) : filtered.length === 0 ? (
           <EmptyState icon={Truck} title="Поставщики не найдены" description="Попробуйте другой запрос или фильтр." />
         ) : (
-          <table className="w-full border-collapse text-[12.5px]">
-            <thead className="sticky top-0 z-10 bg-canvas">
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="border-b border-border">
-                  {hg.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      onClick={header.column.getToggleSortingHandler()}
-                      className="cursor-pointer select-none whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-muted first:pl-6 last:pr-6"
-                    >
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  onClick={() => navigate(`/suppliers/${row.original.id}`)}
-                  className="cursor-pointer border-b border-border last:border-0 hover:bg-surface-hover"
+          <div className="flex flex-col divide-y divide-border">
+            {filtered.map((s) => {
+              const age = companyAge(s.registry?.registered_at);
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => navigate(`/suppliers/${s.id}`)}
+                  className="flex cursor-pointer flex-col gap-3 px-6 py-4 hover:bg-surface-hover"
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-3 py-2.5 align-middle first:pl-6 last:pr-6">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13.5px] font-semibold text-ink">
+                        {formatCompanyName(s.name)} <span className="font-normal text-ink-faint">ИНН {s.inn}</span>
+                      </p>
+                      {s.site && (
+                        <a
+                          href={s.site.startsWith('http') ? s.site : `https://${s.site}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-0.5 flex items-center gap-1 text-[12px] text-accent hover:underline"
+                        >
+                          {s.site} <ExternalLink size={10} />
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {s.relationship_status === 'favorite' && (
+                        <Badge tone="accent">
+                          <Star size={10} className="fill-current" /> Избранный
+                        </Badge>
+                      )}
+                      {s.relationship_status === 'blacklisted' && (
+                        <span title={s.blacklist_reason ?? undefined}>
+                          <Badge tone="danger">
+                            <Ban size={10} /> Чёрный список
+                          </Badge>
+                        </span>
+                      )}
+                      {s.registry && (
+                        <span className={`text-[11px] ${s.registry.is_active === false ? 'text-danger' : 'text-success'}`}>
+                          {s.registry.is_active === false ? 'Ликвидировано' : s.registry.status || 'Действует'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-4">
+                    <Stat label="Возраст" value={age ?? '—'} />
+                    <Stat
+                      label="Выручка"
+                      value={formatMoney(s.finances?.revenue ?? null)}
+                      sub={s.finances?.report_year ? `за ${s.finances.report_year}` : undefined}
+                    />
+                    <Stat label="Прибыль" value={formatMoney(s.finances?.profit ?? null)} />
+                    <Stat label="Заявок" value={String(s.total_requests)} />
+                    <Stat label="Отклик" value={s.total_requests > 0 ? formatPercent(s.response_rate / 100) : '—'} />
+                    <Stat label="Последний контакт" value={s.last_contact_at ? formatRelativeTime(s.last_contact_at) : 'Не было'} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

@@ -9,7 +9,7 @@ import { DeadlineTag } from '../components/ui/DeadlineTag';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { ApiError, api } from '../lib/api';
-import { formatCompanyName } from '../lib/format';
+import { companyAge, formatCompanyName, formatMoney } from '../lib/format';
 import { requestStatusMeta, supplierMailStatusMeta } from '../lib/statusMeta';
 import type { RequestSupplierRow } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
@@ -241,68 +241,77 @@ export function RequestDetail() {
         ) : visible.length === 0 ? (
           <EmptyState icon={Search} title="Ничего не найдено" description="Попробуйте другой фильтр или запрос." />
         ) : (
-          <table className="w-full border-collapse text-[12.5px]">
-            <thead className="sticky top-0 z-10 bg-canvas">
-              <tr className="border-b border-border">
-                {['Поставщик', 'Регион', 'ИНН', 'Статус письма', ''].map((h) => (
-                  <th key={h} className="whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-muted first:pl-6 last:pr-6">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((s) => {
-                const mailMeta = supplierMailStatusMeta[s.mail_status] ?? supplierMailStatusMeta.not_sent;
-                return (
-                  <tr key={s.id} className="border-b border-border last:border-0 hover:bg-surface-hover">
-                    <td className="px-3 py-2.5 pl-6 align-middle">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-ink">{formatCompanyName(s.name)}</p>
-                        <p className="truncate text-[11px] text-ink-muted">{s.email || s.host || 'Нет контакта'}</p>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 align-middle text-ink-soft">
-                      {s.region || '—'}
-                      {s.registry && (
-                        <p className={`text-[10.5px] ${s.registry.is_active === false ? 'text-danger' : 'text-ink-faint'}`}>
-                          {s.registry.is_active === false ? 'Ликвидировано' : s.registry.status || 'Действует'}
-                        </p>
+          <div className="flex flex-col divide-y divide-border">
+            {visible.map((s) => {
+              const mailMeta = supplierMailStatusMeta[s.mail_status] ?? supplierMailStatusMeta.not_sent;
+              const age = companyAge(s.registry?.registered_at);
+              return (
+                <div key={s.id} className="flex flex-col gap-3 px-6 py-4 hover:bg-surface-hover">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13.5px] font-semibold text-ink">
+                        {formatCompanyName(s.name)}
+                        {s.inn && <span className="ml-1.5 font-normal text-ink-faint">ИНН {s.inn}</span>}
+                      </p>
+                      <p className="truncate text-[12px] text-ink-muted">
+                        {s.email || s.host || 'Нет контакта'}
+                        {s.region && <span> · {s.region}</span>}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <Badge tone={mailMeta.tone}>{mailMeta.label}</Badge>
+                      {s.unread_count > 0 && (
+                        <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white">
+                          {s.unread_count}
+                        </span>
                       )}
-                    </td>
-                    <td className="px-3 py-2.5 align-middle text-ink-soft">{s.inn || '—'}</td>
-                    <td className="px-3 py-2.5 align-middle">
-                      <div className="flex items-center gap-1.5">
-                        <Badge tone={mailMeta.tone}>{mailMeta.label}</Badge>
-                        {s.unread_count > 0 && (
-                          <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white">
-                            {s.unread_count}
+                      {s.registry && (
+                        <span className={`text-[11px] ${s.registry.is_active === false ? 'text-danger' : 'text-success'}`}>
+                          {s.registry.is_active === false ? 'Ликвидировано' : s.registry.status || 'Действует'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-[12px]">
+                      <span className="text-ink-soft">
+                        <span className="text-ink-faint">Возраст: </span>
+                        {age ?? '—'}
+                      </span>
+                      {s.finances && (
+                        <>
+                          <span className="text-ink-soft">
+                            <span className="text-ink-faint">Выручка: </span>
+                            {formatMoney(s.finances.revenue)}
                           </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 pr-6 align-middle">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button variant="ghost" size="sm" icon={<MessageSquareText size={13} />} onClick={() => openThread(s.id)}>
-                          Переписка
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          icon={<Ban size={13} />}
-                          disabled={irrelevantId === s.id}
-                          onClick={() => void markIrrelevant(s.id)}
-                          title="Убрать из подходящих для этой заявки"
-                        >
-                          Не подходит
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                          <span className="text-ink-soft">
+                            <span className="text-ink-faint">Прибыль: </span>
+                            {formatMoney(s.finances.profit)}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Button variant="ghost" size="sm" icon={<MessageSquareText size={13} />} onClick={() => openThread(s.id)}>
+                        Переписка
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<Ban size={13} />}
+                        disabled={irrelevantId === s.id}
+                        onClick={() => void markIrrelevant(s.id)}
+                        title="Убрать из подходящих для этой заявки"
+                      >
+                        Не подходит
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
