@@ -98,24 +98,6 @@ export function Suppliers() {
           </div>
         ),
       }),
-      columnHelper.accessor('categories', {
-        header: 'Категории',
-        cell: (ctx) => {
-          const cats = ctx.getValue();
-          const shown = cats.slice(0, 2);
-          const rest = cats.length - shown.length;
-          return (
-            <div className="flex flex-wrap items-center gap-1">
-              {shown.map((c) => (
-                <Badge key={c} tone="neutral">
-                  {c}
-                </Badge>
-              ))}
-              {rest > 0 && <span className="text-[11px] text-ink-faint">+{rest}</span>}
-            </div>
-          );
-        },
-      }),
       columnHelper.accessor('total_requests', {
         header: 'Заявки',
         cell: (ctx) => <span className="tabular-nums text-ink-soft">{ctx.getValue()}</span>,
