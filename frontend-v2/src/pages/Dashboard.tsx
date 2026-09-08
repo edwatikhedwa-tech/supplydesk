@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowRight, Inbox, MessageSquareText, PauseCircle } from
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '../components/shell/PageHeader';
+import { TasksSection } from '../components/TasksSection';
 import { Badge } from '../components/ui/Badge';
 import { DeadlineTag } from '../components/ui/DeadlineTag';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -192,6 +193,10 @@ export function Dashboard() {
             )}
           </SectionCard>
         </div>
+      </div>
+
+      <div className="px-6 pb-6">
+        <TasksSection />
       </div>
     </div>
   );

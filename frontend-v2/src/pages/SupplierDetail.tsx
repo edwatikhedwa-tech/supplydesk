@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { QuickAddTaskButton } from '../components/QuickAddTaskButton';
 import { Badge, type Tone } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -109,6 +110,7 @@ export function SupplierDetail() {
         <div className="flex shrink-0 items-center gap-2">
           {isBlacklisted && <Badge tone="danger">В чёрном списке</Badge>}
           {isFavorite && <Badge tone="accent">Избранный</Badge>}
+          <QuickAddTaskButton supplierId={supplierId} />
           <Button
             variant={isFavorite ? 'primary' : 'secondary'}
             size="sm"

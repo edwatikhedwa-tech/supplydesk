@@ -1,6 +1,7 @@
 import { ArrowLeft, Ban, Inbox, MessageSquareText, Package, RotateCw } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { QuickAddTaskButton } from '../components/QuickAddTaskButton';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -89,6 +90,7 @@ export function RequestDetail() {
           <div className="flex items-center gap-2">
             <Badge tone={statusMeta.tone}>{statusMeta.label}</Badge>
             <DeadlineTag deadline={request.deadline} />
+            <QuickAddTaskButton requestId={requestId} />
             {(request.status === 'error' || request.status === 'completed') && (
               <Button variant="secondary" size="sm" icon={<RotateCw size={13} />} disabled={retrying} onClick={() => void retrySearch()}>
                 {retrying ? 'Запускаем…' : 'Перезапустить поиск'}

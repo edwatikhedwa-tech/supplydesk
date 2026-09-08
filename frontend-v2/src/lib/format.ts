@@ -8,7 +8,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export function daysFromToday(iso: string | null): number | null {
   if (!iso) return null;
   const d = new Date(iso.length <= 10 ? iso + 'T00:00:00+03:00' : iso);
-  return Math.round((d.getTime() - now().getTime()) / DAY_MS);
+  // Compare calendar days, not the exact time-of-day -- a deadline anchored
+  // at midnight would otherwise read as "overdue" the moment any time has
+  // passed since midnight on its own day.
+  const today = new Date(now().toISOString().slice(0, 10) + 'T00:00:00+03:00');
+  return Math.round((d.getTime() - today.getTime()) / DAY_MS);
 }
 
 export type DeadlineUrgency = 'overdue' | 'today' | 'soon' | 'normal' | 'none';

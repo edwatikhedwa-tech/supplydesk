@@ -96,6 +96,11 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             if session:
                 self._json(200, self.app.repository.dashboard_summary(session["workspace_id"]))
             return
+        if parsed.path == "/api/tasks":
+            session = self._require_session()
+            if session:
+                self._json(200, {"items": self.app.repository.list_tasks(session["workspace_id"], session["user_id"])})
+            return
         if parsed.path == "/api/requests":
             session = self._require_session()
             if session:
@@ -605,6 +610,20 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                     "status": result.status, "reply": result.reply,
                     "spent_rub": result.spent_rub_today, "limit_rub": result.limit_rub, "message": result.message,
                 })
+            elif parsed.path == "/api/tasks":
+                request_id_raw = body.get("request_id")
+                supplier_id_raw = body.get("supplier_id")
+                task_id = self.app.repository.create_task(
+                    session["workspace_id"], session["user_id"], title=str(body.get("title") or ""),
+                    due_date=str(body["due_date"]) if body.get("due_date") else None,
+                    request_id=int(request_id_raw) if request_id_raw not in (None, "") else None,
+                    supplier_id=int(supplier_id_raw) if supplier_id_raw not in (None, "") else None,
+                )
+                self._json(201, {"ok": True, "task_id": task_id})
+            elif parsed.path.startswith("/api/tasks/") and parsed.path.endswith("/done"):
+                task_id = int(parsed.path.split("/")[3])
+                result = self.app.repository.set_task_done(session["workspace_id"], session["user_id"], task_id, bool(body.get("done", True)))
+                self._json(200, {"ok": True, **result})
             elif parsed.path == "/api/requests":
                 positions = body.get("positions") or []
                 if isinstance(positions, str):
@@ -691,6 +710,19 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             except (ValueError, ProviderError) as exc:
                 self._json(400, {"error": exc.message if isinstance(exc, ProviderError) else str(exc)})
                 return
+            self._json(200, {"ok": True})
+            return
+        if parsed.path.startswith("/api/tasks/"):
+            session = self._require_session()
+            if not session or not self._require_csrf(session):
+                return
+            parts = [part for part in parsed.path.split("/") if part]
+            try:
+                task_id = int(parts[2])
+            except (IndexError, ValueError):
+                self._json(400, {"error": "Некорректный идентификатор задачи."})
+                return
+            self.app.repository.delete_task(session["workspace_id"], session["user_id"], task_id)
             self._json(200, {"ok": True})
             return
         if not parsed.path.startswith("/api/requests/"):

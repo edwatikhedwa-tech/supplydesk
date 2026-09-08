@@ -119,6 +119,20 @@ export interface GlobalSupplierDetail extends GlobalSupplierSummary {
   issues: GlobalSupplierIssue[];
 }
 
+export interface Task {
+  id: number;
+  title: string;
+  due_date: string | null;
+  done: boolean;
+  request_id: number | null;
+  supplier_id: number | null;
+  inbox_message_id: number | null;
+  created_at: string;
+  completed_at: string | null;
+  request_name: string | null;
+  supplier_name: string | null;
+}
+
 export type MailDirection = 'outbound' | 'inbound';
 
 export interface MailMessage {

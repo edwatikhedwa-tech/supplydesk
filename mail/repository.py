@@ -19,6 +19,7 @@ from .auth_accounts import AuthAccountsMixin
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
 from .ai_chat_usage import AiChatUsageMixin
+from .tasks import TasksMixin
 from .thread_metadata import ThreadMetadataMixin
 from .thread_notes import ThreadNotesMixin
 from .bounce import classify_bounce, failed_recipients
@@ -214,7 +215,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 
 
 class MailRepository(
-    AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, AiChatUsageMixin,
+    AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, AiChatUsageMixin, TasksMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()

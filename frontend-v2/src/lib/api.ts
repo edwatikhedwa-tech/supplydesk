@@ -13,6 +13,7 @@ import type {
   MessageSearchResult,
   RequestDetail,
   RequestListItem,
+  Task,
   ThreadSummary,
 } from './types';
 
@@ -92,6 +93,12 @@ export const api = {
   logout: () => request<{ ok: true }>('/api/auth/logout', { method: 'POST' }),
 
   dashboardSummary: () => request<DashboardSummary>('/api/dashboard/summary'),
+  listTasks: () => request<{ items: Task[] }>('/api/tasks'),
+  createTask: (input: { title: string; due_date?: string; request_id?: number; supplier_id?: number }) =>
+    request<{ ok: true; task_id: number }>('/api/tasks', { method: 'POST', body: JSON.stringify(input) }),
+  setTaskDone: (taskId: number, done: boolean) =>
+    request<{ ok: true; id: number; done: boolean }>(`/api/tasks/${taskId}/done`, { method: 'POST', body: JSON.stringify({ done }) }),
+  deleteTask: (taskId: number) => request<{ ok: true }>(`/api/tasks/${taskId}`, { method: 'DELETE' }),
   listRequests: () => request<{ items: RequestListItem[] }>('/api/requests'),
   getRequestDetail: (requestId: number) => request<RequestDetail>(`/api/requests/${requestId}`),
   markSupplierIrrelevant: (requestId: number, supplierId: number) =>
