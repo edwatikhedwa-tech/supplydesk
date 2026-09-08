@@ -9,6 +9,62 @@ and `tests/run-tests.ps1 -Quick` when a backend file changed (baseline:
 82/91 passing — the other 9 fail in `test_change_classifier.py` because this
 machine has no `pwsh`, unrelated to this work).
 
+## 2026-09-08 — Blacklist screen, mail-account Settings page, RequestDetail action-icon visibility, quick-compose, a `useApiData` staleness bug
+
+- **New `/blacklist` screen**, restored as its own nav item (was reduced to
+  an implicit filter). Two independent data sources, both real: (a)
+  `global_suppliers` rows with `relationship_status === 'blacklisted'` —
+  companies with a full card, restorable one-by-one or in bulk via
+  `POST /api/global-suppliers/{id}/relationship {status:'none'}`; (b)
+  `blacklist_entries` — blocked marketplace/aggregator domains
+  (Ozon/Wildberries/AliExpress/Yandex Market/Amazon, seeded by default, plus
+  hard-bounced addresses) via `GET /api/blacklist` +
+  `POST /api/blacklist/{id}/restore`. Live-verified against real data (1
+  blacklisted supplier, 11 blocked domains); deliberately did not click any
+  "Вернуть" button during testing since these are real production records,
+  not fixtures.
+- **New `/settings` screen** for connecting mail accounts, same capability
+  the legacy frontend has. Yandex is OAuth via a full-page redirect
+  (`window.location.href = '/api/mail/yandex/start'`, not a fetch call —
+  one account per workspace, connecting again overwrites); Mail.ru is
+  app-password based (`POST /api/mail/accounts/mailru/connect`, backend
+  test-connects over SMTP+IMAP before persisting). Each connected account
+  gets a status card (outgoing/incoming health, last check time) with
+  Проверить/Синхронизировать/Отключить actions. Live-verified against the
+  real two connected accounts (Yandex + Mail.ru).
+- **Fixed a `useApiData` bug found while verifying the Settings page**:
+  clicking "Проверить" calls `onChanged()` → `reload()` on success, but
+  `useApiData`'s `reload()` unconditionally reset `status` to `'loading'` —
+  and every page using the hook renders a full-page `<LoadingState>` in that
+  branch, unmounting the whole subtree (including the `AccountCard`'s local
+  `message` state) before the result was ever shown. On localhost the
+  refetch resolves in milliseconds, so the test genuinely succeeded but the
+  confirmation text flashed and vanished before it was visible. Fixed at the
+  hook level (`lib/useApiData.ts`): `reload()` now only flips to `loading`
+  if there's no `ready` data yet, otherwise it keeps showing the stale data
+  until the new data arrives (standard stale-while-revalidate) — this is a
+  shared hook, so the fix also removes a full-page loading flash on every
+  other reload-triggering action across the app (Blacklist's restore
+  actions included), not just Settings. Verified live: the message now
+  reads "Соединение почтового аккаунта проверено." and stays on screen.
+- **`RequestDetail` action icons made noticeable**: they read as
+  functionally invisible at rest (thin ghost buttons that only showed color
+  on hover, and the "Написать" action didn't exist inline at all — you had
+  to select a row checkbox and use the bulk compose button). Rewrote them as
+  small filled circular icon buttons with distinct colors (Написать —
+  accent, Переписка — info blue, Не подходит — danger red), always visible,
+  no hover required. Root cause of why the `Button` component's `ghost`
+  variant + a custom background className didn't work: `variant="ghost"`
+  bakes `bg-transparent` into `variantClasses`, and Tailwind's generated
+  stylesheet order — not the order classes appear in the `class` string —
+  decided the winner, so the override silently lost (confirmed via
+  `getComputedStyle` returning `rgba(0,0,0,0)` despite the class being
+  present). Bypassed `Button` for these three icons and used plain
+  `<button>` markup instead. Also added a one-click "Написать" icon per
+  supplier row (previously only a multi-select bulk-compose entry point
+  existed) that opens the same `BulkComposeModal` pre-filled with just that
+  one recipient.
+
 ## 2026-09-08 — supplier card rebuilt with a finance chart, AI comparison picker moved into the thread list
 
 - **`SupplierDetail` rebuilt**: added `recharts` (already a dependency in

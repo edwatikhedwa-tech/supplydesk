@@ -1,4 +1,4 @@
-import { ArrowLeft, Ban, ExternalLink, Inbox, MessageSquareText, Package, PenSquare, RotateCw, Search } from 'lucide-react';
+import { ArrowLeft, Ban, ExternalLink, Inbox, MessageSquareText, Package, PenSquare, RotateCw, Search, Send } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import checkoIcon from '../assets/checko-icon.png';
@@ -59,6 +59,7 @@ export function RequestDetail() {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [composeOpen, setComposeOpen] = useState(false);
+  const [quickComposeId, setQuickComposeId] = useState<number | null>(null);
 
   const suppliers = state.status === 'ready' ? state.data.items : [];
 
@@ -158,6 +159,8 @@ export function RequestDetail() {
   }
 
   const selectedSuppliers = suppliers.filter((s) => selected.has(s.id) && s.email);
+  const quickComposeSupplier = quickComposeId != null ? (suppliers.find((s) => s.id === quickComposeId) ?? null) : null;
+  const composeRecipients = quickComposeSupplier ? [quickComposeSupplier] : selectedSuppliers;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -264,13 +267,17 @@ export function RequestDetail() {
         </div>
       </div>
 
-      {composeOpen && (
+      {(composeOpen || quickComposeSupplier) && (
         <BulkComposeModal
           requestId={requestId}
-          recipients={selectedSuppliers.map(toSendInput)}
-          onClose={() => setComposeOpen(false)}
+          recipients={composeRecipients.map(toSendInput)}
+          onClose={() => {
+            setComposeOpen(false);
+            setQuickComposeId(null);
+          }}
           onSent={() => {
             setSelected(new Set());
+            setQuickComposeId(null);
             state.reload();
           }}
         />
@@ -287,13 +294,13 @@ export function RequestDetail() {
               <colgroup>
                 <col className="w-9" />
                 <col className="w-[19%]" />
-                <col className="w-[19%]" />
-                <col className="w-[7%]" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[13%]" />
-                <col className="w-[86px]" />
+                <col className="w-[16%]" />
+                <col className="w-[6%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[11%]" />
+                <col className="w-[148px]" />
               </colgroup>
               <thead className="sticky top-0 z-10 bg-canvas">
                 <tr className="border-b border-border">
@@ -395,29 +402,47 @@ export function RequestDetail() {
                       <td className="px-3 py-2.5 pr-6 align-top">
                         <div className="flex items-center justify-end gap-1">
                           {checko && (
-                            <a href={checko} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title="Профиль на Checko" className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-surface-hover">
+                            <a
+                              href={checko}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Профиль на Checko"
+                              className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-surface-hover"
+                            >
                               <img src={checkoIcon} alt="Checko" className="h-4 w-4" />
                             </a>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 px-0"
-                            icon={<MessageSquareText size={13} />}
+                          {s.email && (
+                            <button
+                              type="button"
+                              onClick={() => setQuickComposeId(s.id)}
+                              title="Написать"
+                              aria-label="Написать"
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-subtle text-accent transition-colors hover:bg-accent hover:text-white"
+                            >
+                              <Send size={13} />
+                            </button>
+                          )}
+                          <button
+                            type="button"
                             onClick={() => openThread(s.id)}
                             title="Переписка"
                             aria-label="Переписка"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 px-0"
-                            icon={<Ban size={13} />}
+                            className="flex h-7 w-7 items-center justify-center rounded-full bg-info-subtle text-info transition-colors hover:bg-info hover:text-white"
+                          >
+                            <MessageSquareText size={13} />
+                          </button>
+                          <button
+                            type="button"
                             disabled={irrelevantId === s.id}
                             onClick={() => void markIrrelevant(s.id)}
                             title="Не подходит — убрать из подходящих для этой заявки"
                             aria-label="Не подходит"
-                          />
+                            className="flex h-7 w-7 items-center justify-center rounded-full bg-danger-subtle text-danger transition-colors hover:bg-danger hover:text-white disabled:opacity-50"
+                          >
+                            <Ban size={13} />
+                          </button>
                         </div>
                       </td>
                     </tr>

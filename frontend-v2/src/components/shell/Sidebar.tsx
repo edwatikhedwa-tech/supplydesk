@@ -1,10 +1,12 @@
 import clsx from 'clsx';
 import {
+  Ban,
   Inbox,
   LayoutGrid,
   ListChecks,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings,
   Truck,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -19,6 +21,8 @@ const nav = [
   { to: '/requests', label: 'Заявки', icon: ListChecks },
   { to: '/suppliers', label: 'Поставщики', icon: Truck },
   { to: '/messages', label: 'Сообщения', icon: Inbox },
+  { to: '/blacklist', label: 'Чёрный список', icon: Ban },
+  { to: '/settings', label: 'Настройки', icon: Settings },
 ];
 
 function useNavCounts() {

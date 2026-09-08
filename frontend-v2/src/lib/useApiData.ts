@@ -10,7 +10,10 @@ export function useApiData<T>(fetcher: () => Promise<T>, deps: unknown[] = []): 
 
   useEffect(() => {
     let cancelled = false;
-    setState({ status: 'loading' });
+    // Only show the loading state for the first fetch. A `reload()` while data is
+    // already on screen keeps showing that stale data instead of unmounting the
+    // whole subtree (which would wipe any local state, e.g. an action's result message).
+    setState((prev) => (prev.status === 'ready' ? prev : { status: 'loading' }));
     fetcher()
       .then((data) => {
         if (!cancelled) setState({ status: 'ready', data });

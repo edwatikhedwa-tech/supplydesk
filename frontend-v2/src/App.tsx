@@ -1,11 +1,13 @@
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell';
 import { AuthProvider, useAuth } from './lib/AuthContext';
+import { Blacklist } from './pages/Blacklist';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { Messages } from './pages/Messages';
 import { RequestDetail } from './pages/RequestDetail';
 import { Requests } from './pages/Requests';
+import { Settings } from './pages/Settings';
 import { SupplierDetail } from './pages/SupplierDetail';
 import { Suppliers } from './pages/Suppliers';
 
@@ -32,6 +34,8 @@ function Gate() {
           <Route path="suppliers" element={<Suppliers />} />
           <Route path="suppliers/:id" element={<SupplierDetail />} />
           <Route path="messages" element={<Messages />} />
+          <Route path="blacklist" element={<Blacklist />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </HashRouter>

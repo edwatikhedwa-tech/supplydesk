@@ -1,5 +1,6 @@
 import type {
   AuthUser,
+  BlacklistEntry,
   DashboardSummary,
   GlobalSupplierDetail,
   GlobalSupplierSummary,
@@ -8,8 +9,10 @@ import type {
   InboxSuggestion,
   LogisticsQuote,
   LogisticsQuoteCargoInput,
+  MailAccount,
   MailAttachment,
   MailMessage,
+  MailStatus,
   MailTemplate,
   ManualLinkRequestOption,
   MessageSearchResult,
@@ -137,6 +140,17 @@ export const api = {
     request<{ ok: true }>(`/api/global-suppliers/${id}`, { method: 'POST', body: JSON.stringify({ note }) }),
   setGlobalSupplierRelationship: (id: number, status: 'none' | 'favorite' | 'blacklisted', reason = '') =>
     request<{ ok: true }>(`/api/global-suppliers/${id}/relationship`, { method: 'POST', body: JSON.stringify({ status, reason }) }),
+  listBlacklist: () => request<{ items: BlacklistEntry[] }>('/api/blacklist'),
+  restoreBlacklist: (entryId: number) => request<{ ok: true }>(`/api/blacklist/${entryId}/restore`, { method: 'POST' }),
+
+  mailStatus: () => request<MailStatus>('/api/mail/status'),
+  mailConnectMailru: (email: string, appPassword: string) =>
+    request<{ ok: true; account: MailAccount }>('/api/mail/accounts/mailru/connect', { method: 'POST', body: JSON.stringify({ email, app_password: appPassword }) }),
+  mailTest: (mailAccountId?: number) =>
+    request<{ ok: true; message: string }>('/api/mail/test', { method: 'POST', body: JSON.stringify(mailAccountId == null ? {} : { mail_account_id: mailAccountId }) }),
+  mailSync: (mailAccountId?: number) =>
+    request<{ imported?: number } & Record<string, unknown>>('/api/mail/sync', { method: 'POST', body: JSON.stringify(mailAccountId == null ? {} : { mail_account_id: mailAccountId }) }),
+  mailDisconnectAccount: (mailAccountId: number) => request<{ ok: true }>(`/api/mail/accounts/${mailAccountId}`, { method: 'DELETE' }),
 
   listThreads: () => request<{ items: ThreadSummary[] }>('/api/correspondence'),
   searchMessages: (q: string) => request<{ items: MessageSearchResult[] }>(`/api/mail/search?q=${encodeURIComponent(q)}`),

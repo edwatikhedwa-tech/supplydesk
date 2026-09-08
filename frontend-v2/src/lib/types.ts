@@ -169,8 +169,57 @@ export interface GlobalSupplierSummary {
   last_contact_at: string | null;
   relationship_status: RelationshipStatus;
   blacklist_reason: string | null;
+  blacklisted_at: string | null;
   registry: GlobalSupplierRegistry | null;
   finances: GlobalSupplierFinances | null;
+}
+
+/** A blocked marketplace/aggregator domain -- distinct from a blacklisted
+ * global_suppliers row: this exists even before any company card does
+ * (mail/auth_accounts.py's default seed blocks e.g. Ozon on day one). */
+export interface BlacklistEntry {
+  id: number;
+  external_key: string;
+  company_name: string;
+  level: string;
+  reason: string;
+  created_at: string;
+  restored_at: string | null;
+  host: string | null;
+  email: string | null;
+}
+
+export interface MailAccount {
+  id: number;
+  provider: string;
+  provider_type?: string;
+  email: string;
+  email_address?: string;
+  display_name?: string;
+  auth_mode: 'oauth' | 'app_password' | string;
+  credential_reference?: string | null;
+  status: string;
+  connected: boolean;
+  outgoing_enabled: boolean;
+  outgoing_health?: 'ready' | 'disabled' | 'error' | string;
+  incoming_enabled: boolean;
+  incoming_health?: 'healthy' | 'error' | 'pending' | 'disabled' | string;
+  incoming_last_success_at?: string | null;
+  incoming_last_error_at?: string | null;
+  incoming_last_error?: string | null;
+  token_expires_at?: string | null;
+  last_error?: string | null;
+  updated_at?: string | null;
+}
+
+export interface MailStatus {
+  connected: boolean;
+  provider?: string;
+  email?: string;
+  status?: string;
+  last_error?: string | null;
+  updated_at?: string | null;
+  accounts: MailAccount[];
 }
 
 export interface GlobalSupplierHistoryEntry {
