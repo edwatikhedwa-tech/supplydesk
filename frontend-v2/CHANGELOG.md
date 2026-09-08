@@ -9,6 +9,37 @@ and `tests/run-tests.ps1 -Quick` when a backend file changed (baseline:
 82/91 passing — the other 9 fail in `test_change_classifier.py` because this
 machine has no `pwsh`, unrelated to this work).
 
+## 2026-09-08 — supplier card rebuilt with a finance chart, AI comparison picker moved into the thread list
+
+- **`SupplierDetail` rebuilt**: added `recharts` (already a dependency in
+  the legacy `frontend/`, so a proven choice, not a new unknown) to port
+  its `FinanceTrend` component — a bar+line combo chart of revenue/profit
+  by year, with the same insight text logic ("выручка растёт, а прибыль
+  снижается — стоит уточнить условия оплаты" / "были убыточные годы" /
+  etc). The backend's `global_supplier_detail()` already computed and
+  returned `finance_history` (last 6 report years) -- the frontend type
+  just never captured the field. Also added a colored avatar-initials
+  header, big bold stat cards (age/requests/revenue/profit with a
+  green/red tone on profit, response rate), and a "Написать" primary
+  action.
+- **Fixed the "Написать" button it introduced**: the first version always
+  deep-linked to the most recent `history` entry, but a `history` row with
+  outcome `not_sent` has no real `mail_threads` row (the supplier was only
+  matched, never actually emailed) -- the deep-link silently failed to
+  resolve and Messages fell back to whatever thread was already selected,
+  which looked like the button did nothing. Now it links to the request
+  page instead when there's no real thread yet, and to the actual
+  conversation when there is one. Caught by testing exactly this case live
+  (a supplier with `not_sent` history), not by inspection.
+- **AI "Сравнить с поставщиком" moved out of its own dropdown, into the
+  main thread list**: a cramped 240px popover with truncated subject lines
+  was hard to identify suppliers by. Each sibling thread row (same request,
+  panel open) now has a checkbox directly in the list the user already
+  reads to pick between suppliers -- no separate UI to learn. The AI panel
+  keeps only the resulting chips, each now also a link to that supplier's
+  card (closing a real gap: there was no way to open a compared supplier's
+  card from the AI panel at all before).
+
 ## 2026-09-08 — supplier table density, request-table fit, task→company preview, AI-context list highlight
 
 - **Suppliers page rebuilt as a real table** (again): the previous pass used

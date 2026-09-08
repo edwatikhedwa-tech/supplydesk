@@ -7,15 +7,21 @@ import {
   Mail,
   MessageSquareText,
   Phone,
+  Send,
   ShieldCheck,
   Star,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import checkoIcon from '../assets/checko-icon.png';
+import { FinanceTrend } from '../components/FinanceTrend';
 import { QuickAddTaskButton } from '../components/QuickAddTaskButton';
+import { Avatar } from '../components/ui/Avatar';
 import { Badge, type Tone } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { CopyButton } from '../components/ui/CopyButton';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { ApiError, api } from '../lib/api';
@@ -30,6 +36,16 @@ const outcomeMeta: Record<string, { label: string; tone: Tone }> = {
   error: { label: 'Ошибка', tone: 'danger' },
   delivery_unknown: { label: 'Статус неизвестен', tone: 'warning' },
 };
+
+function StatCard({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'success' | 'danger' }) {
+  return (
+    <div className="rounded-md border border-border bg-canvas px-3 py-2.5">
+      <p className="text-[10.5px] uppercase tracking-wide text-ink-faint">{label}</p>
+      <p className={`mt-0.5 text-[17px] font-semibold leading-tight ${tone === 'success' ? 'text-success' : tone === 'danger' ? 'text-danger' : 'text-ink'}`}>{value}</p>
+      {sub && <p className="text-[10.5px] text-ink-faint">{sub}</p>}
+    </div>
+  );
+}
 
 export function SupplierDetail() {
   const { id } = useParams<{ id: string }>();
@@ -93,6 +109,16 @@ export function SupplierDetail() {
 
   const isFavorite = supplier.relationship_status === 'favorite';
   const isBlacklisted = supplier.relationship_status === 'blacklisted';
+  const age = companyAge(supplier.registry?.registered_at);
+  const checko = checkoUrl(supplier.registry?.ogrn);
+  const profit = supplier.finances?.profit ?? null;
+  // "not_sent" history entries have no real mail_threads row yet (the
+  // supplier was only found/matched, never actually emailed) -- deep-linking
+  // Messages to a thread that doesn't exist silently falls back to whatever
+  // thread was already selected, which looks like the button did nothing.
+  // Route those to the request instead, where a real send can be composed.
+  const latestThread = supplier.history.find((h) => h.outcome !== 'not_sent') ?? null;
+  const latestRequestOnly = latestThread ? null : (supplier.history[0] ?? null);
 
   return (
     <div className="flex h-full flex-col overflow-auto">
@@ -104,13 +130,47 @@ export function SupplierDetail() {
       </div>
 
       <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-2">
-        <div className="min-w-0">
-          <h1 className="font-display text-[19px] font-semibold leading-tight text-ink">{formatCompanyName(supplier.name)}</h1>
-          <p className="mt-0.5 text-[12.5px] text-ink-muted">ИНН {supplier.inn}</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={supplier.name} size="lg" />
+          <div className="min-w-0">
+            <h1 className="font-display text-[19px] font-semibold leading-tight text-ink">{formatCompanyName(supplier.name)}</h1>
+            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-ink-muted">
+              ИНН {supplier.inn}
+              {supplier.inn && <CopyButton text={supplier.inn} />}
+              {supplier.registry && (
+                <span className={`flex items-center gap-1 ${supplier.registry.is_active === false ? 'text-danger' : 'text-success'}`}>
+                  <ShieldCheck size={12} />
+                  {supplier.registry.is_active === false ? 'Ликвидировано' : supplier.registry.status || 'Действует'}
+                </span>
+              )}
+            </p>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isBlacklisted && <Badge tone="danger">В чёрном списке</Badge>}
           {isFavorite && <Badge tone="accent">Избранный</Badge>}
+          {latestThread ? (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Send size={13} />}
+              onClick={() => navigate(`/messages?request=${latestThread.request_id}&supplier=${latestThread.supplier_id}`)}
+            >
+              Написать
+            </Button>
+          ) : (
+            latestRequestOnly && (
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<Send size={13} />}
+                title="Письмо ещё не отправлялось — выберите поставщика в заявке, чтобы написать"
+                onClick={() => navigate(`/requests/${latestRequestOnly.request_id}`)}
+              >
+                Написать
+              </Button>
+            )
+          )}
           <QuickAddTaskButton supplierId={supplierId} />
           <Button
             variant={isFavorite ? 'primary' : 'secondary'}
@@ -165,9 +225,18 @@ export function SupplierDetail() {
           <section className="rounded-lg border border-border bg-surface">
             <h2 className="border-b border-border px-4 py-2.5 text-[12.5px] font-semibold text-ink">Контакты и реквизиты</h2>
             <div className="grid grid-cols-2 gap-3 p-4 text-[12.5px]">
-              <div className="flex items-center gap-2 text-ink-soft">
+              <div className="flex items-center gap-1.5 text-ink-soft">
                 <Mail size={13} className="shrink-0 text-ink-faint" />
-                {supplier.email ? <a href={`mailto:${supplier.email}`} className="hover:text-accent">{supplier.email}</a> : <span className="text-ink-faint">—</span>}
+                {supplier.email ? (
+                  <>
+                    <a href={`mailto:${supplier.email}`} className="truncate hover:text-accent">
+                      {supplier.email}
+                    </a>
+                    <CopyButton text={supplier.email} />
+                  </>
+                ) : (
+                  <span className="text-ink-faint">—</span>
+                )}
               </div>
               <div className="flex items-center gap-2 text-ink-soft">
                 <Phone size={13} className="shrink-0 text-ink-faint" />
@@ -183,28 +252,12 @@ export function SupplierDetail() {
                   <span className="text-ink-faint">—</span>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-ink-soft">
-                <ShieldCheck size={13} className={`shrink-0 ${supplier.registry?.is_active === false ? 'text-danger' : 'text-ink-faint'}`} />
-                {supplier.registry ? (
-                  <span className={supplier.registry.is_active === false ? 'text-danger' : undefined}>
-                    {supplier.registry.is_active === false ? 'Ликвидировано' : supplier.registry.status || 'Действует'}
-                  </span>
-                ) : (
-                  <span className="text-ink-faint">ЕГРЮЛ не проверялся</span>
-                )}
-              </div>
               {supplier.registry && (
                 <div className="flex items-center gap-2 text-ink-soft">
                   <Building2 size={13} className="shrink-0 text-ink-faint" />
                   ОГРН {supplier.registry.ogrn}
-                  {checkoUrl(supplier.registry.ogrn) && (
-                    <a
-                      href={checkoUrl(supplier.registry.ogrn)!}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="Профиль на Checko"
-                      className="flex h-5 w-5 items-center justify-center rounded hover:bg-surface-hover"
-                    >
+                  {checko && (
+                    <a href={checko} target="_blank" rel="noreferrer" title="Профиль на Checko" className="flex h-5 w-5 items-center justify-center rounded hover:bg-surface-hover">
                       <img src={checkoIcon} alt="Checko" className="h-3.5 w-3.5" />
                     </a>
                   )}
@@ -212,6 +265,12 @@ export function SupplierDetail() {
               )}
             </div>
           </section>
+
+          {supplier.finance_history.length >= 2 && (
+            <section className="rounded-lg border border-border bg-surface p-4">
+              <FinanceTrend years={supplier.finance_history} />
+            </section>
+          )}
 
           <section className="rounded-lg border border-border bg-surface">
             <h2 className="border-b border-border px-4 py-2.5 text-[12.5px] font-semibold text-ink">История заявок</h2>
@@ -255,42 +314,32 @@ export function SupplierDetail() {
         <div className="space-y-4">
           <section className="rounded-lg border border-border bg-surface p-4">
             <h2 className="mb-3 text-[12.5px] font-semibold text-ink">Показатели</h2>
-            <dl className="space-y-2.5 text-[12.5px]">
-              <div className="flex items-center justify-between">
-                <dt className="text-ink-muted">Заявок</dt>
-                <dd className="font-medium text-ink">{supplier.total_requests}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-ink-muted">Отвечаемость</dt>
-                <dd className="font-medium text-ink">{supplier.total_requests > 0 ? formatPercent(supplier.response_rate / 100) : '—'}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-ink-muted">Среднее время ответа</dt>
-                <dd className="font-medium text-ink">{supplier.avg_response_hours != null ? `~${supplier.avg_response_hours} ч` : '—'}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-ink-muted">Последний контакт</dt>
-                <dd className="font-medium text-ink">{supplier.last_contact_at ? formatDateTime(supplier.last_contact_at) : 'Не было'}</dd>
-              </div>
-              {companyAge(supplier.registry?.registered_at) && (
-                <div className="flex items-center justify-between">
-                  <dt className="text-ink-muted">Возраст компании</dt>
-                  <dd className="font-medium text-ink">{companyAge(supplier.registry?.registered_at)}</dd>
-                </div>
-              )}
-              {supplier.finances && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <dt className="text-ink-muted">Выручка {supplier.finances.report_year ?? ''}</dt>
-                    <dd className="font-medium text-ink">{formatMoney(supplier.finances.revenue)}</dd>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <dt className="text-ink-muted">Прибыль {supplier.finances.report_year ?? ''}</dt>
-                    <dd className="font-medium text-ink">{formatMoney(supplier.finances.profit)}</dd>
-                  </div>
-                </>
-              )}
-            </dl>
+            <div className="grid grid-cols-2 gap-2.5">
+              <StatCard label="Возраст" value={age ?? '—'} />
+              <StatCard label="Заявок" value={String(supplier.total_requests)} />
+              <StatCard
+                label="Выручка"
+                value={supplier.finances?.revenue != null ? formatMoney(supplier.finances.revenue) : '—'}
+                sub={supplier.finances?.report_year ? `за ${supplier.finances.report_year}` : undefined}
+              />
+              <StatCard
+                label="Прибыль"
+                value={profit != null ? formatMoney(profit) : '—'}
+                tone={profit != null ? (profit >= 0 ? 'success' : 'danger') : undefined}
+              />
+              <StatCard label="Отклик" value={supplier.total_requests > 0 ? formatPercent(supplier.response_rate / 100) : '—'} tone={supplier.response_rate >= 50 ? 'success' : undefined} />
+              <StatCard label="Ср. время ответа" value={supplier.avg_response_hours != null ? `~${supplier.avg_response_hours} ч` : '—'} />
+            </div>
+            <div className="mt-2.5 flex items-center justify-between rounded-md border border-border bg-canvas px-3 py-2 text-[12px]">
+              <span className="text-ink-muted">Последний контакт</span>
+              <span className="font-medium text-ink">{supplier.last_contact_at ? formatDateTime(supplier.last_contact_at) : 'Не было'}</span>
+            </div>
+            {profit != null && (
+              <p className="mt-1.5 flex items-center gap-1 text-[11px] text-ink-faint">
+                {profit >= 0 ? <TrendingUp size={11} className="text-success" /> : <TrendingDown size={11} className="text-danger" />}
+                {profit >= 0 ? 'Прибыльная компания по последней отчётности' : 'Убыток по последней отчётности'}
+              </p>
+            )}
           </section>
 
           <section className="rounded-lg border border-border bg-surface p-4">
@@ -304,7 +353,7 @@ export function SupplierDetail() {
               />
             )}
             <p className="mt-1.5 text-[11px] text-ink-faint">
-              {noteSaveState === 'saving' ? 'Сохраняем…' : noteSaveState === 'saved' ? 'Сохранено' : ' '}
+              {noteSaveState === 'saving' ? 'Сохраняем…' : noteSaveState === 'saved' ? 'Сохранено' : ' '}
             </p>
           </section>
         </div>

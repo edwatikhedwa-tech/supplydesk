@@ -491,12 +491,19 @@ export function Messages() {
                           g.threads.map((t) => {
                             const status = threadResponseStatus(t);
                             const inAiContext = aiExtraThreadIds.includes(t.id);
+                            // Only offer AI-context selection for the thread's siblings on the
+                            // same request while the panel is open -- not the active thread
+                            // itself (it's already the primary context, not an "extra").
+                            const showAiCheckbox = aiOpen && activeThread && t.request_id === activeThread.request_id && t.id !== activeThread.id;
                             return (
-                              <button
+                              <div
                                 key={t.id}
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => selectThread(t.id)}
+                                onKeyDown={(e) => e.key === 'Enter' && selectThread(t.id)}
                                 className={clsx(
-                                  'flex w-full items-center gap-2 border-t border-border/60 py-2 pl-8 pr-3 text-left hover:bg-surface-hover',
+                                  'flex w-full cursor-pointer items-center gap-2 border-t border-border/60 py-2 pl-8 pr-3 text-left hover:bg-surface-hover',
                                   activeThread?.id === t.id
                                     ? 'border-l-2 border-l-accent bg-accent-subtle/40'
                                     : inAiContext
@@ -504,6 +511,17 @@ export function Messages() {
                                       : '',
                                 )}
                               >
+                                {showAiCheckbox && (
+                                  <input
+                                    type="checkbox"
+                                    checked={inAiContext}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={() => setAiExtraThreadIds((prev) => (prev.includes(t.id) ? prev.filter((x) => x !== t.id) : [...prev, t.id]))}
+                                    aria-label={`Добавить ${formatCompanyName(t.supplier_name)} в контекст ИИ`}
+                                    title="Добавить в контекст ИИ-помощника"
+                                    className="h-3.5 w-3.5 shrink-0 rounded border-border-strong accent-accent"
+                                  />
+                                )}
                                 <Avatar name={t.supplier_name} size="sm" />
                                 <div className="min-w-0 flex-1">
                                   <p className={clsx('flex items-center gap-1 truncate text-[12px]', t.unread_count > 0 ? 'font-semibold text-ink' : 'font-medium text-ink-soft')}>
@@ -532,7 +550,7 @@ export function Messages() {
                                     {t.unread_count}
                                   </span>
                                 )}
-                              </button>
+                              </div>
                             );
                           })}
                       </div>
@@ -809,7 +827,7 @@ export function Messages() {
             key={activeThread ? `thread-${activeThread.id}` : `unmatched-${activeUnmatchedId}`}
             storageKey={activeThread ? `thread-${activeThread.id}` : `unmatched-${activeUnmatchedId}`}
             context={buildAiContext(activeThread, messagesState, activeUnmatchedId, conversationState, aiExtraThreadsForContext)}
-            siblingThreads={siblingThreads.map((t) => ({ id: t.id, name: formatCompanyName(t.supplier_name) }))}
+            siblingThreads={siblingThreads.map((t) => ({ id: t.id, name: formatCompanyName(t.supplier_name), globalSupplierId: t.global_supplier_id }))}
             selectedSiblingIds={aiExtraThreadIds}
             onToggleSibling={(id) => setAiExtraThreadIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))}
             onClose={() => setAiOpen(false)}

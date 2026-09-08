@@ -16,12 +16,12 @@ function paletteFor(seed: string) {
   return PALETTE[hash % PALETTE.length];
 }
 
-export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
+export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' | 'lg' }) {
   return (
     <span
       className={clsx(
         'inline-flex shrink-0 items-center justify-center rounded-full font-semibold',
-        size === 'sm' ? 'h-6 w-6 text-[10px]' : 'h-8 w-8 text-[12px]',
+        size === 'sm' ? 'h-6 w-6 text-[10px]' : size === 'lg' ? 'h-12 w-12 text-[16px]' : 'h-8 w-8 text-[12px]',
         paletteFor(name),
       )}
     >

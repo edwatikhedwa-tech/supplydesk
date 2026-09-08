@@ -190,9 +190,17 @@ export interface GlobalSupplierIssue {
   reported_at: string;
 }
 
+export interface GlobalSupplierFinanceYear {
+  report_year: number;
+  revenue: number | null;
+  profit: number | null;
+}
+
 export interface GlobalSupplierDetail extends GlobalSupplierSummary {
   history: GlobalSupplierHistoryEntry[];
   issues: GlobalSupplierIssue[];
+  /** Up to the last 6 report years, ascending. */
+  finance_history: GlobalSupplierFinanceYear[];
 }
 
 export interface Task {
