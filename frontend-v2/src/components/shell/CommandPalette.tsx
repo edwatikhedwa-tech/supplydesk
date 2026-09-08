@@ -85,8 +85,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     navigate(`/requests?q=${encodeURIComponent(name)}`);
     onClose();
   }
-  function goToThread(id: number) {
-    navigate(`/messages?thread=${id}`);
+  function goToThread(id: number, opts?: { messageId: number; query: string }) {
+    const params = new URLSearchParams({ thread: String(id) });
+    if (opts) {
+      params.set('highlight', String(opts.messageId));
+      params.set('q', opts.query);
+    }
+    navigate(`/messages?${params.toString()}`);
     onClose();
   }
 
@@ -159,7 +164,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               {messageResults.map((m) => (
                 <button
                   key={m.message_id}
-                  onClick={() => goToThread(m.thread_id)}
+                  onClick={() => goToThread(m.thread_id, { messageId: m.message_id, query: query.trim() })}
                   className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left hover:bg-surface-hover"
                 >
                   <MessageSquareText size={14} className="mt-0.5 shrink-0 text-ink-faint" />

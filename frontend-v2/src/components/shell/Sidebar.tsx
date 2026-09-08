@@ -5,7 +5,6 @@ import {
   ListChecks,
   PanelLeftClose,
   PanelLeftOpen,
-  Search,
   Truck,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -30,7 +29,7 @@ function useNavCounts() {
   return { attention, unread };
 }
 
-export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
+export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuth();
   const { attention, unread } = useNavCounts();
@@ -59,26 +58,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
         </button>
       </div>
 
-      <div className="px-2.5 pt-3">
-        <button
-          type="button"
-          onClick={onOpenSearch}
-          className={clsx(
-            'flex w-full items-center gap-2 rounded-md border border-rail-border bg-rail-hover px-2.5 text-[12.5px] text-rail-text-dim hover:text-rail-text-active',
-            collapsed ? 'h-8 justify-center' : 'h-8',
-          )}
-        >
-          <Search size={14} />
-          {!collapsed && (
-            <>
-              <span className="flex-1 text-left">Поиск…</span>
-              <kbd className="rounded border border-rail-border px-1 text-[10px] text-rail-text-dim">⌘K</kbd>
-            </>
-          )}
-        </button>
-      </div>
-
-      <nav className="flex flex-col gap-0.5 px-2.5 py-3">
+      <nav className="flex flex-col gap-0.5 px-2.5 pt-3">
         {nav.map(({ to, label, icon: Icon, end }) => {
           const badge = badgeFor[to];
           return (

@@ -33,10 +33,66 @@ import { ApiError, api } from '../lib/api';
 import { useAuth } from '../lib/AuthContext';
 import { threadResponseStatus, messageSenderName, type ResponseStatus } from '../lib/derive';
 import { formatCompanyName, formatDateTime, formatRelativeTime } from '../lib/format';
-import type { ThreadSummary } from '../lib/types';
+import type { InboxConversation, MailMessage, ThreadSummary } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
 
 type Selection = { type: 'thread'; id: number } | { type: 'unmatched'; id: number } | null;
+type AsyncState<T> = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: T };
+
+const AI_CONTEXT_BODY_LIMIT = 900;
+
+function trimBody(text: string | null): string {
+  if (!text) return '';
+  const clean = text.trim().replace(/\s+/g, ' ');
+  return clean.length > AI_CONTEXT_BODY_LIMIT ? `${clean.slice(0, AI_CONTEXT_BODY_LIMIT)}…` : clean;
+}
+
+/** Feeds the AI assistant the actual last message text, not just the request/
+ * supplier names -- without it the model has nothing concrete to reason
+ * about and falls back to guessing from the request's internal title. */
+function buildAiContext(
+  activeThread: ThreadSummary | null,
+  messagesState: AsyncState<MailMessage[]>,
+  activeUnmatchedId: number | null,
+  conversationState: AsyncState<InboxConversation | null>,
+): string {
+  if (activeThread) {
+    const header = `Заявка «${activeThread.request_name}» (это просто название заявки в системе, не техническое требование), поставщик ${formatCompanyName(activeThread.supplier_name)}.`;
+    if (messagesState.status === 'ready' && messagesState.data.length > 0) {
+      const last = messagesState.data[messagesState.data.length - 1];
+      const who = last.direction === 'outbound' ? 'Отправлено поставщику нами' : 'Получено от поставщика';
+      return `${header}\n${who} (${formatDateTime(last.sent_at ?? last.created_at)}):\n${trimBody(last.body_text)}`;
+    }
+    return header;
+  }
+  if (activeUnmatchedId && conversationState.status === 'ready' && conversationState.data) {
+    const c = conversationState.data;
+    return `Письмо без привязки к заявке от ${c.from_email}, тема «${c.subject}»:\n${trimBody(c.body_text)}`;
+  }
+  return '';
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Wraps every case-insensitive match of `query` in the searched-for message's
+ * body with <mark>, so landing on a search result shows exactly what matched. */
+function highlightText(text: string, query: string) {
+  const q = query.trim();
+  if (!q) return text;
+  const parts = text.split(new RegExp(`(${escapeRegExp(q)})`, 'ig'));
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    part.toLowerCase() === q.toLowerCase() ? (
+      <mark key={i} className="rounded-sm bg-warning-subtle text-ink">
+        {part}
+      </mark>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  );
+}
 
 const responseTone: Record<ResponseStatus, Tone> = { none: 'neutral', waiting: 'warning', answered: 'success' };
 const responseLabel: Record<ResponseStatus, string> = { none: 'Не отправлено', waiting: 'Ожидаем ответ', answered: 'Есть ответ' };
@@ -69,6 +125,14 @@ export function Messages() {
   const requestedThreadIdParam = searchParams.get('thread');
   const requestedRequestId = searchParams.get('request');
   const requestedSupplierId = searchParams.get('supplier');
+  // Captured once on mount (functional initial state), not read on every
+  // render -- selectionInitialized's effect below clears the URL's search
+  // params shortly after mount, so reading them live would lose the value.
+  const [pendingHighlight] = useState<{ messageId: number; query: string } | null>(() => {
+    const highlight = searchParams.get('highlight');
+    return highlight ? { messageId: Number(highlight), query: searchParams.get('q') ?? '' } : null;
+  });
+  const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   // The request-detail page only knows (request_id, supplier_id), not the
   // thread's own id — resolve it here once threads are loaded, so callers
   // don't need to know mail_threads.id to deep-link into a conversation.
@@ -127,6 +191,12 @@ export function Messages() {
     [activeThread?.request_id, activeThread?.supplier_id],
   );
   const hasNote = noteState.status === 'ready' && noteState.data.trim() !== '';
+
+  useEffect(() => {
+    if (!pendingHighlight || messagesState.status !== 'ready') return;
+    const el = messageRefs.current.get(pendingHighlight.messageId);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [pendingHighlight, messagesState]);
 
   const suggestionsState = useApiData(
     () => (activeUnmatchedId ? api.inboxSuggestions(activeUnmatchedId).then((r) => r.items) : Promise.resolve([])),
@@ -362,12 +432,18 @@ export function Messages() {
                   ) : (
                     messagesState.data.map((m) => {
                       const isOutbound = m.direction === 'outbound';
+                      const isHighlighted = pendingHighlight?.messageId === m.id;
                       return (
                         <div
                           key={m.id}
+                          ref={(el) => {
+                            if (el) messageRefs.current.set(m.id, el);
+                            else messageRefs.current.delete(m.id);
+                          }}
                           className={clsx(
                             'mb-3 min-w-0 rounded-md border-l-2 px-4 py-3',
                             isOutbound ? 'border-l-accent bg-accent-subtle/40' : 'border-l-border-strong bg-surface',
+                            isHighlighted && 'ring-1 ring-accent',
                           )}
                         >
                           <div className="mb-1.5 flex items-center gap-3">
@@ -386,7 +462,9 @@ export function Messages() {
                             </span>
                             <span className="shrink-0 text-[11px] text-ink-faint">{formatDateTime(m.created_at)}</span>
                           </div>
-                          <p className="whitespace-pre-wrap break-words text-[12.5px] leading-relaxed text-ink-soft">{m.body_text}</p>
+                          <p className="whitespace-pre-wrap break-words text-[12.5px] leading-relaxed text-ink-soft">
+                            {isHighlighted && pendingHighlight ? highlightText(m.body_text ?? '', pendingHighlight.query) : m.body_text}
+                          </p>
                           {m.status === 'queued' && <p className="mt-1.5 text-[11px] text-ink-faint">Отправляется…</p>}
                           {m.error && <p className="mt-1.5 text-[11px] text-danger">{m.error}</p>}
                         </div>
@@ -553,13 +631,7 @@ export function Messages() {
 
         {aiOpen && (
           <AiChatPanel
-            context={
-              activeThread
-                ? `Заявка «${activeThread.request_name}», поставщик ${formatCompanyName(activeThread.supplier_name)}`
-                : activeUnmatchedId && conversationState.status === 'ready' && conversationState.data
-                  ? `Письмо без привязки к заявке: «${conversationState.data.subject}» от ${conversationState.data.from_email}`
-                  : ''
-            }
+            context={buildAiContext(activeThread, messagesState, activeUnmatchedId, conversationState)}
             onClose={() => setAiOpen(false)}
           />
         )}

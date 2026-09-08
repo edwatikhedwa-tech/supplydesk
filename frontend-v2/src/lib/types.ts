@@ -25,6 +25,18 @@ export interface RequestListItem {
   suppliers_count: number;
   sent_count: number;
   replies_count: number;
+  /** Only present on the single-request detail endpoint, not the list. */
+  mail_metrics?: {
+    outbound_total: number;
+    queued: number;
+    accepted: number;
+    accepted_effective: number;
+    failed: number;
+    delivery_unknown: number;
+    bounced: number;
+    cancelled: number;
+    replies: number;
+  };
 }
 
 export interface RequestPosition {
@@ -34,7 +46,10 @@ export interface RequestPosition {
   quantity: string;
 }
 
-export type SupplierMailStatus = 'not_sent' | 'queued' | 'sending' | 'sent' | 'delivery_unknown' | 'failed' | 'cancelled';
+// The backend's user-facing vocabulary (mail/repository.py::_normalize_mail_status) --
+// NOT the internal send-pipeline states (queued/sending/replied/...), which the API
+// never exposes under this field.
+export type SupplierMailStatus = 'not_sent' | 'sent' | 'waiting' | 'answered' | 'error' | 'delivery_unknown';
 
 export interface RequestSupplierRow {
   id: number;
@@ -47,10 +62,14 @@ export interface RequestSupplierRow {
   region: string;
   role: string;
   phone: string;
-  mail_status_raw: SupplierMailStatus;
+  mail_status: SupplierMailStatus;
   last_error: string | null;
   unread_count: number;
   found_url: string | null;
+  registry: GlobalSupplierRegistry | null;
+  finances: GlobalSupplierFinances | null;
+  email_count: number;
+  site_count: number;
 }
 
 export interface RequestDetail {

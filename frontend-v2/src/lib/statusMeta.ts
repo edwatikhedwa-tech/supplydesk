@@ -11,10 +11,9 @@ export const requestStatusMeta: Record<RequestStatus, { label: string; tone: Ton
 
 export const supplierMailStatusMeta: Record<SupplierMailStatus, { label: string; tone: Tone }> = {
   not_sent: { label: 'Не отправлено', tone: 'neutral' },
-  queued: { label: 'В очереди', tone: 'info' },
-  sending: { label: 'Отправляется', tone: 'info' },
-  sent: { label: 'Отправлено', tone: 'warning' },
+  sent: { label: 'Отправлено', tone: 'info' },
+  waiting: { label: 'Ждём ответа', tone: 'warning' },
+  answered: { label: 'Получен ответ', tone: 'success' },
+  error: { label: 'Ошибка отправки', tone: 'danger' },
   delivery_unknown: { label: 'Статус неизвестен', tone: 'warning' },
-  failed: { label: 'Ошибка отправки', tone: 'danger' },
-  cancelled: { label: 'Отменено', tone: 'neutral' },
 };
