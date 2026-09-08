@@ -84,13 +84,39 @@ export interface GlobalSupplierSummary {
   note: string;
   categories: string[];
   total_requests: number;
-  response_rate: number; // 0..1
+  /** Whole percent already, 0..100 -- NOT a 0..1 ratio (confirmed against
+   * mail/repository.py::_compose_global_supplier, which computes
+   * round(answered/sent*100)). formatPercent() expects a 0..1 ratio, so
+   * divide by 100 before passing this value to it. */
+  response_rate: number;
   avg_response_hours: number | null;
   last_contact_at: string | null;
   relationship_status: RelationshipStatus;
   blacklist_reason: string | null;
   registry: GlobalSupplierRegistry | null;
   finances: GlobalSupplierFinances | null;
+}
+
+export interface GlobalSupplierHistoryEntry {
+  request_id: number;
+  supplier_id: number;
+  request_title: string;
+  date: string;
+  outcome: 'not_sent' | 'sent' | 'waiting' | 'answered' | 'error' | 'delivery_unknown';
+  rating: number | null;
+}
+
+export interface GlobalSupplierIssue {
+  reason: string;
+  comment: string;
+  correct_inn: string;
+  source: string;
+  reported_at: string;
+}
+
+export interface GlobalSupplierDetail extends GlobalSupplierSummary {
+  history: GlobalSupplierHistoryEntry[];
+  issues: GlobalSupplierIssue[];
 }
 
 export type MailDirection = 'outbound' | 'inbound';

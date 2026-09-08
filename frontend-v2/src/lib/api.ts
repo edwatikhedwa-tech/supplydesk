@@ -1,6 +1,7 @@
 import type {
   AuthUser,
   DashboardSummary,
+  GlobalSupplierDetail,
   GlobalSupplierSummary,
   InboxConversation,
   InboxPreview,
@@ -99,6 +100,11 @@ export const api = {
     request<{ ok: true; request_id: number }>('/api/requests', { method: 'POST', body: JSON.stringify(input) }),
   startRequestSearch: (id: number) => request<{ ok: true }>(`/api/requests/${id}/search`, { method: 'POST' }),
   listGlobalSuppliers: () => request<{ items: GlobalSupplierSummary[] }>('/api/global-suppliers'),
+  getGlobalSupplierDetail: (id: number) => request<GlobalSupplierDetail>(`/api/global-suppliers/${id}`),
+  saveGlobalSupplierNote: (id: number, note: string) =>
+    request<{ ok: true }>(`/api/global-suppliers/${id}`, { method: 'POST', body: JSON.stringify({ note }) }),
+  setGlobalSupplierRelationship: (id: number, status: 'none' | 'favorite' | 'blacklisted', reason = '') =>
+    request<{ ok: true }>(`/api/global-suppliers/${id}/relationship`, { method: 'POST', body: JSON.stringify({ status, reason }) }),
 
   listThreads: () => request<{ items: ThreadSummary[] }>('/api/correspondence'),
   searchMessages: (q: string) => request<{ items: MessageSearchResult[] }>(`/api/mail/search?q=${encodeURIComponent(q)}`),

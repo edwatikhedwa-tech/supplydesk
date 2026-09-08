@@ -9,6 +9,7 @@ import {
 import clsx from 'clsx';
 import { Ban, Search, Star, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -56,6 +57,7 @@ function matchesFilter(s: GlobalSupplierSummary, filter: FilterKey): boolean {
 const columnHelper = createColumnHelper<GlobalSupplierSummary>();
 
 export function Suppliers() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'total_requests', desc: true }]);
@@ -108,10 +110,10 @@ export function Suppliers() {
           const rate = ctx.getValue();
           const total = ctx.row.original.total_requests;
           if (total === 0) return <span className="text-ink-faint">—</span>;
-          const tone = rate >= 0.7 ? 'success' : rate > 0 ? 'warning' : 'danger';
+          const tone = rate >= 70 ? 'success' : rate > 0 ? 'warning' : 'danger';
           return (
             <div className="flex items-center gap-1.5">
-              <Badge tone={tone}>{formatPercent(rate)}</Badge>
+              <Badge tone={tone}>{formatPercent(rate / 100)}</Badge>
               {ctx.row.original.avg_response_hours != null && (
                 <span className="text-[11px] text-ink-faint">~{ctx.row.original.avg_response_hours} ч</span>
               )}
@@ -221,7 +223,11 @@ export function Suppliers() {
             </thead>
             <tbody>
               {table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="border-b border-border last:border-0 hover:bg-surface-hover">
+                <tr
+                  key={row.id}
+                  onClick={() => navigate(`/suppliers/${row.original.id}`)}
+                  className="cursor-pointer border-b border-border last:border-0 hover:bg-surface-hover"
+                >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-3 py-2.5 align-middle first:pl-6 last:pr-6">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

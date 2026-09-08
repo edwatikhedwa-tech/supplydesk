@@ -6,6 +6,7 @@ import { Login } from './pages/Login';
 import { Messages } from './pages/Messages';
 import { RequestDetail } from './pages/RequestDetail';
 import { Requests } from './pages/Requests';
+import { SupplierDetail } from './pages/SupplierDetail';
 import { Suppliers } from './pages/Suppliers';
 
 function Gate() {
@@ -29,6 +30,7 @@ function Gate() {
           <Route path="requests" element={<Requests />} />
           <Route path="requests/:id" element={<RequestDetail />} />
           <Route path="suppliers" element={<Suppliers />} />
+          <Route path="suppliers/:id" element={<SupplierDetail />} />
           <Route path="messages" element={<Messages />} />
         </Route>
       </Routes>
