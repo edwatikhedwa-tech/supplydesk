@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './lib/AuthContext';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { Messages } from './pages/Messages';
+import { RequestDetail } from './pages/RequestDetail';
 import { Requests } from './pages/Requests';
 import { Suppliers } from './pages/Suppliers';
 
@@ -26,6 +27,7 @@ function Gate() {
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />
           <Route path="requests" element={<Requests />} />
+          <Route path="requests/:id" element={<RequestDetail />} />
           <Route path="suppliers" element={<Suppliers />} />
           <Route path="messages" element={<Messages />} />
         </Route>

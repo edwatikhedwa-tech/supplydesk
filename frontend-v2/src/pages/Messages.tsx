@@ -66,7 +66,17 @@ export function Messages() {
   }, [threads]);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestedThreadId = searchParams.get('thread');
+  const requestedThreadIdParam = searchParams.get('thread');
+  const requestedRequestId = searchParams.get('request');
+  const requestedSupplierId = searchParams.get('supplier');
+  // The request-detail page only knows (request_id, supplier_id), not the
+  // thread's own id — resolve it here once threads are loaded, so callers
+  // don't need to know mail_threads.id to deep-link into a conversation.
+  const requestedThreadId =
+    requestedThreadIdParam ??
+    (requestedRequestId && requestedSupplierId
+      ? threads.find((t) => t.request_id === Number(requestedRequestId) && t.supplier_id === Number(requestedSupplierId))?.id.toString() ?? null
+      : null);
 
   const [expanded, setExpanded] = useState<Set<number> | null>(null);
   useEffect(() => {

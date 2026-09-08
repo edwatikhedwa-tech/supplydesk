@@ -9,7 +9,7 @@ import {
 import clsx from 'clsx';
 import { ArrowUpDown, Plus, Search, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewRequestModal } from '../components/NewRequestModal';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
@@ -35,6 +35,7 @@ const statusFilters: { key: RequestStatus | 'all'; label: string }[] = [
 const columnHelper = createColumnHelper<RequestListItem>();
 
 export function Requests() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState(() => searchParams.get('q') ?? '');
@@ -222,7 +223,11 @@ export function Requests() {
             </thead>
             <tbody>
               {table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="border-b border-border last:border-0 hover:bg-surface-hover">
+                <tr
+                  key={row.id}
+                  onClick={() => navigate(`/requests/${row.original.id}`)}
+                  className="cursor-pointer border-b border-border last:border-0 hover:bg-surface-hover"
+                >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-3 py-2.5 align-middle first:pl-6 last:pr-6">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

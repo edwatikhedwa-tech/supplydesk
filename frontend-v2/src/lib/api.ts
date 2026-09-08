@@ -10,6 +10,7 @@ import type {
   MailMessage,
   ManualLinkRequestOption,
   MessageSearchResult,
+  RequestDetail,
   RequestListItem,
   ThreadSummary,
 } from './types';
@@ -91,6 +92,9 @@ export const api = {
 
   dashboardSummary: () => request<DashboardSummary>('/api/dashboard/summary'),
   listRequests: () => request<{ items: RequestListItem[] }>('/api/requests'),
+  getRequestDetail: (requestId: number) => request<RequestDetail>(`/api/requests/${requestId}`),
+  markSupplierIrrelevant: (requestId: number, supplierId: number) =>
+    request<{ ok: true }>(`/api/requests/${requestId}/suppliers/${supplierId}/irrelevant`, { method: 'POST' }),
   createRequest: (input: { name: string; description?: string; deadline?: string; search_depth?: number; positions: { name: string }[] }) =>
     request<{ ok: true; request_id: number }>('/api/requests', { method: 'POST', body: JSON.stringify(input) }),
   startRequestSearch: (id: number) => request<{ ok: true }>(`/api/requests/${id}/search`, { method: 'POST' }),

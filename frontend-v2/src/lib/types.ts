@@ -27,6 +27,38 @@ export interface RequestListItem {
   replies_count: number;
 }
 
+export interface RequestPosition {
+  id: number;
+  position_key: string;
+  name: string;
+  quantity: string;
+}
+
+export type SupplierMailStatus = 'not_sent' | 'queued' | 'sending' | 'sent' | 'delivery_unknown' | 'failed' | 'cancelled';
+
+export interface RequestSupplierRow {
+  id: number;
+  external_key: string;
+  name: string;
+  email: string;
+  host: string;
+  inn: string;
+  kind: string;
+  region: string;
+  role: string;
+  phone: string;
+  mail_status_raw: SupplierMailStatus;
+  last_error: string | null;
+  unread_count: number;
+  found_url: string | null;
+}
+
+export interface RequestDetail {
+  request: RequestListItem;
+  positions: RequestPosition[];
+  items: RequestSupplierRow[];
+}
+
 export type RelationshipStatus = 'none' | 'favorite' | 'blacklisted';
 
 export interface GlobalSupplierRegistry {
