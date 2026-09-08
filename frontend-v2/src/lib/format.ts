@@ -1,11 +1,14 @@
-export const TODAY = new Date('2026-09-05T09:00:00+03:00');
+/** Real current time — this app now reads live data, not fixture-era dates. */
+export function now(): Date {
+  return new Date();
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function daysFromToday(iso: string | null): number | null {
   if (!iso) return null;
-  const d = new Date(iso + 'T00:00:00+03:00');
-  return Math.round((d.getTime() - TODAY.getTime()) / DAY_MS);
+  const d = new Date(iso.length <= 10 ? iso + 'T00:00:00+03:00' : iso);
+  return Math.round((d.getTime() - now().getTime()) / DAY_MS);
 }
 
 export type DeadlineUrgency = 'overdue' | 'today' | 'soon' | 'normal' | 'none';
@@ -22,7 +25,7 @@ export function deadlineUrgency(iso: string | null): DeadlineUrgency {
 export function formatDeadline(iso: string | null): string {
   if (!iso) return 'Без срока';
   const days = daysFromToday(iso);
-  const date = new Date(iso + 'T00:00:00+03:00');
+  const date = new Date(iso.length <= 10 ? iso + 'T00:00:00+03:00' : iso);
   const formatted = date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' });
   if (days === 0) return `Сегодня, ${formatted}`;
   if (days === 1) return `Завтра, ${formatted}`;
@@ -30,9 +33,10 @@ export function formatDeadline(iso: string | null): string {
   return formatted;
 }
 
-export function formatRelativeTime(iso: string): string {
+export function formatRelativeTime(iso: string | null): string {
+  if (!iso) return '—';
   const then = new Date(iso);
-  const diffMs = TODAY.getTime() - then.getTime();
+  const diffMs = now().getTime() - then.getTime();
   const diffMin = Math.round(diffMs / 60000);
   if (diffMin < 1) return 'только что';
   if (diffMin < 60) return `${diffMin} мин назад`;

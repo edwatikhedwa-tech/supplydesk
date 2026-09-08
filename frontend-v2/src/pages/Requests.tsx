@@ -14,10 +14,12 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { DeadlineTag } from '../components/ui/DeadlineTag';
 import { EmptyState } from '../components/ui/EmptyState';
-import { requests } from '../fixtures/requests';
+import { ErrorState, LoadingState } from '../components/ui/ErrorState';
+import { api } from '../lib/api';
 import { formatRelativeTime } from '../lib/format';
 import { requestStatusMeta } from '../lib/statusMeta';
 import type { RequestListItem, RequestStatus } from '../lib/types';
+import { useApiData } from '../lib/useApiData';
 
 const statusFilters: { key: RequestStatus | 'all'; label: string }[] = [
   { key: 'all', label: 'Все' },
@@ -35,13 +37,16 @@ export function Requests() {
   const [status, setStatus] = useState<RequestStatus | 'all'>('all');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'deadline', desc: false }]);
 
+  const state = useApiData(() => api.listRequests().then((r) => r.items), []);
+  const requests = state.status === 'ready' ? state.data : [];
+
   const filtered = useMemo(() => {
     return requests.filter((r) => {
       if (status !== 'all' && r.status !== status) return false;
       if (search && !r.name.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [search, status]);
+  }, [requests, search, status]);
 
   const columns = useMemo(
     () => [
@@ -63,14 +68,9 @@ export function Requests() {
       columnHelper.accessor('replies_count', {
         header: 'Ответы',
         cell: (ctx) => (
-          <div className="flex items-center gap-1.5 tabular-nums text-ink-soft">
-            <span>
-              {ctx.getValue()}/{ctx.row.original.sent_count}
-            </span>
-            {ctx.row.original.unread_count > 0 && (
-              <Badge tone="accent">{ctx.row.original.unread_count} новых</Badge>
-            )}
-          </div>
+          <span className="tabular-nums text-ink-soft">
+            {ctx.getValue()}/{ctx.row.original.sent_count}
+          </span>
         ),
       }),
       columnHelper.accessor('search_progress', {
@@ -106,9 +106,7 @@ export function Requests() {
       }),
       columnHelper.accessor('updated_at', {
         header: 'Обновлено',
-        cell: (ctx) => (
-          <span className="text-ink-muted">{ctx.getValue() ? formatRelativeTime(ctx.getValue()!) : '—'}</span>
-        ),
+        cell: (ctx) => <span className="text-ink-muted">{formatRelativeTime(ctx.getValue())}</span>,
       }),
     ],
     [],
@@ -127,7 +125,7 @@ export function Requests() {
     <div className="flex h-full flex-col overflow-hidden">
       <PageHeader
         title="Заявки"
-        description={`${requests.length} заявок в работе`}
+        description={state.status === 'ready' ? `${requests.length} заявок в работе` : 'Реальные данные · LOCAL_CANONICAL'}
         actions={
           <Button variant="primary" icon={<Plus size={14} />}>
             Новая заявка
@@ -163,12 +161,12 @@ export function Requests() {
       </div>
 
       <div className="flex-1 overflow-auto">
-        {filtered.length === 0 ? (
-          <EmptyState
-            icon={Truck}
-            title="Ничего не найдено"
-            description="Измените поиск или фильтр по статусу."
-          />
+        {state.status === 'loading' ? (
+          <LoadingState label="Загружаем заявки с бэкенда…" />
+        ) : state.status === 'error' ? (
+          <ErrorState message={state.message} onRetry={state.reload} />
+        ) : filtered.length === 0 ? (
+          <EmptyState icon={Truck} title="Ничего не найдено" description="Измените поиск или фильтр по статусу." />
         ) : (
           <table className="w-full border-collapse text-[12.5px]">
             <thead className="sticky top-0 z-10 bg-canvas">

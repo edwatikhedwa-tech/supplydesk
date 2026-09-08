@@ -1,8 +1,8 @@
-// Data contracts for the v2 prototype, trimmed from the real SupplyDesk
-// backend/frontend contract (frontend/src/lib/types.ts) to the fields this
-// slice actually renders. Field names and semantics are kept identical to
-// the real contract so this shell can be wired to the live API later
-// without a reshape.
+// Data contracts for frontend-v2, aligned 1:1 with the real backend contract
+// (frontend/src/lib/api.ts + types.ts, and live-verified against a running
+// LOCAL_CANONICAL backend on 2026-09-08). Fields the backend does not
+// actually send were removed; UI-only derived values are computed in
+// src/lib/derive.ts instead of pretending the API provides them.
 
 export type RequestStatus = 'draft' | 'searching' | 'updating' | 'completed' | 'error';
 
@@ -10,7 +10,8 @@ export interface RequestListItem {
   id: number;
   name: string;
   description: string | null;
-  deadline: string | null;
+  /** Empty string means "no deadline set" — the real API never sends null here. */
+  deadline: string;
   sender_name: string;
   company_name: string;
   created_at: string;
@@ -18,14 +19,28 @@ export interface RequestListItem {
   status: RequestStatus;
   search_progress: number;
   search_total: number;
+  search_depth: number;
+  last_error: string | null;
   positions_count: number;
   suppliers_count: number;
   sent_count: number;
   replies_count: number;
-  unread_count: number;
 }
 
 export type RelationshipStatus = 'none' | 'favorite' | 'blacklisted';
+
+export interface GlobalSupplierRegistry {
+  ogrn: string;
+  status: string;
+  is_active: boolean | null;
+  registered_at: string;
+}
+
+export interface GlobalSupplierFinances {
+  report_year: number | null;
+  revenue: number | null;
+  profit: number | null;
+}
 
 export interface GlobalSupplierSummary {
   id: number;
@@ -34,6 +49,7 @@ export interface GlobalSupplierSummary {
   site: string;
   email: string | null;
   phone: string | null;
+  note: string;
   categories: string[];
   total_requests: number;
   response_rate: number; // 0..1
@@ -41,6 +57,8 @@ export interface GlobalSupplierSummary {
   last_contact_at: string | null;
   relationship_status: RelationshipStatus;
   blacklist_reason: string | null;
+  registry: GlobalSupplierRegistry | null;
+  finances: GlobalSupplierFinances | null;
 }
 
 export type MailDirection = 'outbound' | 'inbound';
@@ -49,45 +67,79 @@ export interface MailMessage {
   id: number;
   direction: MailDirection;
   from_email: string;
-  from_name: string;
   to_email: string;
   subject: string;
-  body_text: string;
+  body_text: string | null;
+  body_html: string | null;
+  status: string;
+  error: string | null;
+  message_id: string | null;
   created_at: string;
-  status: 'accepted' | 'queued' | 'failed' | 'delivered' | 'read';
-  attachments?: { filename: string; size_kb: number }[];
+  sent_at: string | null;
+  has_remote_images?: boolean;
 }
 
 export interface ThreadSummary {
   id: number;
   request_id: number;
   supplier_id: number;
+  subject: string;
+  last_message_at: string | null;
+  created_at: string;
   request_name: string;
   supplier_name: string;
   supplier_email: string;
   supplier_host: string;
-  last_message_at: string;
   messages_count: number;
+  replies_count: number;
   unread_count: number;
-  last_message_direction: MailDirection;
-  response_status: 'none' | 'waiting' | 'answered';
+  pending_outbound_count: number;
+  last_outbound_status: string | null;
+  last_message_direction: MailDirection | null;
+  is_important: boolean;
+  priority: 1 | 2 | 3 | null;
 }
 
-export interface RequestGroup {
-  request_id: number;
-  request_name: string;
-  deadline: string | null;
-  threads: ThreadSummary[];
-}
-
-export interface UnmatchedMail {
+/** Light row from /api/mail/inbox/preview — no body text, matches the real endpoint. */
+export interface InboxPreview {
   id: number;
   from_email: string;
   subject: string;
-  preview: string;
   received_at: string;
   unread: boolean;
-  suggestion: { request_id: number; request_name: string; supplier_name: string; match: 'exact' | 'domain' } | null;
+}
+
+/** Full body, fetched separately via /api/mail/inbox/conversation when a preview row is opened. */
+export interface InboxConversation {
+  id: number;
+  from_email: string;
+  to_email: string;
+  subject: string;
+  body_text: string | null;
+  body_html: string | null;
+  received_at: string;
+  replies: MailMessage[];
+}
+
+/** Link candidate, fetched separately via /api/mail/inbox/{id}/suggestions. */
+export interface InboxSuggestion {
+  request_id: number;
+  supplier_id: number;
+  request_name: string;
+  supplier_name: string;
+  supplier_email: string;
+  match: 'exact' | 'domain';
+}
+
+export interface ManualLinkRequestOption {
+  id: number;
+  name: string;
+  description: string | null;
+  sender_name: string;
+  company_name: string;
+  status: string;
+  supplier_names: string[];
+  supplier_emails: string[];
 }
 
 export interface DashboardSummary {
@@ -98,4 +150,11 @@ export interface DashboardSummary {
     attention: number;
     unmatched_mail: number;
   };
+  requests: RequestListItem[];
+}
+
+export interface AuthUser {
+  email: string;
+  display_name: string;
+  workspace_name: string;
 }

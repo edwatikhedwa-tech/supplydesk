@@ -10,9 +10,9 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { requests } from '../../fixtures/requests';
-import { requestGroups } from '../../fixtures/messages';
-import { deadlineUrgency } from '../../lib/format';
+import { api } from '../../lib/api';
+import { useAuth } from '../../lib/AuthContext';
+import { useApiData } from '../../lib/useApiData';
 import { Avatar } from '../ui/Avatar';
 
 const nav = [
@@ -23,18 +23,16 @@ const nav = [
 ];
 
 function useNavCounts() {
-  const attention = requests.filter(
-    (r) => r.status !== 'completed' && ['overdue', 'today'].includes(deadlineUrgency(r.deadline)),
-  ).length;
-  const unread = requestGroups.reduce(
-    (sum, g) => sum + g.threads.reduce((s, t) => s + t.unread_count, 0),
-    0,
-  );
+  const dashboard = useApiData(() => api.dashboardSummary(), []);
+  const threads = useApiData(() => api.listThreads().then((r) => r.items), []);
+  const attention = dashboard.status === 'ready' ? dashboard.data.kpis.attention : 0;
+  const unread = threads.status === 'ready' ? threads.data.reduce((sum, t) => sum + t.unread_count, 0) : 0;
   return { attention, unread };
 }
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const { user } = useAuth();
   const { attention, unread } = useNavCounts();
   const badgeFor: Record<string, number> = { '/requests': attention, '/messages': unread };
 
@@ -111,11 +109,11 @@ export function Sidebar() {
 
       <div className="mt-auto border-t border-rail-border px-2.5 py-2.5">
         <div className={clsx('flex items-center gap-2 rounded-md px-1 py-1', collapsed && 'justify-center')}>
-          <Avatar name="Ирина Ковалёва" size="sm" />
+          <Avatar name={user?.display_name ?? '?'} size="sm" />
           {!collapsed && (
             <div className="min-w-0 leading-tight">
-              <p className="truncate text-[12.5px] font-medium text-rail-text-active">Ирина Ковалёва</p>
-              <p className="truncate text-[11px] text-rail-text-dim">ТехноСнаб Инжиниринг</p>
+              <p className="truncate text-[12.5px] font-medium text-rail-text-active">{user?.display_name}</p>
+              <p className="truncate text-[11px] text-rail-text-dim">{user?.workspace_name}</p>
             </div>
           )}
         </div>

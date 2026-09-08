@@ -12,9 +12,11 @@ import { useMemo, useState } from 'react';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
-import { suppliers } from '../fixtures/suppliers';
-import { TODAY, formatPercent, formatRelativeTime } from '../lib/format';
+import { ErrorState, LoadingState } from '../components/ui/ErrorState';
+import { api } from '../lib/api';
+import { now, formatPercent, formatRelativeTime } from '../lib/format';
 import type { GlobalSupplierSummary } from '../lib/types';
+import { useApiData } from '../lib/useApiData';
 
 type FilterKey = 'all' | 'favorite' | 'blacklisted' | 'stale' | 'never_replied' | 'not_contacted';
 
@@ -29,7 +31,7 @@ const filterConfig: { key: FilterKey; label: string }[] = [
 
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
-  return Math.round((TODAY.getTime() - new Date(iso).getTime()) / 86400000);
+  return Math.round((now().getTime() - new Date(iso).getTime()) / 86400000);
 }
 
 function matchesFilter(s: GlobalSupplierSummary, filter: FilterKey): boolean {
@@ -58,6 +60,9 @@ export function Suppliers() {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'total_requests', desc: true }]);
 
+  const state = useApiData(() => api.listGlobalSuppliers().then((r) => r.items), []);
+  const suppliers = state.status === 'ready' ? state.data : [];
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return suppliers.filter((s) => {
@@ -69,7 +74,7 @@ export function Suppliers() {
         s.inn.includes(q)
       );
     });
-  }, [search, filter]);
+  }, [suppliers, search, filter]);
 
   const counts = useMemo(
     () =>
@@ -77,7 +82,7 @@ export function Suppliers() {
         FilterKey,
         number
       >,
-    [],
+    [suppliers],
   );
 
   const columns = useMemo(
@@ -175,7 +180,10 @@ export function Suppliers() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <PageHeader title="Поставщики" description={`${suppliers.length} компаний в общей картотеке`} />
+      <PageHeader
+        title="Поставщики"
+        description={state.status === 'ready' ? `${suppliers.length} компаний в общей картотеке` : 'Реальные данные · LOCAL_CANONICAL'}
+      />
 
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 pb-3">
         <div className="relative w-72">
@@ -206,7 +214,11 @@ export function Suppliers() {
       </div>
 
       <div className="flex-1 overflow-auto">
-        {filtered.length === 0 ? (
+        {state.status === 'loading' ? (
+          <LoadingState label="Загружаем поставщиков с бэкенда…" />
+        ) : state.status === 'error' ? (
+          <ErrorState message={state.message} onRetry={state.reload} />
+        ) : filtered.length === 0 ? (
           <EmptyState icon={Truck} title="Поставщики не найдены" description="Попробуйте другой запрос или фильтр." />
         ) : (
           <table className="w-full border-collapse text-[12.5px]">
