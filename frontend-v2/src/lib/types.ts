@@ -70,6 +70,9 @@ export interface RequestSupplierRow {
   finances: GlobalSupplierFinances | null;
   email_count: number;
   site_count: number;
+  /** Set only once this supplier is confirmed/linked into the global
+   * картотека -- null means there's no company card to open yet. */
+  global_supplier_id: number | null;
 }
 
 export interface RequestDetail {
@@ -220,6 +223,10 @@ export interface ThreadSummary {
   id: number;
   request_id: number;
   supplier_id: number;
+  /** suppliers.id above is request-scoped; this is the global картотека id
+   * tasks/notes-that-need-it must use instead -- null until the supplier is
+   * confirmed/linked. */
+  global_supplier_id: number | null;
   subject: string;
   last_message_at: string | null;
   created_at: string;

@@ -1731,6 +1731,7 @@ class MailRepository(
                             t.created_at,
                             r.name AS request_name, s.name AS supplier_name, s.email AS supplier_email,
                             s.host AS supplier_host, s.external_key AS supplier_external_key,
+                            gl.global_supplier_id AS global_supplier_id,
                             (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id
                                AND {_communication_message_predicate("m")}) AS messages_count,
                             (SELECT COUNT(*) FROM mail_messages m WHERE m.thread_id=t.id AND m.direction='inbound' AND lower(COALESCE(m.from_email,'')) NOT LIKE 'mailer-daemon@%' AND lower(COALESCE(m.from_email,'')) NOT LIKE 'postmaster@%') AS replies_count,
@@ -1748,6 +1749,7 @@ class MailRepository(
                                ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS last_message_direction,
                             NULL AS manual_inbox_id
                      FROM mail_threads t JOIN requests r ON r.id=t.request_id JOIN suppliers s ON s.id=t.supplier_id
+                          LEFT JOIN global_supplier_links gl ON gl.supplier_id=s.id
                       WHERE t.workspace_id=? AND (? = 1 OR EXISTS (
                           SELECT 1 FROM mail_messages visible_m
                           WHERE visible_m.thread_id=t.id AND {_communication_message_predicate("visible_m")}
@@ -1758,6 +1760,7 @@ class MailRepository(
                             r.name AS request_name, COALESCE(s.name, '') AS supplier_name,
                             COALESCE(s.email, '') AS supplier_email, COALESCE(s.host, '') AS supplier_host,
                             COALESCE(s.external_key, '') AS supplier_external_key,
+                            gl.global_supplier_id AS global_supplier_id,
                             1 AS messages_count, 0 AS replies_count,
                             (SELECT COUNT(*) FROM mail_inbox_messages unread_inbox
                              WHERE unread_inbox.id=inbox.id
@@ -1768,6 +1771,7 @@ class MailRepository(
                      JOIN mail_inbox_messages inbox ON inbox.id=link.inbox_message_id
                      JOIN requests r ON r.id=link.request_id
                      LEFT JOIN suppliers s ON s.id=link.supplier_id
+                     LEFT JOIN global_supplier_links gl ON gl.supplier_id=s.id
                      WHERE link.workspace_id=? AND link.active=1 AND inbox.status='matched'
                  ) ORDER BY COALESCE(last_message_at, created_at) DESC""",
                  (int(include_queue_only), workspace_id, int(include_queue_only), workspace_id),

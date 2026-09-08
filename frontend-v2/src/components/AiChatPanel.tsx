@@ -7,12 +7,36 @@ interface ChatEntry {
   text: string;
 }
 
-export function AiChatPanel({ context, onClose }: { context: string; onClose: () => void }) {
-  const [entries, setEntries] = useState<ChatEntry[]>([]);
+const STORAGE_PREFIX = 'supplydesk:ai-chat:';
+
+function loadEntries(storageKey: string): ChatEntry[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + storageKey);
+    return raw ? (JSON.parse(raw) as ChatEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** `storageKey` identifies the conversation (thread id / unmatched message
+ * id) -- callers should also pass it as this component's React `key` so
+ * switching conversations remounts with fresh state instead of bleeding one
+ * thread's chat into another's. */
+export function AiChatPanel({ context, storageKey, onClose }: { context: string; storageKey: string; onClose: () => void }) {
+  const [entries, setEntries] = useState<ChatEntry[]>(() => loadEntries(storageKey));
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [usage, setUsage] = useState<{ spent_rub: number; limit_rub: number } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      if (entries.length > 0) localStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify(entries));
+      else localStorage.removeItem(STORAGE_PREFIX + storageKey);
+    } catch {
+      // Best-effort persistence -- a full/blocked localStorage shouldn't break the chat itself.
+    }
+  }, [entries, storageKey]);
 
   useEffect(() => {
     api

@@ -1,7 +1,8 @@
 import clsx from 'clsx';
-import { Ban, ExternalLink, Flame, Search, Star, Truck } from 'lucide-react';
+import { Ban, ExternalLink, Search, Star, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import checkoIcon from '../assets/checko-icon.png';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
 import { CopyButton } from '../components/ui/CopyButton';
@@ -184,9 +185,9 @@ export function Suppliers() {
                           rel="noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           title="Профиль на Checko"
-                          className="flex h-6 w-6 items-center justify-center rounded-md text-ink-faint hover:bg-surface-hover hover:text-ink-soft"
+                          className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-surface-hover"
                         >
-                          <Flame size={13} />
+                          <img src={checkoIcon} alt="Checko" className="h-3.5 w-3.5" />
                         </a>
                       )}
                     </div>

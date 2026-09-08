@@ -91,8 +91,14 @@ export function companyAge(registeredAt: string | null | undefined): string | nu
   return years >= 0 ? pluralYears(years) : null;
 }
 
+/** Checko keeps organisations and sole traders on different paths --
+ * /company/{ОГРН} for legal entities, /entrepreneur/{ОГРНИП} for sole
+ * traders; /company/{ОГРНИП} 404s. An ОГРНИП is 15 digits, an ОГРН 13, so
+ * the number itself says which page to open -- no extra field needed. */
 export function checkoUrl(ogrn: string | null | undefined): string | null {
-  return ogrn ? `https://checko.ru/company/${ogrn}` : null;
+  if (!ogrn) return null;
+  const isEntrepreneur = ogrn.replace(/\D/g, '').length === 15;
+  return `https://checko.ru/${isEntrepreneur ? 'entrepreneur' : 'company'}/${ogrn}`;
 }
 
 const LEGAL_FORM_ABBREVIATIONS: [RegExp, string][] = [

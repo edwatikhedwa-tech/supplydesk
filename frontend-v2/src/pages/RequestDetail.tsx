@@ -1,6 +1,7 @@
-import { ArrowLeft, Ban, ExternalLink, Flame, Inbox, MessageSquareText, Package, PenSquare, RotateCw, Search } from 'lucide-react';
+import { ArrowLeft, Ban, ExternalLink, Inbox, MessageSquareText, Package, PenSquare, RotateCw, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import checkoIcon from '../assets/checko-icon.png';
 import { BulkComposeModal } from '../components/BulkComposeModal';
 import { QuickAddTaskButton } from '../components/QuickAddTaskButton';
 import { PageHeader } from '../components/shell/PageHeader';
@@ -17,7 +18,7 @@ import type { RequestSupplierRow, SupplierSendInput } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
 
 function toSendInput(s: RequestSupplierRow): SupplierSendInput {
-  return { id: s.id, email: s.email, name: s.name, host: s.host, external_key: s.external_key, inn: s.inn, global_supplier_id: null };
+  return { id: s.id, email: s.email, name: s.name, host: s.host, external_key: s.external_key, inn: s.inn, global_supplier_id: s.global_supplier_id };
 }
 
 type FilterKey = 'all' | 'has_contact' | 'no_contact' | 'sent' | 'waiting' | 'answered' | 'error' | 'delivery_unknown';
@@ -322,7 +323,19 @@ export function RequestDetail() {
                       </td>
                       <td className="px-3 py-2.5 align-top">
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-ink">{formatCompanyName(s.name)}</p>
+                          {s.global_supplier_id ? (
+                            <Link
+                              to={`/suppliers/${s.global_supplier_id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="truncate font-medium text-ink hover:text-accent hover:underline"
+                            >
+                              {formatCompanyName(s.name)}
+                            </Link>
+                          ) : (
+                            <p className="truncate font-medium text-ink" title="Карточка появится после подтверждения ИНН">
+                              {formatCompanyName(s.name)}
+                            </p>
+                          )}
                           <p className="truncate text-[11px] text-ink-muted">
                             {s.inn && <span>ИНН {s.inn}</span>}
                             {site && (
@@ -371,8 +384,8 @@ export function RequestDetail() {
                       <td className="px-3 py-2.5 pr-6 align-top">
                         <div className="flex items-center justify-end gap-1">
                           {checko && (
-                            <a href={checko} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title="Профиль на Checko" className="flex h-7 w-7 items-center justify-center rounded-md text-ink-faint hover:bg-surface-hover hover:text-ink-soft">
-                              <Flame size={13} />
+                            <a href={checko} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title="Профиль на Checko" className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-surface-hover">
+                              <img src={checkoIcon} alt="Checko" className="h-4 w-4" />
                             </a>
                           )}
                           <Button variant="ghost" size="sm" icon={<MessageSquareText size={13} />} onClick={() => openThread(s.id)}>

@@ -22,6 +22,7 @@ import { AiChatPanel } from '../components/AiChatPanel';
 import { LogisticsQuoteModal } from '../components/LogisticsQuoteModal';
 import { ManualLinkModal } from '../components/ManualLinkModal';
 import { NotesPanel } from '../components/NotesPanel';
+import { TasksPanel } from '../components/TasksPanel';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge, type Tone } from '../components/ui/Badge';
@@ -178,6 +179,7 @@ export function Messages() {
   const [draft, setDraft] = useState('');
   const [logisticsOpen, setLogisticsOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [tasksOpen, setTasksOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const draftRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -591,25 +593,29 @@ export function Messages() {
                       />
                       {unmatchedReplyError && <p className="mt-1.5 text-[12px] text-danger">{unmatchedReplyError}</p>}
 
+                      {confirmingIgnore && (
+                        <div className="mt-2 flex items-center justify-between gap-3 rounded-md border border-danger-border bg-danger-subtle px-3 py-2">
+                          <span className="text-[12.5px] font-medium text-danger">Скрыть это письмо насовсем? Отменить это действие через интерфейс будет нельзя.</span>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="border-danger-border bg-surface text-danger hover:bg-danger-subtle"
+                              disabled={ignoring}
+                              onClick={() => void ignoreUnmatched()}
+                            >
+                              {ignoring ? 'Скрываем…' : 'Да, скрыть'}
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setConfirmingIgnore(false)}>
+                              Отмена
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          {confirmingIgnore ? (
-                            <>
-                              <span className="text-[12px] text-ink-muted">Скрыть это письмо насовсем?</span>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                className="border-danger-border text-danger hover:bg-danger-subtle"
-                                disabled={ignoring}
-                                onClick={() => void ignoreUnmatched()}
-                              >
-                                {ignoring ? 'Скрываем…' : 'Да, скрыть'}
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => setConfirmingIgnore(false)}>
-                                Отмена
-                              </Button>
-                            </>
-                          ) : (
+                          {!confirmingIgnore && (
                             <>
                               <Button variant="secondary" size="sm" icon={<Ban size={13} />} onClick={() => setConfirmingIgnore(true)}>
                                 Игнорировать
@@ -665,8 +671,14 @@ export function Messages() {
           />
         )}
 
-        {aiOpen && (
+        {tasksOpen && activeThread && (
+          <TasksPanel requestId={activeThread.request_id} supplierId={activeThread.global_supplier_id} onClose={() => setTasksOpen(false)} />
+        )}
+
+        {aiOpen && (activeThread || activeUnmatchedId) && (
           <AiChatPanel
+            key={activeThread ? `thread-${activeThread.id}` : `unmatched-${activeUnmatchedId}`}
+            storageKey={activeThread ? `thread-${activeThread.id}` : `unmatched-${activeUnmatchedId}`}
             context={buildAiContext(activeThread, messagesState, activeUnmatchedId, conversationState)}
             onClose={() => setAiOpen(false)}
           />
@@ -678,6 +690,7 @@ export function Messages() {
             disabled={!activeThread}
             onClick={() => {
               setNotesOpen((v) => !v);
+              setTasksOpen(false);
               setAiOpen(false);
             }}
             title={activeThread ? (hasNote ? 'Заметки — есть заметка' : 'Заметки') : 'Заметки — откройте переписку по заявке'}
@@ -698,10 +711,22 @@ export function Messages() {
             )}
           </button>
           <button
-            key="Задачи"
-            disabled
-            title="Задачи — скоро"
-            className="flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-md text-ink-faint"
+            type="button"
+            disabled={!activeThread}
+            onClick={() => {
+              setTasksOpen((v) => !v);
+              setNotesOpen(false);
+              setAiOpen(false);
+            }}
+            title={activeThread ? 'Задачи' : 'Задачи — откройте переписку по заявке'}
+            className={clsx(
+              'flex h-9 w-9 items-center justify-center rounded-md',
+              !activeThread
+                ? 'cursor-not-allowed text-ink-faint'
+                : tasksOpen
+                  ? 'bg-accent-subtle text-accent'
+                  : 'text-ink-muted hover:bg-surface-hover hover:text-ink',
+            )}
           >
             <SquareCheck size={16} />
           </button>
@@ -711,6 +736,7 @@ export function Messages() {
             onClick={() => {
               setAiOpen((v) => !v);
               setNotesOpen(false);
+              setTasksOpen(false);
             }}
             title={activeThread || activeUnmatchedId ? 'ИИ-помощник' : 'ИИ-помощник — откройте переписку'}
             className={clsx(
