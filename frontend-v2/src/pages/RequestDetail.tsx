@@ -283,10 +283,21 @@ export function RequestDetail() {
           <EmptyState icon={Search} title="Ничего не найдено" description="Попробуйте другой фильтр или запрос." />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] border-collapse text-[12.5px]">
+            <table className="w-full table-fixed border-collapse text-[12.5px]">
+              <colgroup>
+                <col className="w-9" />
+                <col className="w-[19%]" />
+                <col className="w-[19%]" />
+                <col className="w-[7%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[13%]" />
+                <col className="w-[86px]" />
+              </colgroup>
               <thead className="sticky top-0 z-10 bg-canvas">
                 <tr className="border-b border-border">
-                  <th className="w-9 px-3 py-2 pl-6">
+                  <th className="px-3 py-2 pl-6">
                     <input
                       type="checkbox"
                       checked={visible.length > 0 && visible.every((s) => selected.has(s.id))}
@@ -296,7 +307,7 @@ export function RequestDetail() {
                     />
                   </th>
                   {['Компания', 'Контакты', 'Возраст', 'Выручка', 'Прибыль', 'ЕГРЮЛ', 'Статус письма', ''].map((h) => (
-                    <th key={h} className="whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-muted last:pr-6">
+                    <th key={h} className="truncate px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-muted last:pr-6">
                       {h}
                     </th>
                   ))}
@@ -347,17 +358,17 @@ export function RequestDetail() {
                         </div>
                       </td>
                       <td className="px-3 py-2.5 align-top text-ink-soft">
-                        <div className="flex items-center gap-1">
+                        <div className="flex min-w-0 items-center gap-1">
                           {s.email ? (
                             <>
-                              <span className="truncate">{s.email}</span>
+                              <span className="min-w-0 truncate">{s.email}</span>
                               <CopyButton text={s.email} />
                             </>
                           ) : (
                             <span className="text-ink-faint">Нет email</span>
                           )}
                         </div>
-                        {s.region && <p className="text-[11px] text-ink-faint">{s.region}</p>}
+                        {s.region && <p className="truncate text-[11px] text-ink-faint">{s.region}</p>}
                       </td>
                       <td className="px-3 py-2.5 align-top text-ink-soft">{age ?? '—'}</td>
                       <td className="px-3 py-2.5 align-top text-ink-soft">{s.finances ? formatMoney(s.finances.revenue) : '—'}</td>
@@ -388,19 +399,25 @@ export function RequestDetail() {
                               <img src={checkoIcon} alt="Checko" className="h-4 w-4" />
                             </a>
                           )}
-                          <Button variant="ghost" size="sm" icon={<MessageSquareText size={13} />} onClick={() => openThread(s.id)}>
-                            Переписка
-                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="h-7 w-7 px-0"
+                            icon={<MessageSquareText size={13} />}
+                            onClick={() => openThread(s.id)}
+                            title="Переписка"
+                            aria-label="Переписка"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 px-0"
                             icon={<Ban size={13} />}
                             disabled={irrelevantId === s.id}
                             onClick={() => void markIrrelevant(s.id)}
-                            title="Убрать из подходящих для этой заявки"
-                          >
-                            Не подходит
-                          </Button>
+                            title="Не подходит — убрать из подходящих для этой заявки"
+                            aria-label="Не подходит"
+                          />
                         </div>
                       </td>
                     </tr>

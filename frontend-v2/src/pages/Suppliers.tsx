@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Ban, ExternalLink, Search, Star, Truck } from 'lucide-react';
+import { Ban, ExternalLink, Search, Star, TrendingDown, TrendingUp, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import checkoIcon from '../assets/checko-icon.png';
@@ -46,18 +46,6 @@ function matchesFilter(s: GlobalSupplierSummary, filter: FilterKey): boolean {
     default:
       return true;
   }
-}
-
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div>
-      <p className="text-[10.5px] uppercase tracking-wide text-ink-faint">{label}</p>
-      <p className="text-[13px] text-ink">
-        {value}
-        {sub && <span className="ml-1 text-[11px] text-ink-faint">{sub}</span>}
-      </p>
-    </div>
-  );
 }
 
 export function Suppliers() {
@@ -129,85 +117,116 @@ export function Suppliers() {
         ) : filtered.length === 0 ? (
           <EmptyState icon={Truck} title="Поставщики не найдены" description="Попробуйте другой запрос или фильтр." />
         ) : (
-          <div className="flex flex-col divide-y divide-border">
-            {filtered.map((s) => {
-              const age = companyAge(s.registry?.registered_at);
-              const checko = checkoUrl(s.registry?.ogrn);
-              return (
-                <div
-                  key={s.id}
-                  onClick={() => navigate(`/suppliers/${s.id}`)}
-                  className="flex cursor-pointer flex-col gap-3 px-6 py-4 hover:bg-surface-hover"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-[13.5px] font-semibold text-ink">
-                        {formatCompanyName(s.name)}{' '}
-                        <span className="inline-flex items-center gap-1 font-normal text-ink-faint">
-                          ИНН {s.inn}
-                          {s.inn && <CopyButton text={s.inn} />}
-                        </span>
-                      </p>
-                      {s.site && (
-                        <a
-                          href={s.site.startsWith('http') ? s.site : `https://${s.site}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="mt-0.5 flex items-center gap-1 text-[12px] text-accent hover:underline"
-                        >
-                          {s.site} <ExternalLink size={10} />
-                        </a>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {s.relationship_status === 'favorite' && (
-                        <Badge tone="accent">
-                          <Star size={10} className="fill-current" /> Избранный
-                        </Badge>
-                      )}
-                      {s.relationship_status === 'blacklisted' && (
-                        <span title={s.blacklist_reason ?? undefined}>
-                          <Badge tone="danger">
-                            <Ban size={10} /> Чёрный список
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1050px] border-collapse text-[12.5px]">
+              <thead className="sticky top-0 z-10 bg-canvas">
+                <tr className="border-b border-border">
+                  {['Название', 'Возраст', 'Выручка', 'Прибыль', 'ЕГРЮЛ', '', 'Заявок', 'Отклик', 'Последний контакт', 'Статус'].map((h) => (
+                    <th key={h} className="whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-muted first:pl-6 last:pr-6">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((s) => {
+                  const age = companyAge(s.registry?.registered_at);
+                  const checko = checkoUrl(s.registry?.ogrn);
+                  const profit = s.finances?.profit ?? null;
+                  return (
+                    <tr key={s.id} onClick={() => navigate(`/suppliers/${s.id}`)} className="cursor-pointer border-b border-border last:border-0 hover:bg-surface-hover">
+                      <td className="px-3 py-2.5 pl-6 align-middle">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-ink">{formatCompanyName(s.name)}</p>
+                          <p className="flex items-center gap-1 truncate text-[11px] text-ink-muted">
+                            ИНН {s.inn}
+                            {s.inn && <CopyButton text={s.inn} />}
+                            {s.site && (
+                              <a
+                                href={s.site.startsWith('http') ? s.site : `https://${s.site}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="ml-1 flex items-center gap-0.5 text-accent hover:underline"
+                              >
+                                {s.site} <ExternalLink size={9} />
+                              </a>
+                            )}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 align-middle text-ink-soft">{age ?? '—'}</td>
+                      <td className="px-3 py-2.5 align-middle">
+                        {s.finances?.revenue != null ? (
+                          <>
+                            <p className="font-semibold text-ink">{formatMoney(s.finances.revenue)}</p>
+                            {s.finances.report_year && <p className="text-[10.5px] text-ink-faint">за {s.finances.report_year}</p>}
+                          </>
+                        ) : (
+                          <span className="text-ink-faint">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 align-middle">
+                        {profit != null ? (
+                          <span className={clsx('flex items-center gap-1 font-semibold', profit >= 0 ? 'text-success' : 'text-danger')}>
+                            {profit >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                            {formatMoney(profit)}
+                          </span>
+                        ) : (
+                          <span className="text-ink-faint">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 align-middle">
+                        {s.registry ? (
+                          <span className={s.registry.is_active === false ? 'text-danger' : 'text-success'}>
+                            {s.registry.is_active === false ? 'Ликвидировано' : s.registry.status || 'Действует'}
+                          </span>
+                        ) : (
+                          <span className="text-ink-faint">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 align-middle">
+                        {checko && (
+                          <a
+                            href={checko}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            title="Профиль на Checko"
+                            className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-surface-hover"
+                          >
+                            <img src={checkoIcon} alt="Checko" className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 align-middle text-ink-soft">{s.total_requests}</td>
+                      <td className="px-3 py-2.5 align-middle">
+                        {s.total_requests > 0 ? (
+                          <span className={s.response_rate >= 50 ? 'font-medium text-success' : 'text-ink-soft'}>{formatPercent(s.response_rate / 100)}</span>
+                        ) : (
+                          <span className="text-ink-faint">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 align-middle text-ink-muted">{s.last_contact_at ? formatRelativeTime(s.last_contact_at) : 'Не было'}</td>
+                      <td className="px-3 py-2.5 pr-6 align-middle">
+                        {s.relationship_status === 'favorite' && (
+                          <Badge tone="accent">
+                            <Star size={10} className="fill-current" /> Избранный
                           </Badge>
-                        </span>
-                      )}
-                      {s.registry && (
-                        <span className={`text-[11px] ${s.registry.is_active === false ? 'text-danger' : 'text-success'}`}>
-                          {s.registry.is_active === false ? 'Ликвидировано' : s.registry.status || 'Действует'}
-                        </span>
-                      )}
-                      {checko && (
-                        <a
-                          href={checko}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Профиль на Checko"
-                          className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-surface-hover"
-                        >
-                          <img src={checkoIcon} alt="Checko" className="h-3.5 w-3.5" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-4">
-                    <Stat label="Возраст" value={age ?? '—'} />
-                    <Stat
-                      label="Выручка"
-                      value={formatMoney(s.finances?.revenue ?? null)}
-                      sub={s.finances?.report_year ? `за ${s.finances.report_year}` : undefined}
-                    />
-                    <Stat label="Прибыль" value={formatMoney(s.finances?.profit ?? null)} />
-                    <Stat label="Заявок" value={String(s.total_requests)} />
-                    <Stat label="Отклик" value={s.total_requests > 0 ? formatPercent(s.response_rate / 100) : '—'} />
-                    <Stat label="Последний контакт" value={s.last_contact_at ? formatRelativeTime(s.last_contact_at) : 'Не было'} />
-                  </div>
-                </div>
-              );
-            })}
+                        )}
+                        {s.relationship_status === 'blacklisted' && (
+                          <span title={s.blacklist_reason ?? undefined}>
+                            <Badge tone="danger">
+                              <Ban size={10} /> Чёрный список
+                            </Badge>
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

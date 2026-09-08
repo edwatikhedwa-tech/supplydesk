@@ -7,7 +7,12 @@ type Size = 'sm' | 'md';
 const variantClasses: Record<Variant, string> = {
   primary: 'bg-accent text-white hover:bg-accent-hover border border-transparent shadow-sm',
   secondary: 'bg-surface text-ink border border-border-strong hover:bg-surface-hover',
-  ghost: 'bg-transparent text-ink-soft border border-transparent hover:bg-surface-hover',
+  // A row this button sits in often has its own hover:bg-surface-hover -- if
+  // the button used the same tint, hovering it looked identical to just
+  // hovering the row, so it read as "nothing is highlighted". Ghost buttons
+  // shift to the accent tint plus a real border instead, so the button
+  // itself is unmistakably the hovered target.
+  ghost: 'bg-transparent text-ink-soft border border-transparent hover:border-accent-border hover:bg-accent-subtle hover:text-accent',
 };
 
 const sizeClasses: Record<Size, string> = {

@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { formatDeadline } from '../lib/format';
 import { useApiData } from '../lib/useApiData';
 import { DatePicker } from './ui/DatePicker';
+import { TaskSupplierPreview } from './TaskSupplierPreview';
 
 /** Right-rail task list scoped to this exact thread (request + supplier) --
  * the Dashboard's "Мои задачи" stays the place to see everything at once;
@@ -26,6 +27,7 @@ export function TasksPanel({
   const [dueDate, setDueDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const tasks =
     state.status === 'ready' && supplierId !== null
@@ -94,29 +96,37 @@ export function TasksPanel({
         )}
         <div className="flex flex-col gap-1.5">
           {tasks.map((t) => (
-            <div key={t.id} className="flex items-start gap-2 rounded-md border border-border px-2.5 py-2">
-              <button
-                type="button"
-                disabled={busyId === t.id}
-                onClick={() => void toggleDone(t.id)}
-                aria-label="Отметить выполненной"
-                className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border-strong text-transparent hover:border-accent hover:text-accent"
-              >
-                <SquareCheck size={11} />
-              </button>
-              <div className="min-w-0 flex-1">
-                <p className="text-[12.5px] leading-snug text-ink">{t.title}</p>
-                {t.due_date && <p className="mt-0.5 text-[11px] text-ink-faint">{formatDeadline(t.due_date)}</p>}
+            <div key={t.id} className="rounded-md border border-border px-2.5 py-2">
+              <div className="flex items-start gap-2">
+                <button
+                  type="button"
+                  disabled={busyId === t.id}
+                  onClick={() => void toggleDone(t.id)}
+                  aria-label="Отметить выполненной"
+                  className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border-strong text-transparent hover:border-accent hover:text-accent"
+                >
+                  <SquareCheck size={11} />
+                </button>
+                <button
+                  type="button"
+                  disabled={!t.supplier_id}
+                  onClick={() => setExpandedId((prev) => (prev === t.id ? null : t.id))}
+                  className="min-w-0 flex-1 text-left disabled:cursor-default"
+                >
+                  <p className="text-[12.5px] leading-snug text-ink">{t.title}</p>
+                  {t.due_date && <p className="mt-0.5 text-[11px] text-ink-faint">{formatDeadline(t.due_date)}</p>}
+                </button>
+                <button
+                  type="button"
+                  disabled={busyId === t.id}
+                  onClick={() => void remove(t.id)}
+                  aria-label="Удалить задачу"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ink-faint hover:bg-danger-subtle hover:text-danger"
+                >
+                  <Trash2 size={12} />
+                </button>
               </div>
-              <button
-                type="button"
-                disabled={busyId === t.id}
-                onClick={() => void remove(t.id)}
-                aria-label="Удалить задачу"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ink-faint hover:bg-danger-subtle hover:text-danger"
-              >
-                <Trash2 size={12} />
-              </button>
+              {expandedId === t.id && t.supplier_id && <TaskSupplierPreview supplierId={t.supplier_id} />}
             </div>
           ))}
         </div>

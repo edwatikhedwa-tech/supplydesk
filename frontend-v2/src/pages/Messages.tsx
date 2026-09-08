@@ -490,19 +490,25 @@ export function Messages() {
                         {isOpen &&
                           g.threads.map((t) => {
                             const status = threadResponseStatus(t);
+                            const inAiContext = aiExtraThreadIds.includes(t.id);
                             return (
                               <button
                                 key={t.id}
                                 onClick={() => selectThread(t.id)}
-                                className={
-                                  'flex w-full items-center gap-2 border-t border-border/60 py-2 pl-8 pr-3 text-left hover:bg-surface-hover ' +
-                                  (activeThread?.id === t.id ? 'border-l-2 border-l-accent bg-accent-subtle/40' : '')
-                                }
+                                className={clsx(
+                                  'flex w-full items-center gap-2 border-t border-border/60 py-2 pl-8 pr-3 text-left hover:bg-surface-hover',
+                                  activeThread?.id === t.id
+                                    ? 'border-l-2 border-l-accent bg-accent-subtle/40'
+                                    : inAiContext
+                                      ? 'border-l-2 border-l-accent/50 bg-accent-subtle/15'
+                                      : '',
+                                )}
                               >
                                 <Avatar name={t.supplier_name} size="sm" />
                                 <div className="min-w-0 flex-1">
-                                  <p className={clsx('truncate text-[12px]', t.unread_count > 0 ? 'font-semibold text-ink' : 'font-medium text-ink-soft')}>
-                                    {formatCompanyName(t.supplier_name)}
+                                  <p className={clsx('flex items-center gap-1 truncate text-[12px]', t.unread_count > 0 ? 'font-semibold text-ink' : 'font-medium text-ink-soft')}>
+                                    {inAiContext && <Sparkles size={10} className="shrink-0 text-accent" />}
+                                    <span className="truncate">{formatCompanyName(t.supplier_name)}</span>
                                   </p>
                                   <p className="truncate text-[11px] text-ink-muted">{formatRelativeTime(t.last_message_at)}</p>
                                 </div>

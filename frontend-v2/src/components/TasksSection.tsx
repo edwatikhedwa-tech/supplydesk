@@ -9,6 +9,7 @@ import { Button } from './ui/Button';
 import { DatePicker } from './ui/DatePicker';
 import { EmptyState } from './ui/EmptyState';
 import { ErrorState, LoadingState } from './ui/ErrorState';
+import { TaskSupplierPreview } from './TaskSupplierPreview';
 
 /** Dashboard's "Мои задачи" block (§2, §12 of the concept doc) -- a
  * deliberately separate entity from the system-detected "Требует внимания"
@@ -21,6 +22,7 @@ export function TasksSection() {
   const [dueDate, setDueDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const groups = useMemo(() => {
     if (state.status !== 'ready') return null;
@@ -116,13 +118,40 @@ export function TasksSection() {
       ) : (
         <div className="flex flex-col">
           {groups.overdue.length > 0 && (
-            <TaskGroup label="Просрочено" tone="text-danger" tasks={groups.overdue} busyId={busyId} onToggle={toggleDone} onDelete={remove} />
+            <TaskGroup
+              label="Просрочено"
+              tone="text-danger"
+              tasks={groups.overdue}
+              busyId={busyId}
+              expandedId={expandedId}
+              onExpand={setExpandedId}
+              onToggle={toggleDone}
+              onDelete={remove}
+            />
           )}
           {groups.today.length > 0 && (
-            <TaskGroup label="Сегодня" tone="text-warning" tasks={groups.today} busyId={busyId} onToggle={toggleDone} onDelete={remove} />
+            <TaskGroup
+              label="Сегодня"
+              tone="text-warning"
+              tasks={groups.today}
+              busyId={busyId}
+              expandedId={expandedId}
+              onExpand={setExpandedId}
+              onToggle={toggleDone}
+              onDelete={remove}
+            />
           )}
           {groups.upcoming.length > 0 && (
-            <TaskGroup label="Скоро" tone="text-ink-muted" tasks={groups.upcoming} busyId={busyId} onToggle={toggleDone} onDelete={remove} />
+            <TaskGroup
+              label="Скоро"
+              tone="text-ink-muted"
+              tasks={groups.upcoming}
+              busyId={busyId}
+              expandedId={expandedId}
+              onExpand={setExpandedId}
+              onToggle={toggleDone}
+              onDelete={remove}
+            />
           )}
         </div>
       )}
@@ -135,6 +164,8 @@ function TaskGroup({
   tone,
   tasks,
   busyId,
+  expandedId,
+  onExpand,
   onToggle,
   onDelete,
 }: {
@@ -142,6 +173,8 @@ function TaskGroup({
   tone: string;
   tasks: Task[];
   busyId: number | null;
+  expandedId: number | null;
+  onExpand: (id: number | null) => void;
   onToggle: (id: number, done: boolean) => void;
   onDelete: (id: number) => void;
 }) {
@@ -149,43 +182,51 @@ function TaskGroup({
     <div>
       <p className={`px-4 pt-2.5 text-[10.5px] font-semibold uppercase tracking-wide ${tone}`}>{label}</p>
       {tasks.map((t) => (
-        <div key={t.id} className="flex items-center gap-2.5 border-b border-border px-4 py-2 last:border-0 hover:bg-surface-hover">
-          <button
-            type="button"
-            disabled={busyId === t.id}
-            onClick={() => onToggle(t.id, true)}
-            aria-label="Отметить выполненной"
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border-strong text-transparent hover:border-accent hover:text-accent"
-          >
-            <Check size={11} />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[12.5px] text-ink">{t.title}</p>
-            {(t.request_id || t.supplier_id) && (
-              <p className="truncate text-[11px] text-ink-faint">
-                {t.request_id && (
-                  <Link to={`/requests/${t.request_id}`} className="hover:text-accent" onClick={(e) => e.stopPropagation()}>
-                    {t.request_name}
-                  </Link>
-                )}
-                {t.supplier_id && (
-                  <Link to={`/suppliers/${t.supplier_id}`} className="hover:text-accent" onClick={(e) => e.stopPropagation()}>
-                    {formatCompanyName(t.supplier_name ?? '')}
-                  </Link>
-                )}
-              </p>
-            )}
+        <div key={t.id} className="border-b border-border px-4 py-2 last:border-0 hover:bg-surface-hover">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              disabled={busyId === t.id}
+              onClick={() => onToggle(t.id, true)}
+              aria-label="Отметить выполненной"
+              className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border-strong text-transparent hover:border-accent hover:text-accent"
+            >
+              <Check size={11} />
+            </button>
+            <button
+              type="button"
+              disabled={!t.supplier_id}
+              onClick={() => onExpand(expandedId === t.id ? null : t.id)}
+              className="min-w-0 flex-1 text-left disabled:cursor-default"
+            >
+              <p className="truncate text-[12.5px] text-ink">{t.title}</p>
+              {(t.request_id || t.supplier_id) && (
+                <p className="truncate text-[11px] text-ink-faint">
+                  {t.request_id && (
+                    <Link to={`/requests/${t.request_id}`} className="hover:text-accent" onClick={(e) => e.stopPropagation()}>
+                      {t.request_name}
+                    </Link>
+                  )}
+                  {t.supplier_id && (
+                    <Link to={`/suppliers/${t.supplier_id}`} className="hover:text-accent" onClick={(e) => e.stopPropagation()}>
+                      {formatCompanyName(t.supplier_name ?? '')}
+                    </Link>
+                  )}
+                </p>
+              )}
+            </button>
+            {t.due_date && <span className="shrink-0 text-[11px] text-ink-faint">{formatDeadline(t.due_date)}</span>}
+            <button
+              type="button"
+              disabled={busyId === t.id}
+              onClick={() => onDelete(t.id)}
+              aria-label="Удалить задачу"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ink-faint hover:bg-danger-subtle hover:text-danger"
+            >
+              <Trash2 size={12} />
+            </button>
           </div>
-          {t.due_date && <span className="shrink-0 text-[11px] text-ink-faint">{formatDeadline(t.due_date)}</span>}
-          <button
-            type="button"
-            disabled={busyId === t.id}
-            onClick={() => onDelete(t.id)}
-            aria-label="Удалить задачу"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ink-faint hover:bg-danger-subtle hover:text-danger"
-          >
-            <Trash2 size={12} />
-          </button>
+          {expandedId === t.id && t.supplier_id && <TaskSupplierPreview supplierId={t.supplier_id} />}
         </div>
       ))}
     </div>
