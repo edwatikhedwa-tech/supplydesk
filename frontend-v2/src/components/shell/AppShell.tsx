@@ -26,10 +26,10 @@ export function AppShell() {
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className="flex h-9 w-full max-w-[440px] items-center gap-2 rounded-lg border border-border-strong bg-canvas px-3 text-[13px] text-ink-faint transition-colors hover:border-accent-border hover:text-ink-soft"
+            className="flex h-9 w-full max-w-[620px] items-center gap-2 rounded-lg border border-border-strong bg-canvas px-3 text-[13px] text-ink-faint transition-colors hover:border-accent-border hover:text-ink-soft"
           >
             <Search size={14} className="shrink-0" />
-            <span className="min-w-0 flex-1 truncate text-left">Поиск: заявки, поставщики, переписки, текст письма…</span>
+            <span className="min-w-0 flex-1 whitespace-nowrap text-left">Поиск: заявки, поставщики, переписки, текст письма…</span>
             <kbd className="shrink-0 rounded border border-border-strong px-1.5 py-0.5 text-[10px] text-ink-faint">⌘K</kbd>
           </button>
         </div>

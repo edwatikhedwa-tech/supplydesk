@@ -78,6 +78,52 @@ export interface RequestDetail {
   items: RequestSupplierRow[];
 }
 
+// Bulk-compose ("Написать") -- real endpoints already used by the legacy
+// frontend (frontend/src/lib/api.ts): /api/mail/deliverability/preflight and
+// /api/mail/send-bulk. mail_account_id is optional everywhere; the backend
+// picks the workspace's connected account when omitted.
+export interface SupplierSendInput {
+  id?: number;
+  email: string;
+  name?: string;
+  host?: string;
+  external_key?: string;
+  inn?: string;
+  global_supplier_id?: number | null;
+}
+
+export interface MailTemplate {
+  subject: string;
+  body: string;
+  updated_at: string | null;
+}
+
+export type PreflightStatus = 'PASS' | 'WARNING' | 'BLOCK';
+
+export interface PreflightRecipientResult {
+  email: string;
+  status: 'eligible' | 'excluded';
+  reasons: string[];
+  domain?: string;
+}
+
+export interface PreflightResult {
+  ok?: boolean;
+  status: PreflightStatus;
+  planned: number;
+  eligible: number;
+  excluded: number;
+  unique_domains: number;
+  recipient_results: PreflightRecipientResult[];
+}
+
+export interface QueuedBulkResult {
+  job_id: number;
+  message_id: number;
+  thread_id: number;
+  operation_id: number;
+}
+
 export type RelationshipStatus = 'none' | 'favorite' | 'blacklisted';
 
 export interface GlobalSupplierRegistry {

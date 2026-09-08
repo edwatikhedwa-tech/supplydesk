@@ -1,13 +1,14 @@
 import clsx from 'clsx';
-import { Ban, ExternalLink, Search, Star, Truck } from 'lucide-react';
+import { Ban, ExternalLink, Flame, Search, Star, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
+import { CopyButton } from '../components/ui/CopyButton';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { api } from '../lib/api';
-import { now, companyAge, formatCompanyName, formatMoney, formatPercent, formatRelativeTime } from '../lib/format';
+import { now, checkoUrl, companyAge, formatCompanyName, formatMoney, formatPercent, formatRelativeTime } from '../lib/format';
 import type { GlobalSupplierSummary } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
 
@@ -130,6 +131,7 @@ export function Suppliers() {
           <div className="flex flex-col divide-y divide-border">
             {filtered.map((s) => {
               const age = companyAge(s.registry?.registered_at);
+              const checko = checkoUrl(s.registry?.ogrn);
               return (
                 <div
                   key={s.id}
@@ -139,7 +141,11 @@ export function Suppliers() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-[13.5px] font-semibold text-ink">
-                        {formatCompanyName(s.name)} <span className="font-normal text-ink-faint">ИНН {s.inn}</span>
+                        {formatCompanyName(s.name)}{' '}
+                        <span className="inline-flex items-center gap-1 font-normal text-ink-faint">
+                          ИНН {s.inn}
+                          {s.inn && <CopyButton text={s.inn} />}
+                        </span>
                       </p>
                       {s.site && (
                         <a
@@ -170,6 +176,18 @@ export function Suppliers() {
                         <span className={`text-[11px] ${s.registry.is_active === false ? 'text-danger' : 'text-success'}`}>
                           {s.registry.is_active === false ? 'Ликвидировано' : s.registry.status || 'Действует'}
                         </span>
+                      )}
+                      {checko && (
+                        <a
+                          href={checko}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Профиль на Checko"
+                          className="flex h-6 w-6 items-center justify-center rounded-md text-ink-faint hover:bg-surface-hover hover:text-ink-soft"
+                        >
+                          <Flame size={13} />
+                        </a>
                       )}
                     </div>
                   </div>

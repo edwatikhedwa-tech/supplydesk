@@ -91,6 +91,10 @@ export function companyAge(registeredAt: string | null | undefined): string | nu
   return years >= 0 ? pluralYears(years) : null;
 }
 
+export function checkoUrl(ogrn: string | null | undefined): string | null {
+  return ogrn ? `https://checko.ru/company/${ogrn}` : null;
+}
+
 const LEGAL_FORM_ABBREVIATIONS: [RegExp, string][] = [
   [/ОБЩЕСТВО\s+С\s+ОГРАНИЧЕННОЙ\s+ОТВЕТСТВЕННОСТЬЮ/gi, 'ООО'],
   [/ПУБЛИЧНОЕ\s+АКЦИОНЕРНОЕ\s+ОБЩЕСТВО/gi, 'ПАО'],

@@ -9,10 +9,14 @@ import type {
   LogisticsQuote,
   LogisticsQuoteCargoInput,
   MailMessage,
+  MailTemplate,
   ManualLinkRequestOption,
   MessageSearchResult,
+  PreflightResult,
+  QueuedBulkResult,
   RequestDetail,
   RequestListItem,
+  SupplierSendInput,
   Task,
   ThreadSummary,
 } from './types';
@@ -106,6 +110,24 @@ export const api = {
   createRequest: (input: { name: string; description?: string; deadline?: string; search_depth?: number; positions: { name: string }[] }) =>
     request<{ ok: true; request_id: number }>('/api/requests', { method: 'POST', body: JSON.stringify(input) }),
   startRequestSearch: (id: number) => request<{ ok: true }>(`/api/requests/${id}/search`, { method: 'POST' }),
+  mailTemplate: () => request<MailTemplate>('/api/mail/template'),
+  preflightBulk: (input: {
+    request_id: number;
+    suppliers: SupplierSendInput[];
+    subject: string;
+    body_text: string;
+    manual_stage_approval?: boolean;
+    allow_repeat?: boolean;
+  }) => request<PreflightResult>('/api/mail/deliverability/preflight', { method: 'POST', body: JSON.stringify(input) }),
+  sendMailBulk: (input: {
+    request_id: number;
+    suppliers: SupplierSendInput[];
+    subject: string;
+    body_text: string;
+    idempotency_key: string;
+    manual_stage_approval?: boolean;
+    allow_repeat?: boolean;
+  }) => request<{ ok: true; queued: QueuedBulkResult[] }>('/api/mail/send-bulk', { method: 'POST', body: JSON.stringify(input) }),
   listGlobalSuppliers: () => request<{ items: GlobalSupplierSummary[] }>('/api/global-suppliers'),
   getGlobalSupplierDetail: (id: number) => request<GlobalSupplierDetail>(`/api/global-suppliers/${id}`),
   saveGlobalSupplierNote: (id: number, note: string) =>

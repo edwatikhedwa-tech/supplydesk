@@ -1,18 +1,24 @@
-import { ArrowLeft, Ban, Inbox, MessageSquareText, Package, RotateCw, Search } from 'lucide-react';
+import { ArrowLeft, Ban, ExternalLink, Flame, Inbox, MessageSquareText, Package, PenSquare, RotateCw, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { BulkComposeModal } from '../components/BulkComposeModal';
 import { QuickAddTaskButton } from '../components/QuickAddTaskButton';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { CopyButton } from '../components/ui/CopyButton';
 import { DeadlineTag } from '../components/ui/DeadlineTag';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { ApiError, api } from '../lib/api';
-import { companyAge, formatCompanyName, formatMoney } from '../lib/format';
+import { checkoUrl, companyAge, formatCompanyName, formatMoney } from '../lib/format';
 import { requestStatusMeta, supplierMailStatusMeta } from '../lib/statusMeta';
-import type { RequestSupplierRow } from '../lib/types';
+import type { RequestSupplierRow, SupplierSendInput } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
+
+function toSendInput(s: RequestSupplierRow): SupplierSendInput {
+  return { id: s.id, email: s.email, name: s.name, host: s.host, external_key: s.external_key, inn: s.inn, global_supplier_id: null };
+}
 
 type FilterKey = 'all' | 'has_contact' | 'no_contact' | 'sent' | 'waiting' | 'answered' | 'error' | 'delivery_unknown';
 
@@ -50,6 +56,8 @@ export function RequestDetail() {
   const [irrelevantId, setIrrelevantId] = useState<number | null>(null);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [composeOpen, setComposeOpen] = useState(false);
 
   const suppliers = state.status === 'ready' ? state.data.items : [];
 
@@ -134,6 +142,21 @@ export function RequestDetail() {
   function openThread(supplierId: number) {
     navigate(`/messages?request=${requestId}&supplier=${supplierId}`);
   }
+
+  function toggleSelected(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllVisible() {
+    setSelected((prev) => (visible.every((s) => prev.has(s.id)) ? new Set() : new Set(visible.map((s) => s.id))));
+  }
+
+  const selectedSuppliers = suppliers.filter((s) => selected.has(s.id) && s.email);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -224,6 +247,11 @@ export function RequestDetail() {
               </button>
             ))}
         </div>
+        {selectedSuppliers.length > 0 && (
+          <Button variant="primary" size="sm" icon={<PenSquare size={13} />} onClick={() => setComposeOpen(true)}>
+            Написать ({selectedSuppliers.length})
+          </Button>
+        )}
         <div className="relative ml-auto w-[240px]">
           <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
           <input
@@ -235,82 +263,138 @@ export function RequestDetail() {
         </div>
       </div>
 
+      {composeOpen && (
+        <BulkComposeModal
+          requestId={requestId}
+          recipients={selectedSuppliers.map(toSendInput)}
+          onClose={() => setComposeOpen(false)}
+          onSent={() => {
+            setSelected(new Set());
+            state.reload();
+          }}
+        />
+      )}
+
       <div className="flex-1 overflow-auto border-t border-border">
         {suppliers.length === 0 ? (
           <EmptyState icon={Inbox} title="Поставщики ещё не найдены" description="Запустите поиск, чтобы система нашла кандидатов." />
         ) : visible.length === 0 ? (
           <EmptyState icon={Search} title="Ничего не найдено" description="Попробуйте другой фильтр или запрос." />
         ) : (
-          <div className="flex flex-col divide-y divide-border">
-            {visible.map((s) => {
-              const mailMeta = supplierMailStatusMeta[s.mail_status] ?? supplierMailStatusMeta.not_sent;
-              const age = companyAge(s.registry?.registered_at);
-              return (
-                <div key={s.id} className="flex flex-col gap-3 px-6 py-4 hover:bg-surface-hover">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-[13.5px] font-semibold text-ink">
-                        {formatCompanyName(s.name)}
-                        {s.inn && <span className="ml-1.5 font-normal text-ink-faint">ИНН {s.inn}</span>}
-                      </p>
-                      <p className="truncate text-[12px] text-ink-muted">
-                        {s.email || s.host || 'Нет контакта'}
-                        {s.region && <span> · {s.region}</span>}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <Badge tone={mailMeta.tone}>{mailMeta.label}</Badge>
-                      {s.unread_count > 0 && (
-                        <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white">
-                          {s.unread_count}
-                        </span>
-                      )}
-                      {s.registry && (
-                        <span className={`text-[11px] ${s.registry.is_active === false ? 'text-danger' : 'text-success'}`}>
-                          {s.registry.is_active === false ? 'Ликвидировано' : s.registry.status || 'Действует'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-[12px]">
-                      <span className="text-ink-soft">
-                        <span className="text-ink-faint">Возраст: </span>
-                        {age ?? '—'}
-                      </span>
-                      {s.finances && (
-                        <>
-                          <span className="text-ink-soft">
-                            <span className="text-ink-faint">Выручка: </span>
-                            {formatMoney(s.finances.revenue)}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1100px] border-collapse text-[12.5px]">
+              <thead className="sticky top-0 z-10 bg-canvas">
+                <tr className="border-b border-border">
+                  <th className="w-9 px-3 py-2 pl-6">
+                    <input
+                      type="checkbox"
+                      checked={visible.length > 0 && visible.every((s) => selected.has(s.id))}
+                      onChange={toggleSelectAllVisible}
+                      aria-label="Выбрать всех"
+                      className="h-3.5 w-3.5 rounded border-border-strong accent-accent"
+                    />
+                  </th>
+                  {['Компания', 'Контакты', 'Возраст', 'Выручка', 'Прибыль', 'ЕГРЮЛ', 'Статус письма', ''].map((h) => (
+                    <th key={h} className="whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-muted last:pr-6">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((s) => {
+                  const mailMeta = supplierMailStatusMeta[s.mail_status] ?? supplierMailStatusMeta.not_sent;
+                  const age = companyAge(s.registry?.registered_at);
+                  const checko = checkoUrl(s.registry?.ogrn);
+                  const site = s.host ? (s.host.startsWith('http') ? s.host : `https://${s.host}`) : null;
+                  return (
+                    <tr key={s.id} className={`border-b border-border last:border-0 hover:bg-surface-hover ${selected.has(s.id) ? 'bg-accent-subtle/30' : ''}`}>
+                      <td className="px-3 py-2.5 pl-6 align-top">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(s.id)}
+                          onChange={() => toggleSelected(s.id)}
+                          disabled={!s.email}
+                          title={s.email ? undefined : 'Нет email — нельзя выбрать для рассылки'}
+                          aria-label={`Выбрать ${s.name}`}
+                          className="h-3.5 w-3.5 rounded border-border-strong accent-accent disabled:opacity-30"
+                        />
+                      </td>
+                      <td className="px-3 py-2.5 align-top">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-ink">{formatCompanyName(s.name)}</p>
+                          <p className="truncate text-[11px] text-ink-muted">
+                            {s.inn && <span>ИНН {s.inn}</span>}
+                            {site && (
+                              <a href={site} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="ml-1.5 inline-flex items-center gap-0.5 text-accent hover:underline">
+                                {s.host} <ExternalLink size={9} />
+                              </a>
+                            )}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 align-top text-ink-soft">
+                        <div className="flex items-center gap-1">
+                          {s.email ? (
+                            <>
+                              <span className="truncate">{s.email}</span>
+                              <CopyButton text={s.email} />
+                            </>
+                          ) : (
+                            <span className="text-ink-faint">Нет email</span>
+                          )}
+                        </div>
+                        {s.region && <p className="text-[11px] text-ink-faint">{s.region}</p>}
+                      </td>
+                      <td className="px-3 py-2.5 align-top text-ink-soft">{age ?? '—'}</td>
+                      <td className="px-3 py-2.5 align-top text-ink-soft">{s.finances ? formatMoney(s.finances.revenue) : '—'}</td>
+                      <td className="px-3 py-2.5 align-top text-ink-soft">{s.finances ? formatMoney(s.finances.profit) : '—'}</td>
+                      <td className="px-3 py-2.5 align-top">
+                        {s.registry ? (
+                          <span className={`text-[11px] ${s.registry.is_active === false ? 'text-danger' : 'text-success'}`}>
+                            {s.registry.is_active === false ? 'Ликвидировано' : s.registry.status || 'Действует'}
                           </span>
-                          <span className="text-ink-soft">
-                            <span className="text-ink-faint">Прибыль: </span>
-                            {formatMoney(s.finances.profit)}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Button variant="ghost" size="sm" icon={<MessageSquareText size={13} />} onClick={() => openThread(s.id)}>
-                        Переписка
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        icon={<Ban size={13} />}
-                        disabled={irrelevantId === s.id}
-                        onClick={() => void markIrrelevant(s.id)}
-                        title="Убрать из подходящих для этой заявки"
-                      >
-                        Не подходит
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                        ) : (
+                          <span className="text-[11px] text-ink-faint">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 align-top">
+                        <div className="flex items-center gap-1.5">
+                          <Badge tone={mailMeta.tone}>{mailMeta.label}</Badge>
+                          {s.unread_count > 0 && (
+                            <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white">
+                              {s.unread_count}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 pr-6 align-top">
+                        <div className="flex items-center justify-end gap-1">
+                          {checko && (
+                            <a href={checko} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title="Профиль на Checko" className="flex h-7 w-7 items-center justify-center rounded-md text-ink-faint hover:bg-surface-hover hover:text-ink-soft">
+                              <Flame size={13} />
+                            </a>
+                          )}
+                          <Button variant="ghost" size="sm" icon={<MessageSquareText size={13} />} onClick={() => openThread(s.id)}>
+                            Переписка
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={<Ban size={13} />}
+                            disabled={irrelevantId === s.id}
+                            onClick={() => void markIrrelevant(s.id)}
+                            title="Убрать из подходящих для этой заявки"
+                          >
+                            Не подходит
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
