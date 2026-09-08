@@ -6,6 +6,7 @@ import { formatCompanyName, formatDeadline } from '../lib/format';
 import type { Task } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
 import { Button } from './ui/Button';
+import { DatePicker } from './ui/DatePicker';
 import { EmptyState } from './ui/EmptyState';
 import { ErrorState, LoadingState } from './ui/ErrorState';
 
@@ -96,12 +97,7 @@ export function TasksSection() {
             placeholder="Например: позвонить поставщику завтра в 11:00"
             className="h-8 flex-1 rounded-md border border-border-strong bg-canvas px-2.5 text-[12.5px] outline-none focus:border-accent focus:ring-1 focus:ring-accent-border"
           />
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="h-8 w-[140px] rounded-md border border-border-strong bg-canvas px-2 text-[12.5px] outline-none focus:border-accent focus:ring-1 focus:ring-accent-border"
-          />
+          <DatePicker value={dueDate} onChange={setDueDate} className="w-[160px]" />
           <Button variant="primary" size="sm" disabled={!title.trim() || submitting} onClick={() => void addTask()}>
             Добавить
           </Button>

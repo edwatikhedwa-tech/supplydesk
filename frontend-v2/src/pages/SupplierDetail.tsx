@@ -5,20 +5,21 @@ import {
   Check,
   ExternalLink,
   Mail,
-  MapPin,
   MessageSquareText,
   Phone,
+  ShieldCheck,
   Star,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import checkoIcon from '../assets/checko-icon.png';
 import { QuickAddTaskButton } from '../components/QuickAddTaskButton';
 import { Badge, type Tone } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { ApiError, api } from '../lib/api';
-import { formatCompanyName, formatDateTime, formatPercent } from '../lib/format';
+import { checkoUrl, companyAge, formatCompanyName, formatDateTime, formatMoney, formatPercent } from '../lib/format';
 import { useApiData } from '../lib/useApiData';
 
 const outcomeMeta: Record<string, { label: string; tone: Tone }> = {
@@ -183,14 +184,30 @@ export function SupplierDetail() {
                 )}
               </div>
               <div className="flex items-center gap-2 text-ink-soft">
-                <MapPin size={13} className="shrink-0 text-ink-faint" />
-                {supplier.registry?.status || <span className="text-ink-faint">Регион не определён</span>}
+                <ShieldCheck size={13} className={`shrink-0 ${supplier.registry?.is_active === false ? 'text-danger' : 'text-ink-faint'}`} />
+                {supplier.registry ? (
+                  <span className={supplier.registry.is_active === false ? 'text-danger' : undefined}>
+                    {supplier.registry.is_active === false ? 'Ликвидировано' : supplier.registry.status || 'Действует'}
+                  </span>
+                ) : (
+                  <span className="text-ink-faint">ЕГРЮЛ не проверялся</span>
+                )}
               </div>
               {supplier.registry && (
-                <div className="col-span-2 flex items-center gap-2 text-ink-soft">
+                <div className="flex items-center gap-2 text-ink-soft">
                   <Building2 size={13} className="shrink-0 text-ink-faint" />
                   ОГРН {supplier.registry.ogrn}
-                  {supplier.registry.is_active === false && <Badge tone="danger">Недействующее</Badge>}
+                  {checkoUrl(supplier.registry.ogrn) && (
+                    <a
+                      href={checkoUrl(supplier.registry.ogrn)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Профиль на Checko"
+                      className="flex h-5 w-5 items-center justify-center rounded hover:bg-surface-hover"
+                    >
+                      <img src={checkoIcon} alt="Checko" className="h-3.5 w-3.5" />
+                    </a>
+                  )}
                 </div>
               )}
             </div>
@@ -255,13 +272,23 @@ export function SupplierDetail() {
                 <dt className="text-ink-muted">Последний контакт</dt>
                 <dd className="font-medium text-ink">{supplier.last_contact_at ? formatDateTime(supplier.last_contact_at) : 'Не было'}</dd>
               </div>
-              {supplier.finances && (
+              {companyAge(supplier.registry?.registered_at) && (
                 <div className="flex items-center justify-between">
-                  <dt className="text-ink-muted">Выручка {supplier.finances.report_year ?? ''}</dt>
-                  <dd className="font-medium text-ink">
-                    {supplier.finances.revenue != null ? `${(supplier.finances.revenue / 1_000_000).toFixed(1)} млн ₽` : '—'}
-                  </dd>
+                  <dt className="text-ink-muted">Возраст компании</dt>
+                  <dd className="font-medium text-ink">{companyAge(supplier.registry?.registered_at)}</dd>
                 </div>
+              )}
+              {supplier.finances && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <dt className="text-ink-muted">Выручка {supplier.finances.report_year ?? ''}</dt>
+                    <dd className="font-medium text-ink">{formatMoney(supplier.finances.revenue)}</dd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <dt className="text-ink-muted">Прибыль {supplier.finances.report_year ?? ''}</dt>
+                    <dd className="font-medium text-ink">{formatMoney(supplier.finances.profit)}</dd>
+                  </div>
+                </>
               )}
             </dl>
           </section>

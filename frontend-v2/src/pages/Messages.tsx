@@ -51,17 +51,30 @@ function trimBody(text: string | null, limit = AI_CONTEXT_PER_MESSAGE_LIMIT): st
   return clean.length > limit ? `${clean.slice(0, limit)}…` : clean;
 }
 
+// Compact per-thread budget when several suppliers' conversations are added
+// to context at once -- a full transcript per thread would blow past both
+// the cheap model's context and the daily spend cap once more than one or
+// two are selected.
+const AI_CONTEXT_EXTRA_THREAD_BUDGET = 500;
+
 /** Feeds the AI assistant the real conversation, not just the request/supplier
  * names -- without it the model has nothing concrete to reason about and
  * falls back to guessing from the request's internal title. Walks newest to
  * oldest so a long thread keeps its most recent messages when it must be
- * truncated to fit the budget, then restores chronological order. */
+ * truncated to fit the budget, then restores chronological order.
+ *
+ * `extraThreads` lets the user pull in other suppliers' conversations on the
+ * same request for comparison (e.g. "who quoted the lowest price?") --
+ * summarized to the last message only, to keep cost bounded regardless of
+ * how many are added. */
 function buildAiContext(
   activeThread: ThreadSummary | null,
   messagesState: AsyncState<MailMessage[]>,
   activeUnmatchedId: number | null,
   conversationState: AsyncState<InboxConversation | null>,
+  extraThreads: { thread: ThreadSummary; messages: MailMessage[] }[] = [],
 ): string {
+  let mainContext = '';
   if (activeThread) {
     const header = `Заявка «${activeThread.request_name}» (это просто название заявки в системе, не техническое требование), поставщик ${formatCompanyName(activeThread.supplier_name)}.`;
     if (messagesState.status === 'ready' && messagesState.data.length > 0) {
@@ -75,15 +88,26 @@ function buildAiContext(
         lines.unshift(line);
         used += line.length;
       }
-      return `${header}\nПереписка целиком, от старых сообщений к новым:\n${lines.join('\n\n')}`;
+      mainContext = `${header}\nПереписка целиком, от старых сообщений к новым:\n${lines.join('\n\n')}`;
+    } else {
+      mainContext = header;
     }
-    return header;
-  }
-  if (activeUnmatchedId && conversationState.status === 'ready' && conversationState.data) {
+  } else if (activeUnmatchedId && conversationState.status === 'ready' && conversationState.data) {
     const c = conversationState.data;
-    return `Письмо без привязки к заявке от ${c.from_email}, тема «${c.subject}»:\n${trimBody(c.body_text)}`;
+    mainContext = `Письмо без привязки к заявке от ${c.from_email}, тема «${c.subject}»:\n${trimBody(c.body_text)}`;
   }
-  return '';
+
+  if (extraThreads.length === 0) return mainContext;
+
+  const extraBlocks = extraThreads
+    .filter((e) => e.messages.length > 0)
+    .map((e) => {
+      const last = e.messages[e.messages.length - 1];
+      const who = last.direction === 'outbound' ? 'Мы' : 'Поставщик';
+      return `— ${formatCompanyName(e.thread.supplier_name)}: последнее сообщение (${who}, ${formatDateTime(last.sent_at ?? last.created_at)}): ${trimBody(last.body_text, AI_CONTEXT_EXTRA_THREAD_BUDGET)}`;
+    });
+  if (extraBlocks.length === 0) return mainContext;
+  return `${mainContext}\n\nДля сравнения — другие поставщики по этой же заявке:\n${extraBlocks.join('\n')}`;
 }
 
 function escapeRegExp(s: string): string {
@@ -111,6 +135,26 @@ function highlightText(text: string, query: string) {
 const responseTone: Record<ResponseStatus, Tone> = { none: 'neutral', waiting: 'warning', answered: 'success' };
 const responseLabel: Record<ResponseStatus, string> = { none: 'Не отправлено', waiting: 'Ожидаем ответ', answered: 'Есть ответ' };
 
+type ThreadFilter = 'all' | 'answered' | 'waiting' | 'unread';
+const THREAD_FILTER_LABELS: Record<ThreadFilter, string> = {
+  all: 'Все',
+  answered: 'Есть ответ',
+  waiting: 'Ждём ответа',
+  unread: 'Непрочитанные',
+};
+function matchesThreadFilter(t: ThreadSummary, filter: ThreadFilter): boolean {
+  switch (filter) {
+    case 'answered':
+      return threadResponseStatus(t) === 'answered';
+    case 'waiting':
+      return threadResponseStatus(t) === 'waiting';
+    case 'unread':
+      return t.unread_count > 0;
+    default:
+      return true;
+  }
+}
+
 export function Messages() {
   const { user } = useAuth();
   const threadsState = useApiData(() => api.listThreads().then((r) => r.items), []);
@@ -134,6 +178,23 @@ export function Messages() {
       (a, b) => new Date(b.threads[0]?.last_message_at ?? 0).getTime() - new Date(a.threads[0]?.last_message_at ?? 0).getTime(),
     );
   }, [threads]);
+
+  const [threadFilter, setThreadFilter] = useState<ThreadFilter>('all');
+  const threadFilterCounts = useMemo(
+    () => ({
+      all: threads.length,
+      answered: threads.filter((t) => threadResponseStatus(t) === 'answered').length,
+      waiting: threads.filter((t) => threadResponseStatus(t) === 'waiting').length,
+      unread: threads.filter((t) => t.unread_count > 0).length,
+    }),
+    [threads],
+  );
+  const filteredGroups = useMemo(() => {
+    if (threadFilter === 'all') return groups;
+    return groups
+      .map((g) => ({ ...g, threads: g.threads.filter((t) => matchesThreadFilter(t, threadFilter)) }))
+      .filter((g) => g.threads.length > 0);
+  }, [groups, threadFilter]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedThreadIdParam = searchParams.get('thread');
@@ -181,6 +242,8 @@ export function Messages() {
   const [notesOpen, setNotesOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [aiExtraThreadIds, setAiExtraThreadIds] = useState<number[]>([]);
+  const [aiExtraMessages, setAiExtraMessages] = useState<Record<number, MailMessage[]>>({});
   const draftRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     const el = draftRef.current;
@@ -206,6 +269,35 @@ export function Messages() {
     [activeThread?.request_id, activeThread?.supplier_id],
   );
   const hasNote = noteState.status === 'ready' && noteState.data.trim() !== '';
+
+  // Other suppliers' threads on this same request -- candidates the AI panel
+  // can pull in for cross-supplier comparison ("who quoted lowest?").
+  const siblingThreads = activeThread ? threads.filter((t) => t.request_id === activeThread.request_id && t.id !== activeThread.id) : [];
+
+  useEffect(() => {
+    setAiExtraThreadIds([]);
+    setAiExtraMessages({});
+  }, [activeThread?.id]);
+
+  useEffect(() => {
+    for (const id of aiExtraThreadIds) {
+      if (aiExtraMessages[id]) continue;
+      const t = threads.find((x) => x.id === id);
+      if (!t) continue;
+      api
+        .threadMessages(t.request_id, t.supplier_id)
+        .then((r) => setAiExtraMessages((prev) => ({ ...prev, [id]: r.items })))
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiExtraThreadIds, threads]);
+
+  const aiExtraThreadsForContext = aiExtraThreadIds
+    .map((id) => {
+      const thread = threads.find((t) => t.id === id);
+      return thread ? { thread, messages: aiExtraMessages[id] ?? [] } : null;
+    })
+    .filter((x): x is { thread: ThreadSummary; messages: MailMessage[] } => x !== null);
 
   useEffect(() => {
     if (!pendingHighlight || messagesState.status !== 'ready') return;
@@ -309,6 +401,14 @@ export function Messages() {
 
   const ownerName = user?.display_name ?? 'Вы';
   const unmatched = unmatchedState.status === 'ready' ? unmatchedState.data : [];
+  // "За неделю" -- unread and received in the last 7 days. Reading a message
+  // or ignoring it (both change what the backend returns) drops it out on
+  // the next reload, so once everything from the week has been looked at or
+  // dismissed the section is empty, not just uncounted.
+  const weeklyUnmatched = useMemo(() => {
+    const cutoff = Date.now() - 7 * 86400000;
+    return unmatched.filter((m) => m.unread && new Date(m.received_at).getTime() >= cutoff);
+  }, [unmatched]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -330,15 +430,15 @@ export function Messages() {
             ) : (
               <div className="overflow-y-auto">
                 <button
-                  onClick={() => unmatched[0] && setSelection({ type: 'unmatched', id: unmatched[0].id })}
+                  onClick={() => weeklyUnmatched[0] && setSelection({ type: 'unmatched', id: weeklyUnmatched[0].id })}
                   className="flex w-full items-center gap-2.5 border-b border-border px-3 py-2.5 text-left hover:bg-surface-hover"
                 >
                   <Inbox size={14} className="text-ink-muted" />
-                  <span className="flex-1 text-[12.5px] font-medium text-ink">Новые письма без заявки</span>
-                  {unmatched.length > 0 && <Badge tone="accent">{unmatched.length}</Badge>}
+                  <span className="flex-1 text-[12.5px] font-medium text-ink">Новые письма без заявки за неделю</span>
+                  {weeklyUnmatched.length > 0 && <Badge tone="accent">{weeklyUnmatched.length}</Badge>}
                 </button>
                 {selection?.type === 'unmatched' &&
-                  unmatched.map((m) => (
+                  weeklyUnmatched.map((m) => (
                     <button
                       key={m.id}
                       onClick={() => setSelection({ type: 'unmatched', id: m.id })}
@@ -355,11 +455,30 @@ export function Messages() {
                     </button>
                   ))}
 
-                {groups.length === 0 ? (
-                  <EmptyState icon={Inbox} title="Переписки пока нет" description="Отправьте письма поставщикам из заявки." />
+                <div className="flex flex-wrap gap-1 border-b border-border px-2 py-1.5">
+                  {(Object.keys(THREAD_FILTER_LABELS) as ThreadFilter[]).map((key) => (
+                    <button
+                      key={key}
+                      onClick={() => setThreadFilter(key)}
+                      className={clsx(
+                        'rounded-md px-2 py-1 text-[11.5px] font-medium transition-colors',
+                        threadFilter === key ? 'bg-accent-subtle text-accent' : 'text-ink-muted hover:bg-surface-hover hover:text-ink-soft',
+                      )}
+                    >
+                      {THREAD_FILTER_LABELS[key]} <span className="tabular-nums opacity-70">{threadFilterCounts[key]}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {filteredGroups.length === 0 ? (
+                  <EmptyState
+                    icon={Inbox}
+                    title={threadFilter === 'all' ? 'Переписки пока нет' : 'Ничего не найдено'}
+                    description={threadFilter === 'all' ? 'Отправьте письма поставщикам из заявки.' : 'Попробуйте другой фильтр.'}
+                  />
                 ) : (
-                  groups.map((g) => {
-                    const isOpen = expanded?.has(g.request_id) ?? false;
+                  filteredGroups.map((g) => {
+                    const isOpen = threadFilter !== 'all' || (expanded?.has(g.request_id) ?? false);
                     const unread = g.threads.reduce((s, t) => s + t.unread_count, 0);
                     return (
                       <div key={g.request_id} className="border-b border-border">
@@ -389,10 +508,14 @@ export function Messages() {
                                 </div>
                                 {status !== 'none' && (
                                   <span
-                                    className={clsx('flex shrink-0 items-center', status === 'answered' ? 'text-success' : 'text-warning')}
+                                    className={clsx(
+                                      'flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                                      status === 'answered' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning',
+                                    )}
                                     title={responseLabel[status]}
                                   >
-                                    {status === 'answered' ? <CheckCheck size={13} /> : <Clock3 size={13} />}
+                                    {status === 'answered' ? <CheckCheck size={11} /> : <Clock3 size={11} />}
+                                    {status === 'answered' ? 'Ответ' : 'Ждём'}
                                   </span>
                                 )}
                                 {t.unread_count > 0 && (
@@ -679,7 +802,10 @@ export function Messages() {
           <AiChatPanel
             key={activeThread ? `thread-${activeThread.id}` : `unmatched-${activeUnmatchedId}`}
             storageKey={activeThread ? `thread-${activeThread.id}` : `unmatched-${activeUnmatchedId}`}
-            context={buildAiContext(activeThread, messagesState, activeUnmatchedId, conversationState)}
+            context={buildAiContext(activeThread, messagesState, activeUnmatchedId, conversationState, aiExtraThreadsForContext)}
+            siblingThreads={siblingThreads.map((t) => ({ id: t.id, name: formatCompanyName(t.supplier_name) }))}
+            selectedSiblingIds={aiExtraThreadIds}
+            onToggleSibling={(id) => setAiExtraThreadIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))}
             onClose={() => setAiOpen(false)}
           />
         )}

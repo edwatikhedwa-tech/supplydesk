@@ -1,4 +1,4 @@
-import { Send, Sparkles, X } from 'lucide-react';
+import { ChevronDown, Plus, Send, Sparkles, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 
@@ -22,12 +22,38 @@ function loadEntries(storageKey: string): ChatEntry[] {
  * id) -- callers should also pass it as this component's React `key` so
  * switching conversations remounts with fresh state instead of bleeding one
  * thread's chat into another's. */
-export function AiChatPanel({ context, storageKey, onClose }: { context: string; storageKey: string; onClose: () => void }) {
+export function AiChatPanel({
+  context,
+  storageKey,
+  onClose,
+  siblingThreads = [],
+  selectedSiblingIds = [],
+  onToggleSibling,
+}: {
+  context: string;
+  storageKey: string;
+  onClose: () => void;
+  /** Other suppliers' threads on the same request, offered as extra context. */
+  siblingThreads?: { id: number; name: string }[];
+  selectedSiblingIds?: number[];
+  onToggleSibling?: (id: number) => void;
+}) {
   const [entries, setEntries] = useState<ChatEntry[]>(() => loadEntries(storageKey));
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [usage, setUsage] = useState<{ spent_rub: number; limit_rub: number } | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setPickerOpen(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [pickerOpen]);
 
   useEffect(() => {
     try {
@@ -91,6 +117,50 @@ export function AiChatPanel({ context, storageKey, onClose }: { context: string;
             <X size={14} />
           </button>
         </div>
+
+        {siblingThreads.length > 0 && (
+          <div className="relative border-b border-border px-3 py-2" ref={pickerRef}>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {selectedSiblingIds.map((id) => {
+                const t = siblingThreads.find((s) => s.id === id);
+                if (!t) return null;
+                return (
+                  <span key={id} className="flex items-center gap-1 rounded-full bg-accent-subtle px-2 py-0.5 text-[11px] text-accent">
+                    {t.name}
+                    <button type="button" onClick={() => onToggleSibling?.(id)} aria-label={`Убрать ${t.name} из контекста`} className="hover:text-accent-hover">
+                      <X size={10} />
+                    </button>
+                  </span>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setPickerOpen((v) => !v)}
+                className="flex items-center gap-1 rounded-full border border-dashed border-border-strong px-2 py-0.5 text-[11px] text-ink-muted hover:border-accent hover:text-accent"
+              >
+                <Plus size={10} />
+                Сравнить с поставщиком
+                <ChevronDown size={10} />
+              </button>
+            </div>
+
+            {pickerOpen && (
+              <div className="absolute left-3 top-[calc(100%+2px)] z-30 max-h-[200px] w-[240px] overflow-y-auto rounded-lg border border-border bg-surface py-1 shadow-lg">
+                {siblingThreads.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => onToggleSibling?.(t.id)}
+                    className="flex w-full items-center justify-between px-3 py-1.5 text-left text-[12px] hover:bg-surface-hover"
+                  >
+                    <span className="truncate text-ink">{t.name}</span>
+                    {selectedSiblingIds.includes(t.id) && <span className="text-accent">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-3.5 py-3.5">
           {entries.length === 0 && (

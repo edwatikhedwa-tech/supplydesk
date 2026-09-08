@@ -2,6 +2,7 @@ import { AlertTriangle, Plus, Save, Search, X } from 'lucide-react';
 import { useState } from 'react';
 import { ApiError, api } from '../lib/api';
 import { Button } from './ui/Button';
+import { DatePicker } from './ui/DatePicker';
 import { Modal } from './ui/Modal';
 
 interface DraftItem {
@@ -114,16 +115,8 @@ export function NewRequestModal({ onClose, onCreated }: { onClose: () => void; o
 
         <div className="flex gap-4">
           <div>
-            <label htmlFor="request-deadline" className="mb-1 block text-[12px] font-medium text-ink-soft">
-              Дедлайн
-            </label>
-            <input
-              id="request-deadline"
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="h-9 w-[170px] rounded-md border border-border-strong bg-surface px-3 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent-border"
-            />
+            <label className="mb-1 block text-[12px] font-medium text-ink-soft">Дедлайн</label>
+            <DatePicker value={deadline} onChange={setDeadline} className="w-[170px]" />
           </div>
           <div>
             <label htmlFor="search-depth" className="mb-1 block text-[12px] font-medium text-ink-soft">

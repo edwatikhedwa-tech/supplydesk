@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { api } from '../lib/api';
 import { formatDeadline } from '../lib/format';
 import { useApiData } from '../lib/useApiData';
+import { DatePicker } from './ui/DatePicker';
 
 /** Right-rail task list scoped to this exact thread (request + supplier) --
  * the Dashboard's "Мои задачи" stays the place to see everything at once;
@@ -130,12 +131,7 @@ export function TasksPanel({
               placeholder="Текст задачи…"
               className="h-7 w-full rounded-md border border-border-strong bg-surface px-2 text-[12px] outline-none focus:border-accent focus:ring-1 focus:ring-accent-border"
             />
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="h-7 w-full rounded-md border border-border-strong bg-surface px-2 text-[12px] outline-none focus:border-accent focus:ring-1 focus:ring-accent-border"
-            />
+            <DatePicker value={dueDate} onChange={setDueDate} size="sm" />
             <div className="flex items-center gap-1.5">
               <button
                 type="button"

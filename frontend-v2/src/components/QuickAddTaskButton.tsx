@@ -2,6 +2,7 @@ import { Check, ListTodo } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '../lib/api';
 import { Button } from './ui/Button';
+import { DatePicker } from './ui/DatePicker';
 
 /** Small "+ Задача" affordance for detail pages -- creates a task already
  * linked to this request/supplier, per the concept doc's "задачи могут
@@ -55,12 +56,7 @@ export function QuickAddTaskButton({ requestId, supplierId }: { requestId?: numb
         placeholder="Текст задачи…"
         className="h-8 w-[220px] rounded-md border border-border-strong bg-surface px-2.5 text-[12.5px] outline-none focus:border-accent focus:ring-1 focus:ring-accent-border"
       />
-      <input
-        type="date"
-        value={dueDate}
-        onChange={(e) => setDueDate(e.target.value)}
-        className="h-8 w-[130px] rounded-md border border-border-strong bg-surface px-2 text-[12.5px] outline-none focus:border-accent focus:ring-1 focus:ring-accent-border"
-      />
+      <DatePicker value={dueDate} onChange={setDueDate} className="w-[150px]" />
       <Button variant="primary" size="sm" disabled={!title.trim() || submitting} onClick={() => void submit()}>
         Добавить
       </Button>

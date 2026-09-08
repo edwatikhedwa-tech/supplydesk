@@ -95,9 +95,17 @@ export interface SupplierSendInput {
   global_supplier_id?: number | null;
 }
 
+export interface MailAttachment {
+  filename: string;
+  mime_type: string;
+  size?: number;
+  content_base64: string;
+}
+
 export interface MailTemplate {
   subject: string;
   body: string;
+  attachments: MailAttachment[];
   updated_at: string | null;
 }
 

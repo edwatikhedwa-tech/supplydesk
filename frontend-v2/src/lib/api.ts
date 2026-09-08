@@ -8,6 +8,7 @@ import type {
   InboxSuggestion,
   LogisticsQuote,
   LogisticsQuoteCargoInput,
+  MailAttachment,
   MailMessage,
   MailTemplate,
   ManualLinkRequestOption,
@@ -116,6 +117,7 @@ export const api = {
     suppliers: SupplierSendInput[];
     subject: string;
     body_text: string;
+    attachments?: MailAttachment[];
     manual_stage_approval?: boolean;
     allow_repeat?: boolean;
   }) => request<PreflightResult>('/api/mail/deliverability/preflight', { method: 'POST', body: JSON.stringify(input) }),
@@ -124,6 +126,7 @@ export const api = {
     suppliers: SupplierSendInput[];
     subject: string;
     body_text: string;
+    attachments?: MailAttachment[];
     idempotency_key: string;
     manual_stage_approval?: boolean;
     allow_repeat?: boolean;
