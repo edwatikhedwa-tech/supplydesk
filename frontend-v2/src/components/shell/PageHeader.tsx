@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import type { ReactNode } from 'react';
 
 export function PageHeader({
@@ -10,7 +11,7 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-6">
+    <div className={clsx('flex items-start justify-between gap-4 px-6 pt-6', description ? 'pb-4' : 'pb-3')}>
       <div className="min-w-0">
         <h1 className="font-display text-[19px] font-semibold leading-tight text-ink">{title}</h1>
         {description && <p className="mt-0.5 text-[12.5px] text-ink-muted">{description}</p>}

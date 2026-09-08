@@ -14,7 +14,7 @@ import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { api } from '../lib/api';
-import { now, formatPercent, formatRelativeTime } from '../lib/format';
+import { now, formatCompanyName, formatPercent, formatRelativeTime } from '../lib/format';
 import type { GlobalSupplierSummary } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
 
@@ -91,7 +91,7 @@ export function Suppliers() {
         header: 'Компания',
         cell: (ctx) => (
           <div className="min-w-0">
-            <p className="truncate font-medium text-ink">{ctx.getValue()}</p>
+            <p className="truncate font-medium text-ink">{formatCompanyName(ctx.getValue())}</p>
             <p className="truncate text-[11.5px] text-ink-muted">
               ИНН {ctx.row.original.inn} · {ctx.row.original.site}
             </p>
@@ -182,7 +182,7 @@ export function Suppliers() {
     <div className="flex h-full flex-col overflow-hidden">
       <PageHeader
         title="Поставщики"
-        description={state.status === 'ready' ? `${suppliers.length} компаний в общей картотеке` : 'Реальные данные · LOCAL_CANONICAL'}
+        description={state.status === 'ready' ? `${suppliers.length} компаний в общей картотеке` : 'Загружаем поставщиков…'}
       />
 
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 pb-3">

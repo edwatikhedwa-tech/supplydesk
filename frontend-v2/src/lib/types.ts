@@ -153,6 +153,49 @@ export interface DashboardSummary {
   requests: RequestListItem[];
 }
 
+export type LogisticsQuoteStatus = 'success' | 'unavailable' | 'invalid_input' | 'rate_limited' | 'provider_error';
+
+export interface LogisticsQuote {
+  id: number;
+  request_id: number;
+  supplier_id: number | null;
+  carrier: string;
+  route_from: string;
+  route_to: string;
+  cargo_places: number;
+  cargo_weight_kg: number;
+  cargo_volume_m3: number;
+  cargo_max_dims_cm: string;
+  price: number | null;
+  currency: string;
+  term_days: number | null;
+  cost_breakdown: Record<string, number | null>;
+  status: LogisticsQuoteStatus;
+  calculated_at: string;
+}
+
+export interface LogisticsQuoteCargoInput {
+  places: number;
+  weight_kg: number;
+  volume_m3: number;
+  max_length_cm: number;
+  max_width_cm: number;
+  max_height_cm: number;
+}
+
+export interface MessageSearchResult {
+  message_id: number;
+  thread_id: number;
+  request_id: number;
+  supplier_id: number;
+  direction: MailDirection;
+  subject: string;
+  body_text: string;
+  created_at: string;
+  request_name: string;
+  supplier_name: string;
+}
+
 export interface AuthUser {
   email: string;
   display_name: string;

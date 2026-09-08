@@ -61,6 +61,26 @@ export function formatPercent(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
 }
 
+const LEGAL_FORM_ABBREVIATIONS: [RegExp, string][] = [
+  [/ОБЩЕСТВО\s+С\s+ОГРАНИЧЕННОЙ\s+ОТВЕТСТВЕННОСТЬЮ/gi, 'ООО'],
+  [/ПУБЛИЧНОЕ\s+АКЦИОНЕРНОЕ\s+ОБЩЕСТВО/gi, 'ПАО'],
+  [/ЗАКРЫТОЕ\s+АКЦИОНЕРНОЕ\s+ОБЩЕСТВО/gi, 'ЗАО'],
+  [/ОТКРЫТОЕ\s+АКЦИОНЕРНОЕ\s+ОБЩЕСТВО/gi, 'ОАО'],
+  [/АКЦИОНЕРНОЕ\s+ОБЩЕСТВО/gi, 'АО'],
+  [/ИНДИВИДУАЛЬНЫЙ\s+ПРЕДПРИНИМАТЕЛЬ/gi, 'ИП'],
+];
+
+/** "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ "РАМ"" -> "ООО «РАМ»" — the
+ * full legal form is correct on a requisites/documents page, but reads as
+ * noise in a list of company names next to a person's name. */
+export function formatCompanyName(name: string): string {
+  let result = name;
+  for (const [pattern, abbreviation] of LEGAL_FORM_ABBREVIATIONS) {
+    result = result.replace(pattern, abbreviation);
+  }
+  return result.replace(/"([^"]+)"/g, '«$1»').trim();
+}
+
 export function initials(name: string): string {
   const parts = name.replace(/[«»"]/g, '').split(/\s+/).filter(Boolean);
   const letters = parts.slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '');

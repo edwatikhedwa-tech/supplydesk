@@ -51,12 +51,13 @@ function Test-Group([string]$group, [string]$path) {
 }
 
 $groups = @(
-    'documentation_control', 'backend', 'frontend', 'browser', 'mail', 'auth',
+    'documentation_control', 'backend', 'frontend', 'frontend_v2', 'browser', 'mail', 'auth',
     'database', 'api_shared_runtime', 'security', 'ci', 'dependency', 'control',
     'high_risk'
 )
 $backend = $false
 $frontend = $false
+$frontendV2 = $false
 $browser = $false
 $browserSurface = $false
 $control = $false
@@ -70,6 +71,7 @@ foreach ($path in $paths) {
     if (-not $known) { $unknownPaths += $path }
     if (Test-Group 'backend' $path) { $backend = $true }
     if (Test-Group 'frontend' $path) { $frontend = $true }
+    if (Test-Group 'frontend_v2' $path) { $frontendV2 = $true }
     if (Test-Group 'browser' $path) { $browser = $true }
     if ((Test-Group 'browser' $path) -and $path -notmatch '^frontend/tests/fast-browser-smoke\.spec\.ts$') {
         $browserSurface = $true
@@ -79,16 +81,17 @@ foreach ($path in $paths) {
 }
 
 $unknown = $unknownPaths.Count -gt 0
-$docsOnly = $paths.Count -gt 0 -and -not $backend -and -not $frontend -and -not $browser -and -not $highRisk -and -not $unknown
+$docsOnly = $paths.Count -gt 0 -and -not $backend -and -not $frontend -and -not $frontendV2 -and -not $browser -and -not $highRisk -and -not $unknown
 $fullAll = $EventName -eq 'schedule' -or ($EventName -eq 'workflow_dispatch' -and $Profile -eq 'FULL')
 $pullRequest = $EventName -eq 'pull_request'
 $backendFull = $fullAll -or ($backend -and ($pullRequest -or $highRisk))
 $backendFast = $backend -and -not $backendFull
 $frontendRequired = $fullAll -or $frontend
+$frontendV2Required = $fullAll -or $frontendV2
 $browserFull = $fullAll -or (($pullRequest -or $highRisk) -and $browserSurface)
 $browserSmoke = $EventName -eq 'push' -and ($frontend -or $browser) -and -not $browserFull
 $doctorRequired = $fullAll -or $highRisk
-$risk = if ($highRisk -or $fullAll) { 'HIGH' } elseif ($backend -or $frontend -or $browser -or $unknown) { 'NORMAL' } else { 'LOW' }
+$risk = if ($highRisk -or $fullAll) { 'HIGH' } elseif ($backend -or $frontend -or $frontendV2 -or $browser -or $unknown) { 'NORMAL' } else { 'LOW' }
 $fullRequired = $highRisk -or $unknown -or $fullAll
 
 $requiredJobs = [System.Collections.Generic.List[string]]::new()
@@ -98,6 +101,7 @@ $requiredJobs.Add('Change Classification')
 if ($backendFast) { $requiredJobs.Add('Backend Fast') } else { $skippedJobs.Add('Backend Fast') }
 if ($backendFull) { $requiredJobs.Add('Backend Full') } else { $skippedJobs.Add('Backend Full') }
 if ($frontendRequired) { $requiredJobs.Add('Frontend') } else { $skippedJobs.Add('Frontend') }
+if ($frontendV2Required) { $requiredJobs.Add('Frontend V2') } else { $skippedJobs.Add('Frontend V2') }
 if ($browserSmoke) { $requiredJobs.Add('Browser Smoke') } else { $skippedJobs.Add('Browser Smoke') }
 if ($browserFull) { $requiredJobs.Add('Browser Full') } else { $skippedJobs.Add('Browser Full') }
 if ($doctorRequired) { $requiredJobs.Add('Full Control') } else { $skippedJobs.Add('Full Control') }
@@ -112,6 +116,8 @@ $result = [ordered]@{
     backend_full = $backendFull.ToString().ToLowerInvariant()
     frontend = $frontend.ToString().ToLowerInvariant()
     frontend_required = $frontendRequired.ToString().ToLowerInvariant()
+    frontend_v2 = $frontendV2.ToString().ToLowerInvariant()
+    frontend_v2_required = $frontendV2Required.ToString().ToLowerInvariant()
     browser = $browser.ToString().ToLowerInvariant()
     browser_smoke = $browserSmoke.ToString().ToLowerInvariant()
     browser_full = $browserFull.ToString().ToLowerInvariant()

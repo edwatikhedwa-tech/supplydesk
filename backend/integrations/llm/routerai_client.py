@@ -172,6 +172,39 @@ class RouterAiClient:
             log.warning("%s: запрос не удался: %s", model, last_error)
         return None
 
+    def chat(
+        self,
+        model: str,
+        messages: list[dict[str, str]],
+        max_tokens: int = 500,
+        temperature: float = 0.4,
+    ) -> tuple[str, float]:
+        """Plain-text chat completion (not the structured-extraction path above).
+
+        Returns (reply_text, cost_rub_for_this_call) -- the caller decides
+        whether/how to persist cumulative spend; this method only measures
+        the one call it made, using live prices from the model catalog.
+        """
+        usage = self.usage.setdefault(model, Usage())
+        started = time.monotonic()
+        completion = self._client.chat.completions.create(
+            model=model, messages=messages, max_tokens=max_tokens, temperature=temperature,
+        )
+        usage.seconds += time.monotonic() - started
+        stats = getattr(completion, "usage", None)
+        input_tokens = getattr(stats, "prompt_tokens", 0) or 0 if stats is not None else 0
+        output_tokens = getattr(stats, "completion_tokens", 0) or 0 if stats is not None else 0
+        usage.input_tokens += input_tokens
+        usage.output_tokens += output_tokens
+        usage.calls += 1
+        choices = getattr(completion, "choices", None) or []
+        if not choices:
+            raise RuntimeError("RouterAI не вернул ответ (пустой choices).")
+        reply = (choices[0].message.content or "").strip()
+        prices = self.catalog.prices(model)
+        call_cost = input_tokens * prices[0] + output_tokens * prices[1]
+        return reply, call_cost
+
     def _supports_schema(self, model: str) -> bool:
         try:
             return self.catalog.supports(model, "structured_outputs")

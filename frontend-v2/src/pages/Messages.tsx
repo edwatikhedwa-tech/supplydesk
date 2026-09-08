@@ -1,15 +1,27 @@
+import clsx from 'clsx';
 import {
+  ArrowDownLeft,
+  ArrowUpRight,
   Ban,
+  CheckCheck,
   ChevronRight,
+  Clock3,
   Inbox,
   Link2,
+  Paperclip,
   Send,
   Sparkles,
   SquareCheck,
   StickyNote,
+  Truck,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
+import { useSearchParams } from 'react-router-dom';
+import { AiChatPanel } from '../components/AiChatPanel';
+import { LogisticsQuoteModal } from '../components/LogisticsQuoteModal';
+import { ManualLinkModal } from '../components/ManualLinkModal';
+import { NotesPanel } from '../components/NotesPanel';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge, type Tone } from '../components/ui/Badge';
@@ -17,10 +29,10 @@ import { Button } from '../components/ui/Button';
 import { DeadlineTag } from '../components/ui/DeadlineTag';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 import { useAuth } from '../lib/AuthContext';
 import { threadResponseStatus, messageSenderName, type ResponseStatus } from '../lib/derive';
-import { formatDateTime, formatRelativeTime } from '../lib/format';
+import { formatCompanyName, formatDateTime, formatRelativeTime } from '../lib/format';
 import type { ThreadSummary } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
 
@@ -53,24 +65,40 @@ export function Messages() {
     );
   }, [threads]);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedThreadId = searchParams.get('thread');
+
   const [expanded, setExpanded] = useState<Set<number> | null>(null);
   useEffect(() => {
     if (expanded === null && groups.length > 0) {
-      setExpanded(new Set(groups.filter((g) => g.threads.some((t) => t.unread_count > 0)).map((g) => g.request_id)));
+      const withUnread = groups.filter((g) => g.threads.some((t) => t.unread_count > 0)).map((g) => g.request_id);
+      const requested = requestedThreadId ? groups.find((g) => g.threads.some((t) => t.id === Number(requestedThreadId))) : null;
+      setExpanded(new Set(requested ? [...withUnread, requested.request_id] : withUnread));
     }
-  }, [groups, expanded]);
+  }, [groups, expanded, requestedThreadId]);
 
   const [selection, setSelection] = useState<Selection>(null);
   const [selectionInitialized, setSelectionInitialized] = useState(false);
   useEffect(() => {
-    if (!selectionInitialized && threads.length > 0) {
-      const firstUnread = threads.find((t) => t.unread_count > 0) ?? threads[0];
-      setSelection({ type: 'thread', id: firstUnread.id });
-      setSelectionInitialized(true);
-    }
-  }, [threads, selectionInitialized]);
+    if (selectionInitialized || threads.length === 0) return;
+    const requested = requestedThreadId ? threads.find((t) => t.id === Number(requestedThreadId)) : null;
+    const target = requested ?? threads.find((t) => t.unread_count > 0) ?? threads[0];
+    setSelection({ type: 'thread', id: target.id });
+    setSelectionInitialized(true);
+    if (requestedThreadId) setSearchParams({}, { replace: true });
+  }, [threads, selectionInitialized, requestedThreadId, setSearchParams]);
 
   const [draft, setDraft] = useState('');
+  const [logisticsOpen, setLogisticsOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = draftRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+  }, [draft]);
 
   const activeThread = selection?.type === 'thread' ? threads.find((t) => t.id === selection.id) ?? null : null;
   const activeDeadline = activeThread ? deadlineByRequestId.get(activeThread.request_id) ?? '' : '';
@@ -84,6 +112,12 @@ export function Messages() {
     () => (activeUnmatchedId ? api.inboxConversation(activeUnmatchedId) : Promise.resolve(null)),
     [activeUnmatchedId],
   );
+  const noteState = useApiData(
+    () => (activeThread ? api.getThreadNote(activeThread.request_id, activeThread.supplier_id).then((r) => r.note) : Promise.resolve('')),
+    [activeThread?.request_id, activeThread?.supplier_id],
+  );
+  const hasNote = noteState.status === 'ready' && noteState.data.trim() !== '';
+
   const suggestionsState = useApiData(
     () => (activeUnmatchedId ? api.inboxSuggestions(activeUnmatchedId).then((r) => r.items) : Promise.resolve([])),
     [activeUnmatchedId],
@@ -91,6 +125,11 @@ export function Messages() {
 
   const [linking, setLinking] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [manualLinkOpen, setManualLinkOpen] = useState(false);
+  const [ignoring, setIgnoring] = useState(false);
+  const [unmatchedDraft, setUnmatchedDraft] = useState('');
+  const [unmatchedReplyError, setUnmatchedReplyError] = useState('');
+  const [sendingUnmatchedReply, setSendingUnmatchedReply] = useState(false);
 
   function toggleGroup(id: number) {
     setExpanded((prev) => {
@@ -122,6 +161,40 @@ export function Messages() {
     }
   }
 
+  async function ignoreUnmatched() {
+    if (!activeUnmatchedId) return;
+    setIgnoring(true);
+    setLinkError(null);
+    try {
+      await api.ignoreInboxMessage(activeUnmatchedId);
+      unmatchedState.reload();
+      setSelection(null);
+    } catch (e) {
+      setLinkError(e instanceof ApiError ? e.message : 'Не удалось скрыть письмо.');
+    } finally {
+      setIgnoring(false);
+    }
+  }
+
+  async function sendUnmatchedReply() {
+    if (!activeUnmatchedId || conversationState.status !== 'ready' || !conversationState.data || !unmatchedDraft.trim()) return;
+    setSendingUnmatchedReply(true);
+    setUnmatchedReplyError('');
+    try {
+      await api.replyToInbox({
+        inbox_message_id: activeUnmatchedId,
+        subject: conversationState.data.subject.startsWith('Re:') ? conversationState.data.subject : `Re: ${conversationState.data.subject}`,
+        body_text: unmatchedDraft.trim(),
+      });
+      setUnmatchedDraft('');
+      conversationState.reload();
+    } catch (e) {
+      setUnmatchedReplyError(e instanceof ApiError ? e.message : 'Не удалось отправить ответ.');
+    } finally {
+      setSendingUnmatchedReply(false);
+    }
+  }
+
   async function sendReply() {
     if (!activeThread || !draft.trim()) return;
     const subject = messagesState.status === 'ready' && messagesState.data.length > 0 ? `Re: ${messagesState.data[0].subject}` : activeThread.subject;
@@ -141,7 +214,7 @@ export function Messages() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <PageHeader title="Сообщения" description="Заявка → поставщик → переписка · реальные данные" />
+      <PageHeader title="Сообщения" />
       <div className="flex min-h-0 flex-1">
         <Group orientation="horizontal" className="flex flex-1">
           <Panel defaultSize="30%" minSize="22%" maxSize="42%" className="flex min-w-0 flex-col border-r border-border">
@@ -176,11 +249,11 @@ export function Messages() {
                         (activeUnmatchedId === m.id ? 'border-l-2 border-l-accent bg-accent-subtle/40' : '')
                       }
                     >
+                      {m.unread && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent ring-4 ring-accent/20" title="Не прочитано" />}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[12px] font-medium text-ink">{m.subject}</p>
+                        <p className={clsx('truncate text-[12px]', m.unread ? 'font-semibold text-ink' : 'font-medium text-ink-soft')}>{m.subject}</p>
                         <p className="truncate text-[11px] text-ink-muted">{m.from_email}</p>
                       </div>
-                      {m.unread && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />}
                     </button>
                   ))}
 
@@ -198,23 +271,43 @@ export function Messages() {
                           {unread > 0 && <Badge tone="accent">{unread}</Badge>}
                         </button>
                         {isOpen &&
-                          g.threads.map((t) => (
-                            <button
-                              key={t.id}
-                              onClick={() => selectThread(t.id)}
-                              className={
-                                'flex w-full items-center gap-2 border-t border-border/60 py-2 pl-8 pr-3 text-left hover:bg-surface-hover ' +
-                                (activeThread?.id === t.id ? 'border-l-2 border-l-accent bg-accent-subtle/40' : '')
-                              }
-                            >
-                              <Avatar name={t.supplier_name} size="sm" />
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-[12px] font-medium text-ink">{t.supplier_name}</p>
-                                <p className="truncate text-[11px] text-ink-muted">{formatRelativeTime(t.last_message_at)}</p>
-                              </div>
-                              {t.unread_count > 0 && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />}
-                            </button>
-                          ))}
+                          g.threads.map((t) => {
+                            const status = threadResponseStatus(t);
+                            return (
+                              <button
+                                key={t.id}
+                                onClick={() => selectThread(t.id)}
+                                className={
+                                  'flex w-full items-center gap-2 border-t border-border/60 py-2 pl-8 pr-3 text-left hover:bg-surface-hover ' +
+                                  (activeThread?.id === t.id ? 'border-l-2 border-l-accent bg-accent-subtle/40' : '')
+                                }
+                              >
+                                <Avatar name={t.supplier_name} size="sm" />
+                                <div className="min-w-0 flex-1">
+                                  <p className={clsx('truncate text-[12px]', t.unread_count > 0 ? 'font-semibold text-ink' : 'font-medium text-ink-soft')}>
+                                    {formatCompanyName(t.supplier_name)}
+                                  </p>
+                                  <p className="truncate text-[11px] text-ink-muted">{formatRelativeTime(t.last_message_at)}</p>
+                                </div>
+                                {status !== 'none' && (
+                                  <span
+                                    className={clsx('flex shrink-0 items-center', status === 'answered' ? 'text-success' : 'text-warning')}
+                                    title={responseLabel[status]}
+                                  >
+                                    {status === 'answered' ? <CheckCheck size={13} /> : <Clock3 size={13} />}
+                                  </span>
+                                )}
+                                {t.unread_count > 0 && (
+                                  <span
+                                    className="flex h-4 min-w-[16px] shrink-0 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white"
+                                    title={`Новых ответов: ${t.unread_count}`}
+                                  >
+                                    {t.unread_count}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
                       </div>
                     );
                   })
@@ -230,12 +323,24 @@ export function Messages() {
               <>
                 <div className="flex items-center gap-3 border-b border-border px-5 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold text-ink">{activeThread.supplier_name}</p>
+                    <p className="truncate text-[13px] font-semibold text-ink">{formatCompanyName(activeThread.supplier_name)}</p>
                     <p className="truncate text-[11.5px] text-ink-muted">{activeThread.request_name}</p>
                   </div>
                   <Badge tone={responseTone[threadResponseStatus(activeThread)]}>{responseLabel[threadResponseStatus(activeThread)]}</Badge>
                   <DeadlineTag deadline={activeDeadline} />
+                  <Button variant="secondary" size="sm" icon={<Truck size={13} />} onClick={() => setLogisticsOpen(true)}>
+                    Доставка
+                  </Button>
                 </div>
+
+                {logisticsOpen && (
+                  <LogisticsQuoteModal
+                    requestId={activeThread.request_id}
+                    supplierId={activeThread.supplier_id}
+                    supplierName={formatCompanyName(activeThread.supplier_name)}
+                    onClose={() => setLogisticsOpen(false)}
+                  />
+                )}
 
                 <div className="flex-1 overflow-y-auto px-5 py-4">
                   {messagesState.status === 'loading' ? (
@@ -245,38 +350,73 @@ export function Messages() {
                   ) : messagesState.data.length === 0 ? (
                     <EmptyState icon={Inbox} title="В этой переписке пока нет сообщений" />
                   ) : (
-                    messagesState.data.map((m) => (
-                      <div
-                        key={m.id}
-                        className={'mb-3 max-w-[72ch] rounded-md border-l-2 bg-surface px-4 py-3 ' + (m.direction === 'outbound' ? 'border-l-accent' : 'border-l-border-strong')}
-                      >
-                        <div className="mb-1.5 flex items-center justify-between gap-3">
-                          <span className="truncate text-[12.5px] font-semibold text-ink">
-                            {messageSenderName(m.direction, activeThread.supplier_name, ownerName)}
-                          </span>
-                          <span className="shrink-0 text-[11px] text-ink-faint">{formatDateTime(m.created_at)}</span>
+                    messagesState.data.map((m) => {
+                      const isOutbound = m.direction === 'outbound';
+                      return (
+                        <div
+                          key={m.id}
+                          className={clsx(
+                            'mb-3 min-w-0 rounded-md border-l-2 px-4 py-3',
+                            isOutbound ? 'border-l-accent bg-accent-subtle/40' : 'border-l-border-strong bg-surface',
+                          )}
+                        >
+                          <div className="mb-1.5 flex items-center gap-3">
+                            <span
+                              className={clsx(
+                                'flex shrink-0 items-center gap-1 text-[11px] font-medium',
+                                isOutbound ? 'text-accent' : 'text-ink-muted',
+                              )}
+                              title={isOutbound ? 'Отправлено нами' : 'Получено от поставщика'}
+                            >
+                              {isOutbound ? <ArrowUpRight size={12} /> : <ArrowDownLeft size={12} />}
+                              {isOutbound ? 'Отправлено' : 'Получено'}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-ink">
+                              {messageSenderName(m.direction, formatCompanyName(activeThread.supplier_name), ownerName)}
+                            </span>
+                            <span className="shrink-0 text-[11px] text-ink-faint">{formatDateTime(m.created_at)}</span>
+                          </div>
+                          <p className="whitespace-pre-wrap break-words text-[12.5px] leading-relaxed text-ink-soft">{m.body_text}</p>
+                          {m.status === 'queued' && <p className="mt-1.5 text-[11px] text-ink-faint">Отправляется…</p>}
+                          {m.error && <p className="mt-1.5 text-[11px] text-danger">{m.error}</p>}
                         </div>
-                        <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink-soft">{m.body_text}</p>
-                        {m.status === 'queued' && <p className="mt-1.5 text-[11px] text-ink-faint">Отправляется…</p>}
-                        {m.error && <p className="mt-1.5 text-[11px] text-danger">{m.error}</p>}
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
 
                 <div className="border-t border-border p-3">
                   <textarea
+                    ref={draftRef}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
-                    aria-label={`Ответить поставщику ${activeThread.supplier_name}`}
+                    onKeyDown={(e) => {
+                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && draft.trim()) {
+                        e.preventDefault();
+                        void sendReply();
+                      }
+                    }}
+                    aria-label={`Ответить поставщику ${formatCompanyName(activeThread.supplier_name)}`}
                     placeholder={`Ответить: ${activeThread.supplier_email}`}
-                    rows={3}
-                    className="w-full resize-none rounded-md border border-border-strong bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-ink-faint focus:border-accent focus:ring-1 focus:ring-accent-border"
+                    rows={4}
+                    className="max-h-[320px] min-h-[104px] w-full resize-y rounded-md border border-border-strong bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-ink-faint focus:border-accent focus:ring-1 focus:ring-accent-border"
                   />
-                  <div className="mt-2 flex items-center justify-end">
-                    <Button variant="primary" size="sm" icon={<Send size={13} />} onClick={sendReply} disabled={!draft.trim()}>
-                      Отправить
+                  <div className="mt-2 flex items-center justify-between">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={<Paperclip size={13} />}
+                      disabled
+                      title="Вложения — скоро"
+                    >
+                      Прикрепить файл
                     </Button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-ink-faint">⌘/Ctrl + Enter — отправить</span>
+                      <Button variant="primary" size="sm" icon={<Send size={13} />} onClick={sendReply} disabled={!draft.trim()}>
+                        Отправить
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </>
@@ -293,35 +433,96 @@ export function Messages() {
                       <p className="text-[11.5px] text-ink-muted">{conversationState.data.from_email}</p>
                     </div>
                     <div className="flex-1 overflow-y-auto px-5 py-4">
-                      <div className="max-w-[72ch] rounded-md border-l-2 border-l-border-strong bg-surface px-4 py-3">
-                        <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink-soft">
+                      <div className="min-w-0 rounded-md border-l-2 border-l-border-strong bg-surface px-4 py-3">
+                        <p className="whitespace-pre-wrap break-words text-[12.5px] leading-relaxed text-ink-soft">
                           {conversationState.data.body_text || '(нет текстового содержимого — только HTML)'}
                         </p>
                       </div>
+                      {conversationState.data.replies.map((m) => {
+                        const isOutbound = m.direction === 'outbound';
+                        return (
+                          <div
+                            key={m.id}
+                            className={clsx(
+                              'mt-3 min-w-0 rounded-md border-l-2 px-4 py-3',
+                              isOutbound ? 'border-l-accent bg-accent-subtle/40' : 'border-l-border-strong bg-surface',
+                            )}
+                          >
+                            <div className="mb-1.5 flex items-center gap-3">
+                              <span
+                                className={clsx('flex shrink-0 items-center gap-1 text-[11px] font-medium', isOutbound ? 'text-accent' : 'text-ink-muted')}
+                              >
+                                {isOutbound ? <ArrowUpRight size={12} /> : <ArrowDownLeft size={12} />}
+                                {isOutbound ? 'Отправлено' : 'Получено'}
+                              </span>
+                              <span className="shrink-0 text-[11px] text-ink-faint">{formatDateTime(m.created_at)}</span>
+                            </div>
+                            <p className="whitespace-pre-wrap break-words text-[12.5px] leading-relaxed text-ink-soft">{m.body_text}</p>
+                          </div>
+                        );
+                      })}
                     </div>
                     <div className="border-t border-border p-3">
                       {suggestionsState.status === 'ready' && suggestionsState.data.length > 0 && (
                         <div className="mb-2 flex items-center gap-2 rounded-md bg-info-subtle px-3 py-2 text-[12px] text-info">
                           <Link2 size={13} />
-                          Похоже на {suggestionsState.data[0].supplier_name} · «{suggestionsState.data[0].request_name}»
+                          Похоже на {formatCompanyName(suggestionsState.data[0].supplier_name)} · «{suggestionsState.data[0].request_name}»
                         </div>
                       )}
                       {linkError && <p className="mb-2 text-[12px] text-danger">{linkError}</p>}
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="secondary" size="sm" icon={<Ban size={13} />} disabled title="На бэкенде пока нет метода «игнорировать» непривязанное письмо">
-                          Игнорировать
-                        </Button>
+
+                      <textarea
+                        value={unmatchedDraft}
+                        onChange={(e) => setUnmatchedDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && unmatchedDraft.trim()) {
+                            e.preventDefault();
+                            void sendUnmatchedReply();
+                          }
+                        }}
+                        aria-label={`Ответить на письмо от ${conversationState.data.from_email}`}
+                        placeholder={`Ответить: ${conversationState.data.from_email}`}
+                        rows={3}
+                        className="min-h-[88px] w-full resize-y rounded-md border border-border-strong bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-ink-faint focus:border-accent focus:ring-1 focus:ring-accent-border"
+                      />
+                      {unmatchedReplyError && <p className="mt-1.5 text-[12px] text-danger">{unmatchedReplyError}</p>}
+
+                      <div className="mt-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Button variant="secondary" size="sm" icon={<Ban size={13} />} disabled={ignoring} onClick={() => void ignoreUnmatched()}>
+                            {ignoring ? 'Скрываем…' : 'Игнорировать'}
+                          </Button>
+                          <Button variant="secondary" size="sm" icon={<Link2 size={13} />} onClick={() => setManualLinkOpen(true)}>
+                            Связать вручную
+                          </Button>
+                          {suggestionsState.status === 'ready' && suggestionsState.data.length > 0 && (
+                            <Button variant="primary" size="sm" icon={<Link2 size={13} />} onClick={linkSuggestion} disabled={linking}>
+                              {linking ? 'Связываем…' : 'Связать с найденной заявкой'}
+                            </Button>
+                          )}
+                        </div>
                         <Button
                           variant="primary"
                           size="sm"
-                          icon={<Link2 size={13} />}
-                          onClick={linkSuggestion}
-                          disabled={linking || suggestionsState.status !== 'ready' || suggestionsState.data.length === 0}
+                          icon={<Send size={13} />}
+                          onClick={() => void sendUnmatchedReply()}
+                          disabled={sendingUnmatchedReply || !unmatchedDraft.trim()}
                         >
-                          {linking ? 'Связываем…' : suggestionsState.status === 'ready' && suggestionsState.data.length > 0 ? 'Связать с заявкой' : 'Нет подходящей заявки'}
+                          {sendingUnmatchedReply ? 'Отправляем…' : 'Ответить'}
                         </Button>
                       </div>
                     </div>
+                    {manualLinkOpen && (
+                      <ManualLinkModal
+                        inboxMessageId={activeUnmatchedId}
+                        onClose={() => setManualLinkOpen(false)}
+                        onLinked={() => {
+                          unmatchedState.reload();
+                          threadsState.reload();
+                          setSelection(null);
+                        }}
+                      />
+                    )}
                   </>
                 ) : null}
               </>
@@ -331,16 +532,80 @@ export function Messages() {
           </Panel>
         </Group>
 
+        {notesOpen && activeThread && (
+          <NotesPanel
+            requestId={activeThread.request_id}
+            supplierId={activeThread.supplier_id}
+            onClose={() => setNotesOpen(false)}
+            onSaved={() => noteState.reload()}
+          />
+        )}
+
+        {aiOpen && (
+          <AiChatPanel
+            context={
+              activeThread
+                ? `Заявка «${activeThread.request_name}», поставщик ${formatCompanyName(activeThread.supplier_name)}`
+                : activeUnmatchedId && conversationState.status === 'ready' && conversationState.data
+                  ? `Письмо без привязки к заявке: «${conversationState.data.subject}» от ${conversationState.data.from_email}`
+                  : ''
+            }
+            onClose={() => setAiOpen(false)}
+          />
+        )}
+
         <div className="flex w-12 shrink-0 flex-col items-center gap-1 border-l border-border py-3">
-          {[
-            { icon: StickyNote, label: 'Заметки' },
-            { icon: SquareCheck, label: 'Задачи' },
-            { icon: Sparkles, label: 'AI' },
-          ].map(({ icon: Icon, label }) => (
-            <button key={label} disabled title={`${label} — скоро`} className="flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-md text-ink-faint">
-              <Icon size={16} />
-            </button>
-          ))}
+          <button
+            type="button"
+            disabled={!activeThread}
+            onClick={() => {
+              setNotesOpen((v) => !v);
+              setAiOpen(false);
+            }}
+            title={activeThread ? (hasNote ? 'Заметки — есть заметка' : 'Заметки') : 'Заметки — откройте переписку по заявке'}
+            className={clsx(
+              'relative flex h-9 w-9 items-center justify-center rounded-md',
+              !activeThread
+                ? 'cursor-not-allowed text-ink-faint'
+                : notesOpen
+                  ? 'bg-accent-subtle text-accent'
+                  : hasNote
+                    ? 'text-warning hover:bg-surface-hover'
+                    : 'text-ink-muted hover:bg-surface-hover hover:text-ink',
+            )}
+          >
+            <StickyNote size={16} fill={hasNote && !notesOpen ? 'currentColor' : 'none'} />
+            {hasNote && !notesOpen && (
+              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-warning ring-2 ring-surface" />
+            )}
+          </button>
+          <button
+            key="Задачи"
+            disabled
+            title="Задачи — скоро"
+            className="flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-md text-ink-faint"
+          >
+            <SquareCheck size={16} />
+          </button>
+          <button
+            type="button"
+            disabled={!activeThread && !activeUnmatchedId}
+            onClick={() => {
+              setAiOpen((v) => !v);
+              setNotesOpen(false);
+            }}
+            title={activeThread || activeUnmatchedId ? 'ИИ-помощник' : 'ИИ-помощник — откройте переписку'}
+            className={clsx(
+              'flex h-9 w-9 items-center justify-center rounded-md',
+              !activeThread && !activeUnmatchedId
+                ? 'cursor-not-allowed text-ink-faint'
+                : aiOpen
+                  ? 'bg-accent-subtle text-accent'
+                  : 'text-ink-muted hover:bg-surface-hover hover:text-ink',
+            )}
+          >
+            <Sparkles size={16} />
+          </button>
         </div>
       </div>
     </div>

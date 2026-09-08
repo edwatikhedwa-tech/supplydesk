@@ -38,6 +38,7 @@ from backend.http_static import (  # noqa: F401 -- load_fixture_data re-exported
 # Reused as-is from the already-tested CLI tools; nothing here is new logic. The
 # pipeline's own orchestration methods live in EnrichmentOrchestratorMixin,
 # composed into SupplierApp below.
+from backend.domain.ai_agent.chat_service import AiChatService
 from backend.domain.logistics.quote_service import LogisticsQuoteService
 from backend.integrations.registry.checko_client import CheckoClient
 from backend.domain.supplier_identity.inn_extractor import validate_inn_checksum
@@ -230,6 +231,18 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             session = self._require_session()
             if session:
                 self._thread_messages(session, parse_qs(parsed.query))
+            return
+        if parsed.path == "/api/mail/search":
+            session = self._require_session()
+            if session:
+                query = (parse_qs(parsed.query).get("q") or [""])[0]
+                self._json(200, {"items": self.app.repository.search_messages(session["workspace_id"], query)})
+            return
+        if parsed.path == "/api/ai/chat/usage":
+            session = self._require_session()
+            if session:
+                result = self.app.ai_chat_service.usage_today(session["workspace_id"], session["user_id"])
+                self._json(200, {"spent_rub": result.spent_rub_today, "limit_rub": result.limit_rub})
             return
         if parsed.path.startswith("/api/mail/inbox/") and parsed.path.endswith("/suggestions"):
             session = self._require_session()
@@ -560,6 +573,10 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                 self._json(200, self.app.repository.unlink_manual_inbox_message(
                     session["workspace_id"], session["user_id"], int(body.get("inbox_message_id", 0)),
                 ))
+            elif parsed.path == "/api/mail/inbox/ignore":
+                self._json(200, self.app.repository.ignore_inbox_message(
+                    session["workspace_id"], session["user_id"], int(body.get("inbox_message_id", 0)),
+                ))
             elif parsed.path == "/api/mail/inbox/attach":
                 # Ручная привязка письма к заявке — для случая, когда поставщик
                 # написал новое письмо, а не ответил на наше: заголовков ответа
@@ -579,6 +596,15 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                     attachments=body.get("attachments") or [],
                 )
                 self._json(200, {"ok": True, **result})
+            elif parsed.path == "/api/ai/chat":
+                result = self.app.ai_chat_service.send_message(
+                    session["workspace_id"], session["user_id"],
+                    str(body.get("message") or ""), str(body.get("context") or ""),
+                )
+                self._json(200, {
+                    "status": result.status, "reply": result.reply,
+                    "spent_rub": result.spent_rub_today, "limit_rub": result.limit_rub, "message": result.message,
+                })
             elif parsed.path == "/api/requests":
                 positions = body.get("positions") or []
                 if isinstance(positions, str):
@@ -807,6 +833,10 @@ class SupplierApp(EnrichmentOrchestratorMixin):
         # Деловым Линиям (внутри DellinClient), и кэш расчётов по хэшу
         # входных данных — оба должны переживать отдельные HTTP-запросы.
         self.logistics_quote_service = LogisticsQuoteService()
+        # Один экземпляр на процесс по той же причине: RouterAiClient кэширует
+        # каталог моделей/цен после первого обращения, не имеет смысла
+        # пересоздавать его на каждый запрос чата.
+        self.ai_chat_service = AiChatService(self.repository)
         # Фоновая синхронизация входящих. Без неё отбойник (письмо не
         # доставлено) попадал в систему, только когда пользователь сам нажимал
         # «Синхронизировать входящие» на «Настройках»: до этого поставщик

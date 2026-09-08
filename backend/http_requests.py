@@ -57,6 +57,15 @@ class RequestRouteMixin:
             quote = self.app.repository.get_latest_logistics_quote(session["workspace_id"], request_id, supplier_id)
             self._json(200, {"quote": quote})
             return
+        if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "note":
+            try:
+                supplier_id = int(parts[4])
+            except ValueError:
+                self._json(400, {"error": "Некорректный идентификатор поставщика."})
+                return
+            note = self.app.repository.get_thread_note(session["workspace_id"], session["user_id"], request_id, supplier_id)
+            self._json(200, {"note": note})
+            return
         self._json(404, {"error": "Маршрут заявки не найден."})
 
     def _request_action(self, session: dict, path: str, body: dict) -> None:
@@ -140,6 +149,17 @@ class RequestRouteMixin:
                 raw_response=result.raw_response, calculated_at=result.calculated_at,
             )
             self._json(200, {"quote": saved, "message": result.message})
+            return
+        if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "note":
+            try:
+                supplier_id = int(parts[4])
+            except ValueError:
+                self._json(400, {"error": "Некорректный идентификатор поставщика."})
+                return
+            saved_note = self.app.repository.save_thread_note(
+                session["workspace_id"], session["user_id"], request_id, supplier_id, str(body.get("note") or ""),
+            )
+            self._json(200, {"ok": True, **saved_note})
             return
         if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "irrelevant":
             try:

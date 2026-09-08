@@ -7,7 +7,7 @@ import { DeadlineTag } from '../components/ui/DeadlineTag';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { api } from '../lib/api';
-import { now, daysFromToday, deadlineUrgency, formatRelativeTime } from '../lib/format';
+import { now, daysFromToday, deadlineUrgency, formatCompanyName, formatRelativeTime } from '../lib/format';
 import { useApiData } from '../lib/useApiData';
 
 function SectionCard({
@@ -96,7 +96,7 @@ export function Dashboard() {
 
   return (
     <div className="flex h-full flex-col overflow-auto">
-      <PageHeader title="Дашборд" description="Что сейчас требует внимания · реальные данные" />
+      <PageHeader title="Дашборд" description="Что сейчас требует внимания" />
 
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-6 pb-4">
         {chips.map((c) => (
@@ -159,7 +159,7 @@ export function Dashboard() {
                 <Row key={t.id}>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[12.5px] font-medium text-ink">
-                      {t.supplier_name} <span className="text-ink-faint">· {t.request_name}</span>
+                      {formatCompanyName(t.supplier_name)} <span className="text-ink-faint">· {t.request_name}</span>
                     </p>
                     <p className="truncate text-[11.5px] text-ink-muted">{t.subject}</p>
                   </div>

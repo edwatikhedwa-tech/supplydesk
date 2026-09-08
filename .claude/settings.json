@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\Users\\edwat\\SupplyDesk\\.claude\\hooks\\session-start-task-observer.ps1\""
+          }
+        ]
+      }
+    ]
+  }
+}

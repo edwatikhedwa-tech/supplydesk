@@ -30,7 +30,7 @@ function useNavCounts() {
   return { attention, unread };
 }
 
-export function Sidebar() {
+export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuth();
   const { attention, unread } = useNavCounts();
@@ -62,6 +62,7 @@ export function Sidebar() {
       <div className="px-2.5 pt-3">
         <button
           type="button"
+          onClick={onOpenSearch}
           className={clsx(
             'flex w-full items-center gap-2 rounded-md border border-rail-border bg-rail-hover px-2.5 text-[12.5px] text-rail-text-dim hover:text-rail-text-active',
             collapsed ? 'h-8 justify-center' : 'h-8',

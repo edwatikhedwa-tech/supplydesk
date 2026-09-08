@@ -106,6 +106,8 @@ jobs:
       backend_full: ${{ steps.classify.outputs.backend_full }}
       frontend: ${{ steps.classify.outputs.frontend }}
       frontend_required: ${{ steps.classify.outputs.frontend_required }}
+      frontend_v2: ${{ steps.classify.outputs.frontend_v2 }}
+      frontend_v2_required: ${{ steps.classify.outputs.frontend_v2_required }}
       browser: ${{ steps.classify.outputs.browser }}
       browser_smoke: ${{ steps.classify.outputs.browser_smoke }}
       browser_full: ${{ steps.classify.outputs.browser_full }}
@@ -273,6 +275,48 @@ jobs:
         run: npm run lint
 
       - name: Build
+        shell: pwsh
+        run: npm run build
+
+  frontend_v2:
+    name: SupplyDesk / Frontend V2
+    needs:
+      - fast_control
+      - change_classification
+    if: >-
+      needs.fast_control.result == 'success' &&
+      needs.change_classification.outputs.frontend_v2_required == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend-v2
+    steps:
+      - name: Checkout clean repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Assert checked-out workspace
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\scripts\assert_workspace.ps1" -ExpectedRoot "$env:GITHUB_WORKSPACE"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend-v2/package-lock.json
+
+      - name: Clean install
+        shell: pwsh
+        run: npm ci --no-audit --fund=false
+
+      - name: Lint
+        shell: pwsh
+        run: npm run lint
+
+      - name: Build (includes typecheck via tsc -b)
         shell: pwsh
         run: npm run build
 
@@ -484,6 +528,7 @@ jobs:
       - backend_fast
       - backend_full
       - frontend
+      - frontend_v2
       - browser_smoke
       - browser_full
       - full_control
@@ -503,6 +548,7 @@ jobs:
           BACKEND_FAST_RESULT: ${{ needs.backend_fast.result }}
           BACKEND_FULL_RESULT: ${{ needs.backend_full.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
+          FRONTEND_V2_RESULT: ${{ needs.frontend_v2.result }}
           BROWSER_SMOKE_RESULT: ${{ needs.browser_smoke.result }}
           BROWSER_FULL_RESULT: ${{ needs.browser_full.result }}
           DOCTOR_RESULT: ${{ needs.full_control.result }}
@@ -518,6 +564,7 @@ jobs:
             echo "- Backend Fast: ${BACKEND_FAST_RESULT}"
             echo "- Backend Full: ${BACKEND_FULL_RESULT}"
             echo "- Frontend: ${FRONTEND_RESULT}"
+            echo "- Frontend V2: ${FRONTEND_V2_RESULT}"
             echo "- Browser Smoke: ${BROWSER_SMOKE_RESULT}"
             echo "- Browser Full: ${BROWSER_FULL_RESULT}"
             echo "- Full Control: ${DOCTOR_RESULT}"

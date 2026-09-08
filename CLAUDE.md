@@ -33,6 +33,27 @@ branch and push status. Do
 not claim that ChatGPT Project or Claude Project has repository access unless
 the relevant files were actually connected or read.
 
+## Task-observer activation
+
+Before the first tool call of any session — and before writing or proposing a
+plan, not merely before executing one — invoke the `task-observer` skill AND
+run its Session Start Protocol (storage check, frontmatter scan, review
+trigger). Any turn that will involve a tool call counts; do not classify the
+session as "too simple" from its opening message. After completing each task,
+check the observation records written this session and report a one-line
+summary (ids and titles, or "none logged and why").
+
+The task-observer workspace for this project is pinned at:
+`C:\Users\edwat\.claude\projects\C--Users-edwat-SupplyDesk\skill-observations\`
+Never resolve this path from the current working directory — a session
+started inside a git worktree under `.claude/worktrees/` must still use this
+exact pinned path, since a worktree checkout is torn down and would take a
+locally-derived log with it.
+
+This instruction is the tier-3 (configuration file) backup. The primary,
+enforced activation is a `SessionStart` hook — see `.claude/settings.json`
+and `.claude/hooks/session-start-task-observer.ps1`.
+
 ## Workspace guard
 
 Before project-specific analysis or execution, including read-only work, enforce

@@ -7,8 +7,10 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import clsx from 'clsx';
-import { ArrowUpDown, MessageSquareText, Plus, Search, Truck } from 'lucide-react';
+import { ArrowUpDown, Plus, Search, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { NewRequestModal } from '../components/NewRequestModal';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -33,12 +35,23 @@ const statusFilters: { key: RequestStatus | 'all'; label: string }[] = [
 const columnHelper = createColumnHelper<RequestListItem>();
 
 export function Requests() {
-  const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const [creating, setCreating] = useState(false);
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '');
   const [status, setStatus] = useState<RequestStatus | 'all'>('all');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'deadline', desc: false }]);
 
   const state = useApiData(() => api.listRequests().then((r) => r.items), []);
   const requests = state.status === 'ready' ? state.data : [];
+
+  const threadsState = useApiData(() => api.listThreads().then((r) => r.items), []);
+  const unreadByRequestId = useMemo(() => {
+    const map = new Map<number, number>();
+    if (threadsState.status === 'ready') {
+      for (const t of threadsState.data) map.set(t.request_id, (map.get(t.request_id) ?? 0) + t.unread_count);
+    }
+    return map;
+  }, [threadsState]);
 
   const filtered = useMemo(() => {
     return requests.filter((r) => {
@@ -52,14 +65,27 @@ export function Requests() {
     () => [
       columnHelper.accessor('name', {
         header: 'Заявка',
-        cell: (ctx) => (
-          <div className="min-w-0">
-            <p className="truncate font-medium text-ink">{ctx.getValue()}</p>
-            <p className="truncate text-[11.5px] text-ink-muted">
-              №{ctx.row.original.id} · {ctx.row.original.sender_name}
-            </p>
-          </div>
-        ),
+        cell: (ctx) => {
+          const unread = unreadByRequestId.get(ctx.row.original.id) ?? 0;
+          return (
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-ink">{ctx.getValue()}</p>
+                <p className="truncate text-[11.5px] text-ink-muted">
+                  №{ctx.row.original.id} · {ctx.row.original.sender_name}
+                </p>
+              </div>
+              {unread > 0 && (
+                <span
+                  className="flex h-4 min-w-[16px] shrink-0 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white"
+                  title={`Новых ответов: ${unread}`}
+                >
+                  {unread}
+                </span>
+              )}
+            </div>
+          );
+        },
       }),
       columnHelper.accessor('suppliers_count', {
         header: 'Поставщики',
@@ -109,7 +135,7 @@ export function Requests() {
         cell: (ctx) => <span className="text-ink-muted">{formatRelativeTime(ctx.getValue())}</span>,
       }),
     ],
-    [],
+    [unreadByRequestId],
   );
 
   const table = useReactTable({
@@ -125,13 +151,20 @@ export function Requests() {
     <div className="flex h-full flex-col overflow-hidden">
       <PageHeader
         title="Заявки"
-        description={state.status === 'ready' ? `${requests.length} заявок в работе` : 'Реальные данные · LOCAL_CANONICAL'}
+        description={state.status === 'ready' ? `${requests.length} заявок в работе` : 'Загружаем заявки…'}
         actions={
-          <Button variant="primary" icon={<Plus size={14} />}>
+          <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreating(true)}>
             Новая заявка
           </Button>
         }
       />
+
+      {creating && (
+        <NewRequestModal
+          onClose={() => setCreating(false)}
+          onCreated={() => state.reload()}
+        />
+      )}
 
       <div className="flex items-center gap-3 border-b border-border px-6 pb-3">
         <div className="relative w-64">
@@ -200,10 +233,6 @@ export function Requests() {
             </tbody>
           </table>
         )}
-      </div>
-      <div className="flex items-center gap-1.5 border-t border-border px-6 py-2 text-[11.5px] text-ink-muted">
-        <MessageSquareText size={12} />
-        <span>Строки кликабельны в рабочей версии — открывают карточку заявки.</span>
       </div>
     </div>
   );

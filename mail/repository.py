@@ -18,7 +18,9 @@ from .auth import new_token
 from .auth_accounts import AuthAccountsMixin
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
+from .ai_chat_usage import AiChatUsageMixin
 from .thread_metadata import ThreadMetadataMixin
+from .thread_notes import ThreadNotesMixin
 from .bounce import classify_bounce, failed_recipients
 from .content import (
     clean_email_text,
@@ -211,7 +213,9 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin):
+class MailRepository(
+    AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, AiChatUsageMixin,
+):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
         self.db_path = Path(db_path).expanduser().resolve()
@@ -1776,6 +1780,36 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin
             }))
         return items
 
+    def search_messages(self, workspace_id: int, query: str, *, limit: int = 20) -> list[dict[str, Any]]:
+        """Full-text-ish search over sent/received message bodies and subjects.
+
+        LIKE, not FTS — the message tables are not large enough per workspace
+        to need an index for this, and it works identically on SQLite and
+        Postgres without a separate migration. Scoped to messages that would
+        actually show in the thread view (_communication_message_predicate),
+        so a search result always corresponds to something the user can see
+        after navigating to it.
+        """
+        needle = f"%{query.strip()}%"
+        if not query.strip():
+            return []
+        with self.connect() as connection:
+            rows = connection.execute(
+                f"""SELECT m.id AS message_id, m.thread_id, m.request_id, m.supplier_id, m.direction,
+                           m.subject, m.body_text, m.created_at,
+                           r.name AS request_name, s.name AS supplier_name
+                    FROM mail_messages m
+                    JOIN requests r ON r.id = m.request_id
+                    JOIN suppliers s ON s.id = m.supplier_id
+                    WHERE m.workspace_id = ?
+                      AND {_communication_message_predicate("m")}
+                      AND (m.subject LIKE ? OR m.body_text LIKE ?)
+                    ORDER BY m.created_at DESC
+                    LIMIT ?""",
+                (workspace_id, needle, needle, limit),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def list_outbox_threads(self, workspace_id: int, user_id: int | None = None) -> list[dict[str, Any]]:
         """Return request threads that still contain an outbound queue item.
 
@@ -2282,6 +2316,37 @@ class MailRepository(AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin
                 )
             connection.commit()
         return {"ok": True, "already_unlinked": not bool(link["active"]), "inbox_message_id": inbox_message_id}
+
+    def ignore_inbox_message(self, workspace_id: int, user_id: int, inbox_message_id: int) -> dict[str, Any]:
+        """Dismiss an unmatched inbox message without linking it to a request.
+
+        Sets status='ignored' — a value list_unmatched_incoming/preview never
+        select (both filter status='unmatched'), so the message simply stops
+        appearing in the "needs a decision" list. The original email row is
+        preserved, not deleted, so this is reversible by direct DB edit if
+        ever needed; there is no UI path back on purpose (matching
+        manual-unlink's "restore by re-linking" pattern, not by un-ignoring).
+        """
+        with self.connect() as connection:
+            if not self.database_url:
+                connection.execute("BEGIN IMMEDIATE")
+            message = connection.execute(
+                "SELECT id, status FROM mail_inbox_messages WHERE id=? AND workspace_id=?",
+                (inbox_message_id, workspace_id),
+            ).fetchone()
+            if not message:
+                raise ValueError("Письмо не найдено в текущем рабочем пространстве.")
+            if message["status"] == "matched":
+                raise ValueError("Письмо уже привязано к заявке — сначала отвяжите его.")
+            connection.execute(
+                "UPDATE mail_inbox_messages SET status='ignored' WHERE id=? AND workspace_id=?",
+                (inbox_message_id, workspace_id),
+            )
+            self._audit_connection(
+                connection, workspace_id, user_id, "mail.inbox_message_ignored", "mail_inbox_message", str(inbox_message_id), {},
+            )
+            connection.commit()
+        return {"ok": True, "inbox_message_id": inbox_message_id}
 
     def count_unmatched_incoming(self, workspace_id: int) -> int:
         """Сколько писем ждёт привязки — для счётчика в навигации."""

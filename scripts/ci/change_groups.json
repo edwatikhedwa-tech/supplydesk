@@ -17,6 +17,9 @@
   "frontend": [
     "^frontend/"
   ],
+  "frontend_v2": [
+    "^frontend-v2/"
+  ],
   "browser": [
     "^frontend/src/",
     "^frontend/tests/",

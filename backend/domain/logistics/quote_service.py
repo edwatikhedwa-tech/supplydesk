@@ -118,11 +118,16 @@ def _build_delivery_payload(quote_input: LogisticsQuoteInput) -> dict[str, Any]:
     # города/терминала — задокументированный способ калькулятора не
     # передавать отдельно КЛАДР-код города (см. dellin_client.py).
     work_time = {"worktimeStart": "09:00", "worktimeEnd": "18:00"}
-    today = dt.date.today().isoformat()
+    # Дёловые Линии отклоняют дату отправления "сегодня" почти на любом
+    # маршруте (код ошибки 180012, "Выбранная дата недоступна для выбранного
+    # адреса") — подтверждено живым вызовом калькулятора 2026-09-08. Берём
+    # ближайший следующий день как минимальную дату, которую перевозчик
+    # реально принимает.
+    produce_date = (dt.date.today() + dt.timedelta(days=1)).isoformat()
     return {
         "deliveryType": {"type": "auto"},
         "derival": {
-            "produceDate": today,
+            "produceDate": produce_date,
             "variant": "address",
             "address": {"search": quote_input.route_from.strip()},
             "time": dict(work_time),
