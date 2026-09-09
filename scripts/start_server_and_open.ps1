@@ -1,7 +1,8 @@
 ﻿[CmdletBinding()]
 param(
     [string]$ExpectedRoot,
-    [int]$FrontendWaitSeconds = 30
+    [int]$FrontendWaitSeconds = 30,
+    [switch]$AllowOutgoingMail
 )
 
 <# Двойной клик по ярлыку запускает рабочий LOCAL_CANONICAL backend (API на
@@ -16,6 +17,7 @@ $startScript = Join-Path $PSScriptRoot 'start_local_canonical.ps1'
 
 $startArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $startScript, '-Apply')
 if (-not [string]::IsNullOrWhiteSpace($ExpectedRoot)) { $startArgs += @('-ExpectedRoot', $ExpectedRoot) }
+if ($AllowOutgoingMail) { $startArgs += '-AllowOutgoingMail' }
 
 & powershell.exe @startArgs
 $exitCode = $LASTEXITCODE
@@ -64,4 +66,8 @@ if ($listener) {
 Write-Output "[INFO] Открываю $frontendUrl в браузере по умолчанию..."
 Start-Process $frontendUrl
 
-Write-Output 'Открыта рабочая сессия LOCAL_CANONICAL: canonical DB, backend API :8000, UI frontend-v2 :5183, исходящий mail отключён launcher-ом.'
+if ($AllowOutgoingMail) {
+    Write-Output 'Открыта рабочая сессия LOCAL_CANONICAL: canonical DB, backend API :8000, UI frontend-v2 :5183, исходящий mail ВКЛЮЧЁН (-AllowOutgoingMail).'
+} else {
+    Write-Output 'Открыта рабочая сессия LOCAL_CANONICAL: canonical DB, backend API :8000, UI frontend-v2 :5183, исходящий mail отключён launcher-ом.'
+}

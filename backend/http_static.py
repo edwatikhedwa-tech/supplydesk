@@ -13,9 +13,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# The built React SPA (frontend/npm run build). Its assets are hashed and public;
+# The built React SPA (frontend-v2/npm run build). Its assets are hashed and public;
 # nothing under ROOT besides this directory and the font files below is servable.
-FRONTEND_DIST = ROOT / "frontend" / "dist"
+FRONTEND_DIST = ROOT / "frontend-v2" / "dist"
 
 # Extensions that only ever belong to server-side source or config. A React
 # Router path never ends in one of these, so such a request is either a probe

@@ -2,6 +2,7 @@
 .env.*
 .env.backup-*
 .git/
+.claude/
 .superdesign/
 artifacts/
 cache/
@@ -10,8 +11,18 @@ Documents/
 mail-data/
 *.png
 !frontend/src/assets/checko-icon.png
+!frontend-v2/src/assets/checko-icon.png
 *.zip
 *.db
 *.sqlite3
 __pycache__/
 *.py[cod]
+.venv-test/
+frontend/node_modules/
+frontend-v2/node_modules/
+frontend-v2/dist/
+runtime/
+.ruff_cache/
+frontend/artifacts/
+frontend/test-results/
+frontend/storybook-static/

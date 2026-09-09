@@ -3,7 +3,12 @@ param(
     [switch]$Plan,
     [switch]$Apply,
     [int]$WaitSeconds = 30,
-    [string]$ExpectedRoot
+    [string]$ExpectedRoot,
+    # Safe-by-default: outgoing mail stays forced off unless the owner passes
+    # this explicitly. runtime_guard.py does not require MAIL_OUTGOING_DISABLED
+    # for LOCAL_CANONICAL (only SAFE_TEST) -- this switch is this launcher's
+    # own conservative default, opt-in only, never flipped silently.
+    [switch]$AllowOutgoingMail
 )
 
 $ErrorActionPreference = 'Stop'
@@ -63,7 +68,11 @@ try {
     Set-RuntimeEnvironment 'RUNTIME_DATABASE_CLASS' 'CANONICAL_SQLITE'
     Set-RuntimeEnvironment 'RUNTIME_AUTH_MODE' 'OWNER_SESSION'
     Set-RuntimeEnvironment 'RUNTIME_BASE_URL' 'http://127.0.0.1:8000'
-    Set-RuntimeEnvironment 'MAIL_OUTGOING_DISABLED' '1'
+    if ($AllowOutgoingMail) {
+        Set-RuntimeEnvironment 'MAIL_OUTGOING_DISABLED' '0'
+    } else {
+        Set-RuntimeEnvironment 'MAIL_OUTGOING_DISABLED' '1'
+    }
     $process = Start-Process -FilePath $python -ArgumentList @('supplier_app.py') -WorkingDirectory $root -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru -WindowStyle Hidden
 } finally {
     foreach ($name in $saved.Keys) {
@@ -91,5 +100,9 @@ if (-not $ready) {
 }
 
 Write-Output "[PASS] LOCAL_CANONICAL is ready at http://127.0.0.1:8000/ (PID $($process.Id))."
-Write-Output '[INFO] Outgoing mail was forced disabled for this launcher; .env was not changed.'
+if ($AllowOutgoingMail) {
+    Write-Output '[WARN] Outgoing mail is ENABLED for this session (-AllowOutgoingMail) -- sends from connected accounts will really reach recipients. .env was not changed.'
+} else {
+    Write-Output '[INFO] Outgoing mail was forced disabled for this launcher; .env was not changed.'
+}
 Write-Output "[INFO] Logs: $stdout and $stderr"
