@@ -241,6 +241,17 @@ class MailRepository(
 
     def ensure_schema(self) -> None:
         with self.connect() as connection:
+            if self.database_url:
+                # Every cold start of a serverless function calls ensure_schema()
+                # again. Concurrent cold starts running the same DDL (ALTER
+                # TABLE/CREATE INDEX) against the same Postgres database race for
+                # AccessExclusiveLock on different objects in different order and
+                # deadlock -- observed in production as intermittent 500s on
+                # every route ("could not import api/index.py" /
+                # psycopg.errors.DeadlockDetected). A session-scoped advisory
+                # lock serializes them instead: the constant is arbitrary, just
+                # needs to be the same across all callers.
+                connection.execute("SELECT pg_advisory_lock(823746501)")
             for migration_path in self.migration_paths:
                 migration = migration_path.read_text(encoding="utf-8")
                 is_postgres_only = migration.lstrip().startswith("-- postgres-only")
@@ -368,8 +379,45 @@ class MailRepository(
                    )""",
                 (now,),
             )
+            if self.database_url:
+                self._resync_postgres_sequences(connection)
             if not self.database_url:
                 connection.commit()
+
+    @staticmethod
+    def _resync_postgres_sequences(connection: Any) -> None:
+        """Advance every table's id sequence past its current max id.
+
+        A table bulk-loaded with explicit ids (a one-time data migration
+        into this database, for example) leaves the SERIAL sequence at its
+        default start -- the next plain INSERT then asks for id=1, collides
+        with the already-loaded row, and every write to that table fails
+        with "duplicate key value violates ... _pkey" from then on. Found in
+        production: incoming-mail sync silently stopped persisting new
+        messages this way (mail_messages_pkey, id=1/2 already existed).
+        setval(..., true) is idempotent and a no-op once the sequence is
+        already ahead of max(id), so this is safe to run on every boot.
+        """
+        rows = connection.execute(
+            """SELECT c.relname AS table_name, a.attname AS column_name
+               FROM pg_constraint con
+               JOIN pg_class c ON c.oid = con.conrelid
+               JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(con.conkey)
+               WHERE con.contype = 'p' AND c.relkind = 'r' AND c.relnamespace = 'public'::regnamespace
+                 AND array_length(con.conkey, 1) = 1"""
+        ).fetchall()
+        for row in rows:
+            table = str(row["table_name"])
+            column = str(row["column_name"])
+            seq = connection.execute(
+                "SELECT pg_get_serial_sequence(?, ?)", (table, column)
+            ).fetchone()[0]
+            if not seq:
+                continue
+            connection.execute(
+                f'SELECT setval(?, COALESCE((SELECT MAX("{column}") FROM "{table}"), 1), true)',
+                (seq,),
+            )
 
     def get_database_identity(self) -> dict[str, Any] | None:
         """Read the durable DB lineage without exposing credentials."""
