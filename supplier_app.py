@@ -7,6 +7,7 @@ import logging
 import os
 import threading
 import time
+from html import escape
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -19,6 +20,7 @@ from mail.queue import MailQueue
 from mail.repository import DeliveryResolutionRequiredError, MailRepository
 from mail.runtime import RuntimeSession
 from mail.service import MailService
+from mail.test_data_cleanup import CONFIRMATION_TEXT, apply_cleanup, plan_cleanup
 from mail.types import ProviderError
 from backend.app_config import (  # noqa: F401 -- Config/load_dotenv re-exported for api/index.py and operator scripts
     Config,
@@ -76,6 +78,9 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/maintenance/test-data-cleanup-20260909":
+            self._test_data_cleanup_preview()
+            return
         if parsed.path.startswith("/assets/"):
             self.directory = str(FRONTEND_DIST)
             super().do_GET()
@@ -329,6 +334,9 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/maintenance/test-data-cleanup-20260909":
+            self._test_data_cleanup_apply()
+            return
         body = self._read_json()
         if body is None:
             return
@@ -797,6 +805,91 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             self._json(400, {"error": "Ожидался JSON-объект."})
             return None
         return data
+
+    def _test_data_cleanup_preview(self) -> None:
+        session = self._require_session()
+        if not session:
+            return
+        if not self.app.repository.is_workspace_owner(session["user_id"], session["workspace_id"]):
+            self._html(403, "<h1>Доступ запрещён</h1><p>Очистку может выполнить только владелец.</p>")
+            return
+        try:
+            plan = plan_cleanup(self.app.repository, session["workspace_id"])
+        except Exception as exc:  # noqa: BLE001 — exact reason is required before destructive maintenance
+            self._html(409, f"<h1>Очистка остановлена</h1><pre>{escape(str(exc))}</pre>")
+            return
+        csrf_token = self._csrf_token_for_session(session)
+        request_ids = ", ".join(str(value) for value in plan["request_ids"])
+        body = f"""
+<!doctype html><html lang="ru"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Подтверждённая очистка SupplyDesk</title>
+<body style="font:16px system-ui;max-width:760px;margin:48px auto;padding:0 20px;line-height:1.5;color:#202124">
+<h1>Подтверждённая очистка тестовых данных</h1>
+<p><strong>Будут удалены:</strong> {plan['counts']['requests']} тестовых заявок,
+{plan['counts']['exclusive_suppliers']} поставщика только из этих заявок и
+{plan['counts']['messages']} тестовых писем.</p>
+<p><strong>Будут сохранены:</strong> {plan['counts']['shared_suppliers']} поставщик, также используемый в рабочих заявках, и
+заявка №1059 «Печь-камин — глубокий поиск 20» с 171 поставщиком и 245 письмами.</p>
+<p>Тестовые заявки: {escape(request_ids)}</p>
+<p>Манифест: <code>{escape(plan['manifest_sha256'])}</code></p>
+<form method="post" action="/maintenance/test-data-cleanup-20260909">
+<input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
+<input type="hidden" name="confirmation" value="{escape(CONFIRMATION_TEXT)}">
+<input type="hidden" name="manifest_sha256" value="{escape(plan['manifest_sha256'])}">
+<button type="submit" style="padding:12px 18px;font-weight:700;background:#b42318;color:white;border:0;border-radius:8px;cursor:pointer">Удалить подтверждённые тестовые данные</button>
+</form></body></html>"""
+        self._html(200, body)
+
+    def _test_data_cleanup_apply(self) -> None:
+        session = self._require_session()
+        if not session:
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if length < 1 or length > 4096:
+                raise ValueError("Некорректный размер формы.")
+            payload = parse_qs(self.rfile.read(length).decode("utf-8"), keep_blank_values=True)
+            csrf_token = (payload.get("csrf_token") or [""])[0]
+            if not csrf_token or token_hash(csrf_token) != session["csrf_hash"]:
+                self._html(403, "<h1>CSRF-проверка не пройдена</h1><p>Обновите страницу.</p>")
+                return
+            result = apply_cleanup(
+                self.app.repository,
+                session["workspace_id"],
+                session["user_id"],
+                confirmation=(payload.get("confirmation") or [""])[0],
+                expected_manifest_sha256=(payload.get("manifest_sha256") or [""])[0],
+            )
+        except (UnicodeDecodeError, ValueError, PermissionError) as exc:
+            self._html(409, f"<h1>Очистка остановлена</h1><pre>{escape(str(exc))}</pre>")
+            return
+        except Exception:
+            log.exception("Confirmed test-data cleanup failed")
+            self._html(500, "<h1>Очистка не выполнена</h1><p>Транзакция отменена.</p>")
+            return
+        self._html(
+            200,
+            f"""<h1>Очистка выполнена</h1>
+<p>Осталось заявок: <strong>{result['requests_after']}</strong>.</p>
+<p>Осталось поставщиков: <strong>{result['suppliers_after']}</strong>.</p>
+<p>Заявка №1059 «Печь-камин — глубокий поиск 20» сохранена.</p>
+<p><a href="/#/requests">Вернуться к заявкам</a></p>""",
+        )
+
+    def _html(self, status: int, content: str) -> None:
+        body = content.encode("utf-8")
+        self.send_response(status)
+        refreshed_cookie = getattr(self, "_session_refresh_cookie", None)
+        if refreshed_cookie:
+            self.send_header("Set-Cookie", refreshed_cookie)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def _json(self, status: int, payload: dict, *, headers: dict[str, str] | None = None) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")

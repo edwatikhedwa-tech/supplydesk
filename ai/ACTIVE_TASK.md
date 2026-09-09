@@ -9,13 +9,13 @@ based_on_commit: 0a42036284a283d5ab9a00a1dbe0430c9002f078
 
 # Active Task
 
-Task ID: `TASK-VERCEL-AI-ACCOUNT-DATA-20260909`
+Task ID: `TASK-TEST-DATA-CLEANUP-MAIL-CREDENTIAL-20260909`
 Agent: `Codex`
 Mode: `IMPLEMENTATION`
 Started: `2026-09-09`
-Scope: `Fix the reproduced PostgreSQL AI-spend failure and make every workspace supplier visible in the account directory even before INN enrichment.`
-Allowed files: `mail/ai_chat_usage.py, mail/repository.py, supplier_app.py, frontend-v2/src/lib/api.ts, frontend-v2/src/lib/types.ts, frontend-v2/src/pages/Suppliers.tsx, focused tests, ai state/report files`
-Status: `COMPLETE — AI and supplier directory verified on production deployment dpl_D4bfbGDmQPZy2XBzVoy7Shsv3mNV`
+Scope: `Remove the owner-confirmed test requests and suppliers used only by those requests, preserve request 1059 and all shared suppliers, and verify the existing encrypted Mail.ru application-password flow.`
+Allowed files: `mail/test_data_cleanup.py, supplier_app.py, focused tests, temporary cleanup runner, runtime/quarantine backup and ai state/report files`
+Status: `ACTIVE — exact allowlist confirmed; reversible backup and guarded production cleanup in progress`
 Last update: `2026-09-09`
 
 Previous completed task report: `ai/reports/TASK-RUNTIME-SELECTION-HARD-GUARD-20260904-report.md`
