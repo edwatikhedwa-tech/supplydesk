@@ -4,10 +4,30 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-09
-based_on_commit: 97cae2006d35db46ee12d5c9b9b33b62d3e2205d
+based_on_commit: a8916e08ab38023606a6808d40fb339f8449be97
 ---
 
 # Last Handoff
+
+## Current: TASK-VERCEL-AI-ACCOUNT-DATA-20260909
+
+Production deployment `dpl_D4bfbGDmQPZy2XBzVoy7Shsv3mNV` is READY and aliased
+to https://supplydesk-2769.vercel.app/. AI chat now survives PostgreSQL daily
+usage accounting and returned a live answer in the owner's authenticated
+session. The supplier page loads the complete workspace directory: 505 stored
+supplier/contact identities are visible, including rows without an INN; 17
+requests and correspondence also load. The earlier 466 count was scoped to
+unique rows visible inside active request views, not all stored identities.
+
+No data cleanup was performed. Rows without an INN remain separate because the
+system has no safe legal identifier for automatic merging. The extra 39 rows
+beyond the 466 seen in request views may include blacklisted, excluded,
+orphaned, manual or test/contact identities; their exact partition is not
+verified. Yandex login remains present in an independent anonymous session.
+Code commit `a8916e0`; no Git push.
+Visual evidence is in `frontend-v2/artifacts/supplier-directory-20260909/` and
+the full evidence record is in
+[the task report](reports/TASK-VERCEL-AI-ACCOUNT-DATA-20260909-report.md).
 
 ## Current: TASK-VERCEL-FRONTEND-V2-LOGIN-20260909
 

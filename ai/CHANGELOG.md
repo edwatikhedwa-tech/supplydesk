@@ -1665,3 +1665,18 @@ HTTP checks 200/200/404; real Yandex ID sign-in page opened. Full callback
 not verified. Existing unstaged Vercel runtime/SQL patches were retained in
 deployment, not committed as this task's work. No Git push or other-project
 changes. Evidence: ai/reports/TASK-VERCEL-FRONTEND-V2-LOGIN-20260909-report.md.
+
+## 2026-09-09 — TASK-VERCEL-AI-ACCOUNT-DATA-20260909
+
+- Fixed the reproduced production AI failure caused by ambiguous PostgreSQL
+  columns during daily usage accounting.
+- Added a workspace-scoped supplier directory that keeps verified global cards
+  and also exposes supplier/contact identities that do not yet have an INN.
+- Reworked the supplier screen for a fixed desktop table and readable
+  tablet/mobile cards without horizontal page overflow.
+- Published READY deployment `dpl_D4bfbGDmQPZy2XBzVoy7Shsv3mNV` at the
+  canonical production alias. Authenticated acceptance showed 17 requests, 505
+  supplier rows, correspondence and a successful live AI response; anonymous
+  acceptance showed the Yandex login action.
+- No supplier, request or mail data was deleted or merged. The exact makeup of
+  the 39 rows not represented in the earlier request-view count is not verified.

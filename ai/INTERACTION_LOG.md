@@ -1594,3 +1594,25 @@ HTTP checks 200/200/404; real Yandex ID sign-in page opened. Full callback
 not verified. Existing unstaged Vercel runtime/SQL patches were retained in
 deployment, not committed as this task's work. No Git push or other-project
 changes. Evidence: ai/reports/TASK-VERCEL-FRONTEND-V2-LOGIN-20260909-report.md.
+
+## 2026-09-09 — TASK-VERCEL-AI-ACCOUNT-DATA-20260909
+
+Owner authorized production inspection and an inexpensive non-sensitive AI
+prompt. Reproduced the AI failure after a successful RouterAI response as a
+PostgreSQL `AmbiguousColumn` error in `ai_chat_usage`, then applied the narrow
+qualified-column fix. Replaced the INN-only supplier-page source with a
+workspace directory that also returns stored supplier/contact identities
+without INN; no records were removed or consolidated.
+
+Verification state: focused AI/directory tests PASS (4 PASS, 1 optional local
+PostgreSQL test skipped); supplier-identity tests 27/27 PASS; full Python suite
+512 tests PASS with 2 PostgreSQL-URL-dependent skips; frontend build PASS; lint
+has zero errors and retains warnings. Production root/session/error checks were
+200/200/404. Final deployment `dpl_D4bfbGDmQPZy2XBzVoy7Shsv3mNV` is READY.
+Authenticated browser acceptance showed 17 requests, 505 supplier rows,
+correspondence and a successful AI answer; anonymous acceptance showed Yandex
+login. Desktop 1440x900, tablet 1024x768 and mobile 390x844 supplier renders
+were inspected after two corrective layout iterations with no page overflow.
+The exact historic source and category split of the extra 39 identities are
+not verified. Docker was attempted only for a disposable local PostgreSQL test,
+is not required by the application or Vercel, and was not installed or changed.

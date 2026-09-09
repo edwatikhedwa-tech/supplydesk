@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-09
-based_on_commit: 97cae2006d35db46ee12d5c9b9b33b62d3e2205d
+based_on_commit: a8916e08ab38023606a6808d40fb339f8449be97
 ---
 
 # Current State
@@ -14,6 +14,22 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-09` — `TASK-VERCEL-AI-ACCOUNT-DATA-20260909`: production AI chat
+was restored by qualifying the PostgreSQL upsert target columns in
+`ai_chat_usage`; the reproduced `AmbiguousColumn: rub_spent` failure no longer
+occurs. The account supplier directory now returns all workspace supplier
+identities, including search results that do not yet have an INN, while keeping
+the existing INN-based global cards and tenant isolation. Production deployment
+`dpl_D4bfbGDmQPZy2XBzVoy7Shsv3mNV` is READY and aliased to
+https://supplydesk-2769.vercel.app/. Authenticated acceptance showed 17 requests,
+505 supplier rows (all currently without a verified INN), real correspondence,
+and a successful live AI response; an independent anonymous session showed the
+Yandex login action. The earlier count of 466 represented unique rows visible
+inside active request views, not the entire stored workspace. The extra 39 may
+include blacklisted, excluded, orphaned, manual or test/contact identities; the
+exact partition is not verified. No supplier or mail data was deleted or
+merged. See the [task report](reports/TASK-VERCEL-AI-ACCOUNT-DATA-20260909-report.md).
 
 `2026-09-09` — `TASK-VERCEL-FRONTEND-V2-LOGIN-20260909`: CONFIRMED deployment
 of frontend-v2 from branch `experiment/frontend-v2-greenfield-20260905`, base

@@ -15,7 +15,7 @@ Mode: `IMPLEMENTATION`
 Started: `2026-09-09`
 Scope: `Fix the reproduced PostgreSQL AI-spend failure and make every workspace supplier visible in the account directory even before INN enrichment.`
 Allowed files: `mail/ai_chat_usage.py, mail/repository.py, supplier_app.py, frontend-v2/src/lib/api.ts, frontend-v2/src/lib/types.ts, frontend-v2/src/pages/Suppliers.tsx, focused tests, ai state/report files`
-Status: `ACTIVE — production failure reproduced; scoped fix and verification in progress`
+Status: `COMPLETE — AI and supplier directory verified on production deployment dpl_D4bfbGDmQPZy2XBzVoy7Shsv3mNV`
 Last update: `2026-09-09`
 
 Previous completed task report: `ai/reports/TASK-RUNTIME-SELECTION-HARD-GUARD-20260904-report.md`
@@ -26,3 +26,4 @@ Completed task report: `ai/reports/TASK-SUPPLYDESK-UI-MODERNIZATION-20260904-rep
 Completed task report: `ai/reports/TASK-SUPPLYDESK-MESSAGES-DEEP-VISUAL-REDESIGN-20260904-report.md`
 
 Completed task report: `ai/reports/TASK-VERCEL-FRONTEND-V2-LOGIN-20260909-report.md`
+Completed task report: `ai/reports/TASK-VERCEL-AI-ACCOUNT-DATA-20260909-report.md`
