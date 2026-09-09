@@ -164,7 +164,7 @@ export function RequestDetail() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center gap-2 px-6 pt-5">
+      <div className="flex items-center gap-2 px-4 sm:px-6 pt-5">
         <Link to="/requests" className="flex items-center gap-1 text-[12px] text-ink-muted hover:text-ink">
           <ArrowLeft size={13} />
           Заявки
@@ -175,7 +175,7 @@ export function RequestDetail() {
         title={request.name}
         description={`№${request.id} · ${request.sender_name}${request.company_name ? ` · ${request.company_name}` : ''}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge tone={statusMeta.tone}>{statusMeta.label}</Badge>
             <DeadlineTag deadline={request.deadline} />
             <QuickAddTaskButton requestId={requestId} />
@@ -188,12 +188,12 @@ export function RequestDetail() {
         }
       />
 
-      {retryError && <p className="px-6 pb-2 text-[12px] text-danger">{retryError}</p>}
+      {retryError && <p className="px-4 sm:px-6 pb-2 text-[12px] text-danger">{retryError}</p>}
 
-      {request.description && <p className="px-6 pb-3 text-[12.5px] text-ink-soft">{request.description}</p>}
+      {request.description && <p className="px-4 sm:px-6 pb-3 text-[12.5px] text-ink-soft">{request.description}</p>}
 
       {positions.length > 0 && (
-        <div className="px-6 pb-3">
+        <div className="px-4 sm:px-6 pb-3">
           <div className="mb-1.5 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-ink-faint">
             <Package size={12} />
             Позиции заявки
@@ -209,7 +209,7 @@ export function RequestDetail() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border px-6 py-2.5 text-[11.5px] text-ink-muted">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border px-4 sm:px-6 py-2.5 text-[11.5px] text-ink-muted">
         <span>
           <b className="text-ink">{suppliers.length}</b> компаний
         </span>
@@ -232,7 +232,7 @@ export function RequestDetail() {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-border px-6 py-2.5">
+      <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 sm:px-6 py-2.5">
         <div className="flex flex-wrap gap-1.5">
           {(Object.keys(FILTER_LABELS) as FilterKey[])
             .filter((key) => key === 'all' || counts[key] > 0)
@@ -283,13 +283,80 @@ export function RequestDetail() {
         />
       )}
 
-      <div className="flex-1 overflow-auto border-t border-border">
+      <div className="min-w-0 flex-1 overflow-auto border-t border-border">
         {suppliers.length === 0 ? (
           <EmptyState icon={Inbox} title="Поставщики ещё не найдены" description="Запустите поиск, чтобы система нашла кандидатов." />
         ) : visible.length === 0 ? (
           <EmptyState icon={Search} title="Ничего не найдено" description="Попробуйте другой фильтр или запрос." />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="flex flex-col divide-y divide-border sm:hidden">
+            {visible.map((s) => {
+              const mailMeta = supplierMailStatusMeta[s.mail_status] ?? supplierMailStatusMeta.not_sent;
+              const age = companyAge(s.registry?.registered_at);
+              const checko = checkoUrl(s.registry?.ogrn);
+              return (
+                <div key={s.id} className={`flex flex-col gap-2 px-4 py-3 ${selected.has(s.id) ? 'bg-accent-subtle/30' : ''}`}>
+                  <div className="flex items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(s.id)}
+                      onChange={() => toggleSelected(s.id)}
+                      disabled={!s.email}
+                      aria-label={`Выбрать ${s.name}`}
+                      className="mt-1 h-3.5 w-3.5 shrink-0 rounded border-border-strong accent-accent disabled:opacity-30"
+                    />
+                    <div className="min-w-0 flex-1">
+                      {s.global_supplier_id ? (
+                        <Link to={`/suppliers/${s.global_supplier_id}`} className="truncate font-medium text-ink hover:text-accent">
+                          {formatCompanyName(s.name)}
+                        </Link>
+                      ) : (
+                        <p className="truncate font-medium text-ink">{formatCompanyName(s.name)}</p>
+                      )}
+                      <p className="truncate text-[11px] text-ink-muted">
+                        {s.email || 'Нет email'}
+                        {s.inn && <span> · ИНН {s.inn}</span>}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px]">
+                        {age && <span className="text-ink-faint">{age}</span>}
+                        {s.finances && <span className="text-ink-soft">{formatMoney(s.finances.revenue)}</span>}
+                        <Badge tone={mailMeta.tone}>{mailMeta.label}</Badge>
+                        {s.unread_count > 0 && (
+                          <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white">
+                            {s.unread_count}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-1.5">
+                    {checko && (
+                      <a href={checko} target="_blank" rel="noreferrer" title="Профиль на Checko" className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-surface-hover">
+                        <img src={checkoIcon} alt="Checko" className="h-4 w-4" />
+                      </a>
+                    )}
+                    {s.email && (
+                      <button type="button" onClick={() => setQuickComposeId(s.id)} title="Написать" aria-label="Написать"
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-subtle text-accent transition-colors hover:bg-accent hover:text-white">
+                        <Send size={13} />
+                      </button>
+                    )}
+                    <button type="button" onClick={() => openThread(s.id)} title="Переписка" aria-label="Переписка"
+                      className="flex h-7 w-7 items-center justify-center rounded-full bg-info-subtle text-info transition-colors hover:bg-info hover:text-white">
+                      <MessageSquareText size={13} />
+                    </button>
+                    <button type="button" disabled={irrelevantId === s.id} onClick={() => void markIrrelevant(s.id)}
+                      title="Не подходит" aria-label="Не подходит"
+                      className="flex h-7 w-7 items-center justify-center rounded-full bg-danger-subtle text-danger transition-colors hover:bg-danger hover:text-white disabled:opacity-50">
+                      <Ban size={13} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full table-fixed border-collapse text-[12.5px]">
               <colgroup>
                 <col className="w-9" />
@@ -451,6 +518,7 @@ export function RequestDetail() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </div>

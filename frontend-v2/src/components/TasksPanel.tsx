@@ -69,7 +69,7 @@ export function TasksPanel({
   }
 
   return (
-    <div className="flex w-72 shrink-0 flex-col border-l border-border bg-surface">
+    <div className="flex h-full w-full shrink-0 flex-col border-l border-border bg-surface sm:w-72">
       <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
         <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
           <SquareCheck size={14} />

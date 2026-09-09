@@ -81,7 +81,7 @@ export function Suppliers() {
         description={state.status === 'ready' ? `${suppliers.length} компаний в общей картотеке` : 'Загружаем поставщиков…'}
       />
 
-      <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 pb-3">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 sm:px-6 pb-3">
         <div className="relative w-72">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
           <input
@@ -109,7 +109,7 @@ export function Suppliers() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="min-w-0 flex-1 overflow-auto">
         {state.status === 'loading' ? (
           <LoadingState label="Загружаем поставщиков с бэкенда…" />
         ) : state.status === 'error' ? (
@@ -117,7 +117,51 @@ export function Suppliers() {
         ) : filtered.length === 0 ? (
           <EmptyState icon={Truck} title="Поставщики не найдены" description="Попробуйте другой запрос или фильтр." />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="flex flex-col divide-y divide-border sm:hidden">
+            {filtered.map((s) => {
+              const age = companyAge(s.registry?.registered_at);
+              const profit = s.finances?.profit ?? null;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => navigate(`/suppliers/${s.id}`)}
+                  className="flex flex-col gap-1.5 px-4 py-3 text-left active:bg-surface-hover"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-ink">{formatCompanyName(s.name)}</p>
+                      <p className="truncate text-[11px] text-ink-muted">ИНН {s.inn}{age ? ` · ${age}` : ''}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {s.relationship_status === 'favorite' && (
+                        <Badge tone="accent"><Star size={10} className="fill-current" /></Badge>
+                      )}
+                      {s.relationship_status === 'blacklisted' && (
+                        <Badge tone="danger"><Ban size={10} /></Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px]">
+                    {s.finances?.revenue != null && (
+                      <span className="font-semibold text-ink">{formatMoney(s.finances.revenue)}</span>
+                    )}
+                    {profit != null && (
+                      <span className={clsx('flex items-center gap-1 font-medium', profit >= 0 ? 'text-success' : 'text-danger')}>
+                        {profit >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                        {formatMoney(profit)}
+                      </span>
+                    )}
+                    <span className="text-ink-muted">
+                      {s.total_requests > 0 ? `${s.total_requests} заявок · ${formatPercent(s.response_rate / 100)} отклик` : 'Не контактировали'}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[1050px] border-collapse text-[12.5px]">
               <thead className="sticky top-0 z-10 bg-canvas">
                 <tr className="border-b border-border">
@@ -228,6 +272,7 @@ export function Suppliers() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </div>

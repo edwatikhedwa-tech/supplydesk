@@ -14,6 +14,7 @@ import { NavLink } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { useApiData } from '../../lib/useApiData';
+import { useIsNarrowViewport } from '../../lib/useIsNarrowViewport';
 import { Avatar } from '../ui/Avatar';
 
 const nav = [
@@ -31,24 +32,6 @@ function useNavCounts() {
   const attention = dashboard.status === 'ready' ? dashboard.data.kpis.attention : 0;
   const unread = threads.status === 'ready' ? threads.data.reduce((sum, t) => sum + t.unread_count, 0) : 0;
   return { attention, unread };
-}
-
-/** Below this width the 224px expanded rail leaves too little room for
- * actual content (badges/labels start overlapping) -- default to the
- * compact icon-only rail there. The user can still tap to expand; this
- * only changes the starting state, not a hard mobile lockout. */
-const MOBILE_BREAKPOINT_PX = 768;
-
-function useIsNarrowViewport(): boolean {
-  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT_PX);
-  useEffect(() => {
-    const query = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX - 1}px)`);
-    const onChange = () => setNarrow(query.matches);
-    onChange();
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
-  }, []);
-  return narrow;
 }
 
 export function Sidebar() {

@@ -303,7 +303,7 @@ export function Settings() {
     <div className="flex h-full flex-col overflow-auto">
       <PageHeader title="Настройки" description="Почтовые аккаунты для отправки и приёма писем поставщиков" />
 
-      <div className="max-w-2xl space-y-4 px-6 pb-6">
+      <div className="max-w-2xl space-y-4 px-4 sm:px-6 pb-6">
         {banner && (
           <div
             className={`flex items-center gap-2 rounded-md border px-3 py-2 text-[12.5px] ${

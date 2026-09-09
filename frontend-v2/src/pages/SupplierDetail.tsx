@@ -122,14 +122,14 @@ export function SupplierDetail() {
 
   return (
     <div className="flex h-full flex-col overflow-auto">
-      <div className="flex items-center gap-2 px-6 pt-5">
+      <div className="flex items-center gap-2 px-4 sm:px-6 pt-5">
         <Link to="/suppliers" className="flex items-center gap-1 text-[12px] text-ink-muted hover:text-ink">
           <ArrowLeft size={13} />
           Поставщики
         </Link>
       </div>
 
-      <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-2">
+      <div className="flex flex-wrap items-start justify-between gap-4 px-4 sm:px-6 pb-4 pt-2">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar name={supplier.name} size="lg" />
           <div className="min-w-0">
@@ -146,7 +146,7 @@ export function SupplierDetail() {
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {isBlacklisted && <Badge tone="danger">В чёрном списке</Badge>}
           {isFavorite && <Badge tone="accent">Избранный</Badge>}
           {latestThread ? (
@@ -194,15 +194,15 @@ export function SupplierDetail() {
       </div>
 
       {blacklistReasonOpen && (
-        <div className="mx-6 mb-4 rounded-md border border-border bg-surface-hover p-3">
+        <div className="mx-4 mb-4 rounded-md border border-border bg-surface-hover p-3 sm:mx-6">
           <label className="mb-1 block text-[12px] font-medium text-ink-soft">Причина (обязательно для чёрного списка)</label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               autoFocus
               value={blacklistReason}
               onChange={(e) => setBlacklistReason(e.target.value)}
               placeholder="Например: не отвечает на запросы, срывает сроки…"
-              className="h-9 flex-1 rounded-md border border-border-strong bg-surface px-3 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent-border"
+              className="h-9 w-full min-w-0 flex-1 rounded-md border border-border-strong bg-surface px-3 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent-border sm:w-auto"
             />
             <Button variant="secondary" size="sm" onClick={() => setBlacklistReasonOpen(false)}>
               Отмена
@@ -218,13 +218,13 @@ export function SupplierDetail() {
           </div>
         </div>
       )}
-      {relationshipError && <p className="mx-6 mb-3 text-[12px] text-danger">{relationshipError}</p>}
+      {relationshipError && <p className="mx-4 mb-3 text-[12px] text-danger sm:mx-6">{relationshipError}</p>}
 
-      <div className="grid grid-cols-1 gap-4 px-6 pb-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 px-4 sm:px-6 pb-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <section className="rounded-lg border border-border bg-surface">
             <h2 className="border-b border-border px-4 py-2.5 text-[12.5px] font-semibold text-ink">Контакты и реквизиты</h2>
-            <div className="grid grid-cols-2 gap-3 p-4 text-[12.5px]">
+            <div className="grid grid-cols-1 gap-3 p-4 text-[12.5px] sm:grid-cols-2">
               <div className="flex items-center gap-1.5 text-ink-soft">
                 <Mail size={13} className="shrink-0 text-ink-faint" />
                 {supplier.email ? (
@@ -284,7 +284,7 @@ export function SupplierDetail() {
                     <button
                       key={`${h.request_id}-${h.supplier_id}`}
                       onClick={() => navigate(`/requests/${h.request_id}`)}
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-hover"
+                      className="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 text-left hover:bg-surface-hover"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[12.5px] font-medium text-ink">{h.request_title}</p>
@@ -301,7 +301,7 @@ export function SupplierDetail() {
                           navigate(`/messages?request=${h.request_id}&supplier=${h.supplier_id}`);
                         }}
                       >
-                        Переписка
+                        <span className="hidden sm:inline">Переписка</span>
                       </Button>
                     </button>
                   );

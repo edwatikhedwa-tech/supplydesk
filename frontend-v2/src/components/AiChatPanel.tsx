@@ -89,7 +89,7 @@ export function AiChatPanel({
   const capReached = usage !== null && usage.spent_rub >= usage.limit_rub;
 
   return (
-    <div className="flex w-[340px] shrink-0 flex-col border-l border-border bg-canvas p-3">
+    <div className="flex h-full w-full shrink-0 flex-col border-l border-border bg-canvas p-3 sm:w-[340px]">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
         <div className="flex items-center justify-between border-b border-border bg-gradient-to-r from-accent-subtle/60 to-transparent px-4 py-3">
           <span className="flex items-center gap-2 text-[13px] font-semibold text-ink">

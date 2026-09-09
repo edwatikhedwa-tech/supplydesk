@@ -167,7 +167,7 @@ export function Requests() {
         />
       )}
 
-      <div className="flex items-center gap-3 overflow-x-auto border-b border-border px-6 pb-3">
+      <div className="flex items-center gap-3 overflow-x-auto border-b border-border px-4 sm:px-6 pb-3">
         <div className="relative w-64 shrink-0">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
           <input
@@ -202,7 +202,48 @@ export function Requests() {
         ) : filtered.length === 0 ? (
           <EmptyState icon={Truck} title="Ничего не найдено" description="Измените поиск или фильтр по статусу." />
         ) : (
-          <table className="w-full border-collapse text-[12.5px]">
+          <>
+          <div className="flex flex-col divide-y divide-border sm:hidden">
+            {filtered.map((r) => {
+              const unread = unreadByRequestId.get(r.id) ?? 0;
+              const meta = requestStatusMeta[r.status];
+              const pct = r.search_total > 0 ? Math.round((r.search_progress / r.search_total) * 100) : null;
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => navigate(`/requests/${r.id}`)}
+                  className="flex flex-col gap-1.5 px-4 py-3 text-left active:bg-surface-hover"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-ink">{r.name}</p>
+                      <p className="truncate text-[11.5px] text-ink-muted">
+                        №{r.id} · {r.sender_name}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {unread > 0 && (
+                        <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white">
+                          {unread}
+                        </span>
+                      )}
+                      <Badge tone={meta.tone}>{meta.label}</Badge>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-ink-muted">
+                    <span>
+                      {r.suppliers_count} поставщиков · {r.replies_count}/{r.sent_count} ответов
+                    </span>
+                    {pct !== null && <span>Поиск {pct}%</span>}
+                    <DeadlineTag deadline={r.deadline} />
+                    <span className="ml-auto text-ink-faint">{formatRelativeTime(r.updated_at)}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <table className="hidden w-full border-collapse text-[12.5px] sm:table">
             <thead className="sticky top-0 z-10 bg-canvas">
               {table.getHeaderGroups().map((hg) => (
                 <tr key={hg.id} className="border-b border-border">
@@ -237,6 +278,7 @@ export function Requests() {
               ))}
             </tbody>
           </table>
+          </>
         )}
       </div>
     </div>

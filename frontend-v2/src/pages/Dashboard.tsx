@@ -99,7 +99,7 @@ export function Dashboard() {
     <div className="flex h-full flex-col overflow-auto">
       <PageHeader title="Дашборд" description="Что сейчас требует внимания" />
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-6 pb-4">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 sm:px-6 pb-4">
         {chips.map((c) => (
           <div key={c.label} className="flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1 text-[12px]">
             <span className={c.tone ? 'font-semibold tabular-nums text-accent' : 'font-semibold tabular-nums text-ink-soft'}>{c.value}</span>
@@ -108,7 +108,7 @@ export function Dashboard() {
         ))}
       </div>
 
-      <div className="grid flex-1 grid-cols-2 gap-4 p-6">
+      <div className="grid flex-1 grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-2">
         <div className="flex flex-col gap-4">
           <SectionCard title="Сроки и просрочки" icon={AlertTriangle} count={attentionRequests.length} viewAllTo="/requests">
             {attentionRequests.length === 0 ? (
@@ -195,7 +195,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="px-6 pb-6">
+      <div className="px-4 sm:px-6 pb-6">
         <TasksSection />
       </div>
     </div>

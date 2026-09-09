@@ -102,7 +102,7 @@ export function Blacklist() {
         Поставщики из чёрного списка не участвуют в автопоиске и недоступны для выбора при создании новой заявки.
       </div>
 
-      <div className="flex items-center gap-3 px-6 pb-3">
+      <div className="flex items-center gap-3 px-4 sm:px-6 pb-3">
         <div className="relative w-72">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
           <input
@@ -114,7 +114,7 @@ export function Blacklist() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto px-6 pb-6">
+      <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
         {loading ? (
           <LoadingState label="Загружаем чёрный список…" />
         ) : error ? (
@@ -126,7 +126,44 @@ export function Blacklist() {
               {filteredSuppliers.length === 0 ? (
                 <EmptyState icon={Ban} title="В чёрном списке пусто" description="Здесь появятся поставщики, добавленные в чёрный список." />
               ) : (
-                <table className="w-full table-fixed border-collapse text-[12.5px]">
+                <>
+                <div className="flex flex-col divide-y divide-border sm:hidden">
+                  {filteredSuppliers.map((s) => {
+                    const age = companyAge(s.registry?.registered_at);
+                    const profit = s.finances?.profit ?? null;
+                    return (
+                      <div key={s.id} className="flex items-start gap-3 px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(s.id)}
+                          onChange={() => toggleSelected(s.id)}
+                          aria-label={`Выбрать ${s.name}`}
+                          className="mt-1 h-3.5 w-3.5 shrink-0 rounded border-border-strong accent-accent"
+                        />
+                        <button type="button" onClick={() => navigate(`/suppliers/${s.id}`)} className="min-w-0 flex-1 text-left">
+                          <p className="truncate font-medium text-ink">{formatCompanyName(s.name)}</p>
+                          <p className="truncate text-[11px] text-ink-muted">ИНН {s.inn}{age ? ` · ${age}` : ''}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px]">
+                            {s.finances?.revenue != null && <span className="text-ink-soft">{formatMoney(s.finances.revenue)}</span>}
+                            {profit != null && <span className={profit >= 0 ? 'text-success' : 'text-danger'}>{formatMoney(profit)}</span>}
+                            {s.blacklist_reason && <span className="text-ink-faint">{s.blacklist_reason}</span>}
+                          </div>
+                        </button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 shrink-0 px-0"
+                          icon={<Check size={13} />}
+                          disabled={busyId === s.id}
+                          onClick={() => void restoreSupplier(s.id)}
+                          title="Вернуть из чёрного списка"
+                          aria-label="Вернуть из чёрного списка"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <table className="hidden w-full table-fixed border-collapse text-[12.5px] sm:table">
                   <colgroup>
                     <col className="w-9" />
                     <col className="w-[22%]" />
@@ -212,6 +249,7 @@ export function Blacklist() {
                     })}
                   </tbody>
                 </table>
+                </>
               )}
             </section>
 
@@ -225,7 +263,7 @@ export function Blacklist() {
                 </div>
                 <div className="divide-y divide-border">
                   {filteredDomains.map((d) => (
-                    <div key={d.id} className="flex items-center gap-3 px-4 py-2.5">
+                    <div key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5">
                       <Globe size={14} className="shrink-0 text-ink-faint" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[12.5px] font-medium text-ink">{d.company_name}</p>
@@ -257,7 +295,7 @@ export function Blacklist() {
       </div>
 
       {selected.size > 0 && (
-        <div className="flex items-center justify-between border-t border-border bg-surface px-6 py-3 shadow-lg">
+        <div className="flex items-center justify-between border-t border-border bg-surface px-4 sm:px-6 py-3 shadow-lg">
           <span className="text-[12.5px] text-ink-soft">
             Выбрано: <b>{selected.size}</b>
           </span>
