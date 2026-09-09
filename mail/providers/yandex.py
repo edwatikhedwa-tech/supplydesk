@@ -201,10 +201,17 @@ class YandexMailProvider(MailProvider):
             messages: list[IncomingMessage] = []
             newest_uid = cursor
             for uid in ids:
-                newest_uid = max(newest_uid, uid)
                 fetch_status, fetched = connection.uid("FETCH", str(uid), "(BODY.PEEK[])")
                 if fetch_status != "OK":
-                    continue
+                    # A transient per-UID FETCH failure must not move the saved
+                    # watermark past this message: sync_incoming() persists
+                    # `newest_uid` as the next cursor unconditionally, so
+                    # advancing here would make this UID unreachable on every
+                    # future sync -- the message is silently and permanently
+                    # lost, never even landing in the unmatched inbox. Stop the
+                    # batch here so the next sync retries from this exact UID.
+                    break
+                newest_uid = uid
                 raw = b"".join(part[1] for part in (fetched or []) if isinstance(part, tuple) and len(part) > 1 and isinstance(part[1], bytes))
                 parsed = self._parse_incoming(raw, email=email, uidvalidity=current_uidvalidity, uid=uid)
                 if parsed:

@@ -715,6 +715,61 @@ class MailIntegrationTests(unittest.TestCase):
         self.assertEqual(batch.scanned_count, 1)
         self.assertEqual(batch.messages[0].body_text, "Новый ответ")
 
+    def test_yandex_imap_fetch_does_not_advance_watermark_past_a_failed_uid(self) -> None:
+        """A UID whose FETCH fails must not be skipped forever.
+
+        sync_incoming() persists whatever `newest_uid` this returns as the
+        next sync's cursor unconditionally. If the watermark moved past a UID
+        that failed to fetch, that message would never be retried again --
+        silently and permanently lost, without even landing in the unmatched
+        inbox. Regression test for that data-loss bug: three real supplier
+        replies vanished this way on 2026-09-01 (found via direct DB
+        inspection -- present in neither mail_messages nor
+        mail_inbox_messages -- while sibling replies from the same sync
+        succeeded).
+        """
+        good = EmailMessage()
+        good["From"] = "Supplier <supplier@example.com>"
+        good["To"] = "user@example.com"
+        good["Subject"] = "Re: Запрос"
+        good["Message-ID"] = "<ok@example.com>"
+        good.set_content("Дошло")
+
+        class FlakyIMAP:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def authenticate(self, mechanism, callback):
+                callback(None)
+                return "OK", [b"authenticated"]
+
+            def select(self, mailbox, readonly=True):
+                return "OK", [b"1"]
+
+            def response(self, code):
+                return b"OK", [b"77"]
+
+            def uid(self, command, *args):
+                if command == "SEARCH":
+                    # Three new UIDs since the last sync; the middle one (6)
+                    # will fail to FETCH -- e.g. a transient IMAP hiccup.
+                    return "OK", [b"5 6 7"]
+                uid = int(args[0])
+                if uid == 6:
+                    return "NO", [b"[UNAVAILABLE] FETCH failed"]
+                return "OK", [(b"BODY[]", good.as_bytes()), b")"]
+
+            def logout(self):
+                return "BYE", [b"logged out"]
+
+        with patch("mail.providers.yandex.imaplib.IMAP4_SSL", FlakyIMAP):
+            provider = YandexMailProvider("client-id", "client-secret")
+            batch = provider.fetch_incoming("user@example.com", "access-token", uidvalidity="77", last_uid=4, max_messages=10)
+        # Only UID 5 (before the failure) was imported; the cursor must stay
+        # at 5 so the next sync retries UID 6 (and 7) instead of jumping to 7.
+        self.assertEqual(len(batch.messages), 1)
+        self.assertEqual(batch.last_uid, 5)
+
     def test_yandex_authorization_url_uses_smtp_imap_email_state_and_pkce(self) -> None:
         provider = YandexMailProvider("client-id", "client-secret")
         query = parse_qs(urlparse(provider.authorization_url(
