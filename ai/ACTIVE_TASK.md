@@ -4,18 +4,18 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-09
-based_on_commit: 97cae2006d35db46ee12d5c9b9b33b62d3e2205d
+based_on_commit: 0a42036284a283d5ab9a00a1dbe0430c9002f078
 ---
 
 # Active Task
 
-Task ID: `TASK-VERCEL-FRONTEND-V2-LOGIN-20260909`
+Task ID: `TASK-VERCEL-AI-ACCOUNT-DATA-20260909`
 Agent: `Codex`
-Mode: `DEPLOYMENT`
+Mode: `IMPLEMENTATION`
 Started: `2026-09-09`
-Scope: `Deploy current frontend-v2 to supplydesk-2769 while preserving the owner-approved sign-in screen.`
-Allowed files: `frontend-v2/src/pages/Login.tsx, frontend-v2/src/pages/Login.css, vercel.json, .vercelignore, ai state/report files`
-Status: `COMPLETE — production promoted; login, API and Yandex start verified; full account callback not verified`
+Scope: `Fix the reproduced PostgreSQL AI-spend failure and make every workspace supplier visible in the account directory even before INN enrichment.`
+Allowed files: `mail/ai_chat_usage.py, mail/repository.py, supplier_app.py, frontend-v2/src/lib/api.ts, frontend-v2/src/lib/types.ts, frontend-v2/src/pages/Suppliers.tsx, focused tests, ai state/report files`
+Status: `ACTIVE — production failure reproduced; scoped fix and verification in progress`
 Last update: `2026-09-09`
 
 Previous completed task report: `ai/reports/TASK-RUNTIME-SELECTION-HARD-GUARD-20260904-report.md`

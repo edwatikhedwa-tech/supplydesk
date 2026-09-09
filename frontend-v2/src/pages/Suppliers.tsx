@@ -10,13 +10,14 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { api } from '../lib/api';
 import { now, checkoUrl, companyAge, formatCompanyName, formatMoney, formatPercent, formatRelativeTime } from '../lib/format';
-import type { GlobalSupplierSummary } from '../lib/types';
+import type { SupplierDirectoryItem } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
 
-type FilterKey = 'all' | 'favorite' | 'blacklisted' | 'stale' | 'never_replied' | 'not_contacted';
+type FilterKey = 'all' | 'missing_inn' | 'favorite' | 'blacklisted' | 'stale' | 'never_replied' | 'not_contacted';
 
 const filterConfig: { key: FilterKey; label: string }[] = [
   { key: 'all', label: 'Все' },
+  { key: 'missing_inn', label: 'Без ИНН' },
   { key: 'favorite', label: 'Избранные' },
   { key: 'blacklisted', label: 'Чёрный список' },
   { key: 'stale', label: 'Давно не было контакта' },
@@ -29,8 +30,10 @@ function daysSince(iso: string | null): number | null {
   return Math.round((now().getTime() - new Date(iso).getTime()) / 86400000);
 }
 
-function matchesFilter(s: GlobalSupplierSummary, filter: FilterKey): boolean {
+function matchesFilter(s: SupplierDirectoryItem, filter: FilterKey): boolean {
   switch (filter) {
+    case 'missing_inn':
+      return s.verification_status === 'missing_inn';
     case 'favorite':
       return s.relationship_status === 'favorite';
     case 'blacklisted':
@@ -53,8 +56,17 @@ export function Suppliers() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
 
-  const state = useApiData(() => api.listGlobalSuppliers().then((r) => r.items), []);
+  const state = useApiData(() => api.listSupplierDirectory().then((r) => r.items), []);
   const suppliers = state.status === 'ready' ? state.data : [];
+  const verifiedCount = suppliers.filter((supplier) => supplier.verification_status === 'verified').length;
+
+  const openSupplier = (supplier: SupplierDirectoryItem) => {
+    if (supplier.global_supplier_id) {
+      navigate(`/suppliers/${supplier.global_supplier_id}`);
+    } else if (supplier.request_id) {
+      navigate(`/requests/${supplier.request_id}`);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -78,7 +90,11 @@ export function Suppliers() {
     <div className="flex h-full flex-col overflow-hidden">
       <PageHeader
         title="Поставщики"
-        description={state.status === 'ready' ? `${suppliers.length} компаний в общей картотеке` : 'Загружаем поставщиков…'}
+        description={
+          state.status === 'ready'
+            ? `${suppliers.length} поставщиков · ${verifiedCount} с подтверждённым ИНН`
+            : 'Загружаем поставщиков…'
+        }
       />
 
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 sm:px-6 pb-3">
@@ -118,21 +134,24 @@ export function Suppliers() {
           <EmptyState icon={Truck} title="Поставщики не найдены" description="Попробуйте другой запрос или фильтр." />
         ) : (
           <>
-          <div className="flex flex-col divide-y divide-border sm:hidden">
+          <div className="flex flex-col divide-y divide-border xl:hidden">
             {filtered.map((s) => {
               const age = companyAge(s.registry?.registered_at);
               const profit = s.finances?.profit ?? null;
+              const contact = s.site || s.email;
               return (
                 <button
-                  key={s.id}
+                  key={`${s.verification_status}-${s.id}`}
                   type="button"
-                  onClick={() => navigate(`/suppliers/${s.id}`)}
+                  onClick={() => openSupplier(s)}
                   className="flex flex-col gap-1.5 px-4 py-3 text-left active:bg-surface-hover"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate font-medium text-ink">{formatCompanyName(s.name)}</p>
-                      <p className="truncate text-[11px] text-ink-muted">ИНН {s.inn}{age ? ` · ${age}` : ''}</p>
+                      <p className="truncate text-[11px] text-ink-muted">
+                        {s.inn ? `ИНН ${s.inn}` : 'ИНН пока не найден'}{age ? ` · ${age}` : ''}{contact ? ` · ${contact}` : ''}
+                      </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       {s.relationship_status === 'favorite' && (
@@ -161,11 +180,22 @@ export function Suppliers() {
               );
             })}
           </div>
-          <div className="hidden overflow-x-auto sm:block">
-            <table className="w-full min-w-[1050px] border-collapse text-[12.5px]">
+          <div className="hidden overflow-x-auto xl:block">
+            <table className="w-full table-fixed border-collapse text-[12.5px]">
+              <colgroup>
+                <col className="w-[25%]" />
+                <col className="w-[7%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[12%]" />
+                <col className="w-[7%]" />
+                <col className="w-[7%]" />
+                <col className="w-[10%]" />
+                <col className="w-[14%]" />
+              </colgroup>
               <thead className="sticky top-0 z-10 bg-canvas">
                 <tr className="border-b border-border">
-                  {['Название', 'Возраст', 'Выручка', 'Прибыль', 'ЕГРЮЛ', '', 'Заявок', 'Отклик', 'Последний контакт', 'Статус'].map((h) => (
+                  {['Название', 'Возраст', 'Выручка', 'Прибыль', 'ЕГРЮЛ', 'Заявок', 'Отклик', 'Контакт', 'Статус'].map((h) => (
                     <th key={h} className="whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-muted first:pl-6 last:pr-6">
                       {h}
                     </th>
@@ -178,12 +208,12 @@ export function Suppliers() {
                   const checko = checkoUrl(s.registry?.ogrn);
                   const profit = s.finances?.profit ?? null;
                   return (
-                    <tr key={s.id} onClick={() => navigate(`/suppliers/${s.id}`)} className="cursor-pointer border-b border-border last:border-0 hover:bg-surface-hover">
+                    <tr key={`${s.verification_status}-${s.id}`} onClick={() => openSupplier(s)} className="cursor-pointer border-b border-border last:border-0 hover:bg-surface-hover">
                       <td className="px-3 py-2.5 pl-6 align-middle">
                         <div className="min-w-0">
                           <p className="truncate font-medium text-ink">{formatCompanyName(s.name)}</p>
                           <p className="flex items-center gap-1 truncate text-[11px] text-ink-muted">
-                            ИНН {s.inn}
+                            {s.inn ? `ИНН ${s.inn}` : 'ИНН пока не найден'}
                             {s.inn && <CopyButton text={s.inn} />}
                             {s.site && (
                               <a
@@ -221,16 +251,15 @@ export function Suppliers() {
                         )}
                       </td>
                       <td className="px-3 py-2.5 align-middle">
-                        {s.registry ? (
-                          <span className={s.registry.is_active === false ? 'text-danger' : 'text-success'}>
-                            {s.registry.is_active === false ? 'Ликвидировано' : s.registry.status || 'Действует'}
-                          </span>
-                        ) : (
-                          <span className="text-ink-faint">—</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 align-middle">
-                        {checko && (
+                        <div className="flex items-center gap-1.5">
+                          {s.registry ? (
+                            <span className={s.registry.is_active === false ? 'truncate text-danger' : 'truncate text-success'}>
+                              {s.registry.is_active === false ? 'Ликвидировано' : s.registry.status || 'Действует'}
+                            </span>
+                          ) : (
+                            <span className="text-ink-faint">—</span>
+                          )}
+                          {checko && (
                           <a
                             href={checko}
                             target="_blank"
@@ -241,7 +270,8 @@ export function Suppliers() {
                           >
                             <img src={checkoIcon} alt="Checko" className="h-3.5 w-3.5" />
                           </a>
-                        )}
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-2.5 align-middle text-ink-soft">{s.total_requests}</td>
                       <td className="px-3 py-2.5 align-middle">

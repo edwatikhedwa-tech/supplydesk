@@ -3504,6 +3504,102 @@ class MailRepository(
             summaries = self._global_supplier_summaries(connection, workspace_id, gs_ids)
         return [self._compose_global_supplier(dict(row), summaries.get(int(row["id"]), {})) for row in gs_rows]
 
+    def list_supplier_directory(self, workspace_id: int) -> list[dict[str, Any]]:
+        """Return every supplier identity owned by a workspace.
+
+        Verified companies keep the existing INN-based global card. Search
+        results that have not acquired an INN yet are returned as lightweight
+        directory rows instead of disappearing from the account-wide screen.
+        """
+        verified = self.list_global_suppliers(workspace_id)
+        with self.connect() as connection:
+            link_rows = connection.execute(
+                """SELECT l.global_supplier_id, MIN(l.supplier_id) AS supplier_id,
+                          (SELECT MAX(rs.request_id)
+                           FROM request_suppliers rs
+                           JOIN global_supplier_links l2 ON l2.supplier_id=rs.supplier_id
+                           WHERE l2.global_supplier_id=l.global_supplier_id) AS request_id
+                   FROM global_supplier_links l
+                   JOIN suppliers s ON s.id=l.supplier_id
+                   WHERE s.workspace_id=?
+                   GROUP BY l.global_supplier_id""",
+                (workspace_id,),
+            ).fetchall()
+            link_context = {
+                int(row["global_supplier_id"]): {
+                    "supplier_id": int(row["supplier_id"]) if row["supplier_id"] is not None else None,
+                    "request_id": int(row["request_id"]) if row["request_id"] is not None else None,
+                }
+                for row in link_rows
+            }
+            unverified_rows = connection.execute(
+                """SELECT s.id, s.name, s.host, s.email,
+                          COALESCE(p.phone, '') AS phone,
+                          (SELECT COUNT(*) FROM request_suppliers rs WHERE rs.supplier_id=s.id) AS total_requests,
+                          (SELECT MAX(rs.request_id) FROM request_suppliers rs WHERE rs.supplier_id=s.id) AS request_id,
+                          (SELECT COUNT(*) FROM request_supplier_states st
+                           WHERE st.supplier_id=s.id AND st.status IN ('queued','sending','sent','replied','failed')) AS sent_count,
+                          (SELECT COUNT(*) FROM request_supplier_states st
+                           WHERE st.supplier_id=s.id AND st.status='replied') AS answered_count,
+                          (SELECT MAX(mm.created_at) FROM mail_messages mm WHERE mm.supplier_id=s.id) AS last_contact_at,
+                          CASE WHEN EXISTS (
+                              SELECT 1 FROM blacklist_entries b
+                              WHERE b.workspace_id=s.workspace_id AND b.restored_at IS NULL
+                                AND (s.external_key=b.external_key OR s.external_key LIKE '%.' || b.external_key)
+                          ) THEN 1 ELSE 0 END AS is_blacklisted,
+                          (SELECT b.reason FROM blacklist_entries b
+                           WHERE b.workspace_id=s.workspace_id AND b.restored_at IS NULL
+                             AND (s.external_key=b.external_key OR s.external_key LIKE '%.' || b.external_key)
+                           ORDER BY b.id DESC LIMIT 1) AS blacklist_reason
+                   FROM suppliers s
+                   LEFT JOIN supplier_profiles p ON p.supplier_id=s.id
+                   LEFT JOIN global_supplier_links l ON l.supplier_id=s.id
+                   WHERE s.workspace_id=? AND l.supplier_id IS NULL
+                   ORDER BY s.name, s.host, s.id""",
+                (workspace_id,),
+            ).fetchall()
+
+        directory: list[dict[str, Any]] = []
+        for item in verified:
+            global_id = int(item["id"])
+            context = link_context.get(global_id, {})
+            directory.append({
+                **item,
+                "global_supplier_id": global_id,
+                "supplier_id": context.get("supplier_id"),
+                "request_id": context.get("request_id"),
+                "verification_status": "verified",
+            })
+        for row in unverified_rows:
+            sent_count = int(row["sent_count"] or 0)
+            answered_count = int(row["answered_count"] or 0)
+            directory.append({
+                "id": int(row["id"]),
+                "global_supplier_id": None,
+                "supplier_id": int(row["id"]),
+                "request_id": int(row["request_id"]) if row["request_id"] is not None else None,
+                "verification_status": "missing_inn",
+                "inn": "",
+                "name": row["name"] or row["host"] or row["email"] or f"Поставщик {row['id']}",
+                "site": row["host"] or "",
+                "email": row["email"] or None,
+                "phone": row["phone"] or None,
+                "note": "",
+                "categories": [],
+                "total_requests": int(row["total_requests"] or 0),
+                "response_rate": round(answered_count / sent_count * 100) if sent_count else 0,
+                "avg_response_hours": None,
+                "last_contact_at": row["last_contact_at"],
+                "relationship_status": "blacklisted" if bool(row["is_blacklisted"]) else "none",
+                "avg_deal_rating": None,
+                "blacklist_reason": row["blacklist_reason"] or None,
+                "blacklisted_at": None,
+                "registry": None,
+                "finances": None,
+                "risks": None,
+            })
+        return sorted(directory, key=lambda item: (str(item["name"]).casefold(), int(item["id"])))
+
     def global_supplier_detail(self, workspace_id: int, global_supplier_id: int) -> dict[str, Any] | None:
         with self.connect() as connection:
             gs_row = connection.execute(

@@ -32,7 +32,9 @@ class AiChatUsageMixin:
                 """INSERT INTO ai_chat_usage(workspace_id, user_id, usage_date, rub_spent, calls, updated_at)
                    VALUES (?, ?, ?, ?, 1, ?)
                    ON CONFLICT(workspace_id, user_id, usage_date)
-                   DO UPDATE SET rub_spent=rub_spent+excluded.rub_spent, calls=calls+1, updated_at=excluded.updated_at""",
+                   DO UPDATE SET rub_spent=ai_chat_usage.rub_spent+excluded.rub_spent,
+                                 calls=ai_chat_usage.calls+1,
+                                 updated_at=excluded.updated_at""",
                 (workspace_id, user_id, today, rub, now),
             )
             row = connection.execute(

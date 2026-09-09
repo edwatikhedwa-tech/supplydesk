@@ -139,6 +139,11 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             if session:
                 self._json(200, {"items": self.app.repository.list_global_suppliers(session["workspace_id"])})
             return
+        if parsed.path == "/api/supplier-directory":
+            session = self._require_session()
+            if session:
+                self._json(200, {"items": self.app.repository.list_supplier_directory(session["workspace_id"])})
+            return
         if parsed.path.startswith("/api/global-suppliers/"):
             session = self._require_session()
             if session:

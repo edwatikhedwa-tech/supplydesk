@@ -174,6 +174,13 @@ export interface GlobalSupplierSummary {
   finances: GlobalSupplierFinances | null;
 }
 
+export interface SupplierDirectoryItem extends GlobalSupplierSummary {
+  global_supplier_id: number | null;
+  supplier_id: number | null;
+  request_id: number | null;
+  verification_status: 'verified' | 'missing_inn';
+}
+
 /** A blocked marketplace/aggregator domain -- distinct from a blacklisted
  * global_suppliers row: this exists even before any company card does
  * (mail/auth_accounts.py's default seed blocks e.g. Ozon on day one). */

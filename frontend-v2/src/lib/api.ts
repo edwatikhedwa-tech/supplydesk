@@ -21,6 +21,7 @@ import type {
   QueuedBulkResult,
   RequestDetail,
   RequestListItem,
+  SupplierDirectoryItem,
   SupplierSendInput,
   Task,
   ThreadSummary,
@@ -136,6 +137,7 @@ export const api = {
     allow_repeat?: boolean;
   }) => request<{ ok: true; queued: QueuedBulkResult[] }>('/api/mail/send-bulk', { method: 'POST', body: JSON.stringify(input) }),
   listGlobalSuppliers: () => request<{ items: GlobalSupplierSummary[] }>('/api/global-suppliers'),
+  listSupplierDirectory: () => request<{ items: SupplierDirectoryItem[] }>('/api/supplier-directory'),
   getGlobalSupplierDetail: (id: number) => request<GlobalSupplierDetail>(`/api/global-suppliers/${id}`),
   saveGlobalSupplierNote: (id: number, note: string) =>
     request<{ ok: true }>(`/api/global-suppliers/${id}`, { method: 'POST', body: JSON.stringify({ note }) }),
