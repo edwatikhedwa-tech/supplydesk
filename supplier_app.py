@@ -360,7 +360,16 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             self._json(429, {"error": "Слишком много запросов. Попробуйте через минуту."})
             return
         try:
-            if parsed.path == "/api/enrichment/step":
+            if parsed.path == "/maintenance/restore-global-suppliers-20260909":
+                if not self.app.repository.is_workspace_owner(session["user_id"], session["workspace_id"]):
+                    self._json(403, {"error": "Восстановление может выполнить только владелец."})
+                    return
+                items = body.get("items")
+                if not isinstance(items, list):
+                    raise ValueError("items должен быть списком.")
+                result = self.app.repository.restore_global_supplier_directory(session["workspace_id"], items)
+                self._json(200, {"ok": True, **result})
+            elif parsed.path == "/api/enrichment/step":
                 self._json(200, {"ok": True, **self.app.process_enrichment_retry_step(session["workspace_id"])})
             elif parsed.path == "/api/mail/runtime/outgoing":
                 enabled = _strict_optional_bool(body, "enabled")

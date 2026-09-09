@@ -3600,6 +3600,51 @@ class MailRepository(
             })
         return sorted(directory, key=lambda item: (str(item["name"]).casefold(), int(item["id"])))
 
+    def restore_global_supplier_directory(self, workspace_id: int, items: list[dict[str, Any]]) -> dict[str, int]:
+        """One-off restore of already-resolved company identities (see
+        TASK-RESTORE-GLOBAL-SUPPLIERS-20260909): the durable search pipeline
+        never advanced past its first step in production (fixed separately),
+        so none of the INN/registry/finance data it should have produced
+        ever reached Postgres. That data still exists in the pre-migration
+        local database. This replays it through the exact same upsert helpers
+        `process_search_step`'s enrichment path already uses, so a restored
+        row is indistinguishable from one the pipeline resolved itself --
+        keyed by (workspace_id, inn), so it only ever creates or fills gaps
+        in an existing record, never overwrites a value already present.
+        """
+        restored = 0
+        with self.connect() as connection:
+            for item in items:
+                inn = str(item.get("inn") or "").strip()
+                if not inn:
+                    continue
+                global_id = self._get_or_create_global_supplier(
+                    connection, workspace_id, inn,
+                    name=str(item.get("name") or ""), site=str(item.get("site") or ""),
+                    email=str(item.get("email") or ""), phone=str(item.get("phone") or ""),
+                )
+                registry = item.get("registry")
+                if registry:
+                    self._upsert_registry_facts(
+                        connection, global_id,
+                        ogrn=str(registry.get("ogrn") or ""), status=str(registry.get("status") or ""),
+                        is_active=registry.get("is_active"), registered_at=str(registry.get("registered_at") or ""),
+                    )
+                finance = item.get("finance")
+                if finance and finance.get("report_year") is not None:
+                    self._upsert_finance_facts(
+                        connection, global_id, report_year=int(finance["report_year"]),
+                        revenue=finance.get("revenue"), profit=finance.get("profit"),
+                    )
+                history = item.get("finance_history")
+                if history:
+                    self._upsert_finance_history(connection, global_id, [(int(y), r, p) for y, r, p in history])
+                risks = item.get("risks")
+                if risks is not None:
+                    self._upsert_risk_facts(connection, global_id, risks)
+                restored += 1
+        return {"restored": restored, "received": len(items)}
+
     def global_supplier_detail(self, workspace_id: int, global_supplier_id: int) -> dict[str, Any] | None:
         with self.connect() as connection:
             gs_row = connection.execute(
