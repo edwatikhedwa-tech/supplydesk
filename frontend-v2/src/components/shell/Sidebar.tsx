@@ -9,7 +9,7 @@ import {
   Settings,
   Truck,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
@@ -33,8 +33,35 @@ function useNavCounts() {
   return { attention, unread };
 }
 
+/** Below this width the 224px expanded rail leaves too little room for
+ * actual content (badges/labels start overlapping) -- default to the
+ * compact icon-only rail there. The user can still tap to expand; this
+ * only changes the starting state, not a hard mobile lockout. */
+const MOBILE_BREAKPOINT_PX = 768;
+
+function useIsNarrowViewport(): boolean {
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT_PX);
+  useEffect(() => {
+    const query = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX - 1}px)`);
+    const onChange = () => setNarrow(query.matches);
+    onChange();
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+  return narrow;
+}
+
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const isNarrow = useIsNarrowViewport();
+  const [collapsed, setCollapsed] = useState(isNarrow);
+  // Only auto-follow the viewport before the user has touched the toggle
+  // themselves -- once they expand on a narrow screen (or collapse on a
+  // wide one), that manual choice sticks instead of being overridden on
+  // every resize/rotation.
+  const [userOverride, setUserOverride] = useState(false);
+  useEffect(() => {
+    if (!userOverride) setCollapsed(isNarrow);
+  }, [isNarrow, userOverride]);
   const { user } = useAuth();
   const { attention, unread } = useNavCounts();
   const badgeFor: Record<string, number> = { '/requests': attention, '/messages': unread };
@@ -54,7 +81,10 @@ export function Sidebar() {
         )}
         <button
           type="button"
-          onClick={() => setCollapsed((c) => !c)}
+          onClick={() => {
+            setUserOverride(true);
+            setCollapsed((c) => !c);
+          }}
           className="flex h-7 w-7 items-center justify-center rounded-md text-rail-text-dim hover:bg-rail-hover hover:text-rail-text-active"
           aria-label={collapsed ? 'Развернуть навигацию' : 'Свернуть навигацию'}
         >

@@ -196,7 +196,7 @@ function AccountCard({ account, onChanged }: { account: MailAccount; onChanged: 
         <StatusPill label={account.connected ? 'Подключён' : 'Нужна проверка'} tone={account.connected ? 'success' : 'warning'} />
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2.5">
+      <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
         <MiniStat label="Аккаунт" value={account.connected ? 'Подключён' : 'Нужна проверка'} tone={account.connected ? 'success' : 'warning'} />
         <MiniStat label="Исходящие" value={outgoingLabel} tone={outgoingTone} />
         <MiniStat label="Входящие ответы" value={incoming.label} tone={incoming.tone} />
