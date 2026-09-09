@@ -689,6 +689,10 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             message = exc.message if isinstance(exc, ProviderError) else str(exc)
             self._json(400 if not isinstance(exc, ProviderError) or not exc.transient else 503, {"error": message})
         except Exception:
+            # Logged, not swallowed: this was returning a 500 with no server-side
+            # trace at all, so every unexpected failure here was undiagnosable
+            # from production logs (found while chasing a silent /api/ai/chat 500).
+            log.exception("Unhandled error in POST %s", parsed.path)
             self._json(500, {"error": "Внутренняя ошибка сервера. Попробуйте ещё раз."})
 
     def do_DELETE(self) -> None:
@@ -752,6 +756,7 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             self._json(404, {"error": "Заявка не найдена."})
             return
         except Exception:
+            log.exception("Unhandled error deleting request %s", request_id)
             self._json(500, {"error": "Не удалось удалить заявку. Попробуйте ещё раз."})
             return
         self._json(200, {"ok": True})
