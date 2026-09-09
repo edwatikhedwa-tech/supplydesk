@@ -1,0 +1,45 @@
+/* Preserve the approved production sign-in screen inside the current app. */
+.supplydesk-login {
+  font-family: 'Public Sans', 'Geist', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.4286;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+.supplydesk-login .text-2xs {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+}
+
+.supplydesk-login .text-display-title {
+  font-size: clamp(2rem, 1.75rem + 0.9vw, 2.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.supplydesk-login .sd-shimmer-heading {
+  color: #fff;
+  background-image: linear-gradient(105deg, #fff 0%, #fff 38%, #93c5fd 49%, #fff 60%, #fff 100%);
+  background-position: 100% 0;
+  background-size: 240% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: login-heading-shimmer 4.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes login-heading-shimmer {
+  0%, 65% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .supplydesk-login *, .supplydesk-login *::before, .supplydesk-login *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .supplydesk-login .sd-shimmer-heading {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+  }
+}

@@ -1583,3 +1583,14 @@ worktree drift: unstaged `frontend/src/App.tsx` and untracked
 `docs/experiments/` and `runtime/`. These paths were not inspected, staged,
 committed, pushed or deleted, preserving the owner's UI work and the stop-UI
 boundary.
+
+## 2026-09-09 — TASK-VERCEL-FRONTEND-V2-LOGIN-20260909
+
+State change: deployed the latest frontend-v2 to supplydesk-2769 with the
+owner-approved existing sign-in screen. Fixed the confirmed Vercel root
+npm-install failure by setting frontend-v2 install/build commands. Candidate
+verified then promoted: dpl_HEsmEiFhohbB6XT9V8muUVvUE1rL. Root/session/error
+HTTP checks 200/200/404; real Yandex ID sign-in page opened. Full callback
+not verified. Existing unstaged Vercel runtime/SQL patches were retained in
+deployment, not committed as this task's work. No Git push or other-project
+changes. Evidence: ai/reports/TASK-VERCEL-FRONTEND-V2-LOGIN-20260909-report.md.

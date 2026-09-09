@@ -3,8 +3,8 @@ document_id: STATE-001
 status: CURRENT
 canonical: true
 owner: project-control
-updated_at: 2026-09-04
-based_on_commit: 878cf70292683fa8d9730ee353af78854746b2b1
+updated_at: 2026-09-09
+based_on_commit: 97cae2006d35db46ee12d5c9b9b33b62d3e2205d
 ---
 
 # Current State
@@ -14,6 +14,21 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-09` — `TASK-VERCEL-FRONTEND-V2-LOGIN-20260909`: CONFIRMED deployment
+of frontend-v2 from branch `experiment/frontend-v2-greenfield-20260905`, base
+`97cae2006d35db46ee12d5c9b9b33b62d3e2205d`, plus the preserved production login
+and explicit frontend-v2 installation command. Live URL:
+https://supplydesk-2769.vercel.app/; deployment
+`dpl_HEsmEiFhohbB6XT9V8muUVvUE1rL` READY and promoted. The separate `supplydesk`
+project was not changed and no Git push was performed. Main/API/error checks
+returned 200/200/404; the real Yandex sign-in screen opened. Full account
+callback and authenticated workspace use remain NOT VERIFIED. CLI deployment
+also includes the pre-existing unstaged server patches in api/index.py,
+mail/runtime.py and mail/db_compat.py; they remain local and are not represented
+by the base Git SHA alone. See [task report](reports/TASK-VERCEL-FRONTEND-V2-LOGIN-20260909-report.md)
+for deployment inputs, screenshots and verification limits. Older entries
+below describe their dated scope, not the current frontend deployment.
 
 `2026-09-04` — `TASK-PREPARE-SUPPLYDESK-FOR-EXTERNAL-UI-REDESIGN-20260904`
 verified the canonical checkout at `C:\Users\edwat\SupplyDesk` and the

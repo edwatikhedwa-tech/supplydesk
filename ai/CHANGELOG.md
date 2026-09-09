@@ -1654,3 +1654,14 @@ Status: `PASS_WITH_LIMITATIONS` — `DELIVERY_MODE: PUBLISH`
 - Final documentation boundary commit `b70c4cf` was pushed to canonical and
   the external base was fast-forwarded to the same SHA; both refs were
   rechecked equal.
+
+## 2026-09-09 — TASK-VERCEL-FRONTEND-V2-LOGIN-20260909
+
+State change: deployed the latest frontend-v2 to supplydesk-2769 with the
+owner-approved existing sign-in screen. Fixed the confirmed Vercel root
+npm-install failure by setting frontend-v2 install/build commands. Candidate
+verified then promoted: dpl_HEsmEiFhohbB6XT9V8muUVvUE1rL. Root/session/error
+HTTP checks 200/200/404; real Yandex ID sign-in page opened. Full callback
+not verified. Existing unstaged Vercel runtime/SQL patches were retained in
+deployment, not committed as this task's work. No Git push or other-project
+changes. Evidence: ai/reports/TASK-VERCEL-FRONTEND-V2-LOGIN-20260909-report.md.

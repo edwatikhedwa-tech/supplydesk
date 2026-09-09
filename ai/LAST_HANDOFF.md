@@ -3,13 +3,29 @@ document_id: HANDOFF-019
 status: CURRENT
 canonical: false
 owner: project-control
-updated_at: 2026-09-04
-based_on_commit: 878cf70292683fa8d9730ee353af78854746b2b1
+updated_at: 2026-09-09
+based_on_commit: 97cae2006d35db46ee12d5c9b9b33b62d3e2205d
 ---
 
 # Last Handoff
 
-## Current: TASK-PREPARE-SUPPLYDESK-FOR-EXTERNAL-UI-REDESIGN-20260904
+## Current: TASK-VERCEL-FRONTEND-V2-LOGIN-20260909
+
+CONFIRMED: frontend-v2 is deployed at https://supplydesk-2769.vercel.app/ with
+the owner's preserved three-provider login. Deployment
+`dpl_HEsmEiFhohbB6XT9V8muUVvUE1rL`; base source `97cae20`; local frontend and
+configuration changes are in this task commit. Pre-existing server patches
+in api/index.py, mail/runtime.py and mail/db_compat.py were included by CLI
+but remain unstaged. Never claim that base commit alone reproduces the release.
+Root/auth-me/unknown-API return 200/200/404; real Yandex ID screen verified.
+Full authenticated use is NOT VERIFIED; owner login is needed. No Git push,
+secret changes, mail send or modification to the other Vercel project.
+[Report](reports/TASK-VERCEL-FRONTEND-V2-LOGIN-20260909-report.md) contains
+screenshots, checks, blocked lint/backend suite and rollback information.
+
+## Prior handoff history
+
+## Historical: TASK-PREPARE-SUPPLYDESK-FOR-EXTERNAL-UI-REDESIGN-20260904
 
 Canonical root is `C:\Users\edwat\SupplyDesk`; canonical branch is
 `integration/current-architecture-governance-20260903`. The expected functional

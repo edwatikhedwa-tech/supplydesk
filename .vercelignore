@@ -26,3 +26,4 @@ runtime/
 frontend/artifacts/
 frontend/test-results/
 frontend/storybook-static/
+*.bak-*
