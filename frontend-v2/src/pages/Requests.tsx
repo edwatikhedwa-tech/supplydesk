@@ -167,8 +167,8 @@ export function Requests() {
         />
       )}
 
-      <div className="flex items-center gap-3 border-b border-border px-6 pb-3">
-        <div className="relative w-64">
+      <div className="flex items-center gap-3 overflow-x-auto border-b border-border px-6 pb-3">
+        <div className="relative w-64 shrink-0">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
           <input
             value={search}
@@ -178,7 +178,7 @@ export function Requests() {
             className="h-8 w-full rounded-md border border-border-strong bg-surface pl-8 pr-3 text-[12.5px] outline-none placeholder:text-ink-faint focus:border-accent focus:ring-1 focus:ring-accent-border"
           />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           {statusFilters.map((f) => (
             <button
               key={f.key}
@@ -194,7 +194,7 @@ export function Requests() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="min-w-0 flex-1 overflow-auto">
         {state.status === 'loading' ? (
           <LoadingState label="Загружаем заявки с бэкенда…" />
         ) : state.status === 'error' ? (
