@@ -9,6 +9,12 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     host: '127.0.0.1',
+    port: 5183,
+    // Fixed rather than left to Vite's auto-increment: the Yandex OAuth
+    // session cookie is host-scoped to 127.0.0.1:8000 and only round-trips
+    // correctly when the dev server is reached at a known, stable origin
+    // (see scripts/start_server_and_open.ps1, which opens this exact URL).
+    strictPort: true,
     proxy: {
       '/api': BACKEND_BASE_URL,
       '/oauth': BACKEND_BASE_URL,
