@@ -14,6 +14,7 @@ import type {
   MailMessage,
   MailStatus,
   MailTemplate,
+  OutgoingMailStatus,
   ManualLinkRequestOption,
   MessageSearchResult,
   PreflightResult,
@@ -151,6 +152,13 @@ export const api = {
   mailSync: (mailAccountId?: number) =>
     request<{ imported?: number } & Record<string, unknown>>('/api/mail/sync', { method: 'POST', body: JSON.stringify(mailAccountId == null ? {} : { mail_account_id: mailAccountId }) }),
   mailDisconnectAccount: (mailAccountId: number) => request<{ ok: true }>(`/api/mail/accounts/${mailAccountId}`, { method: 'DELETE' }),
+
+  outgoingMailStatus: () => request<OutgoingMailStatus>('/api/mail/runtime/outgoing'),
+  setOutgoingMailEnabled: (enabled: boolean) =>
+    request<{ ok: true } & OutgoingMailStatus>('/api/mail/runtime/outgoing', {
+      method: 'POST',
+      body: JSON.stringify({ enabled, confirmation: true }),
+    }),
 
   listThreads: () => request<{ items: ThreadSummary[] }>('/api/correspondence'),
   searchMessages: (q: string) => request<{ items: MessageSearchResult[] }>(`/api/mail/search?q=${encodeURIComponent(q)}`),

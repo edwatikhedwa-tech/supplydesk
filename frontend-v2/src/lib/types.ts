@@ -212,6 +212,14 @@ export interface MailAccount {
   updated_at?: string | null;
 }
 
+export interface OutgoingMailStatus {
+  durable_outgoing_enabled: boolean;
+  /** May stay false even after durable_outgoing_enabled is true -- deeper
+   * runtime gates (production environment, canonical-database check,
+   * live-mail lock) also have to pass. See mail/runtime.py. */
+  effective_outgoing_enabled: boolean;
+}
+
 export interface MailStatus {
   connected: boolean;
   provider?: string;

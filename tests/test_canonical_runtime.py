@@ -50,6 +50,55 @@ class CanonicalRuntimeTests(unittest.TestCase):
                     second.close()
                     first.close()
 
+    def test_postgres_runtime_passes_canonical_check_without_a_matching_file_path(self) -> None:
+        """DATABASE_URL deployments (Vercel) have no real "canonical file".
+
+        MAIL_DB_PATH is forced under /tmp there (the only writable dir),
+        with SUPPLYDESK_CANONICAL_DB_PATH left unset -- the SQLite
+        file-equality check this gate was built for can never pass, and
+        "tmp" is even in FORBIDDEN_DB_DIRECTORY_NAMES. Before this fix,
+        outgoing mail was architecturally impossible on every Postgres
+        deployment regardless of the durable switch or MAIL_OUTGOING_DISABLED.
+        """
+        with tempfile.TemporaryDirectory(dir=Path.cwd()) as directory:
+            root = Path(directory)
+            tmp_dir = root / "tmp"
+            tmp_dir.mkdir()
+            db_path = tmp_dir / "supplydesk.sqlite3"
+            environment = {
+                "SUPPLYDESK_ENV": "production",
+                "MAIL_OUTGOING_DISABLED": "0",
+                "MAIL_DB_PATH": str(db_path),
+            }
+            with patch.dict("os.environ", environment, clear=False):
+                repo = MailRepository(db_path)
+                repo.set_outgoing_enabled(True)
+
+                class _PostgresLikeRepo:
+                    """Proxies every call to the real (SQLite-backed) repo except
+                    `database_url`, so RuntimeSession.start() takes the Postgres
+                    branch without this test needing a real Postgres server."""
+
+                    database_url = "postgres://fake-for-this-test"
+
+                    def __init__(self, inner: MailRepository) -> None:
+                        self._inner = inner
+
+                    def __getattr__(self, name: str):
+                        return getattr(self._inner, name)
+
+                runtime = RuntimeSession.start(
+                    # canonical_db_path intentionally None: unset in Vercel's env, same as production.
+                    environment="production", db_path=db_path,
+                    canonical_db_path=None, repository=_PostgresLikeRepo(repo), root=root,
+                )
+                try:
+                    self.assertTrue(runtime.canonical_check_passed)
+                    self.assertTrue(runtime.live_mail_lock_acquired)
+                    self.assertTrue(runtime.outgoing_allowed)
+                finally:
+                    runtime.close()
+
     def test_noncanonical_runtime_blocks_before_provider(self) -> None:
         with tempfile.TemporaryDirectory(dir=Path.cwd()) as directory:
             root = Path(directory)

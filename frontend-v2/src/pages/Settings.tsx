@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, ExternalLink, Loader2, Mail, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react';
+import { AlertTriangle, Check, ExternalLink, Loader2, Mail, MailWarning, RefreshCw, Send, ShieldCheck, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../components/shell/PageHeader';
@@ -8,6 +8,96 @@ import { ApiError, api } from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import type { MailAccount } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
+
+/** Global kill switch for real outgoing mail (POST /api/mail/runtime/outgoing).
+ * Owner-only on the backend (mail/service.py::set_outgoing_enabled) and
+ * requires an explicit confirmation flag -- this control is the only UI
+ * surface for it anywhere in the app, so a non-owner click fails with a
+ * clear permission error rather than silently doing nothing. */
+function OutgoingMailControl() {
+  const state = useApiData(() => api.outgoingMailStatus(), []);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+
+  async function apply(enabled: boolean) {
+    setBusy(true);
+    setMessage('');
+    try {
+      await api.setOutgoingMailEnabled(enabled);
+      setConfirming(false);
+      state.reload();
+    } catch (e) {
+      setMessage(e instanceof ApiError ? e.message : 'Не удалось изменить настройку.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (state.status === 'loading') return null;
+  if (state.status === 'error') {
+    return (
+      <div className="rounded-lg border border-border bg-surface p-4">
+        <h2 className="text-[13px] font-semibold text-ink">Исходящая почта</h2>
+        <p className="mt-2 text-[12px] text-danger">{state.message}</p>
+      </div>
+    );
+  }
+
+  const { durable_outgoing_enabled: durable, effective_outgoing_enabled: effective } = state.data;
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="flex items-center gap-2">
+        {effective ? <Send size={15} className="text-success" /> : <MailWarning size={15} className="text-ink-muted" />}
+        <h2 className="text-[13px] font-semibold text-ink">Исходящая почта</h2>
+        <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-medium ${effective ? 'bg-success-subtle text-success' : 'bg-surface-hover text-ink-muted'}`}>
+          {effective ? 'Включена' : 'Отключена'}
+        </span>
+      </div>
+      <p className="mt-1.5 text-[12px] text-ink-muted">
+        {effective
+          ? 'Письма поставщикам уходят по-настоящему с подключённых аккаунтов.'
+          : 'Письма поставщикам не отправляются, пока это выключено.'}
+      </p>
+      {durable && !effective && (
+        <p className="mt-1.5 text-[11.5px] text-warning">
+          Переключатель включён, но сервер всё равно блокирует отправку (не production-окружение, не пройдена проверка канонической базы или не занят live-mail lock).
+        </p>
+      )}
+      {message && <p className="mt-1.5 text-[11.5px] text-danger">{message}</p>}
+
+      {!confirming ? (
+        <Button
+          variant={durable ? 'ghost' : 'primary'}
+          size="sm"
+          className="mt-3"
+          icon={<Send size={13} />}
+          onClick={() => setConfirming(true)}
+        >
+          {durable ? 'Отключить' : 'Включить'}
+        </Button>
+      ) : (
+        <div className="mt-3 rounded-md border border-warning-border bg-warning-subtle px-3 py-2.5">
+          <p className="flex items-start gap-2 text-[12px] text-warning">
+            <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+            {durable
+              ? 'Отключить исходящую почту для всех аккаунтов?'
+              : 'Включить реальную отправку писем поставщикам со всех подключённых аккаунтов?'}
+          </p>
+          <div className="mt-2.5 flex items-center gap-2">
+            <Button variant="primary" size="sm" disabled={busy} onClick={() => void apply(!durable)}>
+              {busy ? 'Применяю…' : durable ? 'Да, отключить' : 'Да, включить'}
+            </Button>
+            <Button variant="ghost" size="sm" disabled={busy} onClick={() => setConfirming(false)}>
+              Отмена
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const MAIL_ERROR_LABELS: Record<string, string> = {
   not_configured: 'Подключение Яндекс.Почты не настроено на сервере.',
@@ -224,6 +314,8 @@ export function Settings() {
             {banner.text}
           </div>
         )}
+
+        <OutgoingMailControl />
 
         {accounts.length > 0 && (
           <div className="space-y-3">

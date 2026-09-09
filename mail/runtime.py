@@ -196,14 +196,28 @@ class RuntimeSession:
         canonical = absolute_path(canonical_db_path) if canonical_db_path else None
         raw_db_is_absolute = Path(configured_db_path).expanduser().is_absolute()
         raw_canonical_is_absolute = bool(canonical_db_path) and Path(str(canonical_db_path)).expanduser().is_absolute()
-        forbidden = path_contains_forbidden_directory(resolved_db)
+        # With DATABASE_URL set, Postgres -- not this SQLite path -- is the
+        # single source of truth (one connection string, no "wrong copy on
+        # disk" risk the checks below exist to catch). db_path here is just a
+        # vestigial placeholder the SQLite-only migration branch never
+        # touches; on Vercel it is forced under /tmp (the only writable
+        # directory), which is even in FORBIDDEN_DB_DIRECTORY_NAMES. The
+        # SQLite production path keeps every one of its existing checks,
+        # forbidden-directory included, unchanged.
+        uses_postgres = bool(getattr(repository, "database_url", ""))
+        forbidden = (not uses_postgres) and path_contains_forbidden_directory(resolved_db)
         canonical_ok = bool(
             environment == "production"
-            and raw_db_is_absolute
-            and raw_canonical_is_absolute
-            and canonical is not None
-            and resolved_db == canonical
-            and not forbidden
+            and (
+                uses_postgres
+                or (
+                    raw_db_is_absolute
+                    and raw_canonical_is_absolute
+                    and canonical is not None
+                    and resolved_db == canonical
+                    and not forbidden
+                )
+            )
         )
         identity = repository.get_database_identity()
         identity_path = str(identity["canonical_path"]) if identity else None
@@ -230,6 +244,9 @@ class RuntimeSession:
                     ended_at=utc_now_iso(),
                 )
 
+        runtime_root = Path(
+            os.getenv("SUPPLYDESK_RUNTIME_PATH", str(Path(root).resolve() / "runtime"))
+        ).expanduser().resolve()
         session = cls(
             environment=environment,
             runtime_id=runtime_id,
@@ -246,8 +263,8 @@ class RuntimeSession:
             forbidden_path=forbidden,
             live_mail_lock=lock,
             durable_outgoing_enabled=bool(repository.outgoing_enabled()),
-            manifest_path=Path(root).resolve() / "runtime" / "sessions" / f"{runtime_id}.json",
-            canonical_manifest_path=Path(root).resolve() / "runtime" / "canonical_manifest.json",
+            manifest_path=runtime_root / "sessions" / f"{runtime_id}.json",
+            canonical_manifest_path=runtime_root / "canonical_manifest.json",
             repository=repository,
             persisted=environment != "test",
         )
