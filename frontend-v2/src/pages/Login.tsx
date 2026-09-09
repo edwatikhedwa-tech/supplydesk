@@ -23,6 +23,30 @@ function YandexIcon() {
   );
 }
 
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-4 w-4 shrink-0" aria-hidden="true">
+      <rect width="32" height="32" rx="16" fill="#fff" />
+      <path fill="#4285f4" d="M26.2 16.34c0-.73-.07-1.44-.2-2.12H16v4.01h5.71a4.88 4.88 0 0 1-2.12 3.2v2.66h3.43c2.01-1.85 3.18-4.57 3.18-7.75Z" />
+      <path fill="#34a853" d="M16 26.7c2.88 0 5.3-.95 7.07-2.61l-3.43-2.66c-.95.64-2.17 1.02-3.64 1.02-2.8 0-5.17-1.9-6.02-4.45H6.43v2.74A10.68 10.68 0 0 0 16 26.7Z" />
+      <path fill="#fbbc05" d="M9.98 18a6.42 6.42 0 0 1 0-4.01v-2.74H6.43a10.7 10.7 0 0 0 0 9.49L9.98 18Z" />
+      <path fill="#ea4335" d="M16 9.54c1.57 0 2.98.54 4.09 1.6l3.07-3.07C21.3 6.31 18.88 5.3 16 5.3a10.68 10.68 0 0 0-9.57 5.95l3.55 2.74c.85-2.55 3.22-4.45 6.02-4.45Z" />
+    </svg>
+  );
+}
+
+function MailRuIcon() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-4 w-4 shrink-0" aria-hidden="true">
+      <rect width="32" height="32" rx="16" fill="#087cff" />
+      <path
+        fill="#fff"
+        d="M16 6C10.49 6 6 10.49 6 16s4.49 10 10 10c2.02 0 3.97-.6 5.63-1.74l.03-.02-1.35-1.57-.02.02A7.9 7.9 0 0 1 16 23.95 7.95 7.95 0 1 1 23.95 16c0 2.2-.87 3.16-1.7 3.08-.55-.05-1.18-.43-1.19-1.38V16A5.06 5.06 0 1 0 16 21.06c1.36 0 2.63-.53 3.58-1.5a3.25 3.25 0 0 0 2.77 1.51c.73 0 1.45-.24 2.03-.69.6-.45 1.05-1.11 1.29-1.9.04-.13.11-.42.11-.42l.01-.01c.15-.65.21-1.28.21-2.06C26 10.49 21.51 6 16 6Zm3.01 10A3.01 3.01 0 1 1 13 16a3.01 3.01 0 0 1 6.01 0Z"
+      />
+    </svg>
+  );
+}
+
 export function Login() {
   const { login, error, sessionExpired } = useAuth();
   const [email, setEmail] = useState('');
@@ -101,6 +125,28 @@ export function Login() {
         >
           Войти через Яндекс
         </Button>
+
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            type="button"
+            disabled
+            title="Пока не подключено"
+            className="flex h-9 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface text-[13px] font-medium text-ink-faint opacity-60"
+          >
+            <GoogleIcon />
+            Google
+          </button>
+          <button
+            type="button"
+            disabled
+            title="Пока не подключено"
+            className="flex h-9 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface text-[13px] font-medium text-ink-faint opacity-60"
+          >
+            <MailRuIcon />
+            Mail.ru
+          </button>
+        </div>
+        <p className="mt-1.5 text-center text-[10.5px] text-ink-faint">Google и Mail.ru — скоро</p>
 
         <div className="mt-4 flex items-center gap-2">
           <div className="h-px flex-1 bg-border" />

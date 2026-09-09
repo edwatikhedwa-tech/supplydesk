@@ -1,5 +1,5 @@
 import { ArrowLeft, Ban, ExternalLink, Inbox, MessageSquareText, Package, PenSquare, RotateCw, Search, Send } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import checkoIcon from '../assets/checko-icon.png';
 import { BulkComposeModal } from '../components/BulkComposeModal';
@@ -62,6 +62,40 @@ export function RequestDetail() {
   const [quickComposeId, setQuickComposeId] = useState<number | null>(null);
 
   const suppliers = state.status === 'ready' ? state.data.items : [];
+  const requestStatus = state.status === 'ready' ? state.data.request.status : undefined;
+  const reload = state.reload;
+
+  // A Vercel function may be recycled right after its response, so the search
+  // (SERP -> crawl -> registry/INN resolution -> finance) is advanced one durable
+  // step at a time while this page is open, instead of relying on a background
+  // worker that only exists in local dev (python supplier_app.py's ThreadingHTTPServer).
+  // Without this, a request started on production never gets past its first step:
+  // suppliers show up without a resolved ИНН/registry/finance data, or don't show
+  // up at all (a global "Поставщики" card is only created once ИНН resolves).
+  useEffect(() => {
+    if (requestStatus !== 'searching') return undefined;
+    let cancelled = false;
+    let busy = false;
+    const tick = async () => {
+      if (cancelled || busy) return;
+      busy = true;
+      try {
+        await api.stepRequestSearch(requestId);
+        if (!cancelled) reload();
+      } catch {
+        // Next tick retries transient network/function failures; a permanent
+        // search error is persisted server-side and ends the loop via status.
+      } finally {
+        busy = false;
+      }
+    };
+    void tick();
+    const timer = window.setInterval(() => void tick(), 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [requestId, requestStatus, reload]);
 
   const counts = useMemo(() => {
     const c: Record<FilterKey, number> = {

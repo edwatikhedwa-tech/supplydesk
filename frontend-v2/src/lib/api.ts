@@ -116,6 +116,12 @@ export const api = {
   createRequest: (input: { name: string; description?: string; deadline?: string; search_depth?: number; positions: { name: string }[] }) =>
     request<{ ok: true; request_id: number }>('/api/requests', { method: 'POST', body: JSON.stringify(input) }),
   startRequestSearch: (id: number) => request<{ ok: true }>(`/api/requests/${id}/search`, { method: 'POST' }),
+  // A Vercel function may be recycled right after its response, so the search
+  // (SERP -> crawl -> registry/INN resolution -> finance) advances one durable,
+  // resumable step per call -- the caller must poll this while status is
+  // 'searching', or the pipeline stalls after whatever the first step did.
+  stepRequestSearch: (id: number) =>
+    request<{ ok: true; processed: boolean; status: string }>(`/api/requests/${id}/search/step`, { method: 'POST' }),
   mailTemplate: () => request<MailTemplate>('/api/mail/template'),
   preflightBulk: (input: {
     request_id: number;
