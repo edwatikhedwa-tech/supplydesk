@@ -265,6 +265,36 @@ class YandexMailProvider(MailProvider):
         values = response[1] if response and len(response) > 1 else []
         return values[0].decode("ascii", errors="ignore") if values else "unknown"
 
+    def diagnostic_inbox_uid_count(self, email: str, access_token: str) -> dict[str, object]:
+        """Read-only diagnostic (TASK-MAIL-SYNC-DATA-LOSS-20260910): reports
+        how many UIDs a plain SEARCH ALL sees in INBOX right now, decoupled
+        from any saved watermark or max_messages slicing -- used to confirm
+        what fetch_incoming's cursor logic is actually working with, without
+        fetching or importing a single message body."""
+        connection = None
+        try:
+            connection = self._imap_connection(email, access_token)
+            status, _ = connection.select("INBOX", readonly=True)
+            if status != "OK":
+                raise ProviderError("Не удалось открыть папку входящих для диагностики.", transient=True)
+            uidvalidity = self._imap_uidvalidity(connection)
+            status, data = connection.uid("SEARCH", None, "ALL")
+            if status != "OK":
+                raise ProviderError("IMAP SEARCH не вернул результат для диагностики.", transient=True)
+            ids = [int(value) for value in (data[0] or b"").split() if value.isdigit()]
+            return {
+                "uidvalidity": uidvalidity,
+                "total_uids": len(ids),
+                "min_uid": min(ids) if ids else None,
+                "max_uid": max(ids) if ids else None,
+            }
+        finally:
+            if connection is not None:
+                try:
+                    connection.logout()
+                except (imaplib.IMAP4.error, OSError):
+                    pass
+
     @classmethod
     def _parse_incoming(cls, raw: bytes, *, email: str, uidvalidity: str, uid: int) -> IncomingMessage | None:
         if not raw:
