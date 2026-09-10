@@ -65,6 +65,13 @@ export function formatPercent(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
 }
 
+/** Compact file size for attachment lists: "480 КБ", "3.2 МБ". */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} Б`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} МБ`;
+}
+
 /** Compact RUB amount for supplier finance figures: "15.4 млн ₽", "290 тыс ₽". */
 export function formatMoney(value: number | null): string {
   if (value === null) return '—';

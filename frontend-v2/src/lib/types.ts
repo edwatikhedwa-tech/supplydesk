@@ -322,6 +322,27 @@ export interface ThreadSummary {
   last_message_direction: MailDirection | null;
   is_important: boolean;
   priority: 1 | 2 | 3 | null;
+  conversation_status: ConversationStatus | null;
+}
+
+/** Operator workflow status for one supplier's correspondence within one заявка --
+ * independent of transport/delivery status and of blacklist_entries. */
+export type ConversationStatus = 'in_progress' | 'deferred' | 'rejected';
+
+export interface AiConversationSummary {
+  id: number;
+  request_id: number | null;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AiMessage {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  context_thread_ids: number[] | null;
+  created_at: string;
 }
 
 /** Light row from /api/mail/inbox/preview — no body text, matches the real endpoint. */
@@ -342,6 +363,7 @@ export interface InboxConversation {
   body_text: string | null;
   body_html: string | null;
   received_at: string;
+  has_remote_images?: boolean;
   replies: MailMessage[];
 }
 

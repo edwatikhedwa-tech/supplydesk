@@ -9,7 +9,6 @@ import {
   Clock3,
   Inbox,
   Link2,
-  Paperclip,
   Send,
   Sparkles,
   SquareCheck,
@@ -20,6 +19,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { useSearchParams } from 'react-router-dom';
 import { AiChatPanel } from '../components/AiChatPanel';
+import { AttachmentPicker } from '../components/AttachmentPicker';
+import { EmailRenderer } from '../components/EmailRenderer';
 import { LogisticsQuoteModal } from '../components/LogisticsQuoteModal';
 import { ManualLinkModal } from '../components/ManualLinkModal';
 import { SupplierCardPanel } from '../components/SupplierCardPanel';
@@ -35,82 +36,16 @@ import { ApiError, api } from '../lib/api';
 import { useAuth } from '../lib/AuthContext';
 import { threadResponseStatus, messageSenderName, type ResponseStatus } from '../lib/derive';
 import { formatCompanyName, formatDateTime, formatRelativeTime } from '../lib/format';
-import type { InboxConversation, MailMessage, ThreadSummary } from '../lib/types';
+import type { ConversationStatus, MailAttachment, ThreadSummary } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
 import { useIsNarrowViewport } from '../lib/useIsNarrowViewport';
 
 type Selection = { type: 'thread'; id: number } | { type: 'unmatched'; id: number } | null;
-type AsyncState<T> = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: T };
 
-const AI_CONTEXT_PER_MESSAGE_LIMIT = 700;
-// Total transcript budget, not per-message -- keeps a long back-and-forth from
-// blowing past the cheap model's context and the per-user daily spend cap.
-const AI_CONTEXT_TOTAL_BUDGET = 3500;
-
-function trimBody(text: string | null, limit = AI_CONTEXT_PER_MESSAGE_LIMIT): string {
-  if (!text) return '';
-  const clean = text.trim().replace(/\s+/g, ' ');
-  return clean.length > limit ? `${clean.slice(0, limit)}…` : clean;
-}
-
-// Compact per-thread budget when several suppliers' conversations are added
-// to context at once -- a full transcript per thread would blow past both
-// the cheap model's context and the daily spend cap once more than one or
-// two are selected.
-const AI_CONTEXT_EXTRA_THREAD_BUDGET = 500;
-
-/** Feeds the AI assistant the real conversation, not just the request/supplier
- * names -- without it the model has nothing concrete to reason about and
- * falls back to guessing from the request's internal title. Walks newest to
- * oldest so a long thread keeps its most recent messages when it must be
- * truncated to fit the budget, then restores chronological order.
- *
- * `extraThreads` lets the user pull in other suppliers' conversations on the
- * same request for comparison (e.g. "who quoted the lowest price?") --
- * summarized to the last message only, to keep cost bounded regardless of
- * how many are added. */
-function buildAiContext(
-  activeThread: ThreadSummary | null,
-  messagesState: AsyncState<MailMessage[]>,
-  activeUnmatchedId: number | null,
-  conversationState: AsyncState<InboxConversation | null>,
-  extraThreads: { thread: ThreadSummary; messages: MailMessage[] }[] = [],
-): string {
-  let mainContext = '';
-  if (activeThread) {
-    const header = `Заявка «${activeThread.request_name}» (это просто название заявки в системе, не техническое требование), поставщик ${formatCompanyName(activeThread.supplier_name)}.`;
-    if (messagesState.status === 'ready' && messagesState.data.length > 0) {
-      const lines: string[] = [];
-      let used = 0;
-      for (let i = messagesState.data.length - 1; i >= 0; i--) {
-        const m = messagesState.data[i];
-        const who = m.direction === 'outbound' ? 'Мы' : 'Поставщик';
-        const line = `${who} (${formatDateTime(m.sent_at ?? m.created_at)}): ${trimBody(m.body_text)}`;
-        if (used + line.length > AI_CONTEXT_TOTAL_BUDGET && lines.length > 0) break;
-        lines.unshift(line);
-        used += line.length;
-      }
-      mainContext = `${header}\nПереписка целиком, от старых сообщений к новым:\n${lines.join('\n\n')}`;
-    } else {
-      mainContext = header;
-    }
-  } else if (activeUnmatchedId && conversationState.status === 'ready' && conversationState.data) {
-    const c = conversationState.data;
-    mainContext = `Письмо без привязки к заявке от ${c.from_email}, тема «${c.subject}»:\n${trimBody(c.body_text)}`;
-  }
-
-  if (extraThreads.length === 0) return mainContext;
-
-  const extraBlocks = extraThreads
-    .filter((e) => e.messages.length > 0)
-    .map((e) => {
-      const last = e.messages[e.messages.length - 1];
-      const who = last.direction === 'outbound' ? 'Мы' : 'Поставщик';
-      return `— ${formatCompanyName(e.thread.supplier_name)}: последнее сообщение (${who}, ${formatDateTime(last.sent_at ?? last.created_at)}): ${trimBody(last.body_text, AI_CONTEXT_EXTRA_THREAD_BUDGET)}`;
-    });
-  if (extraBlocks.length === 0) return mainContext;
-  return `${mainContext}\n\nДля сравнения — другие поставщики по этой же заявке:\n${extraBlocks.join('\n')}`;
-}
+// AI context (which suppliers' real messages feed the model) is now built
+// and validated entirely server-side from request_id + thread_ids
+// (backend/domain/ai_agent/chat_service.py) -- the frontend only decides
+// *which* thread ids to send (aiContextThreadIds below), never the text.
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -137,14 +72,33 @@ function highlightText(text: string, query: string) {
 const responseTone: Record<ResponseStatus, Tone> = { none: 'neutral', waiting: 'warning', answered: 'success' };
 const responseLabel: Record<ResponseStatus, string> = { none: 'Не отправлено', waiting: 'Ожидаем ответ', answered: 'Есть ответ' };
 
-type ThreadFilter = 'all' | 'answered' | 'waiting' | 'unread';
+// Operator workflow status for one supplier's correspondence within one
+// заявка -- independent of transport/delivery status (responseLabel above)
+// and of blacklist_entries. "Отклонено" hides the thread from the default
+// list (never deletes anything) via the 'rejected' filter tab below.
+const STATUS_LABEL: Record<ConversationStatus, string> = { in_progress: 'В работе', deferred: 'Отложено', rejected: 'Отклонено' };
+const STATUS_SELECT_CLASS: Record<ConversationStatus | 'none', string> = {
+  in_progress: 'bg-success-subtle text-success',
+  deferred: 'bg-warning-subtle text-warning',
+  rejected: 'bg-danger-subtle text-danger',
+  none: 'bg-surface-hover text-ink-faint',
+};
+function statusRank(t: ThreadSummary): number {
+  if (t.conversation_status === 'in_progress') return 0;
+  if (t.conversation_status === 'deferred') return 2;
+  return 1; // без статуса
+}
+
+type ThreadFilter = 'all' | 'answered' | 'waiting' | 'unread' | 'rejected';
 const THREAD_FILTER_LABELS: Record<ThreadFilter, string> = {
   all: 'Все',
   answered: 'Есть ответ',
   waiting: 'Ждём ответа',
   unread: 'Непрочитанные',
+  rejected: 'Отклонённые',
 };
 function matchesThreadFilter(t: ThreadSummary, filter: ThreadFilter): boolean {
+  if (filter !== 'rejected' && t.conversation_status === 'rejected') return false;
   switch (filter) {
     case 'answered':
       return threadResponseStatus(t) === 'answered';
@@ -152,6 +106,8 @@ function matchesThreadFilter(t: ThreadSummary, filter: ThreadFilter): boolean {
       return threadResponseStatus(t) === 'waiting';
     case 'unread':
       return t.unread_count > 0;
+    case 'rejected':
+      return t.conversation_status === 'rejected';
     default:
       return true;
   }
@@ -187,27 +143,44 @@ export function Messages() {
       if (!byRequest.has(t.request_id)) byRequest.set(t.request_id, { request_id: t.request_id, request_name: t.request_name, threads: [] });
       byRequest.get(t.request_id)!.threads.push(t);
     }
-    return [...byRequest.values()].sort(
-      (a, b) => new Date(b.threads[0]?.last_message_at ?? 0).getTime() - new Date(a.threads[0]?.last_message_at ?? 0).getTime(),
-    );
+    return [...byRequest.values()]
+      // В работе -> без статуса -> отложено within each заявка, per the owner's
+      // spec. A stable sort keeps the existing recency order within each rank.
+      .map((g) => ({ ...g, threads: [...g.threads].sort((a, b) => statusRank(a) - statusRank(b)) }))
+      .sort((a, b) => {
+        const recent = (g: { threads: ThreadSummary[] }) =>
+          Math.max(...g.threads.map((t) => new Date(t.last_message_at ?? t.created_at).getTime()));
+        return recent(b) - recent(a);
+      });
   }, [threads]);
 
   const [threadFilter, setThreadFilter] = useState<ThreadFilter>('all');
   const threadFilterCounts = useMemo(
     () => ({
-      all: threads.length,
-      answered: threads.filter((t) => threadResponseStatus(t) === 'answered').length,
-      waiting: threads.filter((t) => threadResponseStatus(t) === 'waiting').length,
-      unread: threads.filter((t) => t.unread_count > 0).length,
+      all: threads.filter((t) => t.conversation_status !== 'rejected').length,
+      answered: threads.filter((t) => threadResponseStatus(t) === 'answered' && t.conversation_status !== 'rejected').length,
+      waiting: threads.filter((t) => threadResponseStatus(t) === 'waiting' && t.conversation_status !== 'rejected').length,
+      unread: threads.filter((t) => t.unread_count > 0 && t.conversation_status !== 'rejected').length,
+      rejected: threads.filter((t) => t.conversation_status === 'rejected').length,
     }),
     [threads],
   );
   const filteredGroups = useMemo(() => {
-    if (threadFilter === 'all') return groups;
     return groups
       .map((g) => ({ ...g, threads: g.threads.filter((t) => matchesThreadFilter(t, threadFilter)) }))
       .filter((g) => g.threads.length > 0);
   }, [groups, threadFilter]);
+
+  const [statusUpdateError, setStatusUpdateError] = useState<string | null>(null);
+  async function setConversationStatus(t: ThreadSummary, status: ConversationStatus | null) {
+    setStatusUpdateError(null);
+    try {
+      await api.setThreadStatus(t.request_id, t.supplier_id, status);
+      threadsState.reload();
+    } catch (e) {
+      setStatusUpdateError(e instanceof ApiError ? e.message : 'Не удалось обновить статус переписки.');
+    }
+  }
 
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedThreadIdParam = searchParams.get('thread');
@@ -255,12 +228,12 @@ export function Messages() {
   }, [threads, selectionInitialized, requestedThreadId, setSearchParams]);
 
   const [draft, setDraft] = useState('');
+  const [attachments, setAttachments] = useState<MailAttachment[]>([]);
   const [logisticsOpen, setLogisticsOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiExtraThreadIds, setAiExtraThreadIds] = useState<number[]>([]);
-  const [aiExtraMessages, setAiExtraMessages] = useState<Record<number, MailMessage[]>>({});
   const draftRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     const el = draftRef.current;
@@ -308,39 +281,24 @@ export function Messages() {
   // context and still clears it.
   useEffect(() => {
     setAiExtraThreadIds([]);
-    setAiExtraMessages({});
   }, [activeThread?.request_id]);
 
-  useEffect(() => {
-    for (const id of aiExtraThreadIds) {
-      if (aiExtraMessages[id]) continue;
-      const t = threads.find((x) => x.id === id);
-      if (!t) continue;
-      api
-        .threadMessages(t.request_id, t.supplier_id)
-        .then((r) => setAiExtraMessages((prev) => ({ ...prev, [id]: r.items })))
-        .catch(() => {});
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiExtraThreadIds, threads]);
-
-  const aiExtraThreadsForContext = aiExtraThreadIds
-    // A selection made while a different sibling was primary can now point at
-    // the current activeThread itself (the reset above only fires on a
-    // request change, not a thread change -- deliberately, see that effect's
-    // comment). Exclude it here so its own reply is never sent to the AI
-    // both as the primary conversation and again as an "extra" one.
-    .filter((id) => id !== activeThread?.id)
-    .map((id) => {
-      const thread = threads.find((t) => t.id === id);
-      return thread ? { thread, messages: aiExtraMessages[id] ?? [] } : null;
-    })
-    .filter((x): x is { thread: ThreadSummary; messages: MailMessage[] } => x !== null)
-    // Last-line-of-defense re-check at the exact point the payload is built,
-    // not just at the UI entry points (checkbox visibility / "select all") --
-    // the actual string sent to the AI must never carry a supplier without a
-    // real reply, regardless of how aiExtraThreadIds got populated.
-    .filter((x) => threadResponseStatus(x.thread) === 'answered');
+  // The actual set of thread ids sent to the AI endpoint -- the backend now
+  // re-fetches and validates every one of these against workspace_id/
+  // request_id itself (AiChatService._build_context), so this list is UX
+  // scoping only, not a security boundary. The "answered" re-check stays as
+  // a last-line-of-defense matching the documented product invariant
+  // (docs/ui/MESSAGES_SCREEN_SPEC.md §7), not because the backend needs it.
+  const aiContextThreadIds = activeThread
+    ? [
+        activeThread.id,
+        ...aiExtraThreadIds.filter((id) => {
+          if (id === activeThread.id) return false;
+          const thread = threads.find((t) => t.id === id);
+          return thread ? threadResponseStatus(thread) === 'answered' : false;
+        }),
+      ]
+    : [];
 
   useEffect(() => {
     if (!pendingHighlight || messagesState.status !== 'ready') return;
@@ -361,6 +319,8 @@ export function Messages() {
   const [unmatchedDraft, setUnmatchedDraft] = useState('');
   const [unmatchedReplyError, setUnmatchedReplyError] = useState('');
   const [sendingUnmatchedReply, setSendingUnmatchedReply] = useState(false);
+  const [replyError, setReplyError] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
 
   function toggleGroup(id: number) {
     setExpanded((prev) => {
@@ -414,6 +374,8 @@ export function Messages() {
     }
   }
   useEffect(() => setConfirmingIgnore(false), [activeUnmatchedId]);
+  useEffect(() => setReplyError(''), [activeThread?.id]);
+  useEffect(() => setAttachments([]), [activeThread?.id]);
 
   async function sendUnmatchedReply() {
     if (!activeUnmatchedId || conversationState.status !== 'ready' || !conversationState.data || !unmatchedDraft.trim()) return;
@@ -435,17 +397,35 @@ export function Messages() {
   }
 
   async function sendReply() {
-    if (!activeThread || !draft.trim()) return;
+    if (!activeThread || !draft.trim() || sendingReply) return;
     const subject = messagesState.status === 'ready' && messagesState.data.length > 0 ? `Re: ${messagesState.data[0].subject}` : activeThread.subject;
-    await api.sendMail({
-      request_id: activeThread.request_id,
-      supplier: { id: activeThread.supplier_id, email: activeThread.supplier_email },
-      subject,
-      body_text: draft.trim(),
-    });
-    setDraft('');
-    messagesState.reload();
-    threadsState.reload();
+    setSendingReply(true);
+    setReplyError('');
+    try {
+      await api.sendMail({
+        request_id: activeThread.request_id,
+        supplier: { id: activeThread.supplier_id, email: activeThread.supplier_email },
+        subject,
+        body_text: draft.trim(),
+        attachments: attachments.length > 0 ? attachments : undefined,
+        // This composer only ever replies within an already-open thread
+        // (activeThread already exists), never a fresh cold-outreach
+        // campaign -- the "already contacted" guard exists to catch the
+        // latter and must not block a genuine reply.
+        allow_repeat: true,
+      });
+      // Only clear the draft/attachments once the send actually succeeded --
+      // on failure the owner's text and files must survive so they don't
+      // have to redo the composer from scratch.
+      setDraft('');
+      setAttachments([]);
+      messagesState.reload();
+      threadsState.reload();
+    } catch (e) {
+      setReplyError(e instanceof ApiError ? e.message : 'Не удалось отправить письмо. Текст сохранён, попробуйте ещё раз.');
+    } finally {
+      setSendingReply(false);
+    }
   }
 
   const ownerName = user?.display_name ?? 'Вы';
@@ -537,6 +517,14 @@ export function Messages() {
             </>
           )}
 
+          {statusUpdateError && (
+            <div className="flex items-center justify-between gap-2 border-b border-danger-border bg-danger-subtle px-3 py-1.5 text-[11.5px] text-danger">
+              {statusUpdateError}
+              <button type="button" onClick={() => setStatusUpdateError(null)} className="shrink-0 font-medium underline">
+                Скрыть
+              </button>
+            </div>
+          )}
           <div className="flex flex-wrap gap-1 border-b border-border px-2 py-1.5">
             {(Object.keys(THREAD_FILTER_LABELS) as ThreadFilter[]).map((key) => (
               <button
@@ -626,6 +614,22 @@ export function Messages() {
                               {status === 'answered' ? 'Ответ' : 'Ждём'}
                             </span>
                           )}
+                          <select
+                            value={t.conversation_status ?? ''}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => void setConversationStatus(t, (e.target.value || null) as ConversationStatus | null)}
+                            aria-label={`Статус переписки с ${formatCompanyName(t.supplier_name)}`}
+                            title={t.conversation_status ? STATUS_LABEL[t.conversation_status] : 'Без статуса'}
+                            className={clsx(
+                              'shrink-0 cursor-pointer rounded-full border-0 py-0.5 pl-1.5 pr-4 text-[10px] font-medium outline-none',
+                              STATUS_SELECT_CLASS[t.conversation_status ?? 'none'],
+                            )}
+                          >
+                            <option value="">Без статуса</option>
+                            <option value="in_progress">В работе</option>
+                            <option value="deferred">Отложено</option>
+                            <option value="rejected">Отклонено</option>
+                          </select>
                           {t.unread_count > 0 && (
                             <span
                               className="flex h-4 min-w-[16px] shrink-0 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white"
@@ -666,6 +670,21 @@ export function Messages() {
           <p className="truncate text-[11.5px] text-ink-muted">{activeThread.request_name}</p>
         </div>
         <Badge tone={responseTone[threadResponseStatus(activeThread)]}>{responseLabel[threadResponseStatus(activeThread)]}</Badge>
+        <select
+          value={activeThread.conversation_status ?? ''}
+          onChange={(e) => void setConversationStatus(activeThread, (e.target.value || null) as ConversationStatus | null)}
+          aria-label="Статус переписки с этим поставщиком"
+          title={activeThread.conversation_status ? STATUS_LABEL[activeThread.conversation_status] : 'Без статуса'}
+          className={clsx(
+            'shrink-0 cursor-pointer rounded-full border-0 py-1 pl-2 pr-5 text-[11px] font-medium outline-none',
+            STATUS_SELECT_CLASS[activeThread.conversation_status ?? 'none'],
+          )}
+        >
+          <option value="">Без статуса</option>
+          <option value="in_progress">В работе</option>
+          <option value="deferred">Отложено</option>
+          <option value="rejected">Отклонено</option>
+        </select>
         <DeadlineTag deadline={activeDeadline} />
         <Button variant="secondary" size="sm" icon={<Truck size={13} />} onClick={() => setLogisticsOpen(true)}>
           Доставка
@@ -761,9 +780,13 @@ export function Messages() {
                   </span>
                   <span className="shrink-0 text-[11px] text-ink-faint">{formatDateTime(m.created_at)}</span>
                 </div>
-                <p className="whitespace-pre-wrap break-words text-[12.5px] leading-relaxed text-ink-soft">
-                  {isHighlighted && pendingHighlight ? highlightText(m.body_text ?? '', pendingHighlight.query) : m.body_text}
-                </p>
+                {isHighlighted && pendingHighlight ? (
+                  <p className="whitespace-pre-wrap break-words text-[12.5px] leading-relaxed text-ink-soft">
+                    {highlightText(m.body_text ?? '', pendingHighlight.query)}
+                  </p>
+                ) : (
+                  <EmailRenderer html={m.body_html} text={m.body_text} hasRemoteImages={m.has_remote_images} />
+                )}
                 {m.status === 'queued' && <p className="mt-1.5 text-[11px] text-ink-faint">Отправляется…</p>}
                 {m.error && <p className="mt-1.5 text-[11px] text-danger">{m.error}</p>}
               </div>
@@ -788,20 +811,13 @@ export function Messages() {
           rows={4}
           className="max-h-[320px] min-h-[104px] w-full resize-y rounded-md border border-border-strong bg-surface px-3 py-2 text-[12.5px] outline-none placeholder:text-ink-faint focus:border-accent focus:ring-1 focus:ring-accent-border"
         />
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Paperclip size={13} />}
-            disabled
-            title="Вложения — скоро"
-          >
-            Прикрепить файл
-          </Button>
+        {replyError && <p className="mt-1.5 text-[12px] text-danger">{replyError}</p>}
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-2">
+          <AttachmentPicker value={attachments} onChange={setAttachments} disabled={sendingReply} />
           <div className="flex items-center gap-2">
             <span className="hidden text-[11px] text-ink-faint sm:inline">⌘/Ctrl + Enter — отправить</span>
-            <Button variant="primary" size="sm" icon={<Send size={13} />} onClick={sendReply} disabled={!draft.trim()}>
-              Отправить
+            <Button variant="primary" size="sm" icon={<Send size={13} />} onClick={sendReply} disabled={sendingReply || !draft.trim()}>
+              {sendingReply ? 'Отправляем…' : 'Отправить'}
             </Button>
           </div>
         </div>
@@ -822,9 +838,11 @@ export function Messages() {
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
             <div className="min-w-0 rounded-md border-l-2 border-l-border-strong bg-surface px-4 py-3">
-              <p className="whitespace-pre-wrap break-words text-[12.5px] leading-relaxed text-ink-soft">
-                {conversationState.data.body_text || '(нет текстового содержимого — только HTML)'}
-              </p>
+              <EmailRenderer
+                html={conversationState.data.body_html}
+                text={conversationState.data.body_text}
+                hasRemoteImages={conversationState.data.has_remote_images}
+              />
             </div>
             {conversationState.data.replies.map((m) => {
               const isOutbound = m.direction === 'outbound';
@@ -845,7 +863,7 @@ export function Messages() {
                     </span>
                     <span className="shrink-0 text-[11px] text-ink-faint">{formatDateTime(m.created_at)}</span>
                   </div>
-                  <p className="whitespace-pre-wrap break-words text-[12.5px] leading-relaxed text-ink-soft">{m.body_text}</p>
+                  <EmailRenderer html={m.body_html} text={m.body_text} hasRemoteImages={m.has_remote_images} />
                 </div>
               );
             })}
@@ -987,9 +1005,10 @@ export function Messages() {
         {aiOpen && (activeThread || activeUnmatchedId) && (
           <div className={clsx(isNarrow && 'fixed inset-0 z-40', 'sm:contents')}>
             <AiChatPanel
-              key={activeThread ? `thread-${activeThread.id}` : `unmatched-${activeUnmatchedId}`}
-              storageKey={activeThread ? `thread-${activeThread.id}` : `unmatched-${activeUnmatchedId}`}
-              context={buildAiContext(activeThread, messagesState, activeUnmatchedId, conversationState, aiExtraThreadsForContext)}
+              key={activeThread ? `request-${activeThread.request_id}` : `unmatched-${activeUnmatchedId}`}
+              requestId={activeThread ? activeThread.request_id : null}
+              threadIds={aiContextThreadIds}
+              inboxMessageId={activeUnmatchedId}
               siblingThreads={siblingThreads.map((t) => ({ id: t.id, name: formatCompanyName(t.supplier_name), globalSupplierId: t.global_supplier_id }))}
               selectedSiblingIds={aiExtraThreadIds}
               onToggleSibling={(id) => setAiExtraThreadIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))}

@@ -615,6 +615,35 @@ class MailIntegrationTests(unittest.TestCase):
         self.assertEqual(message["In-Reply-To"], "<parent@example.com>")
         self.assertEqual(message["References"], "<parent@example.com>")
 
+    def test_second_message_to_same_thread_chains_in_reply_to_and_references(self) -> None:
+        """A normal Messages.tsx-style reply (queue_one to an existing
+        request/supplier thread) must carry real In-Reply-To/References
+        headers, the same way reply_to_inbox() already does for unmatched
+        threads -- otherwise the outgoing message starts a fresh thread in
+        the recipient's mail client instead of a real reply."""
+        first = self.service.queue_one(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"], request_id=1043,
+            supplier={"name": "ООО Треды", "email": "threads@example.com", "host": "threads.example"},
+            subject="Запрос", body="Первое сообщение",
+        )
+        first_job = self.repo.claim_job(only_job_id=first["job_id"])
+        assert first_job is not None
+        # A brand-new supplier has nothing to chain off yet.
+        self.assertIsNone(first_job["in_reply_to"])
+        first_message_id_header = first_job["message_id_header"]
+        MailQueue(self.repo, self.service)._process(first_job)
+
+        second = self.service.queue_one(
+            user_id=self.user["id"], workspace_id=self.user["workspace_id"], request_id=1043,
+            supplier={"name": "ООО Треды", "email": "threads@example.com", "host": "threads.example"},
+            subject="Уточнение", body="Второе сообщение", idempotency_key="thread-reply-second",
+            allow_repeat=True,
+        )
+        second_job = self.repo.claim_job(only_job_id=second["job_id"])
+        assert second_job is not None
+        self.assertEqual(second_job["in_reply_to"], first_message_id_header)
+        self.assertIn(first_message_id_header, second_job["references_header"])
+
     def test_incoming_reply_is_linked_and_deduplicated(self) -> None:
         queued = self.service.queue_one(
             user_id=self.user["id"], workspace_id=self.user["workspace_id"], request_id=1043,

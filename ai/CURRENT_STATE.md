@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-11
-based_on_commit: c65362d3b702f259074b0d9293d70f6065c2400c
+based_on_commit: pending-commit-TASK-MESSAGES-LINKS-STATUS-SEND-AI-20260910
 ---
 
 # Current State
@@ -14,6 +14,123 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-11` — `TASK-MESSAGES-LINKS-STATUS-SEND-AI-20260910` (frontend-v2,
+`experiment/frontend-v2-greenfield-20260905`). Owner filed 14 requirements
+for `/messages`: clickable HTML email links, a per-request-supplier
+workflow status, a real send/attachment pipeline, a server-validated
+structured AI context, and server-side AI chat persistence — with an
+explicit "no DONE without full round-trip proof" bar and 3 mandatory live
+AI stress tests. Status per area (full detail in the task's final report;
+this is the evidence summary):
+
+1. **Email links (§1)** — `PASS`. The backend sanitizer (`mail/content.py`)
+   already allowlisted `http/https/mailto/tel` and forced
+   `target="_blank" rel="noopener noreferrer nofollow"`; the gap was purely
+   that frontend-v2 discarded `body_html` and rendered plain text only.
+   Ported the legacy v1 `EmailRenderer.tsx` (sandboxed iframe) to
+   `frontend-v2/src/components/EmailRenderer.tsx`, added plain-text
+   autolinking for the no-HTML fallback. Live-verified on real production
+   data (`ОБЩЕСТВО... "ШАЛЕ"`, `krasnodar@remix-kamin.ru`): 8 real
+   `https://remix-kamin.ru/...` product links and 1 `mailto:` link render
+   with correct `href`/`target`/`rel`, no horizontal overflow.
+2. **Supplier conversation status (§2)** — `PASS`. New sibling table
+   `mail_thread_status` (`migrations/039_thread_conversation_status.sql` —
+   a new table, not `ALTER TABLE`, because this repo re-runs every
+   migration on every startup), `mail/thread_metadata.py::set_thread_status`,
+   `POST /api/requests/{id}/suppliers/{id}/status`. В работе/Отложено/
+   Отклонено, independent of `blacklist_entries` and of delivery status.
+   Live-verified: set/reload-persists, sort order (в работе → без статуса →
+   отложено), rejected hidden from default filters, "Отклонённые" tab
+   reveals it, revert to "в работе" from within that filter — all against
+   the real canonical local DB (134 real threads on request 1059).
+3. **Send + attachments (§3-4)** — pipeline `PASS`, final SMTP transmission
+   `NOT VERIFIED` (architectural, see below). Root-caused and fixed the
+   actual reason "Отправить" didn't work: (a) `sendReply()` had no
+   try/catch — a real failure threw unhandled and looked like nothing
+   happened; (b) `mail/deliverability.py::subject_quality()` unconditionally
+   blocked any `"Re:"`-prefixed subject as `misleading_reply_subject_without_thread`,
+   with no exception for a genuine reply in an established thread — fixed
+   by resolving real thread history first; (c) the deliverability
+   `same_request_already_contacted` guard fired for every reply since
+   `Messages.tsx` never passed `allow_repeat` — fixed by always passing it
+   from this reply-only composer. Also fixed: `mail/service.py`'s
+   `queue_bulk` never computed `In-Reply-To`/`References` for the normal
+   thread-reply path (only `reply_to_inbox` did) — added
+   `MailRepository.get_last_thread_headers` and wired it into both the
+   atomic and non-atomic send paths. Attachment UI built in
+   `frontend-v2/src/components/AttachmentPicker.tsx` against the
+   already-working backend contract (`{filename, mime_type, content_base64}`,
+   real 10 MB/20 MB limits from `mail/service.py::validate_attachments`).
+   Live-verified against real data (request 1059, the owner's own connected
+   mailbox as recipient, per their explicit authorization): a real reply
+   correctly chained `In-Reply-To`/`References` off the actual prior
+   message, a real attachment (`supplydesk-test.txt`, 89 bytes) persisted
+   correctly in `mail_attachments` with matching size/content. Final SMTP
+   handoff is blocked by `mail/runtime.py`'s `environment == "production"`
+   gate (`SUPPLYDESK_ENV=development` locally, by design) — not a defect;
+   see `FINDING-026`.
+4. **AI context (§5-7, §11)** — `PASS`. `/api/ai/chat`'s contract changed
+   from `{message, context: string}` (a client-built, backend-trusted
+   opaque string) to `{conversation_id, request_id, thread_ids, message}`;
+   `AiChatService._build_context` now re-fetches real messages server-side
+   and validates every `thread_id` against `workspace_id` **and**
+   `request_id` (`MailRepository.get_thread_owned`) before it can reach the
+   model — a forged/stale/cross-workspace id is silently dropped. New test
+   `tests/test_ai_context_scoping.py` proves the owner's exact scenario
+   (132 suppliers, 3 selected → exactly 3 in the model prompt) plus
+   cross-request and cross-workspace isolation. Live-verified the same on
+   real data.
+5. **AI chat persistence (§8-10)** — `PASS`. New `ai_conversations`/
+   `ai_messages` (`migrations/040_ai_conversations.sql`,
+   `mail/ai_conversations.py`), replacing `AiChatPanel`'s previous
+   `localStorage`-only history. "+ Новый чат"/"История" in the panel;
+   `context_thread_ids` recorded per user turn as an audit trail. Live
+   round-trip proof: 6 real chats created across this session's testing,
+   history list shows all of them, switching chats shows zero content
+   mixing, and — critically — a genuine full page reload correctly
+   auto-resumed the most recent chat's real content.
+6. **3 AI stress tests** — run live against the real RouterAI endpoint on
+   real production-pattern data (not prompt unit tests). **Stress Test 1**
+   (single-supplier fact extraction) — `PASS`, but only after finding and
+   fixing two real bugs the test itself was designed to catch: the
+   per-message context budget (900 chars) was silently truncating the
+   supplier's contact signature (phone/address/email/site, all real,
+   sitting past character 2025 of a 3739-char message) before it ever
+   reached the model, and a naive head-only trim strategy replaced with a
+   head+tail one (raised to `PER_MESSAGE_CHAR_LIMIT=4500`,
+   `TOTAL_CONTEXT_CHAR_BUDGET=40000`). After the fix: exact phone
+   (`+7 (903) 568 30 72`, `+7 (903) 136 88 81`), address, email and
+   website extracted correctly from the real letter. **Stress Test 2**
+   (3-supplier comparison) — `PARTIAL`: zero cross-supplier fact bleed and
+   zero invented data across both the default (`llama-3.1-8b-instruct`)
+   and the upgraded model, but one real supplier's stated price/term
+   (present, verified untruncated in the actual context sent) was
+   nonetheless reported "не указано" by both models — see `FINDING-027`.
+   **Stress Test 3** (history-aware reply) — `FAIL`: the model's drafted
+   reply explicitly claimed it would not repeat already-answered
+   questions, then immediately re-asked two questions (stock availability,
+   delivery time) the supplier had already answered in the same supplied
+   history — see `FINDING-028`. Per the owner's explicit pre-authorization
+   ("try a somewhat more advanced model if it's struggling, but not too
+   expensive"), the default model was upgraded
+   `meta-llama/llama-3.1-8b-instruct` → `meta-llama/llama-3.3-70b-instruct`
+   (`DECISION-023`, real pricing verified live against RouterAI's own
+   `/models` catalog via the app's own configured client — ~5-8x per-token
+   cost, still a small fraction of a kopeck per call against the existing
+   10 ₽/day cap) — this measurably helped Stress Test 1 but did not fully
+   resolve Stress Test 2/3's gaps, honestly recorded rather than papered
+   over.
+
+Backend suite: `556 tests` (4 new this task: reply-threading regression +
+3 thread-status tests + 3 AI-context-scoping tests, all RED-to-GREEN
+proven), same known `11`-failure governance/pwsh baseline as every prior
+task on this line, zero new regressions. Frontend `typecheck`/`build`/lint
+clean (20 pre-existing warnings, same class as before, no new ones). Not
+yet committed/pushed/deployed — see `ai/ACTIVE_TASK.md` for exact next
+steps and everything explicitly `NOT VERIFIED`/`BLOCKED`
+(`FINDING-026`/`027`/`028`, Mail.ru OAuth still stubbed and untouched,
+attachment UI not added to the secondary unmatched-inbox reply composer).
 
 `2026-09-11` — `TASK-MESSAGES-AI-CONTEXT-SUPPLIER-NAME-CANONICAL-20260910`
 (frontend-v2, `experiment/frontend-v2-greenfield-20260905`; commits

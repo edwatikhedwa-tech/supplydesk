@@ -247,7 +247,7 @@ def similarity_ratio(values: Iterable[str]) -> float:
     return similar / len(items)
 
 
-def subject_quality(subject: str, *, recipient_count: int) -> tuple[list[str], list[str]]:
+def subject_quality(subject: str, *, recipient_count: int, has_existing_thread: bool = False) -> tuple[list[str], list[str]]:
     blocks: list[str] = []
     warnings: list[str] = []
     value = str(subject or "").strip()
@@ -261,7 +261,12 @@ def subject_quality(subject: str, *, recipient_count: int) -> tuple[list[str], l
         warnings.append("subject_all_caps")
     if value.count("!") >= 3:
         warnings.append("subject_excessive_exclamation")
-    if re.match(r"(?i)^(?:re|fw|fwd)\s*:", value):
+    # A "Re:"/"Fw:" subject is only misleading when there is no real prior
+    # message to honestly reply to -- a genuine single-recipient reply in an
+    # established thread (has_existing_thread=True, resolved by the caller
+    # from real mail_messages history) must not be blocked by the same
+    # heuristic that exists to catch cold-outreach campaigns faking a reply.
+    if re.match(r"(?i)^(?:re|fw|fwd)\s*:", value) and not has_existing_thread:
         blocks.append("misleading_reply_subject_without_thread")
     return blocks, warnings
 

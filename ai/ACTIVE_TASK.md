@@ -3,11 +3,49 @@ document_id: TASK-LOCK-040
 status: CURRENT
 canonical: false
 owner: project-control
-updated_at: 2026-09-11
+updated_at: 2026-09-10
 based_on_commit: c65362d3b702f259074b0d9293d70f6065c2400c
 ---
 
 # Active Task
+
+Task ID: `TASK-MESSAGES-LINKS-STATUS-SEND-AI-20260910`
+Agent: `Claude Code`
+Mode: `IMPLEMENTATION`
+Started: `2026-09-10`
+Scope: `Messages screen: clickable HTML email links (port frontend-v2 EmailRenderer), per-request-supplier conversation status (В работе/Отложено/Отклонено), fix real mail send (error handling + reply threading headers) and real attachments in the composer, restructure /api/ai/chat to a server-validated structured context (request_id + thread_ids, no more raw client string), add server-side AI chat persistence (ai_conversations/ai_messages) with a New chat/history UI, and prove all of it with real backend + browser evidence including 3 owner-specified AI stress tests. Full plan: C:\Users\edwat\.claude\plans\playful-wondering-music.md`
+Allowed files: `frontend-v2/src/pages/Messages.tsx, frontend-v2/src/components/EmailRenderer.tsx, frontend-v2/src/components/AiChatPanel.tsx, frontend-v2/src/lib/api.ts, frontend-v2/src/lib/types.ts, mail/thread_metadata.py, mail/repository.py, mail/service.py, mail/ai_conversations.py, backend/http_requests.py, supplier_app.py, backend/domain/ai_agent/chat_service.py, migrations/039_thread_conversation_status.sql, migrations/040_ai_conversations.sql, tests/test_thread_conversation_status.py, tests/test_ai_context_scoping.py, docs/ui/MESSAGES_SCREEN_SPEC.md, ai/CURRENT_STATE.md, ai/ACTIVE_TASK.md, ai/DECISIONS.md, ai/DEFERRED_FINDINGS.md`
+Status: `PARTIAL — implementation and live verification complete for §1-11; see ai/CURRENT_STATE.md 2026-09-11 entry and ai/DEFERRED_FINDINGS.md FINDING-026..028 for exactly what is NOT_VERIFIED/PARTIAL/FAIL. Not yet committed.`
+Last update: `2026-09-11`
+
+**Pending, not done — do not start a new unrelated task assuming this one is closed:**
+
+1. Not committed/pushed/deployed yet — implementation and live verification
+   are complete on the local worktree only.
+2. `FINDING-026`: real SMTP transmission for send/attachments is
+   architecturally unverifiable from `LOCAL_CANONICAL` (`environment ==
+   "production"` gate) — needs verification against the actual production
+   deployment after review, not a code fix.
+3. `FINDING-027`/`FINDING-028`: AI Stress Test 2 (price/term missed for one
+   multi-option supplier) and Stress Test 3 (re-asks already-answered
+   questions) are real, reproducible model-quality gaps, not code bugs —
+   a follow-up task should evaluate structured/tool-based extraction.
+4. Attachment UI was added only to the main thread-reply composer
+   (`sendReply`), not to the secondary unmatched-inbox reply composer
+   (`sendUnmatchedReply`/`replyToInbox`) — backend already supports
+   attachments there too; frontend UI not built, disclosed scope boundary.
+5. Mail.ru OAuth remains stubbed (pre-existing, out of this task's scope,
+   untouched).
+6. A few live test artifacts remain in the canonical local DB from this
+   session's verification (real `ai_conversations`/`ai_messages` rows,
+   one queued-forever test message in request 1059's self-thread with a
+   real attachment) — left in place deliberately as honest evidence, not
+   cleaned up, since they are harmless (never actually sent, do not affect
+   real supplier data).
+
+Superseded/previous entry (kept below for history, not the current task):
+
+---
 
 Task ID: `TASK-MESSAGES-AI-CONTEXT-SUPPLIER-NAME-CANONICAL-20260910`
 Agent: `Claude Code`

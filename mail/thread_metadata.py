@@ -98,3 +98,65 @@ class ThreadMetadataMixin:
             "is_important": next_important,
             "priority": next_priority,
         }
+
+    _CONVERSATION_STATUSES = {"in_progress", "deferred", "rejected"}
+
+    def list_thread_statuses(self, workspace_id: int, user_id: int) -> dict[tuple[int, int], str]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT request_id, supplier_id, status FROM mail_thread_status
+                   WHERE workspace_id=? AND user_id=?""",
+                (workspace_id, user_id),
+            ).fetchall()
+        return {(int(row["request_id"]), int(row["supplier_id"])): str(row["status"]) for row in rows}
+
+    def set_thread_status(
+        self,
+        workspace_id: int,
+        user_id: int,
+        request_id: int,
+        supplier_id: int,
+        status: str | None,
+    ) -> dict[str, Any]:
+        """Set (or clear, status=None) the operator's В работе/Отложено/Отклонено
+
+        status for one supplier's correspondence within one заявка. This is
+        purely a per-user workflow marker -- it never touches
+        blacklist_entries and never suppresses sending.
+        """
+        if status is not None and status not in self._CONVERSATION_STATUSES:
+            raise ValueError("Недопустимый статус переписки.")
+
+        now = iso_now()
+        with self.connect() as connection:
+            thread = connection.execute(
+                """SELECT t.id FROM mail_threads t
+                   JOIN requests r ON r.id=t.request_id AND r.workspace_id=t.workspace_id
+                   JOIN suppliers s ON s.id=t.supplier_id AND s.workspace_id=t.workspace_id
+                   WHERE t.workspace_id=? AND t.request_id=? AND t.supplier_id=?""",
+                (workspace_id, request_id, supplier_id),
+            ).fetchone()
+            if not thread:
+                raise ValueError("Переписка поставщика в этой заявке не найдена.")
+
+            if status is None:
+                connection.execute(
+                    """DELETE FROM mail_thread_status
+                       WHERE workspace_id=? AND user_id=? AND request_id=? AND supplier_id=?""",
+                    (workspace_id, user_id, request_id, supplier_id),
+                )
+            else:
+                connection.execute(
+                    """INSERT INTO mail_thread_status(
+                           workspace_id, user_id, request_id, supplier_id,
+                           status, created_at, updated_at
+                       ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                       ON CONFLICT(workspace_id, user_id, request_id, supplier_id)
+                       DO UPDATE SET status=excluded.status, updated_at=excluded.updated_at""",
+                    (workspace_id, user_id, request_id, supplier_id, status, now, now),
+                )
+            self._audit_connection(
+                connection, workspace_id, user_id, "mail.thread_status.updated",
+                "mail_thread", f"{request_id}:{supplier_id}", {"status": status},
+            )
+        return {"request_id": request_id, "supplier_id": supplier_id, "status": status}

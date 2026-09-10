@@ -97,6 +97,23 @@ class RequestRouteMixin:
             self.app.repository.set_deal_rating(session["workspace_id"], session["user_id"], request_id, supplier_id, rating)
             self._json(200, {"ok": True})
             return
+        if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "status":
+            try:
+                supplier_id = int(parts[4])
+            except ValueError:
+                self._json(400, {"error": "Некорректный идентификатор поставщика."})
+                return
+            raw_status = body.get("status")
+            status = str(raw_status) if raw_status not in (None, "") else None
+            try:
+                result = self.app.repository.set_thread_status(
+                    session["workspace_id"], session["user_id"], request_id, supplier_id, status,
+                )
+            except ValueError as exc:
+                self._json(400, {"error": str(exc)})
+                return
+            self._json(200, {"ok": True, **result})
+            return
         if len(parts) == 3:
             self.app.repository.update_request(
                 session["workspace_id"], request_id, session["user_id"],

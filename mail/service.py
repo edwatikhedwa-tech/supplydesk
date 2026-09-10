@@ -622,7 +622,24 @@ class MailService:
             self._validate_body(body_value)
         except ValueError:
             result["blocks"].append("invalid_body")
-        subject_blocks, subject_warnings = subject_quality(subject_value, recipient_count=planned)
+        # A single-recipient send to a supplier who already has real thread
+        # history is a genuine reply, not a cold-outreach campaign lying
+        # about being one -- resolved from the request's own supplier id
+        # (already known for an existing thread reply, unlike a fresh
+        # campaign target that has not been resolved to a supplier_id yet).
+        has_existing_thread = False
+        if planned == 1:
+            only_supplier = (suppliers or [{}])[0]
+            supplier_id_candidate = only_supplier.get("id") or only_supplier.get("supplier_id")
+            if supplier_id_candidate:
+                try:
+                    last_message_id, _ = self.repository.get_last_thread_headers(
+                        workspace_id, request_id, int(supplier_id_candidate),
+                    )
+                    has_existing_thread = last_message_id is not None
+                except (TypeError, ValueError):
+                    has_existing_thread = False
+        subject_blocks, subject_warnings = subject_quality(subject_value, recipient_count=planned, has_existing_thread=has_existing_thread)
         body_blocks, body_warnings = body_quality(body_value, request=request, allowed_placeholders=KNOWN_PLACEHOLDERS)
         result["blocks"].extend(subject_blocks)
         result["blocks"].extend(body_blocks)
@@ -832,6 +849,8 @@ class MailService:
         supplier_id: int | None = None,
         message_id_header: str | None = None,
         resend_of_message_id: int | None = None,
+        in_reply_to: str | None = None,
+        references_header: str | None = None,
     ) -> dict[str, Any]:
         values = {
             "supplier_name": str(supplier.get("name") or "").strip(),
@@ -865,6 +884,8 @@ class MailService:
             "body_html": body_html_value,
             "message_id_header": message_id_header or make_msgid(domain=account["email"].split("@", 1)[-1]),
             "resend_of_message_id": resend_of_message_id,
+            "in_reply_to": in_reply_to,
+            "references_header": references_header,
             "personalization_level": personalization_level(supplier=supplier, request=request),
         }
 
@@ -1072,10 +1093,18 @@ class MailService:
                     item["email"],
                     bool(resolved.get("existing_supplier")),
                 )
+                # Chain In-Reply-To/References off the most recent message in
+                # this request/supplier thread -- same rationale as the
+                # non-atomic loop below (a brand-new supplier gets (None, None),
+                # a genuine reply gets a real threaded header pair).
+                in_reply_to, references_header = self.repository.get_last_thread_headers(
+                    workspace_id, request_id, supplier_id,
+                )
                 prepared.append(self._render_outbound_target(
                     account=account, request=request, supplier=item,
                     subject=clean_subject, body=clean_body, body_html=clean_body_html, supplier_id=supplier_id,
                     resend_of_message_id=resend_of_message_id,
+                    in_reply_to=in_reply_to, references_header=references_header,
                 ))
             try:
                 operation_id, atomic_campaign_id, atomic_results = self.repository.create_send_operation_with_messages(
@@ -1177,6 +1206,14 @@ class MailService:
                     if match and match["job_id"] is not None:
                         results.append({"job_id": int(match["job_id"]), "message_id": int(match["message_id"]), "thread_id": int(match["thread_id"]), "operation_id": operation_id})
                     continue
+                # Chain In-Reply-To/References off the most recent message in
+                # this request/supplier thread, the same way reply_to_inbox()
+                # already does for unmatched-inbox threads. A brand-new
+                # supplier with no prior message simply gets (None, None) --
+                # a normal first contact, not a reply.
+                in_reply_to, references_header = self.repository.get_last_thread_headers(
+                    workspace_id, request_id, int(target["supplier_id"]),
+                )
                 results.append(self.repository.create_queued_message(
                     user_id=user_id,
                     workspace_id=workspace_id,
@@ -1190,6 +1227,8 @@ class MailService:
                     body_html=target["body_html"],
                     message_id_header=target["message_id_header"],
                     attachments=parsed_attachments,
+                    in_reply_to=in_reply_to,
+                    references_header=references_header,
                     operation_id=operation_id,
                     normalized_email=target["normalized_email"],
                     resend_of_message_id=target.get("resend_of_message_id"),

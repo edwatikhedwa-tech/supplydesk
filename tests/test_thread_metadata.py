@@ -82,6 +82,41 @@ class ThreadMetadataTests(unittest.TestCase):
                 self.user["workspace_id"], self.user["id"], 999999, self.supplier_id, important=True,
             )
 
+    def test_conversation_status_is_durable_and_defaults_to_none(self) -> None:
+        workspace_id = self.user["workspace_id"]
+        user_id = self.user["id"]
+        item = next(item for item in self.repo.list_threads(workspace_id, user_id) if item["supplier_id"] == self.supplier_id)
+        self.assertIsNone(item["conversation_status"])
+
+        self.repo.set_thread_status(workspace_id, user_id, 1043, self.supplier_id, "in_progress")
+        item = next(item for item in self.repo.list_threads(workspace_id, user_id) if item["supplier_id"] == self.supplier_id)
+        self.assertEqual(item["conversation_status"], "in_progress")
+
+        self.repo.set_thread_status(workspace_id, user_id, 1043, self.supplier_id, "rejected")
+        item = next(item for item in self.repo.list_threads(workspace_id, user_id) if item["supplier_id"] == self.supplier_id)
+        self.assertEqual(item["conversation_status"], "rejected")
+
+        self.repo.set_thread_status(workspace_id, user_id, 1043, self.supplier_id, None)
+        item = next(item for item in self.repo.list_threads(workspace_id, user_id) if item["supplier_id"] == self.supplier_id)
+        self.assertIsNone(item["conversation_status"])
+
+    def test_conversation_status_rejects_invalid_value_and_unknown_thread(self) -> None:
+        with self.assertRaises(ValueError):
+            self.repo.set_thread_status(
+                self.user["workspace_id"], self.user["id"], 1043, self.supplier_id, "archived",
+            )
+        with self.assertRaises(ValueError):
+            self.repo.set_thread_status(
+                self.user["workspace_id"], self.user["id"], 999999, self.supplier_id, "in_progress",
+            )
+
+    def test_conversation_status_does_not_touch_blacklist(self) -> None:
+        workspace_id = self.user["workspace_id"]
+        user_id = self.user["id"]
+        self.repo.set_thread_status(workspace_id, user_id, 1043, self.supplier_id, "rejected")
+        self.assertFalse(self.repo.is_blacklisted(workspace_id, "example.com"))
+        self.assertFalse(self.repo.is_suppressed(workspace_id, external_key="example.com", email="supplier@example.com"))
+
 
 if __name__ == "__main__":
     unittest.main()

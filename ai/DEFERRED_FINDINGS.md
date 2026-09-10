@@ -13,6 +13,95 @@ Only unresolved, accepted-risk, or explicitly superseded findings belong in
 this current register. Resolved findings and full chronology are preserved in
 [`ai/history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md`](history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md).
 
+## FINDING-028 — AI Stress Test 3 (history-aware reply): model re-asks already-answered questions
+
+- ID: `FINDING-028`
+- Severity: `MEDIUM`
+- Status: `OPEN`
+- Evidence: `TASK-MESSAGES-LINKS-STATUS-SEND-AI-20260910`'s owner-mandated
+  Stress Test 3 (a real RouterAI call, `meta-llama/llama-3.3-70b-instruct`,
+  disposable-DB fixture with a realistic 4-turn history: our question about
+  chimney diameter → supplier answers and asks the diameter → we answer the
+  diameter and ask about delivery time/whether install is included →
+  supplier answers both). Asked: "Подготовь короткий ответ поставщику...
+  Не задавай повторно вопросы, на которые поставщик уже ответил." The
+  model's reply explicitly claimed it would not re-ask the diameter/install
+  questions, then immediately asked whether the model is in stock and when
+  it would be delivered — both already answered in the same history it had
+  just been given ("В наличии сейчас нет, под заказ" / "Срок поставки — 3
+  недели").
+- Impact: A user relying on the "Подготовь ответ" feature to draft a reply
+  could send a message that visibly ignores the supplier's own prior
+  answer, which looks worse than not using AI assistance at all.
+- Why deferred: Same 70B model already adopted this task per `DECISION-023`
+  after Stress Test 1/2 evidence; a further model escalation or a
+  structured (tool-calling / explicit fact-extraction-then-compose)
+  prompting approach needs its own scoped evaluation, not a same-session
+  re-guess.
+- Next step: a follow-up task evaluates either a stronger model or a
+  two-step prompt (extract already-answered facts as a structured list
+  first, then compose the reply conditioned on that list) against the same
+  reproducible disposable-DB fixture, so the fix has a red-to-green proof.
+
+## FINDING-027 — AI Stress Test 2 (3-supplier comparison): price/term missed for a multi-option supplier message
+
+- ID: `FINDING-027`
+- Severity: `LOW`
+- Status: `OPEN`
+- Evidence: Same task, Stress Test 2, real production-pattern data (request
+  1059, 3 real suppliers: `СТРОЙ-КАМИН` states a price for one specific
+  stove variant among several offered — "Стоимость — 285000 руб" — and a
+  general "Срок изготовления... примерно 20 рабочих дней"; `ТАЛЬКОРУС`
+  states a term but no numeric price; `УНИВЕРСАЛ` has no data yet, only
+  asked a clarifying question back). Confirmed via direct inspection that
+  both facts were present, untruncated, in the exact context string sent
+  to the model (`AiChatService._build_context` output verified to contain
+  both `"285000"` and `"20 рабочих"`). Both the 8B and the 70B model
+  (before and after `DECISION-023`) reported `СТРОЙ-КАМИН`'s price and term
+  as "не указано" despite the data being present — while correctly handling
+  the other two suppliers (ТАЛЬКОРУС's stated term, no invented price;
+  УНИВЕРСАЛ's genuine lack of any data). No cross-supplier fact bleed
+  occurred in either run — that specific invariant held in both.
+- Impact: A 3-way comparison can silently omit a real number for one
+  supplier when that supplier's message describes multiple product options
+  rather than one clean quote, without any hallucination — the omission
+  itself is the defect, not a wrong value.
+- Why deferred: Likely needs the same structured-extraction approach noted
+  in `FINDING-028`, not a further blind model escalation; scoping that is
+  a follow-up task, not a same-session re-guess.
+- Next step: fold into the same follow-up task as `FINDING-028`.
+
+## FINDING-026 — Live SMTP send unverified from LOCAL_CANONICAL: production-only runtime gate
+
+- ID: `FINDING-026`
+- Severity: `LOW`
+- Status: `OPEN — architectural, not a defect`
+- Evidence: `TASK-MESSAGES-LINKS-STATUS-SEND-AI-20260910`'s live send/
+  attachment acceptance (real UI, real composer, owner-authorized target:
+  the owner's own connected mailbox) proved the entire pipeline end-to-end
+  — real HTTP send request, real deliverability preflight, real
+  `mail_messages`/`mail_attachments` rows with correct `In-Reply-To`/
+  `References` chaining and correct attachment bytes — up to the point
+  `mail/runtime.py`'s `RuntimeSession._base_outgoing_allowed()` requires
+  `self.environment == "production"`. `SUPPLYDESK_ENV=development` in the
+  local canonical `.env` (per `ai/CURRENT_STATE.md`'s `2026-09-03` entry,
+  set deliberately: "this is real local development, not a deployment").
+  Both `scripts/start_local_canonical.ps1 -AllowOutgoingMail` (env kill
+  switch) and the owner-only `/api/mail/runtime/outgoing` durable DB flag
+  were enabled for this test and reverted afterward; `effective_outgoing_enabled`
+  stayed `false` throughout because of this third, environment-level gate.
+- Impact: No code change can make a real SMTP send observable from
+  `LOCAL_CANONICAL` without weakening a deliberate safety boundary — a real
+  send test can only be observed against the actual `production` deployment.
+- Why deferred: Changing `SUPPLYDESK_ENV` locally to force this gate open
+  would be spoofing the master environment discriminator the rest of the
+  app also keys off of, not a narrow test switch — out of scope for this
+  task and not requested by the owner.
+- Next step: verify a real send only after this task's changes are
+  reviewed and deployed to the actual production environment, the same way
+  prior tasks (e.g. `TASK-VERCEL-FRONTEND-V2-LOGIN-20260909`) verified
+  production behavior separately from local development.
+
 ## FINDING-024 — `refresh_bad_global_supplier_names` cannot run on production: `CHECKO_KEY` not in Vercel env
 
 - ID: `FINDING-024`

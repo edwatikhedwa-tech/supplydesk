@@ -1,6 +1,9 @@
 import type {
   AuthUser,
+  AiConversationSummary,
+  AiMessage,
   BlacklistEntry,
+  ConversationStatus,
   DashboardSummary,
   GlobalSupplierDetail,
   GlobalSupplierSummary,
@@ -172,8 +175,14 @@ export const api = {
   searchMessages: (q: string) => request<{ items: MessageSearchResult[] }>(`/api/mail/search?q=${encodeURIComponent(q)}`),
   threadMessages: (requestId: number, supplierId: number) =>
     request<{ items: MailMessage[] }>(`/api/mail/threads?request_id=${requestId}&supplier_id=${supplierId}`),
-  sendMail: (input: { request_id: number; supplier: { id?: number; email: string; name?: string; host?: string; external_key?: string }; subject: string; body_text: string }) =>
-    request<{ ok: true; queued: unknown[] }>('/api/mail/send', { method: 'POST', body: JSON.stringify(input) }),
+  sendMail: (input: {
+    request_id: number;
+    supplier: { id?: number; email: string; name?: string; host?: string; external_key?: string };
+    subject: string;
+    body_text: string;
+    attachments?: MailAttachment[];
+    allow_repeat?: boolean;
+  }) => request<{ ok: true; queued: unknown[] }>('/api/mail/send', { method: 'POST', body: JSON.stringify(input) }),
 
   listInboxPreview: () => request<{ items: InboxPreview[] }>('/api/mail/inbox/preview'),
   listInboxUnmatchedAll: () => request<{ items: InboxPreview[] }>('/api/mail/inbox/unmatched'),
@@ -198,14 +207,30 @@ export const api = {
     }),
   listManualLinkRequests: (search: string) =>
     request<{ items: ManualLinkRequestOption[] }>(`/api/mail/inbox/requests?q=${encodeURIComponent(search)}`),
-  replyToInbox: (input: { inbox_message_id: number; subject: string; body_text: string }) =>
+  replyToInbox: (input: { inbox_message_id: number; subject: string; body_text: string; attachments?: MailAttachment[] }) =>
     request<{ ok: true }>('/api/mail/inbox/reply', { method: 'POST', body: JSON.stringify(input) }),
 
   getAiChatUsage: () => request<{ spent_rub: number; limit_rub: number }>('/api/ai/chat/usage'),
-  sendAiChatMessage: (message: string, context: string) =>
-    request<{ status: string; reply: string | null; spent_rub: number; limit_rub: number; message: string }>('/api/ai/chat', {
+  sendAiChatMessage: (input: {
+    conversation_id: number | null;
+    request_id: number | null;
+    thread_ids: number[];
+    inbox_message_id: number | null;
+    message: string;
+  }) =>
+    request<{ status: string; reply: string | null; spent_rub: number; limit_rub: number; message: string; conversation_id: number | null }>(
+      '/api/ai/chat',
+      { method: 'POST', body: JSON.stringify(input) },
+    ),
+  listAiConversations: (requestId: number | null) =>
+    request<{ items: AiConversationSummary[] }>(`/api/ai/conversations${requestId !== null ? `?request_id=${requestId}` : ''}`),
+  getAiConversation: (conversationId: number) =>
+    request<{ conversation: AiConversationSummary; items: AiMessage[] }>(`/api/ai/conversations/${conversationId}`),
+
+  setThreadStatus: (requestId: number, supplierId: number, status: ConversationStatus | null) =>
+    request<{ ok: true; status: ConversationStatus | null }>(`/api/requests/${requestId}/suppliers/${supplierId}/status`, {
       method: 'POST',
-      body: JSON.stringify({ message, context }),
+      body: JSON.stringify({ status }),
     }),
 
   getThreadNote: (requestId: number, supplierId: number) => request<{ note: string }>(`/api/requests/${requestId}/suppliers/${supplierId}/note`),

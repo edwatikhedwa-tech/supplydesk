@@ -13,6 +13,40 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-023 — AI chat default model upgraded to Llama 3.3 70B (from 8B)
+
+- Decision ID: `DECISION-023`
+- Date: `2026-09-11`
+- Status: `ACTIVE`
+- Context: `TASK-MESSAGES-LINKS-STATUS-SEND-AI-20260910`'s 3 owner-mandated live
+  AI stress tests (real RouterAI calls, real production-pattern data) found
+  the previous default `meta-llama/llama-3.1-8b-instruct` missing real,
+  present facts (a stated price and a stated delivery term) from a
+  multi-paragraph supplier reply, even after the context-construction bug
+  that was independently found and fixed (see `ai/CURRENT_STATE.md`'s
+  `2026-09-11` entry). The owner's own task instruction explicitly
+  pre-authorized trying "a somewhat more advanced model, but not too
+  expensive" if the default underperformed.
+- Decision: `backend/domain/ai_agent/chat_service.py`'s default
+  `ROUTERAI_CHAT_MODEL` fallback changed to `meta-llama/llama-3.3-70b-instruct`.
+  Verified live against RouterAI's own `/models` catalog (not guessed):
+  8B pricing `{prompt: 2.22e-06, completion: 4.44e-06}` ₽/token vs 70B
+  `{prompt: 1.11e-05, completion: 3.55e-05}` ₽/token — roughly 5-8x more
+  per token, but still a small fraction of a kopeck per call against the
+  existing `AI_CHAT_DAILY_LIMIT_RUB=10` daily spend cap (0.024 ₽ spent
+  across 6 live test calls this session, several with the 70B model).
+- Reason: The upgrade measurably improved (but did not fully fix) real
+  extraction accuracy — see `ai/DEFERRED_FINDINGS.md` for the specific
+  remaining gaps (Stress Test 2 partial, Stress Test 3 fail) recorded
+  honestly rather than declared solved. `WebSearch`/`WebFetch` failed with
+  the same infrastructure-level error as `FINDING-023` this session, so the
+  catalog was read directly via the app's own already-configured
+  `RouterAiClient`/`ModelCatalog` (a real, authorized provider integration,
+  not a workaround) instead of a public pricing page.
+- Reversal: set `ROUTERAI_CHAT_MODEL=meta-llama/llama-3.1-8b-instruct` in
+  `.env` to revert; no code change needed either way, the env var already
+  overrides the default.
+
 ## DECISION-022 — Cross-tenant canonical company directory (`canonical_companies`)
 
 - Decision ID: `DECISION-022`

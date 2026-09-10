@@ -20,6 +20,7 @@ from .canonical_companies import CanonicalCompaniesMixin
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
 from .ai_chat_usage import AiChatUsageMixin
+from .ai_conversations import AiConversationsMixin
 from .tasks import TasksMixin
 from .thread_metadata import ThreadMetadataMixin
 from .thread_notes import ThreadNotesMixin
@@ -216,7 +217,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 
 
 class MailRepository(
-    AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, AiChatUsageMixin, TasksMixin,
+    AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, AiChatUsageMixin, AiConversationsMixin, TasksMixin,
     CanonicalCompaniesMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
@@ -1828,12 +1829,29 @@ class MailRepository(
             ).fetchall()
         items = [dict(row) for row in rows]
         metadata = self.list_thread_metadata(workspace_id, user_id) if user_id is not None else {}
+        statuses = self.list_thread_statuses(workspace_id, user_id) if user_id is not None else {}
         for item in items:
-            item.update(metadata.get((int(item["request_id"]), int(item["supplier_id"])), {
-                "is_important": False,
-                "priority": None,
-            }))
+            key = (int(item["request_id"]), int(item["supplier_id"]))
+            item.update(metadata.get(key, {"is_important": False, "priority": None}))
+            item["conversation_status"] = statuses.get(key)
         return items
+
+    def get_thread_owned(self, workspace_id: int, request_id: int, thread_id: int) -> dict[str, Any] | None:
+        """Resolve one mail_threads.id to its supplier, but only if it really
+        belongs to this workspace AND this request. Used by the AI chat
+        endpoint to validate a frontend-supplied thread id before trusting it
+        for anything -- a thread id from another request or another
+        workspace must resolve to None, not silently leak that supplier's
+        correspondence into the AI context.
+        """
+        with self.connect() as connection:
+            row = connection.execute(
+                """SELECT t.supplier_id, s.name AS supplier_name, s.email AS supplier_email
+                   FROM mail_threads t JOIN suppliers s ON s.id=t.supplier_id
+                   WHERE t.id=? AND t.workspace_id=? AND t.request_id=?""",
+                (thread_id, workspace_id, request_id),
+            ).fetchone()
+        return dict(row) if row else None
 
     def search_messages(self, workspace_id: int, query: str, *, limit: int = 20) -> list[dict[str, Any]]:
         """Full-text-ish search over sent/received message bodies and subjects.
@@ -4674,6 +4692,8 @@ class MailRepository(
                     body_html=str(target["body_html"]),
                     message_id_header=str(target["message_id_header"]),
                     attachments=attachment_rows, operation_id=operation_id,
+                    in_reply_to=target.get("in_reply_to"),
+                    references_header=target.get("references_header"),
                     normalized_email=str(target["normalized_email"]),
                     resend_of_message_id=target.get("resend_of_message_id"),
                     campaign_id=campaign_id, campaign_ordinal=ordinal,
@@ -6614,6 +6634,28 @@ class MailRepository(
                 ]
                 result.append(item)
         return result
+
+    def get_last_thread_headers(self, workspace_id: int, request_id: int, supplier_id: int) -> tuple[str | None, str | None]:
+        """Most recent message's Message-ID/References for a request/supplier thread.
+
+        Used to chain a new outbound reply's In-Reply-To/References the same
+        way reply_to_inbox() already does for unmatched-inbox threads, so a
+        normal thread reply from Messages.tsx keeps a real email thread
+        instead of always starting a fresh one.
+        """
+        with self.connect() as connection:
+            row = connection.execute(
+                """SELECT message_id, references_header FROM mail_messages
+                   WHERE workspace_id=? AND request_id=? AND supplier_id=? AND message_id IS NOT NULL
+                   ORDER BY created_at DESC, id DESC LIMIT 1""",
+                (workspace_id, request_id, supplier_id),
+            ).fetchone()
+        if not row:
+            return None, None
+        last_message_id = row["message_id"]
+        prior_references = row["references_header"]
+        references = " ".join(token for token in (prior_references, last_message_id) if token) or None
+        return last_message_id, references
 
     def create_queued_message(
         self,

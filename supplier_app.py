@@ -276,6 +276,29 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                 result = self.app.ai_chat_service.usage_today(session["workspace_id"], session["user_id"])
                 self._json(200, {"spent_rub": result.spent_rub_today, "limit_rub": result.limit_rub})
             return
+        if parsed.path == "/api/ai/conversations":
+            session = self._require_session()
+            if session:
+                request_id_raw = (parse_qs(parsed.query).get("request_id") or [None])[0]
+                request_id = int(request_id_raw) if request_id_raw else None
+                items = self.app.repository.list_ai_conversations(session["workspace_id"], session["user_id"], request_id=request_id)
+                self._json(200, {"items": items})
+            return
+        if parsed.path.startswith("/api/ai/conversations/"):
+            session = self._require_session()
+            if session:
+                try:
+                    conversation_id = int(parsed.path.rsplit("/", 1)[-1])
+                except ValueError:
+                    self._json(400, {"error": "Некорректный идентификатор чата."})
+                    return
+                messages = self.app.repository.list_ai_messages(session["workspace_id"], session["user_id"], conversation_id)
+                if messages is None:
+                    self._json(404, {"error": "Чат не найден."})
+                    return
+                conversation = self.app.repository.get_ai_conversation(session["workspace_id"], session["user_id"], conversation_id)
+                self._json(200, {"conversation": conversation, "items": messages})
+            return
         if parsed.path.startswith("/api/mail/inbox/") and parsed.path.endswith("/suggestions"):
             session = self._require_session()
             if session:
@@ -700,13 +723,23 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                 )
                 self._json(200, {"ok": True, **result})
             elif parsed.path == "/api/ai/chat":
+                try:
+                    thread_ids = [int(x) for x in (body.get("thread_ids") or [])]
+                    conversation_id = int(body["conversation_id"]) if body.get("conversation_id") is not None else None
+                    request_id = int(body["request_id"]) if body.get("request_id") is not None else None
+                    inbox_message_id = int(body["inbox_message_id"]) if body.get("inbox_message_id") is not None else None
+                except (TypeError, ValueError):
+                    self._json(400, {"error": "Некорректный контекст ИИ-запроса."})
+                    return
                 result = self.app.ai_chat_service.send_message(
-                    session["workspace_id"], session["user_id"],
-                    str(body.get("message") or ""), str(body.get("context") or ""),
+                    session["workspace_id"], session["user_id"], str(body.get("message") or ""),
+                    conversation_id=conversation_id, request_id=request_id,
+                    thread_ids=thread_ids, inbox_message_id=inbox_message_id,
                 )
                 self._json(200, {
                     "status": result.status, "reply": result.reply,
                     "spent_rub": result.spent_rub_today, "limit_rub": result.limit_rub, "message": result.message,
+                    "conversation_id": result.conversation_id,
                 })
             elif parsed.path == "/api/tasks":
                 request_id_raw = body.get("request_id")
