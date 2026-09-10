@@ -270,6 +270,17 @@ class MailService:
         account = self._get_account_for_queue(user_id, workspace_id, mail_account_id=mail_account_id, require_connected=False)
         self.repository.disconnect_mail_account(user_id, workspace_id, account_id=int(account["id"]))
 
+    def resync_mail_account(self, user_id: int, workspace_id: int, *, mail_account_id: int) -> dict[str, Any]:
+        """One-time recovery for TASK-MAIL-SYNC-DATA-LOSS-20260910: clears the
+        saved watermark so the next sync(s) re-walk the mailbox oldest-first
+        with the fixed fetch_incoming, reaching messages an earlier buggy
+        first-sync silently skipped. Ownership-checked the same way every
+        other per-account mail action is; re-importing already-known
+        messages is a safe no-op (see import_incoming_messages dedup)."""
+        account = self._get_account_for_queue(user_id, workspace_id, mail_account_id=mail_account_id, require_connected=False)
+        self.repository.reset_mail_sync_state(int(account["id"]))
+        return self._public_account(self.repository.get_mail_account_by_id(int(account["id"])) or {})
+
     def sync_incoming(self, user_id: int, workspace_id: int, *, max_messages: int = 100, mail_account_id: int | None = None) -> dict[str, Any]:
         # Reading IMAP is independent from the outgoing transport gate.  A
         # workspace may deliberately keep SMTP disabled while still polling

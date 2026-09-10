@@ -1953,6 +1953,21 @@ class MailRepository(
                 (account_id, uidvalidity, int(last_uid), now, int(imported_count), int(unmatched_count), now, now),
             )
 
+    def reset_mail_sync_state(self, account_id: int) -> None:
+        """Force the next sync to run as a first sync (see TASK-MAIL-SYNC-DATA-LOSS-20260910).
+
+        Used to recover from the fixed-but-already-triggered first-sync bug in
+        mail/providers/yandex.py::fetch_incoming: an account whose watermark
+        already advanced past older messages via the old "keep only the
+        newest max_messages" slice needs its cursor cleared so the corrected
+        oldest-first walk can reach the skipped mail. Every message the next
+        sync(s) re-fetch is deduplicated by provider_message_id/message_id in
+        import_incoming_messages, so re-scanning already-imported UIDs is a
+        no-op, not a duplicate.
+        """
+        with self.connect() as connection:
+            connection.execute("DELETE FROM mail_sync_states WHERE mail_account_id=?", (account_id,))
+
     def mark_mail_sync_error(self, account_id: int, error: str) -> None:
         now = iso_now()
         with self.connect() as connection:

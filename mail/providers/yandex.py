@@ -197,7 +197,16 @@ class YandexMailProvider(MailProvider):
                 raise ProviderError("Яндекс не вернул список входящих сообщений.", transient=True, provider_code="imap-search")
             ids = [int(value) for value in (data[0] or b"").split() if value.isdigit()]
             if not cursor:
-                ids = ids[-max(1, min(max_messages, 500)):]
+                # A brand-new watermark (first sync, or uidvalidity changed) must
+                # walk the mailbox oldest-first and let repeated sync calls page
+                # forward -- keeping only the *newest* max_messages here silently
+                # discarded every older message forever (newest_uid below jumps
+                # straight past them, so a future "UID cursor+1:*" search never
+                # sees them again). A mailbox mixing personal mail with dozens of
+                # supplier replies could lose real replies with no error and no
+                # way to notice. Oldest-first costs nothing: the next call simply
+                # continues from wherever this batch stopped.
+                ids = ids[:max(1, min(max_messages, 500))]
             messages: list[IncomingMessage] = []
             newest_uid = cursor
             for uid in ids:

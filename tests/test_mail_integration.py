@@ -770,6 +770,82 @@ class MailIntegrationTests(unittest.TestCase):
         self.assertEqual(len(batch.messages), 1)
         self.assertEqual(batch.last_uid, 5)
 
+    def test_yandex_imap_first_sync_walks_oldest_first_instead_of_discarding_history(self) -> None:
+        """The very first sync (no saved watermark) must never silently drop mail.
+
+        Before this fix, a first sync with more messages waiting than
+        max_messages kept only the newest slice and jumped the watermark
+        straight past everything older -- those older UIDs were never
+        searched again (`UID {cursor+1}:*` starts after the new watermark),
+        so any supplier reply that happened to be older than the cutoff
+        vanished with no error, indistinguishable from a message that never
+        arrived. Reproduced this exact pattern with real Mail.ru data on
+        2026-09-01/09-10: some replies from that day were present, others
+        from the same thread were not, with no error logged anywhere.
+        Oldest-first costs nothing -- the next sync call just continues from
+        wherever this one stopped, so nothing is ever permanently skipped.
+        """
+        def message_with_id(msgid: str) -> EmailMessage:
+            message = EmailMessage()
+            message["From"] = "Supplier <supplier@example.com>"
+            message["To"] = "user@example.com"
+            message["Subject"] = "Re: Запрос"
+            message["Message-ID"] = msgid
+            message.set_content(f"Ответ {msgid}")
+            return message
+
+        class ManyMessagesIMAP:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def authenticate(self, mechanism, callback):
+                callback(None)
+                return "OK", [b"authenticated"]
+
+            def select(self, mailbox, readonly=True):
+                return "OK", [b"1"]
+
+            def response(self, code):
+                return b"OK", [b"77"]
+
+            def uid(self, command, *args):
+                if command == "SEARCH":
+                    # A mailbox with 5 waiting messages (UIDs 1-5), no saved
+                    # watermark yet -- e.g. the very first sync after connecting.
+                    all_ids = [1, 2, 3, 4, 5]
+                    criteria = args[-1].decode() if isinstance(args[-1], bytes) else str(args[-1])
+                    if criteria.startswith("UID "):
+                        floor = int(criteria.split()[1].split(":")[0])
+                        all_ids = [i for i in all_ids if i >= floor]
+                    return "OK", [" ".join(str(i) for i in all_ids).encode()]
+                uid = int(args[0])
+                return "OK", [(b"BODY[]", message_with_id(f"<msg-{uid}@example.com>").as_bytes()), b")"]
+
+            def logout(self):
+                return "BYE", [b"logged out"]
+
+        with patch("mail.providers.yandex.imaplib.IMAP4_SSL", ManyMessagesIMAP):
+            provider = YandexMailProvider("client-id", "client-secret")
+            first_batch = provider.fetch_incoming("user@example.com", "access-token", uidvalidity=None, last_uid=0, max_messages=2)
+        # Oldest two (1, 2), not the newest two (4, 5) -- and the watermark
+        # lands exactly where the next call should resume, not past UIDs 3-5.
+        self.assertEqual([m.message_id for m in first_batch.messages], ["<msg-1@example.com>", "<msg-2@example.com>"])
+        self.assertEqual(first_batch.last_uid, 2)
+
+        with patch("mail.providers.yandex.imaplib.IMAP4_SSL", ManyMessagesIMAP):
+            second_batch = provider.fetch_incoming(
+                "user@example.com", "access-token", uidvalidity="77", last_uid=first_batch.last_uid, max_messages=2,
+            )
+        # Continuing from the first batch's watermark reaches every remaining
+        # UID (3, 4, 5) -- nothing between them was ever skipped. (A non-zero
+        # cursor searches "UID cursor+1:*" and processes everything the
+        # server returns; max_messages only bounds the very first sync's
+        # slice, unchanged by this fix.)
+        self.assertEqual(
+            [m.message_id for m in second_batch.messages],
+            ["<msg-3@example.com>", "<msg-4@example.com>", "<msg-5@example.com>"],
+        )
+
     def test_yandex_authorization_url_uses_smtp_imap_email_state_and_pkce(self) -> None:
         provider = YandexMailProvider("client-id", "client-secret")
         query = parse_qs(urlparse(provider.authorization_url(
