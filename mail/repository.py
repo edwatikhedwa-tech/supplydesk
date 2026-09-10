@@ -3070,7 +3070,15 @@ class MailRepository(
         if not host:
             raise ValueError("Поисковый результат не содержит домен.")
         now = iso_now()
-        supplier_id = self.upsert_supplier(workspace_id=workspace_id, external_key=host, name=(title or host)[:240], email="", host=host)
+        # The clean domain is a far better placeholder than a raw SERP result
+        # title (a page's <title> tag, ad copy, or the search query itself --
+        # e.g. "Купить печь-камин для дома и дачи, цены") while the real
+        # company name is still unresolved. apply_supplier_enrichment()
+        # overwrites this with the real name once registry/LLM/Checko
+        # resolution succeeds (see its `name=CASE WHEN ?<>''` guard below);
+        # for a supplier that resolution never reaches, `host` stays visible
+        # instead of an ad-copy fragment permanently masquerading as a name.
+        supplier_id = self.upsert_supplier(workspace_id=workspace_id, external_key=host, name=(host or title)[:240], email="", host=host)
         with self.connect() as connection:
             profile = connection.execute("SELECT covers_json FROM supplier_profiles WHERE supplier_id=?", (supplier_id,)).fetchone()
             covers = json.loads(profile[0] if profile and profile[0] else "[]")

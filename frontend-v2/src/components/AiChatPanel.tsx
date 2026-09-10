@@ -1,4 +1,4 @@
-import { Send, Sparkles, X } from 'lucide-react';
+import { ChevronDown, Send, Sparkles, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
@@ -6,6 +6,14 @@ import { api } from '../lib/api';
 interface ChatEntry {
   role: 'user' | 'assistant' | 'system-error';
   text: string;
+}
+
+function pluralSuppliers(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'поставщик';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'поставщика';
+  return 'поставщиков';
 }
 
 const STORAGE_PREFIX = 'supplydesk:ai-chat:';
@@ -30,6 +38,8 @@ export function AiChatPanel({
   siblingThreads = [],
   selectedSiblingIds = [],
   onToggleSibling,
+  onSelectAllSiblings,
+  onClearAllSiblings,
 }: {
   context: string;
   storageKey: string;
@@ -38,11 +48,18 @@ export function AiChatPanel({
   siblingThreads?: { id: number; name: string; globalSupplierId: number | null }[];
   selectedSiblingIds?: number[];
   onToggleSibling?: (id: number) => void;
+  onSelectAllSiblings?: () => void;
+  onClearAllSiblings?: () => void;
 }) {
   const [entries, setEntries] = useState<ChatEntry[]>(() => loadEntries(storageKey));
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [usage, setUsage] = useState<{ spent_rub: number; limit_rub: number } | null>(null);
+  // Selected-suppliers chips are collapsed by default once there are enough
+  // of them to threaten the input/send button below (see the layout note at
+  // the chip list itself) -- expanded manually stays expanded until the user
+  // collapses it again, it never auto-collapses out from under them.
+  const [siblingsExpanded, setSiblingsExpanded] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -109,30 +126,66 @@ export function AiChatPanel({
         </div>
 
         {siblingThreads.length > 0 && (
-          <div className="border-b border-border px-3 py-2">
-            {selectedSiblingIds.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {selectedSiblingIds.map((id) => {
-                  const t = siblingThreads.find((s) => s.id === id);
-                  if (!t) return null;
-                  return (
-                    <span key={id} className="flex items-center gap-1 rounded-full bg-accent-subtle px-2 py-0.5 text-[11px] text-accent">
-                      {t.globalSupplierId ? (
-                        <Link to={`/suppliers/${t.globalSupplierId}`} title="Открыть карточку поставщика" className="hover:underline">
-                          {t.name}
-                        </Link>
-                      ) : (
-                        t.name
-                      )}
-                      <button type="button" onClick={() => onToggleSibling?.(id)} aria-label={`Убрать ${t.name} из контекста`} className="hover:text-accent-hover">
-                        <X size={10} />
-                      </button>
-                    </span>
-                  );
-                })}
+          // Fixed-shrink header/toggle row + a capped-height, independently
+          // scrolling chip list -- this is what actually keeps the message
+          // input and "Отправить" reachable regardless of how many suppliers
+          // are selected: nothing below this block can be pushed off-screen
+          // by chip count, because the chip list's own height is bounded and
+          // this whole section never grows past max-h-48 collapsed height.
+          <div className="shrink-0 border-b border-border">
+            <div className="flex items-center gap-2 px-3 py-2">
+              <button
+                type="button"
+                onClick={() => setSiblingsExpanded((v) => !v)}
+                className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[11px] font-medium text-ink-soft hover:text-ink"
+              >
+                <ChevronDown size={12} className={`shrink-0 text-ink-faint transition-transform ${siblingsExpanded ? 'rotate-180' : ''}`} />
+                <span className="truncate">
+                  {selectedSiblingIds.length > 0
+                    ? `Контекст: ${selectedSiblingIds.length} ${pluralSuppliers(selectedSiblingIds.length)}`
+                    : 'Сравнение с другими поставщиками'}
+                </span>
+              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                {selectedSiblingIds.length < siblingThreads.length && (
+                  <button type="button" onClick={onSelectAllSiblings} className="text-[11px] font-medium text-accent hover:underline">
+                    Выбрать всех поставщиков по заявке
+                  </button>
+                )}
+                {selectedSiblingIds.length > 0 && (
+                  <button type="button" onClick={onClearAllSiblings} className="text-[11px] font-medium text-ink-faint hover:text-ink">
+                    Очистить
+                  </button>
+                )}
               </div>
-            ) : (
-              <p className="text-[11px] text-ink-faint">Отметьте галочкой поставщиков слева в списке переписок, чтобы добавить их в контекст для сравнения.</p>
+            </div>
+            {siblingsExpanded && (
+              <div className="max-h-40 overflow-y-auto border-t border-border px-3 py-2">
+                {selectedSiblingIds.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {selectedSiblingIds.map((id) => {
+                      const t = siblingThreads.find((s) => s.id === id);
+                      if (!t) return null;
+                      return (
+                        <span key={id} className="flex items-center gap-1 rounded-full bg-accent-subtle px-2 py-0.5 text-[11px] text-accent">
+                          {t.globalSupplierId ? (
+                            <Link to={`/suppliers/${t.globalSupplierId}`} title="Открыть карточку поставщика" className="hover:underline">
+                              {t.name}
+                            </Link>
+                          ) : (
+                            t.name
+                          )}
+                          <button type="button" onClick={() => onToggleSibling?.(id)} aria-label={`Убрать ${t.name} из контекста`} className="hover:text-accent-hover">
+                            <X size={10} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-ink-faint">Отметьте галочкой поставщиков слева в списке переписок, чтобы добавить их в контекст для сравнения.</p>
+                )}
+              </div>
             )}
           </div>
         )}

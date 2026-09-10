@@ -291,10 +291,17 @@ export function Messages() {
   // can pull in for cross-supplier comparison ("who quoted lowest?").
   const siblingThreads = activeThread ? threads.filter((t) => t.request_id === activeThread.request_id && t.id !== activeThread.id) : [];
 
+  // Scoped to the *request*, not the thread: the extra-suppliers selection is
+  // a cross-supplier comparison for one campaign. Clearing it on every thread
+  // switch (the previous behavior) wiped it the moment the user opened one of
+  // the very suppliers they had just checked, to read that reply -- a normal
+  // step in building a multi-supplier comparison, not a request to start
+  // over. Switching to a thread on a *different* request is a genuinely new
+  // context and still clears it.
   useEffect(() => {
     setAiExtraThreadIds([]);
     setAiExtraMessages({});
-  }, [activeThread?.id]);
+  }, [activeThread?.request_id]);
 
   useEffect(() => {
     for (const id of aiExtraThreadIds) {
@@ -310,6 +317,12 @@ export function Messages() {
   }, [aiExtraThreadIds, threads]);
 
   const aiExtraThreadsForContext = aiExtraThreadIds
+    // A selection made while a different sibling was primary can now point at
+    // the current activeThread itself (the reset above only fires on a
+    // request change, not a thread change -- deliberately, see that effect's
+    // comment). Exclude it here so its own reply is never sent to the AI
+    // both as the primary conversation and again as an "extra" one.
+    .filter((id) => id !== activeThread?.id)
     .map((id) => {
       const thread = threads.find((t) => t.id === id);
       return thread ? { thread, messages: aiExtraMessages[id] ?? [] } : null;
@@ -964,6 +977,8 @@ export function Messages() {
               siblingThreads={siblingThreads.map((t) => ({ id: t.id, name: formatCompanyName(t.supplier_name), globalSupplierId: t.global_supplier_id }))}
               selectedSiblingIds={aiExtraThreadIds}
               onToggleSibling={(id) => setAiExtraThreadIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))}
+              onSelectAllSiblings={() => setAiExtraThreadIds(siblingThreads.map((t) => t.id))}
+              onClearAllSiblings={() => setAiExtraThreadIds([])}
               onClose={() => setAiOpen(false)}
             />
           </div>

@@ -13,6 +13,34 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-020 — MagicRings is permanent on the Login screen
+
+- Decision ID: `DECISION-020`
+- Date: `2026-09-10`
+- Status: `ACTIVE`
+- Context: The Login screen's animated `MagicRings` WebGL background
+  (`frontend-v2/src/components/MagicRings.tsx`, rendered from
+  `frontend-v2/src/pages/Login.tsx`) was replaced once already this
+  project by an unrelated recreated design (commit `e7f0d7e`) and reverted
+  back (commit `163a4bb`) after the owner explicitly flagged it. The owner
+  has since repeated, more than once, that the Login screen must always
+  show MagicRings, most recently after observing a login render without it.
+- Decision: `MagicRings` is a permanent, required part of the Login screen.
+  No future task may remove it, replace it with a static/alternate design,
+  or make it optional, without a direct, explicit owner instruction to do
+  so in that specific task. `Login.tsx`'s existing `onUnsupported` fallback
+  (a static circle shown only when the owner's own browser genuinely lacks
+  WebGL) is the one allowed exception and is not itself a removal.
+- Reason: This has already regressed once from an agent redesigning the
+  login screen without being asked to touch it; the owner does not want to
+  keep re-explaining this.
+- Consequences: Any task touching `Login.tsx` must leave `MagicRings`
+  imported and rendered exactly as-is unless the owner's current
+  instruction explicitly asks for a login-screen redesign.
+- Non-goals: This does not freeze the rest of Login.tsx (form fields,
+  provider buttons, copy) — only the MagicRings background.
+- Related commits: `e7f0d7e` (regression), `163a4bb` (revert).
+
 ## DECISION-018 — Conversation-first visual hierarchy for `/messages`
 
 - Decision ID: `DECISION-018`

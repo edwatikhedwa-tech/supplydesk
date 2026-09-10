@@ -142,12 +142,6 @@ export default function MagicRings({
       return;
     }
 
-    if (!renderer.capabilities.isWebGL2) {
-      renderer.dispose();
-      onUnsupportedRef.current?.();
-      return;
-    }
-
     renderer.setClearColor(0x000000, 0);
     mount.appendChild(renderer.domElement);
 
