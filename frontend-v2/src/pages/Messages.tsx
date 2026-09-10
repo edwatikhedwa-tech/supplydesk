@@ -166,7 +166,13 @@ export function Messages() {
 
   const threadsState = useApiData(() => api.listThreads().then((r) => r.items), []);
   const requestsState = useApiData(() => api.listRequests().then((r) => r.items), []);
-  const unmatchedState = useApiData(() => api.listInboxPreview().then((r) => r.items), []);
+  // Full list, not just the top-5-most-recent preview -- a reply that never
+  // matched a supplier/request (wrong reply-to address is the common cause)
+  // previously had no way to surface once it aged out of "this week" or got
+  // read, since that was the only view of unmatched mail. See
+  // TASK-MAIL-SYNC-DATA-LOSS-20260910.
+  const unmatchedState = useApiData(() => api.listInboxUnmatchedAll().then((r) => r.items), []);
+  const [showAllUnmatched, setShowAllUnmatched] = useState(false);
 
   const threads = threadsState.status === 'ready' ? threadsState.data : [];
   const deadlineByRequestId = useMemo(() => {
@@ -426,6 +432,12 @@ export function Messages() {
     const cutoff = Date.now() - 7 * 86400000;
     return unmatched.filter((m) => m.unread && new Date(m.received_at).getTime() >= cutoff);
   }, [unmatched]);
+  // Everything the weekly widget's unread+7-day filter leaves out -- older
+  // or already-read unmatched mail that was otherwise permanently invisible.
+  const olderUnmatched = useMemo(() => {
+    const weeklyIds = new Set(weeklyUnmatched.map((m) => m.id));
+    return unmatched.filter((m) => !weeklyIds.has(m.id));
+  }, [unmatched, weeklyUnmatched]);
 
   const threadListPane: ReactNode = (
     <>
@@ -467,6 +479,37 @@ export function Messages() {
                 </div>
               </button>
             ))}
+
+          {olderUnmatched.length > 0 && (
+            <>
+              <button
+                onClick={() => setShowAllUnmatched((v) => !v)}
+                className="flex w-full items-center gap-2.5 border-b border-border px-3 py-2 text-left hover:bg-surface-hover"
+              >
+                <span className="flex-1 text-[11.5px] font-medium text-ink-muted">
+                  {showAllUnmatched ? 'Скрыть остальные без заявки' : 'Показать остальные без заявки'}
+                </span>
+                <Badge tone="neutral">{olderUnmatched.length}</Badge>
+              </button>
+              {showAllUnmatched &&
+                olderUnmatched.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => selectUnmatched(m.id)}
+                    className={
+                      'flex w-full items-start gap-2 border-b border-border py-2 pl-8 pr-3 text-left hover:bg-surface-hover ' +
+                      (activeUnmatchedId === m.id ? 'border-l-2 border-l-accent bg-accent-subtle/40' : '')
+                    }
+                  >
+                    {m.unread && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent ring-4 ring-accent/20" title="Не прочитано" />}
+                    <div className="min-w-0 flex-1">
+                      <p className={clsx('truncate text-[12px]', m.unread ? 'font-semibold text-ink' : 'font-medium text-ink-soft')}>{m.subject}</p>
+                      <p className="truncate text-[11px] text-ink-muted">{m.from_email}</p>
+                    </div>
+                  </button>
+                ))}
+            </>
+          )}
 
           <div className="flex flex-wrap gap-1 border-b border-border px-2 py-1.5">
             {(Object.keys(THREAD_FILTER_LABELS) as ThreadFilter[]).map((key) => (

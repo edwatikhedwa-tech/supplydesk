@@ -176,6 +176,7 @@ export const api = {
     request<{ ok: true; queued: unknown[] }>('/api/mail/send', { method: 'POST', body: JSON.stringify(input) }),
 
   listInboxPreview: () => request<{ items: InboxPreview[] }>('/api/mail/inbox/preview'),
+  listInboxUnmatchedAll: () => request<{ items: InboxPreview[] }>('/api/mail/inbox/unmatched'),
   inboxConversation: (inboxMessageId: number) =>
     request<InboxConversation>(`/api/mail/inbox/conversation?inbox_message_id=${inboxMessageId}`),
   inboxSuggestions: (inboxMessageId: number) =>

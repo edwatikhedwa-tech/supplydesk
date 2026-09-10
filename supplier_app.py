@@ -205,6 +205,17 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             if session:
                 self._json(200, {"items": self.app.repository.list_unmatched_incoming_preview(session["workspace_id"])})
             return
+        if parsed.path == "/api/mail/inbox/unmatched":
+            # Full unmatched-inbox list, unlike /preview's top-5-most-recent
+            # snapshot: a reply landing here has no supplier/request match
+            # (unexpected sender address is the common cause) and previously
+            # had no way to ever surface once it aged out of the preview or
+            # got read -- the frontend's "weekly" widget only shows unread
+            # mail from the last 7 days. See TASK-MAIL-SYNC-DATA-LOSS-20260910.
+            session = self._require_session()
+            if session:
+                self._json(200, {"items": self.app.repository.list_unmatched_incoming(session["workspace_id"])})
+            return
         if parsed.path == "/api/mail/request-status":
             session = self._require_session()
             if session:
