@@ -3,7 +3,7 @@ document_id: DEFERRED-FINDINGS-001
 status: CURRENT
 canonical: false
 owner: project-control
-updated_at: 2026-09-01
+updated_at: 2026-09-10
 source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 ---
 
@@ -12,6 +12,44 @@ source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 Only unresolved, accepted-risk, or explicitly superseded findings belong in
 this current register. Resolved findings and full chronology are preserved in
 [`ai/history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md`](history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md).
+
+## FINDING-021 — Selecting many AI-context siblings at once causes transient 500s on `/api/mail/threads`
+
+- ID: `FINDING-021`
+- Severity: `MEDIUM`
+- Status: `OPEN`
+- Evidence: Live production verification of the AI-context feature
+  (`frontend-v2/src/pages/Messages.tsx`, request "Печь-камин — глубокий
+  поиск 20", `request_id=1059`, 126 sibling suppliers) using «Выбрать всех
+  поставщиков по заявке» produced roughly 60 `500` responses out of ~126
+  parallel `GET /api/mail/threads?request_id=1059&supplier_id=<N>` calls
+  (browser network log, this session). Manually re-requesting one of the
+  failed `(request_id, supplier_id)` pairs immediately afterward returned a
+  clean `200` with correct data — the endpoint and the data are fine; the
+  failures were transient and load-related, not deterministic per-supplier.
+- Impact: The `aiExtraThreadIds` effect in `Messages.tsx` (fetches
+  `api.threadMessages` for every newly selected sibling with no batching or
+  concurrency limit) fires one request per selected supplier simultaneously.
+  At small selections (a handful of suppliers) this is invisible; at the
+  scale of a large deep-search campaign (100+ suppliers) a meaningful
+  fraction of those fetches transiently fail, most likely from the
+  serverless function's Postgres connection pool being exhausted by the
+  burst. The UI has no retry for a failed per-sibling fetch, so some
+  suppliers silently contribute an empty transcript to the AI context
+  instead of their real last message.
+- Why deferred: Unrelated to the task that found it (AI-context scoping to
+  suppliers with real communication, and the Messages "Заметки" → supplier
+  card change — neither touches this fetch-on-select effect or the
+  `/api/mail/threads` endpoint). Root cause (connection pool limit vs. some
+  other serverless concurrency ceiling) was not investigated. Fixing this
+  needs a deliberate choice (client-side batching/concurrency cap, a
+  bulk-fetch endpoint, or per-item retry) that should not be made as a
+  side effect of a different task (`ai/AI_CONTRACT.md` rule 5).
+- Suggested next step: reproduce deliberately with a controlled concurrency
+  count to confirm the ceiling, then either cap `Promise`-style concurrency
+  client-side (e.g. small batches) or add a bulk endpoint
+  (`request_id` + `supplier_ids[]` → messages) so a "select all" on a large
+  campaign is one request instead of N.
 
 ## FINDING-020 — No test coverage for `SupplierHandler`'s 404/SPA-fallback routing
 

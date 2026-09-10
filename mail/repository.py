@@ -2909,13 +2909,35 @@ class MailRepository(
         отправки письма напрямую. Без неё письмо уходило, статус писался в
         request_supplier_states, а в списке поставщиков заявки строки не было
         вовсе — отправленное письмо становилось невидимым в интерфейсе.
+
+        `name` on conflict never *downgrades* an existing row: the one caller
+        that regularly re-upserts an already-known supplier
+        (`upsert_search_result`, on every new search result for a
+        previously-discovered host) has nothing better to offer than the bare
+        host as a placeholder, and a naive `name=excluded.name` clobbered
+        whatever real name `apply_supplier_enrichment` had already resolved
+        the moment that supplier turned up in a later/different search pass.
+        A caller passing an empty name, or a name equal to its own host (the
+        placeholder convention), only wins when the stored name is itself
+        still empty -- otherwise the existing name is kept untouched. A
+        caller passing a genuine name (non-empty, not equal to its host --
+        e.g. `resolve_supplier_for_send` with an operator-entered name)
+        always wins, same as before.
         """
         now = iso_now()
         with self.connect() as connection:
             connection.execute(
                 """INSERT INTO suppliers(workspace_id, external_key, name, email, host, created_at, updated_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                   ON CONFLICT(workspace_id, external_key) DO UPDATE SET name=excluded.name, email=CASE WHEN excluded.email <> '' THEN excluded.email ELSE suppliers.email END, host=excluded.host, updated_at=excluded.updated_at""",
+                   ON CONFLICT(workspace_id, external_key) DO UPDATE SET
+                       name=CASE
+                           WHEN excluded.name = '' THEN suppliers.name
+                           WHEN excluded.name <> excluded.host THEN excluded.name
+                           WHEN suppliers.name = '' THEN excluded.name
+                           ELSE suppliers.name
+                       END,
+                       email=CASE WHEN excluded.email <> '' THEN excluded.email ELSE suppliers.email END,
+                       host=excluded.host, updated_at=excluded.updated_at""",
                 (workspace_id, external_key, name, email, host, now, now),
             )
             supplier_id = int(connection.execute(
@@ -2929,6 +2951,37 @@ class MailRepository(
                     (request_id, supplier_id, "Добавлен при отправке письма.", now),
                 )
             return supplier_id
+
+    def backfill_placeholder_supplier_names(self, workspace_id: int) -> dict[str, int]:
+        """One-time systemic fix for names stuck at a raw SERP result title.
+
+        Before the `upsert_supplier` conflict guard above existed, and before
+        `upsert_search_result`'s placeholder fell back to `host` instead of
+        `title`, a supplier's `name` could permanently end up as a page
+        `<title>`/ad copy fragment (e.g. "Купить печь-камин для дома и дачи,
+        цены") -- not a company name. `apply_supplier_enrichment` is the only
+        code path that ever writes a genuine, confirmed company name, and
+        every one of its call sites always resolves `inn` in the same call
+        (checked across backend/domain/supplier_enrichment/orchestrator.py) --
+        so a supplier with no `supplier_profiles.inn` has, by construction,
+        never had a confirmed name written. For those rows, and only those,
+        reset `name` back to the safe `host` placeholder (never destroy a
+        name that came with a resolved ИНН). This is systemic -- based on
+        recorded data state, not a per-record judgement call -- and reversible
+        forward: the moment enrichment resolves the real company, its own
+        already-correct guard (`name=CASE WHEN ?<>'' ...`) overwrites the
+        placeholder as usual.
+        """
+        with self.connect() as connection:
+            cur = connection.execute(
+                """UPDATE suppliers SET name = host, updated_at = ?
+                   WHERE workspace_id = ? AND host <> '' AND name <> host AND name <> ''
+                     AND id NOT IN (
+                         SELECT supplier_id FROM supplier_profiles WHERE COALESCE(inn, '') <> ''
+                     )""",
+                (iso_now(), workspace_id),
+            )
+            return {"reset_to_host": cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0}
 
     def resolve_supplier_for_send(
         self,

@@ -288,17 +288,15 @@ export function Messages() {
   const hasNote = noteState.status === 'ready' && noteState.data.trim() !== '';
 
   // Other suppliers' threads on this same request -- candidates the AI panel
-  // can pull in for cross-supplier comparison ("who quoted lowest?"). Every
-  // row in `threads` already requires a real communication message to exist
-  // (backend `list_threads` only surfaces a thread once it has an inbound
-  // message or an outbound one that reached SMTP -- see
-  // `_communication_message_predicate` in mail/repository.py), but that's an
-  // implicit backend guarantee; `messages_count > 0` makes the "only
-  // suppliers we've actually contacted" rule explicit and self-enforcing here
-  // too, so a future backend change can't silently start leaking
-  // merely-matched-but-never-contacted suppliers into the AI's context.
+  // can pull in for cross-supplier comparison ("who quoted lowest?"). Scoped
+  // to `threadResponseStatus === 'answered'` (replies_count > 0) -- the same
+  // "Есть ответ" badge shown in the thread list -- not merely "we sent them
+  // something". A request can have 100+ suppliers we've emailed and only a
+  // handful who actually replied; only the ones with a real reply belong in
+  // an AI comparison ("who quoted lowest?" needs an actual quote to compare).
+  // See docs/ui/MESSAGES_SCREEN_SPEC.md ("AI-context invariant").
   const siblingThreads = activeThread
-    ? threads.filter((t) => t.request_id === activeThread.request_id && t.id !== activeThread.id && t.messages_count > 0)
+    ? threads.filter((t) => t.request_id === activeThread.request_id && t.id !== activeThread.id && threadResponseStatus(t) === 'answered')
     : [];
 
   // Scoped to the *request*, not the thread: the extra-suppliers selection is
@@ -337,7 +335,12 @@ export function Messages() {
       const thread = threads.find((t) => t.id === id);
       return thread ? { thread, messages: aiExtraMessages[id] ?? [] } : null;
     })
-    .filter((x): x is { thread: ThreadSummary; messages: MailMessage[] } => x !== null);
+    .filter((x): x is { thread: ThreadSummary; messages: MailMessage[] } => x !== null)
+    // Last-line-of-defense re-check at the exact point the payload is built,
+    // not just at the UI entry points (checkbox visibility / "select all") --
+    // the actual string sent to the AI must never carry a supplier without a
+    // real reply, regardless of how aiExtraThreadIds got populated.
+    .filter((x) => threadResponseStatus(x.thread) === 'answered');
 
   useEffect(() => {
     if (!pendingHighlight || messagesState.status !== 'ready') return;
@@ -573,10 +576,9 @@ export function Messages() {
                       // Only offer AI-context selection for the thread's siblings on the
                       // same request while the panel is open -- not the active thread
                       // itself (it's already the primary context, not an "extra"), and
-                      // never for a supplier with zero real communication (see
-                      // siblingThreads above -- kept in sync with the same rule).
+                      // only for "Есть ответ" (see siblingThreads above -- kept in sync).
                       const showAiCheckbox =
-                        aiOpen && activeThread && t.request_id === activeThread.request_id && t.id !== activeThread.id && t.messages_count > 0;
+                        aiOpen && activeThread && t.request_id === activeThread.request_id && t.id !== activeThread.id && status === 'answered';
                       return (
                         <div
                           key={t.id}
