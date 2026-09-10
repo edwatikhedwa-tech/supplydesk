@@ -214,7 +214,13 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             # mail from the last 7 days. See TASK-MAIL-SYNC-DATA-LOSS-20260910.
             session = self._require_session()
             if session:
-                self._json(200, {"items": self.app.repository.list_unmatched_incoming(session["workspace_id"])})
+                # 500 is list_unmatched_incoming's own hard ceiling -- the
+                # dashboard already reports up to ~117 unmatched messages in
+                # this workspace, and the default limit=100 truncated exactly
+                # the case this route exists to fix (an older reply pushed
+                # past the cutoff by newer non-supplier mail in the same
+                # workspace-wide unmatched pool).
+                self._json(200, {"items": self.app.repository.list_unmatched_incoming(session["workspace_id"], limit=500)})
             return
         if parsed.path == "/api/mail/request-status":
             session = self._require_session()
