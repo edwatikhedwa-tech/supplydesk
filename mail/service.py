@@ -270,6 +270,14 @@ class MailService:
         account = self._get_account_for_queue(user_id, workspace_id, mail_account_id=mail_account_id, require_connected=False)
         self.repository.disconnect_mail_account(user_id, workspace_id, account_id=int(account["id"]))
 
+    def diagnose_mail_account_headers(self, user_id: int, workspace_id: int, *, mail_account_id: int) -> list[dict[str, Any]]:
+        """Read-only diagnostic (TASK-MAIL-SYNC-DATA-LOSS-20260910)."""
+        account, access_token = self._get_account_and_token(
+            user_id, workspace_id, mail_account_id=mail_account_id, require_outgoing=False,
+        )
+        provider = self._provider_for_account(account, access_token)
+        return provider.diagnostic_inbox_headers(account["email"], access_token)
+
     def diagnose_mail_account(self, user_id: int, workspace_id: int, *, mail_account_id: int) -> dict[str, Any]:
         """Read-only diagnostic (TASK-MAIL-SYNC-DATA-LOSS-20260910) -- no
         message body is fetched or imported."""

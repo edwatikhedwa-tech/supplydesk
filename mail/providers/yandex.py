@@ -265,6 +265,48 @@ class YandexMailProvider(MailProvider):
         values = response[1] if response and len(response) > 1 else []
         return values[0].decode("ascii", errors="ignore") if values else "unknown"
 
+    def diagnostic_inbox_headers(self, email: str, access_token: str) -> list[dict[str, object]]:
+        """Read-only diagnostic (TASK-MAIL-SYNC-DATA-LOSS-20260910): header-only
+        snapshot (From/Subject/UID) of every message currently in INBOX, plus
+        whether _parse_incoming would keep or silently drop it -- used to find
+        messages a real mailbox holds that never reached SupplyDesk without
+        fetching full bodies for all of them."""
+        connection = None
+        try:
+            connection = self._imap_connection(email, access_token)
+            status, _ = connection.select("INBOX", readonly=True)
+            if status != "OK":
+                raise ProviderError("Не удалось открыть папку входящих для диагностики.", transient=True)
+            uidvalidity = self._imap_uidvalidity(connection)
+            status, data = connection.uid("SEARCH", None, "ALL")
+            if status != "OK":
+                raise ProviderError("IMAP SEARCH не вернул результат для диагностики.", transient=True)
+            ids = [int(value) for value in (data[0] or b"").split() if value.isdigit()]
+            rows: list[dict[str, object]] = []
+            for uid in ids:
+                fetch_status, fetched = connection.uid("FETCH", str(uid), "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT MESSAGE-ID)])")
+                if fetch_status != "OK":
+                    rows.append({"uid": uid, "error": "fetch-failed"})
+                    continue
+                raw = b"".join(part[1] for part in (fetched or []) if isinstance(part, tuple) and len(part) > 1 and isinstance(part[1], bytes))
+                message = BytesParser(policy=policy.default).parsebytes(raw)
+                _, from_email = parseaddr(str(message.get("From", "")))
+                rows.append({
+                    "uid": uid,
+                    "from_raw": str(message.get("From", ""))[:200],
+                    "from_parsed": from_email,
+                    "subject": str(message.get("Subject", ""))[:200],
+                    "message_id": str(message.get("Message-ID", ""))[:200],
+                    "would_be_dropped": "@" not in (from_email or ""),
+                })
+            return rows
+        finally:
+            if connection is not None:
+                try:
+                    connection.logout()
+                except (imaplib.IMAP4.error, OSError):
+                    pass
+
     def diagnostic_inbox_uid_count(self, email: str, access_token: str) -> dict[str, object]:
         """Read-only diagnostic (TASK-MAIL-SYNC-DATA-LOSS-20260910): reports
         how many UIDs a plain SEARCH ALL sees in INBOX right now, decoupled
