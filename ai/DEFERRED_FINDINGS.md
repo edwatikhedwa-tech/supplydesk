@@ -3,7 +3,7 @@ document_id: DEFERRED-FINDINGS-001
 status: CURRENT
 canonical: false
 owner: project-control
-updated_at: 2026-09-10
+updated_at: 2026-09-11
 source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 ---
 
@@ -12,6 +12,89 @@ source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 Only unresolved, accepted-risk, or explicitly superseded findings belong in
 this current register. Resolved findings and full chronology are preserved in
 [`ai/history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md`](history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md).
+
+## FINDING-024 — `refresh_bad_global_supplier_names` cannot run on production: `CHECKO_KEY` not in Vercel env
+
+- ID: `FINDING-024`
+- Severity: `MEDIUM`
+- Status: `OPEN — needs owner action`
+- Evidence: `POST /maintenance/refresh-bad-global-supplier-names-20260911`
+  called against production 2026-09-11 returned
+  `{"ok": true, "checked": 0, "fixed": 0, "checko_unavailable": true}`.
+  `env -u HTTP_PROXY -u HTTPS_PROXY -u NO_PROXY vercel env ls production`
+  confirms no `CHECKO_KEY` variable exists in the Vercel project, even
+  though it is present in the local (gitignored) `.env`.
+- Impact: `global_suppliers.name` rows already frozen on a bad value from
+  before the `trusted_name` guard (DECISION-021) exist on production right
+  now and cannot self-heal via this route until the key is configured.
+  `suppliers.name` is unaffected (its own backfill,
+  `/maintenance/backfill-placeholder-supplier-names-20260911`, needs no
+  external API and already ran — 213 rows fixed 2026-09-11).
+- Why deferred: Adding a secret to a third-party deployment platform is not
+  something an agent should do unilaterally — this needs the owner (or an
+  explicit owner instruction with the value) to add it via `vercel env add`
+  or the Vercel dashboard.
+- Next step: owner adds `CHECKO_KEY` to the Vercel production environment,
+  then re-run the maintenance route (owner-only, session+CSRF gated, same
+  pattern as the other `/maintenance/*` routes already used this session).
+
+## FINDING-023 — Checko/DaData caching terms of service not verified before `canonical_companies` write-through
+
+- ID: `FINDING-023`
+- Severity: `MEDIUM`
+- Status: `OPEN — accepted risk, needs a real check`
+- Evidence: DECISION-022 added a cross-tenant cache
+  (`canonical_companies`) that stores Checko/DaData-sourced company facts
+  beyond the single workspace that fetched them, for reuse by any other
+  SupplyDesk workspace. Before shipping this, `WebSearch` and `WebFetch`
+  were attempted to check Checko's terms of service on storing/caching API
+  responses; both tools returned an infrastructure-level error
+  (`"issue with the selected model (qwen/qwen3.7-flash)"`) unrelated to the
+  query itself, so the check could not be completed. Shipped anyway with
+  the owner's implicit acceptance (this is an internal-product cache, not
+  redistribution to third parties, a generally defensible pattern for a
+  paid-API-backed SaaS) — but this is a business/legal risk decision, not a
+  confirmed-compliant fact.
+- Impact: If Checko's actual terms prohibit this kind of cross-account
+  internal caching, `canonical_companies` and the `_resolve_missing_inn`
+  read-path that skips a live Checko call would need to be disabled or
+  redesigned (e.g. per-workspace TTL forcing a fresh call regardless of the
+  cache).
+- Why deferred: Tooling failure, not a skipped step — retrying is the
+  correct next action, not silently assuming either outcome.
+- Next step: retry the ToS check once WebSearch/WebFetch are working again,
+  or have a human read Checko's/DaData's current API terms directly and
+  report back.
+
+## FINDING-022 — `canonical_companies` cache only wired into one enrichment stage
+
+- ID: `FINDING-022`
+- Severity: `LOW`
+- Status: `OPEN — accepted scope boundary, not urgent`
+- Evidence: `_resolve_missing_inn` (`backend/domain/supplier_enrichment/
+  orchestrator.py`) reads `canonical_companies` before calling
+  `checko.lookup()`/`.finances()` and skips both when another workspace
+  already resolved the ИНН (proven by
+  `tests/test_canonical_companies_cache_reuse.py`). The main
+  registry-resolution pipeline (`_process_enrich_step` and its `_resume_*`
+  methods, the primary path a fresh search request goes through) does not
+  read the cache at all — every workspace still pays for its own Checko
+  calls there, even for a company `canonical_companies` already has.
+- Impact: The cost-saving goal ("User B reusing what User A already found")
+  is only realized for the secondary/retry `_resolve_missing_inn` path, not
+  the primary enrichment flow most requests actually go through — so actual
+  savings in production are much smaller than the invariant's intent.
+- Why deferred: Wiring the primary pipeline (`_process_enrich_step`'s
+  registry-resolution branch, ~line 300-400 of orchestrator.py) is
+  substantially higher regression risk than the isolated
+  `_resolve_missing_inn` function — it is the central path every request's
+  search depends on, and modifying it without the same level of test
+  coverage this task already built risks a real production regression in
+  search/enrichment for every workspace, not just a missed cost-saving.
+- Next step: a dedicated follow-up task, scoped and reviewed on its own,
+  should wire the same `lookup_canonical_company`-before-`checko.lookup()`
+  pattern into `_process_enrich_step`'s registry stage, with its own RED-to-
+  GREEN test coverage against that specific code path.
 
 ## FINDING-021 — Selecting many AI-context siblings at once causes transient 500s on `/api/mail/threads`
 

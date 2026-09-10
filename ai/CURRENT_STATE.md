@@ -3,8 +3,8 @@ document_id: STATE-001
 status: CURRENT
 canonical: true
 owner: project-control
-updated_at: 2026-09-09
-based_on_commit: a8916e08ab38023606a6808d40fb339f8449be97
+updated_at: 2026-09-11
+based_on_commit: c65362d3b702f259074b0d9293d70f6065c2400c
 ---
 
 # Current State
@@ -14,6 +14,72 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-11` — `TASK-MESSAGES-AI-CONTEXT-SUPPLIER-NAME-CANONICAL-20260910`
+(frontend-v2, `experiment/frontend-v2-greenfield-20260905`; commits
+`0d16945`, `f6ed9b8`, `8a8acbc`, `3728f3e`, `c65362d`; `DECISION-021`,
+`DECISION-022`). Three fixes, status `PARTIAL` overall (see
+`ai/DEFERRED_FINDINGS.md` `FINDING-022`..`024` for exactly what is not done —
+none of the below is reported `DONE` without evidence):
+
+1. **AI-помощник context** (`frontend-v2/src/pages/Messages.tsx`): the
+   selectable/sent context is now scoped to suppliers of the current request
+   with `threadResponseStatus === 'answered'` ("Есть ответ",
+   `replies_count > 0`) — the first pass had used "any communication"
+   (`messages_count > 0`), which the owner correctly rejected as still too
+   loose. Enforced at three points (selectable pool/`Выбрать всех`, checkbox
+   visibility, and the actual payload-construction site as a
+   last-line-of-defense). Live-verified on production: request "Печь-камин —
+   глубокий поиск 20" (127 threads total, 25 answered) showed exactly 24
+   selectable/selected (25 minus the active thread), and the intercepted
+   `fetch` payload to `/api/ai/chat` contained zero suppliers from the
+   "no reply" set.
+2. **Supplier display name root cause** (`mail/repository.py`): found and
+   fixed two independent clobber bugs — `upsert_supplier`'s unconditional
+   `ON CONFLICT` overwrite of `suppliers.name` (fixed;
+   `backfill_placeholder_supplier_names` ran on production 2026-09-11, 213
+   rows reset from a raw SERP title back to the honest `host` placeholder,
+   including the owner's own cited example
+   `"Купить печь-камин для дома и дачи, цены"` → `kamindom.ru`), and
+   `_get_or_create_global_supplier`'s fill-only-if-empty guard letting a
+   manual-ИНН-entry's unenriched name freeze `global_suppliers.name`
+   forever even after real enrichment resolved a better one (fixed via a
+   new `trusted_name` parameter). The matching backfill for already-frozen
+   `global_suppliers.name` rows (`refresh_bad_global_supplier_names`,
+   `/maintenance/refresh-bad-global-supplier-names-20260911`) is
+   **`BLOCKED`** on production — `CHECKO_KEY` is not in the Vercel
+   production environment (`FINDING-024`).
+3. **Cross-tenant canonical company directory** (new: `canonical_companies`
+   + 2 companion tables, `migrations/038_canonical_companies.sql`,
+   `mail/canonical_companies.py`): the owner explicitly confirmed (asked via
+   a clarifying question, since this changes architecture and cross-tenant
+   data-privacy boundaries) that "единая база поставщиков" means genuine
+   reuse across different workspaces, not just the existing per-workspace
+   `global_suppliers` ИНН-dedup. Scope is deliberately narrow — only
+   general/public company facts, proven by a test asserting the exact
+   allowed field set; nothing tenant-scoped (communication, notes, prices,
+   requests) ever reaches it. Wired into exactly one enrichment stage
+   (`_resolve_missing_inn`) so far, proven via a call-counting stub that a
+   second workspace makes zero live Checko calls for an ИНН another
+   workspace already resolved (`FINDING-022`: the primary registry-resolution
+   pipeline is not yet wired, disclosed as a scope boundary, not silently
+   dropped). Checko/DaData's terms of service on storing their API responses
+   were **not verified** before shipping — `WebSearch`/`WebFetch` failed
+   with an infrastructure-level error this session, not skipped by choice
+   (`FINDING-023`).
+
+Full backend test suite: `525 tests` (6 new this task, all RED-to-GREEN
+proven via `git stash`), same `11` pre-existing unrelated
+`tests/diagnostics/*` governance failures as before this task (from an
+earlier `AGENTS.md`/`CLAUDE.md` restructure, not touched by this task beyond
+adding one pointer line to each). Frontend `typecheck`/`build`/`oxlint`
+clean. All 5 commits deployed to production
+(`https://supplydesk-2769.vercel.app/`) and pushed to `origin/
+experiment/frontend-v2-greenfield-20260905`. New/updated canonical docs:
+`docs/ui/MESSAGES_SCREEN_SPEC.md` (AI-context invariant, §7),
+`docs/domain/SUPPLIER_MODEL.md` (new — supplier-name invariant and the
+cross-tenant model, both §1-§5), `docs/product/messages-workspace.md` marked
+`SUPERSEDED` (describes the legacy frontend v1, a different architecture).
 
 `2026-09-09` — `TASK-VERCEL-AI-ACCOUNT-DATA-20260909`: production AI chat
 was restored by qualifying the PostgreSQL upsert target columns in

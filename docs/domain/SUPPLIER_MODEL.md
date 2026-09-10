@@ -1,7 +1,7 @@
 ---
 document_id: DOC-DOMAIN-SUPPLIER-MODEL-001
 status: CURRENT
-canonical: true
+canonical: false
 owner: product-docs
 updated_at: 2026-09-11
 ---

@@ -1,7 +1,7 @@
 ---
 document_id: DOC-UI-MESSAGES-SCREEN-SPEC-001
 status: CURRENT
-canonical: true
+canonical: false
 owner: product-docs
 updated_at: 2026-09-10
 applies_to: frontend-v2 (frontend-v2/src/pages/Messages.tsx)
