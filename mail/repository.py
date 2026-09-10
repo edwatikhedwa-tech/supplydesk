@@ -3637,6 +3637,92 @@ class MailRepository(
             })
         return sorted(directory, key=lambda item: (str(item["name"]).casefold(), int(item["id"])))
 
+    def restore_deleted_suppliers(self, workspace_id: int, items: list[dict[str, Any]]) -> dict[str, int]:
+        """One-off restore (TASK-SUPPLIER-CLEANUP-MISCLASSIFICATION-20260910):
+        a test-data cleanup task deleted 33 suppliers that were legitimately
+        linked to protected (non-test) requests -- confirmed by cross-
+        referencing the cleanup's own pre-change backup against production:
+        every one of these 33 had a request_suppliers row pointing at a
+        request the cleanup's own manifest listed as protected. Restores the
+        exact original id/rows so existing mail_messages/request_supplier_states
+        foreign keys (never deleted, now orphaned) resolve again. INSERT OR
+        IGNORE throughout -- a row that already exists (was never actually
+        deleted, or already restored) is left untouched, never overwritten.
+        """
+        suppliers = 0
+        links = 0
+        states = 0
+        skipped_external_key_conflict = 0
+        with self.connect() as connection:
+            for item in items:
+                s = item["supplier"]
+                if int(s.get("workspace_id") or 0) != workspace_id:
+                    continue
+                already = connection.execute("SELECT id FROM suppliers WHERE id=?", (s["id"],)).fetchone()
+                supplier_row_present = bool(already)
+                if not already:
+                    # suppliers has UNIQUE(workspace_id, external_key); a later
+                    # fresh crawl could have re-created this host under a new id
+                    # after the wrongful delete -- inserting the old id back
+                    # would violate that constraint. Skip restoring the identity
+                    # row in that one case rather than aborting the whole batch;
+                    # the old id's orphaned FKs stay orphaned for that supplier.
+                    conflict = connection.execute(
+                        "SELECT id FROM suppliers WHERE workspace_id=? AND external_key=?",
+                        (s["workspace_id"], s.get("external_key") or ""),
+                    ).fetchone()
+                    if conflict:
+                        skipped_external_key_conflict += 1
+                    else:
+                        connection.execute(
+                            "INSERT INTO suppliers(id, workspace_id, external_key, name, email, host, created_at, updated_at) "
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                            (s["id"], s["workspace_id"], s.get("external_key") or "", s.get("name") or "",
+                             s.get("email") or "", s.get("host") or "", s.get("created_at"), s.get("updated_at")),
+                        )
+                        suppliers += 1
+                        supplier_row_present = True
+                if not supplier_row_present:
+                    # Restoring request_suppliers/request_supplier_states here
+                    # would violate their FOREIGN KEY (supplier_id) REFERENCES
+                    # suppliers(id) -- skip this item's links entirely rather
+                    # than crash the batch over one external_key collision.
+                    continue
+                for rs in item.get("request_suppliers") or []:
+                    cur = connection.execute(
+                        "INSERT INTO request_suppliers(request_id, supplier_id, position_keys_json, reason, source, is_irrelevant, updated_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?) "
+                        "ON CONFLICT(request_id, supplier_id) DO NOTHING",
+                        (rs["request_id"], rs["supplier_id"], rs.get("position_keys_json") or "[]", rs.get("reason") or "",
+                         rs.get("source") or "manual", int(rs.get("is_irrelevant") or 0), rs.get("updated_at")),
+                    )
+                    if cur.rowcount > 0:
+                        links += 1
+                for st in item.get("request_supplier_states") or []:
+                    cur = connection.execute(
+                        "INSERT INTO request_supplier_states(request_id, supplier_id, mail_account_id, status, last_message_id, last_error, updated_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?) "
+                        "ON CONFLICT(request_id, supplier_id) DO NOTHING",
+                        (st["request_id"], st["supplier_id"], st.get("mail_account_id"), st.get("status") or "sent",
+                         st.get("last_message_id"), st.get("last_error"), st.get("updated_at")),
+                    )
+                    if cur.rowcount > 0:
+                        states += 1
+                profile = item.get("supplier_profile")
+                if profile:
+                    connection.execute(
+                        "INSERT INTO supplier_profiles(supplier_id, inn, kind, region, role, phone, reason, source, covers_json, site_unavailable, updated_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                        "ON CONFLICT(supplier_id) DO NOTHING",
+                        (profile["supplier_id"], profile.get("inn") or "", profile.get("kind") or "", profile.get("region") or "",
+                         profile.get("role") or "", profile.get("phone") or "", profile.get("reason") or "", profile.get("source") or "",
+                         profile.get("covers_json") or "[]", int(profile.get("site_unavailable") or 0), profile.get("updated_at")),
+                    )
+        return {
+            "suppliers_restored": suppliers, "links_restored": links, "states_restored": states,
+            "skipped_external_key_conflict": skipped_external_key_conflict, "received": len(items),
+        }
+
     def restore_global_supplier_directory(self, workspace_id: int, items: list[dict[str, Any]]) -> dict[str, int]:
         """One-off restore of already-resolved company identities (see
         TASK-RESTORE-GLOBAL-SUPPLIERS-20260909): the durable search pipeline
