@@ -1,13 +1,20 @@
 ---
 document_id: DOC-PRODUCT-MESSAGES-WORKSPACE-001
-status: CURRENT
+status: SUPERSEDED
 canonical: false
 owner: product-docs
-updated_at: 2026-09-04
+updated_at: 2026-09-10
 source_commit: TASK-MESSAGES-WORKSPACE-REDESIGN-20260904
 ---
 
-# Рабочее пространство «Сообщения»
+> **Superseded.** This document describes the legacy `frontend/` (v1) SPA.
+> The deployed app is `frontend-v2/` (Vercel `outputDirectory:
+> frontend-v2/dist`), which has a different architecture (no `EmailWorkspace`
+> layout contract, no `uiContracts.ts`). The canonical, current Messages spec
+> is [`docs/ui/MESSAGES_SCREEN_SPEC.md`](../ui/MESSAGES_SCREEN_SPEC.md).
+> Kept for historical reference only — do not use it to plan frontend-v2 work.
+
+# Рабочее пространство «Сообщения» (legacy frontend v1)
 
 ## Цель
 

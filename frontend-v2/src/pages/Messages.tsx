@@ -22,7 +22,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AiChatPanel } from '../components/AiChatPanel';
 import { LogisticsQuoteModal } from '../components/LogisticsQuoteModal';
 import { ManualLinkModal } from '../components/ManualLinkModal';
-import { NotesPanel } from '../components/NotesPanel';
+import { SupplierCardPanel } from '../components/SupplierCardPanel';
 import { TasksPanel } from '../components/TasksPanel';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Avatar } from '../components/ui/Avatar';
@@ -288,8 +288,18 @@ export function Messages() {
   const hasNote = noteState.status === 'ready' && noteState.data.trim() !== '';
 
   // Other suppliers' threads on this same request -- candidates the AI panel
-  // can pull in for cross-supplier comparison ("who quoted lowest?").
-  const siblingThreads = activeThread ? threads.filter((t) => t.request_id === activeThread.request_id && t.id !== activeThread.id) : [];
+  // can pull in for cross-supplier comparison ("who quoted lowest?"). Every
+  // row in `threads` already requires a real communication message to exist
+  // (backend `list_threads` only surfaces a thread once it has an inbound
+  // message or an outbound one that reached SMTP -- see
+  // `_communication_message_predicate` in mail/repository.py), but that's an
+  // implicit backend guarantee; `messages_count > 0` makes the "only
+  // suppliers we've actually contacted" rule explicit and self-enforcing here
+  // too, so a future backend change can't silently start leaking
+  // merely-matched-but-never-contacted suppliers into the AI's context.
+  const siblingThreads = activeThread
+    ? threads.filter((t) => t.request_id === activeThread.request_id && t.id !== activeThread.id && t.messages_count > 0)
+    : [];
 
   // Scoped to the *request*, not the thread: the extra-suppliers selection is
   // a cross-supplier comparison for one campaign. Clearing it on every thread
@@ -562,8 +572,11 @@ export function Messages() {
                       const inAiContext = aiExtraThreadIds.includes(t.id);
                       // Only offer AI-context selection for the thread's siblings on the
                       // same request while the panel is open -- not the active thread
-                      // itself (it's already the primary context, not an "extra").
-                      const showAiCheckbox = aiOpen && activeThread && t.request_id === activeThread.request_id && t.id !== activeThread.id;
+                      // itself (it's already the primary context, not an "extra"), and
+                      // never for a supplier with zero real communication (see
+                      // siblingThreads above -- kept in sync with the same rule).
+                      const showAiCheckbox =
+                        aiOpen && activeThread && t.request_id === activeThread.request_id && t.id !== activeThread.id && t.messages_count > 0;
                       return (
                         <div
                           key={t.id}
@@ -953,11 +966,12 @@ export function Messages() {
             as before. */}
         {notesOpen && activeThread && (
           <div className={clsx(isNarrow && 'fixed inset-0 z-40', 'sm:contents')}>
-            <NotesPanel
+            <SupplierCardPanel
               requestId={activeThread.request_id}
               supplierId={activeThread.supplier_id}
+              globalSupplierId={activeThread.global_supplier_id}
               onClose={() => setNotesOpen(false)}
-              onSaved={() => noteState.reload()}
+              onNoteSaved={() => noteState.reload()}
             />
           </div>
         )}
