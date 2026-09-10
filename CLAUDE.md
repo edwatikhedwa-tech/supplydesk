@@ -105,6 +105,10 @@ Example:
   first for any task touching the Messages screen. Changes must not violate
   the product invariants recorded there. If a task establishes a new durable
   decision about Messages, update that spec after implementing.
+* Supplier search/enrichment/identity/storage → `docs/domain/SUPPLIER_MODEL.md`
+  — read this first for any task touching how suppliers are found,
+  deduplicated, enriched, cached, or named. Update it after implementing a
+  new durable decision in this area.
 
 Product documentation owns durable product and UX rules.
 

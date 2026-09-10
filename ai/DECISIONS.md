@@ -13,6 +13,64 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-021 — AI-context and supplier-name invariants for Messages/supplier model
+
+- Decision ID: `DECISION-021`
+- Date: `2026-09-11`
+- Status: `ACTIVE`
+- Context: The owner reported (a) the AI-помощник's selectable/sent context
+  on `/messages` still included every supplier of a request regardless of
+  whether they had actually replied, and (b) supplier display names still
+  showed raw SERP-result titles (e.g. "Купить печь-камин для дома и дачи,
+  цены") instead of company names, after an earlier pass only partially
+  addressed both. Root-caused precisely this time: (a) the prior fix used
+  "any communication" (`messages_count > 0`) instead of "has replied", and
+  (b) two separate write paths could each independently clobber a
+  once-resolved real name with a placeholder (`upsert_supplier`'s
+  unconditional `ON CONFLICT` overwrite, and
+  `_get_or_create_global_supplier`'s fill-only-if-empty guard combined with
+  the manual-ИНН-entry path seeding it with an unenriched name first).
+- Decision: Two durable product invariants, detailed in
+  `docs/ui/MESSAGES_SCREEN_SPEC.md` §7 and `docs/domain/SUPPLIER_MODEL.md`
+  §3 respectively:
+  1. **AI-context invariant**: only suppliers of the current request with
+     `threadResponseStatus === 'answered'` ("Есть ответ") are eligible for
+     AI-помощник context — not "any communication attempt". Enforced at
+     three independent points in Messages.tsx (selectable pool, checkbox
+     visibility, and the actual payload-construction site), not just a UI
+     filter.
+  2. **Supplier-name invariant**: a supplier's display name must come from
+     resolved company data (registry/Checko/LLM, always paired with a
+     resolved ИНН) or a previously-normalized name, never automatically from
+     a page `<title>`, SEO description, ad H1, or email subject. A
+     placeholder-quality write (host-equal or empty) must never overwrite an
+     already-real name at either `suppliers.name` or `global_suppliers.name`.
+- Reason: Both bugs are structural (write-path/query-path logic), not data
+  issues — a per-record manual fix would have recurred. Fixing only the
+  visible symptom (a UI filter, or renaming individual bad records) was
+  explicitly rejected per the owner's instruction; both fixes are guarded at
+  the actual write sites and proven RED-to-GREEN
+  (`tests/test_supplier_name_resolution.py`).
+- Consequences: `upsert_supplier` and `_get_or_create_global_supplier` (both
+  `mail/repository.py`) now guard every future name write against
+  downgrading an existing real name. Two owner-only one-time maintenance
+  routes exist for already-affected data:
+  `/maintenance/backfill-placeholder-supplier-names-20260911` (run on
+  production 2026-09-11, 213 rows fixed) and
+  `/maintenance/refresh-bad-global-supplier-names-20260911` (blocked on
+  production — `CHECKO_KEY` is not configured in the Vercel environment;
+  code is tested but has not run against real data yet).
+- Non-goals: This does not implement cross-tenant/cross-workspace supplier
+  sharing (the owner's "User A / User B" example implies data shared across
+  different SupplyDesk accounts, which the existing `global_suppliers` table
+  does not do — it is workspace-scoped). See
+  `docs/domain/SUPPLIER_MODEL.md` §6 — open question requiring an explicit
+  owner decision before any implementation, since it changes architecture
+  and cross-tenant data-privacy boundaries.
+- Related: `docs/ui/MESSAGES_SCREEN_SPEC.md`, `docs/domain/SUPPLIER_MODEL.md`,
+  `ai/DEFERRED_FINDINGS.md` FINDING-021 (unrelated transient 500s found
+  during the AI-context live verification).
+
 ## DECISION-020 — MagicRings is permanent on the Login screen
 
 - Decision ID: `DECISION-020`
