@@ -1978,6 +1978,22 @@ class MailRepository(
                 (account_id, now, str(error or "Ошибка синхронизации входящих сообщений.")[:500], now, now),
             )
 
+    def diagnostic_supplier_state(self, request_id: int, supplier_id: int) -> dict[str, Any]:
+        """Read-only diagnostic (TASK-SUPPLIER-CLEANUP-MISCLASSIFICATION-20260910)."""
+        with self.connect() as connection:
+            supplier = connection.execute("SELECT * FROM suppliers WHERE id=?", (supplier_id,)).fetchone()
+            rs = connection.execute(
+                "SELECT * FROM request_suppliers WHERE request_id=? AND supplier_id=?", (request_id, supplier_id),
+            ).fetchone()
+            st = connection.execute(
+                "SELECT * FROM request_supplier_states WHERE request_id=? AND supplier_id=?", (request_id, supplier_id),
+            ).fetchone()
+        return {
+            "supplier": dict(supplier) if supplier else None,
+            "request_suppliers": dict(rs) if rs else None,
+            "request_supplier_states": dict(st) if st else None,
+        }
+
     def find_mail_message_by_provider_id(self, account_id: int, provider_message_id: str, message_id: str) -> dict[str, Any] | None:
         """Read-only diagnostic (TASK-MAIL-SYNC-DATA-LOSS-20260910) -- same
         lookup import_incoming_messages uses to decide "skip as duplicate",
