@@ -438,6 +438,13 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                     raise ValueError("mail_account_id обязателен.")
                 result = self.app.service.diagnose_mail_account(session["user_id"], session["workspace_id"], mail_account_id=account_id)
                 self._json(200, {"ok": True, **result})
+            elif parsed.path == "/api/mail/diagnose-list-suppliers-trace":
+                request_id = int(body["request_id"]) if body.get("request_id") is not None else None
+                supplier_id = int(body["supplier_id"]) if body.get("supplier_id") is not None else None
+                if request_id is None or supplier_id is None:
+                    raise ValueError("request_id и supplier_id обязательны.")
+                result = self.app.repository.diagnostic_list_suppliers_trace(session["workspace_id"], request_id, supplier_id)
+                self._json(200, {"ok": True, **result})
             elif parsed.path == "/api/mail/diagnose-supplier-state":
                 request_id = int(body["request_id"]) if body.get("request_id") is not None else None
                 supplier_id = int(body["supplier_id"]) if body.get("supplier_id") is not None else None

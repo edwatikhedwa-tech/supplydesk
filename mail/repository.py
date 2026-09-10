@@ -1978,6 +1978,39 @@ class MailRepository(
                 (account_id, now, str(error or "Ошибка синхронизации входящих сообщений.")[:500], now, now),
             )
 
+    def diagnostic_list_suppliers_trace(self, workspace_id: int, request_id: int, target_supplier_id: int) -> dict[str, Any]:
+        """Read-only diagnostic (TASK-SUPPLIER-CLEANUP-MISCLASSIFICATION-20260910):
+        does list_suppliers()'s target supplier survive the raw SQL rows, and
+        if so does _aggregate_request_suppliers() drop or merge it away?"""
+        raw_present = False
+        raw_row: dict[str, Any] | None = None
+        aggregated_present = False
+        aggregated_ids: list[int] = []
+        clauses = ["s.workspace_id=?", "rs.request_id=?", "COALESCE(rs.is_irrelevant, 0)=0"]
+        active_blacklist = (
+            "NOT EXISTS (SELECT 1 FROM blacklist_entries b WHERE b.workspace_id=s.workspace_id "
+            "AND b.restored_at IS NULL AND (s.external_key=b.external_key OR s.external_key LIKE '%.' || b.external_key))"
+        )
+        clauses.append(active_blacklist)
+        with self.connect() as connection:
+            rows = connection.execute(
+                f"SELECT s.id, s.external_key, s.name, s.email, s.host FROM suppliers s "
+                f"LEFT JOIN request_suppliers rs ON rs.supplier_id=s.id AND rs.request_id=? "
+                f"WHERE {' AND '.join(clauses)}",
+                (request_id, workspace_id, request_id),
+            ).fetchall()
+        for row in rows:
+            if int(row["id"]) == target_supplier_id:
+                raw_present = True
+                raw_row = dict(row)
+        full = self.list_suppliers(workspace_id, request_id)
+        aggregated_ids = [int(item["id"]) for item in full]
+        aggregated_present = target_supplier_id in aggregated_ids
+        return {
+            "raw_row_count": len(rows), "raw_present": raw_present, "raw_row": raw_row,
+            "aggregated_count": len(full), "aggregated_present": aggregated_present,
+        }
+
     def diagnostic_supplier_state(self, request_id: int, supplier_id: int) -> dict[str, Any]:
         """Read-only diagnostic (TASK-SUPPLIER-CLEANUP-MISCLASSIFICATION-20260910)."""
         with self.connect() as connection:
