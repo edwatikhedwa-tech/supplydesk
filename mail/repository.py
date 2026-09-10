@@ -1978,6 +1978,28 @@ class MailRepository(
                 (account_id, now, str(error or "Ошибка синхронизации входящих сообщений.")[:500], now, now),
             )
 
+    def find_mail_message_by_provider_id(self, account_id: int, provider_message_id: str, message_id: str) -> dict[str, Any] | None:
+        """Read-only diagnostic (TASK-MAIL-SYNC-DATA-LOSS-20260910) -- same
+        lookup import_incoming_messages uses to decide "skip as duplicate",
+        exposed standalone so a specific UID's fate can be checked without
+        re-running a full sync."""
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT id, thread_id, request_id, supplier_id, subject, created_at FROM mail_messages "
+                "WHERE mail_account_id=? AND (provider_message_id=? OR (message_id<>'' AND message_id=?)) LIMIT 1",
+                (account_id, provider_message_id, message_id),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def find_inbox_message_by_provider_id(self, account_id: int, provider_message_id: str, message_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT id, status, subject, received_at FROM mail_inbox_messages "
+                "WHERE mail_account_id=? AND (provider_message_id=? OR (message_id<>'' AND message_id=?)) LIMIT 1",
+                (account_id, provider_message_id, message_id),
+            ).fetchone()
+        return dict(row) if row else None
+
     def import_incoming_messages(
         self,
         *,

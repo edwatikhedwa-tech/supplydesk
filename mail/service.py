@@ -289,6 +289,20 @@ class MailService:
         sync_state = self.repository.get_mail_sync_state(int(account["id"])) or {}
         return {"imap": imap_state, "saved_watermark": {"uidvalidity": sync_state.get("uidvalidity"), "last_uid": sync_state.get("last_uid")}}
 
+    def diagnose_single_uid(self, user_id: int, workspace_id: int, *, mail_account_id: int, uid: int) -> dict[str, Any]:
+        """Read-only diagnostic (TASK-MAIL-SYNC-DATA-LOSS-20260910)."""
+        account, access_token = self._get_account_and_token(
+            user_id, workspace_id, mail_account_id=mail_account_id, require_outgoing=False,
+        )
+        provider = self._provider_for_account(account, access_token)
+        fetched = provider.diagnostic_fetch_single(account["email"], access_token, uid)
+        parsed = fetched.get("parsed")
+        if not parsed:
+            return {"fetched": fetched}
+        existing_matched = self.repository.find_mail_message_by_provider_id(int(account["id"]), str(parsed["provider_message_id"]), str(parsed["message_id"]))
+        existing_unmatched = self.repository.find_inbox_message_by_provider_id(int(account["id"]), str(parsed["provider_message_id"]), str(parsed["message_id"]))
+        return {"fetched": fetched, "existing_matched_row": existing_matched, "existing_unmatched_row": existing_unmatched}
+
     def resync_mail_account(self, user_id: int, workspace_id: int, *, mail_account_id: int) -> dict[str, Any]:
         """One-time recovery for TASK-MAIL-SYNC-DATA-LOSS-20260910: clears the
         saved watermark so the next sync(s) re-walk the mailbox oldest-first

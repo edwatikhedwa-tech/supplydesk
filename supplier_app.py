@@ -429,6 +429,13 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                     raise ValueError("mail_account_id обязателен.")
                 result = self.app.service.diagnose_mail_account(session["user_id"], session["workspace_id"], mail_account_id=account_id)
                 self._json(200, {"ok": True, **result})
+            elif parsed.path == "/api/mail/diagnose-uid":
+                account_id = int(body["mail_account_id"]) if body.get("mail_account_id") is not None else None
+                uid = int(body["uid"]) if body.get("uid") is not None else None
+                if account_id is None or uid is None:
+                    raise ValueError("mail_account_id и uid обязательны.")
+                result = self.app.service.diagnose_single_uid(session["user_id"], session["workspace_id"], mail_account_id=account_id, uid=uid)
+                self._json(200, {"ok": True, **result})
             elif parsed.path == "/api/mail/resync":
                 account_id = int(body["mail_account_id"]) if body.get("mail_account_id") is not None else None
                 if account_id is None:

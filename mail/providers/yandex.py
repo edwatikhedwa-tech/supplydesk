@@ -307,6 +307,44 @@ class YandexMailProvider(MailProvider):
                 except (imaplib.IMAP4.error, OSError):
                     pass
 
+    def diagnostic_fetch_single(self, email: str, access_token: str, uid: int) -> dict[str, object]:
+        """Read-only diagnostic (TASK-MAIL-SYNC-DATA-LOSS-20260910): fetch and
+        parse exactly one UID, returning what _parse_incoming produced (or
+        why it returned None), without touching the saved watermark or the
+        database."""
+        connection = None
+        try:
+            connection = self._imap_connection(email, access_token)
+            status, _ = connection.select("INBOX", readonly=True)
+            if status != "OK":
+                raise ProviderError("Не удалось открыть папку входящих для диагностики.", transient=True)
+            uidvalidity = self._imap_uidvalidity(connection)
+            fetch_status, fetched = connection.uid("FETCH", str(uid), "(BODY.PEEK[])")
+            if fetch_status != "OK":
+                return {"uid": uid, "fetch_status": fetch_status, "parsed": None}
+            raw = b"".join(part[1] for part in (fetched or []) if isinstance(part, tuple) and len(part) > 1 and isinstance(part[1], bytes))
+            parsed = self._parse_incoming(raw, email=email, uidvalidity=uidvalidity, uid=uid)
+            if parsed is None:
+                return {"uid": uid, "fetch_status": fetch_status, "raw_bytes": len(raw), "parsed": None}
+            return {
+                "uid": uid,
+                "fetch_status": fetch_status,
+                "parsed": {
+                    "provider_message_id": parsed.provider_message_id,
+                    "message_id": parsed.message_id,
+                    "from_email": parsed.from_email,
+                    "to_email": parsed.to_email,
+                    "subject": parsed.subject,
+                    "received_at": parsed.received_at.isoformat(),
+                },
+            }
+        finally:
+            if connection is not None:
+                try:
+                    connection.logout()
+                except (imaplib.IMAP4.error, OSError):
+                    pass
+
     def diagnostic_inbox_uid_count(self, email: str, access_token: str) -> dict[str, object]:
         """Read-only diagnostic (TASK-MAIL-SYNC-DATA-LOSS-20260910): reports
         how many UIDs a plain SEARCH ALL sees in INBOX right now, decoupled
