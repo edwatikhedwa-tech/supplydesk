@@ -3689,6 +3689,14 @@ class MailRepository(
                     # than crash the batch over one external_key collision.
                     continue
                 for rs in item.get("request_suppliers") or []:
+                    # The same host is often linked to several requests, some
+                    # protected and some genuinely test-only (and correctly
+                    # gone). Only restore links to requests that still exist
+                    # -- FOREIGN KEY (request_id) REFERENCES requests(id)
+                    # would otherwise abort the whole batch on the first
+                    # legitimately-deleted test request encountered.
+                    if not connection.execute("SELECT 1 FROM requests WHERE id=?", (rs["request_id"],)).fetchone():
+                        continue
                     cur = connection.execute(
                         "INSERT INTO request_suppliers(request_id, supplier_id, position_keys_json, reason, source, is_irrelevant, updated_at) "
                         "VALUES (?, ?, ?, ?, ?, ?, ?) "
@@ -3699,12 +3707,24 @@ class MailRepository(
                     if cur.rowcount > 0:
                         links += 1
                 for st in item.get("request_supplier_states") or []:
+                    if not connection.execute("SELECT 1 FROM requests WHERE id=?", (st["request_id"],)).fetchone():
+                        continue
+                    mail_account_id = st.get("mail_account_id")
+                    if mail_account_id is not None and not connection.execute(
+                        "SELECT 1 FROM mail_accounts WHERE id=?", (mail_account_id,)
+                    ).fetchone():
+                        mail_account_id = None
+                    last_message_id = st.get("last_message_id")
+                    if last_message_id is not None and not connection.execute(
+                        "SELECT 1 FROM mail_messages WHERE id=?", (last_message_id,)
+                    ).fetchone():
+                        last_message_id = None
                     cur = connection.execute(
                         "INSERT INTO request_supplier_states(request_id, supplier_id, mail_account_id, status, last_message_id, last_error, updated_at) "
                         "VALUES (?, ?, ?, ?, ?, ?, ?) "
                         "ON CONFLICT(request_id, supplier_id) DO NOTHING",
-                        (st["request_id"], st["supplier_id"], st.get("mail_account_id"), st.get("status") or "sent",
-                         st.get("last_message_id"), st.get("last_error"), st.get("updated_at")),
+                        (st["request_id"], st["supplier_id"], mail_account_id, st.get("status") or "sent",
+                         last_message_id, st.get("last_error"), st.get("updated_at")),
                     )
                     if cur.rowcount > 0:
                         states += 1
