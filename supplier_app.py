@@ -401,6 +401,12 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                     return
                 result = self.app.repository.backfill_placeholder_supplier_names(session["workspace_id"])
                 self._json(200, {"ok": True, **result})
+            elif parsed.path == "/maintenance/refresh-bad-global-supplier-names-20260911":
+                if not self.app.repository.is_workspace_owner(session["user_id"], session["workspace_id"]):
+                    self._json(403, {"error": "Исправление может выполнить только владелец."})
+                    return
+                result = self.app.refresh_bad_global_supplier_names(session["workspace_id"])
+                self._json(200, {"ok": True, **result})
             elif parsed.path == "/api/enrichment/step":
                 self._json(200, {"ok": True, **self.app.process_enrichment_retry_step(session["workspace_id"])})
             elif parsed.path == "/api/mail/runtime/outgoing":

@@ -102,6 +102,58 @@ class SupplierNameResolutionTests(unittest.TestCase):
         self.assertEqual(self._supplier_name(unenriched_host), unenriched_host)
         self.assertEqual(self._supplier_name(enriched_host), "ООО Энрич")
 
+    def _global_supplier_name(self, inn: str) -> str:
+        with self.repository.connect() as connection:
+            row = connection.execute(
+                "SELECT name FROM global_suppliers WHERE workspace_id=? AND inn=?",
+                (self.workspace_id, inn),
+            ).fetchone()
+        return str(row["name"])
+
+    def test_manual_inn_entry_with_a_bad_name_does_not_permanently_block_a_later_real_one(self) -> None:
+        """The manual-ИНН-entry path (`set_supplier_manual_inn`) seeds a
+        global_suppliers row with whatever `suppliers.name` happens to hold
+        at that moment -- often still a raw SERP title, since manual entry is
+        exactly what a user does *before* automatic enrichment succeeds. That
+        write used to freeze the global card's name forever (fill-only-if-
+        empty). apply_supplier_enrichment resolving the same ИНН afterwards
+        must still be able to overwrite it with the real company name.
+        """
+        host = "manual-then-enriched.example"
+        inn = "7707083893"
+        supplier_id = self.repository.upsert_search_result(
+            self.workspace_id, 1043, "pos-1", host=host,
+            title="ignored-by-fixture", snippet="s",
+        )
+        # A row from before the upsert_supplier guard existed (or a name a
+        # user typed in some other flow) -- still bad at the moment of manual
+        # ИНН entry, which is exactly the scenario this guards against.
+        with self.repository.connect() as connection:
+            connection.execute(
+                "UPDATE suppliers SET name=? WHERE id=?",
+                ("Купить стройматериалы недорого — акция!", supplier_id),
+            )
+        self.repository.set_supplier_manual_inn(self.workspace_id, int(self.user["id"]), 1043, supplier_id, inn)
+        self.assertEqual(self._global_supplier_name(inn), "Купить стройматериалы недорого — акция!")
+
+        self.repository.apply_supplier_enrichment(
+            self.workspace_id, host, inn=inn, company_name="ООО Реальная Компания",
+        )
+
+        self.assertEqual(self._global_supplier_name(inn), "ООО Реальная Компания")
+
+    def test_apply_trusted_global_supplier_name_overwrites_a_frozen_bad_name(self) -> None:
+        inn = "7707083893"
+        with self.repository.connect() as connection:
+            self.repository._get_or_create_global_supplier(
+                connection, self.workspace_id, inn, name="Купить кирпич дешево",
+            )
+        self.assertEqual(self._global_supplier_name(inn), "Купить кирпич дешево")
+
+        self.repository.apply_trusted_global_supplier_name(self.workspace_id, inn, "ООО Настоящее Название")
+
+        self.assertEqual(self._global_supplier_name(inn), "ООО Настоящее Название")
+
 
 if __name__ == "__main__":
     unittest.main()

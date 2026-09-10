@@ -2983,6 +2983,44 @@ class MailRepository(
             )
             return {"reset_to_host": cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0}
 
+    # A `global_suppliers.name` written before the `trusted_name` guard above
+    # existed (manual ИНН entry, `backfill_global_suppliers`,
+    # `restore_global_supplier_directory` -- see `_get_or_create_global_supplier`)
+    # can still be a raw SERP title, frozen forever by the old
+    # fill-only-if-empty write. Unlike `suppliers.name` there is no safe
+    # `host`-style placeholder to fall back to here (a global card's whole
+    # point is the ИНН-backed real name), so the only honest fix is a real
+    # registry re-lookup, not a text substitution -- see
+    # `refresh_bad_global_supplier_names` (EnrichmentOrchestratorMixin) which
+    # uses this list to decide which ИНН to re-query, never to fabricate a
+    # name from the pattern itself.
+    _SUSPECT_SUPPLIER_NAME_PATTERN = re.compile(
+        r"купить|\bцена\b|\bцены\b|скидк|дешев|распродажа", re.IGNORECASE,
+    )
+
+    def list_global_suppliers_with_suspect_names(self, workspace_id: int, *, limit: int = 10) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT id, inn, name FROM global_suppliers WHERE workspace_id=? AND inn<>'' AND name<>''",
+                (workspace_id,),
+            ).fetchall()
+        candidates = [dict(row) for row in rows if self._SUSPECT_SUPPLIER_NAME_PATTERN.search(str(row["name"] or ""))]
+        return candidates[:limit]
+
+    def apply_trusted_global_supplier_name(self, workspace_id: int, inn: str, name: str) -> None:
+        """Overwrite a global card's name with a registry/Checko-confirmed one.
+
+        Only ever called with a name a fresh `checko.lookup(inn)` just
+        returned -- routes through the same `trusted_name=True` guard
+        `apply_supplier_enrichment` uses, so it always wins over whatever
+        placeholder-quality value got there first.
+        """
+        name = name.strip()
+        if not name:
+            return
+        with self.connect() as connection:
+            self._get_or_create_global_supplier(connection, workspace_id, inn, name=name, trusted_name=True)
+
     def resolve_supplier_for_send(
         self,
         *,
@@ -3224,6 +3262,7 @@ class MailRepository(
             if effective_inn:
                 global_id = self._get_or_create_global_supplier(
                     connection, workspace_id, effective_inn, name=company_name, site=host, email=email, phone=phone,
+                    trusted_name=True,
                 )
                 self._link_supplier_global(connection, supplier_id, global_id)
                 if registry_ogrn or registry_status or registry_registered_at:
@@ -3463,13 +3502,33 @@ class MailRepository(
     def _get_or_create_global_supplier(
         connection: sqlite3.Connection, workspace_id: int, inn: str, *,
         name: str = "", site: str = "", email: str = "", phone: str = "",
+        trusted_name: bool = False,
     ) -> int:
+        """`trusted_name=True` only for the `apply_supplier_enrichment` call
+        site: that `name` is always a registry/Checko/LLM-resolved
+        `company_name`, resolved together with `inn` in the same call (every
+        call site checked in backend/domain/supplier_enrichment/
+        orchestrator.py) -- authoritative, so it always wins.
+
+        The other three callers (manual ИНН entry, `backfill_global_suppliers`,
+        `restore_global_supplier_directory`) pass whatever `suppliers.name`
+        already happens to hold as a best-effort fallback for when real
+        enrichment never runs -- not authoritative, so the original
+        fill-only-if-empty guard still applies for them: a first bad write
+        here must not permanently block a later good one from
+        apply_supplier_enrichment.
+        """
         now = iso_now()
+        name_clause = (
+            "name=CASE WHEN excluded.name<>'' THEN excluded.name ELSE global_suppliers.name END, "
+            if trusted_name
+            else "name=CASE WHEN excluded.name<>'' AND global_suppliers.name='' THEN excluded.name ELSE global_suppliers.name END, "
+        )
         connection.execute(
             "INSERT INTO global_suppliers(workspace_id, inn, name, site, email, phone, created_at, updated_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(workspace_id, inn) DO UPDATE SET "
-            "name=CASE WHEN excluded.name<>'' AND global_suppliers.name='' THEN excluded.name ELSE global_suppliers.name END, "
+            + name_clause +
             "site=CASE WHEN excluded.site<>'' AND global_suppliers.site='' THEN excluded.site ELSE global_suppliers.site END, "
             "email=CASE WHEN excluded.email<>'' AND global_suppliers.email='' THEN excluded.email ELSE global_suppliers.email END, "
             "phone=CASE WHEN excluded.phone<>'' AND global_suppliers.phone='' THEN excluded.phone ELSE global_suppliers.phone END, "

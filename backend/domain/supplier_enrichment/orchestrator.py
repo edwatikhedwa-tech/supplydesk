@@ -678,6 +678,46 @@ class EnrichmentOrchestratorMixin:
             except Exception as exc:  # noqa: BLE001 — один сайт не должен ронять проход
                 log.warning("%s: поиск ИНН в реестре не выполнен: %s", host, exc)
 
+    def refresh_bad_global_supplier_names(self, workspace_id: int, *, budget: int = 10) -> dict[str, int]:
+        """Re-resolve global-card names that still look like a raw SERP title.
+
+        `_get_or_create_global_supplier`'s old fill-only-if-empty guard let a
+        low-quality name (typed in at manual ИНН entry, before Checko had a
+        chance to run) freeze permanently even once real enrichment
+        succeeded elsewhere. The `trusted_name` guard (mail/repository.py)
+        stops this going forward; this repairs the ones already stuck, using
+        a real registry re-lookup per ИНН -- never guessing a name from the
+        bad one, only using it to pick which rows are worth spending a
+        Checko call on. Bounded like `_resolve_missing_inn` -- better to fix
+        part of the backlog per run than burn the daily Checko quota on one
+        workspace's worst names.
+        """
+        if not os.getenv("CHECKO_KEY"):
+            return {"checked": 0, "fixed": 0, "checko_unavailable": True}
+        candidates = self.repository.list_global_suppliers_with_suspect_names(workspace_id, limit=budget)
+        if not candidates:
+            return {"checked": 0, "fixed": 0}
+        try:
+            checko = CheckoClient()
+        except ValueError:
+            return {"checked": 0, "fixed": 0, "checko_unavailable": True}
+        fixed = 0
+        for row in candidates:
+            inn = str(row["inn"] or "")
+            try:
+                company = checko.lookup(inn)
+                if not company.found:
+                    continue
+                real_name = company.name_full or company.name
+                if not real_name:
+                    continue
+                self.repository.apply_trusted_global_supplier_name(workspace_id, inn, real_name)
+                fixed += 1
+                log.info("global_supplier ИНН %s: имя обновлено из реестра (%r -> %r)", inn, row["name"], real_name)
+            except Exception as exc:  # noqa: BLE001 -- one bad ИНН must not stop the rest
+                log.warning("global_supplier ИНН %s: обновление имени не выполнено: %s", inn, exc)
+        return {"checked": len(candidates), "fixed": fixed}
+
     def _resolve_missing_email(self, workspace_id: int, hosts: list[str]) -> None:
         """Обратный случай: ИНН есть, а почты нет вовсе.
 
