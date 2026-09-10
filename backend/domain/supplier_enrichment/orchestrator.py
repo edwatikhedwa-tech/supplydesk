@@ -657,6 +657,27 @@ class EnrichmentOrchestratorMixin:
                 resolved = resolve_inn_by_registry(host, checko, known_email=email)
                 if resolved is None:
                     continue
+                # Cross-tenant reuse (DECISION-022): the ИНН guess above still
+                # costs up to 6 requests regardless (host-specific, nothing to
+                # reuse there), but once we have an ИНН, another workspace may
+                # already have paid for the two Checko calls below for this
+                # exact company. Skip them if so.
+                cached = self.repository.lookup_canonical_company(resolved.inn)
+                if cached and cached.get("legal_name"):
+                    self.repository.apply_supplier_enrichment(
+                        workspace_id, host, inn=resolved.inn,
+                        company_name=cached["legal_name"], phone=cached.get("phone") or "",
+                        region=cached.get("region") or "", role=cached.get("role") or "",
+                        registry_ogrn=cached.get("ogrn") or "", registry_status=cached.get("status") or "",
+                        registry_active=cached.get("is_active"), registry_registered_at=cached.get("registered_at") or "",
+                        finance_report_year=(cached["finance_history"][0]["report_year"] if cached.get("finance_history") else None),
+                        finance_revenue=(cached["finance_history"][0]["revenue"] if cached.get("finance_history") else None),
+                        finance_profit=(cached["finance_history"][0]["profit"] if cached.get("finance_history") else None),
+                        finance_history=[(f["report_year"], f["revenue"], f["profit"]) for f in (cached.get("finance_history") or [])] or None,
+                        risks=cached.get("risks"),
+                    )
+                    log.info("%s: ИНН %s найден в реестре, компания уже известна из другого workspace (%s)", host, resolved.inn, resolved.evidence)
+                    continue
                 company = checko.lookup(resolved.inn)
                 if not company.found:
                     continue

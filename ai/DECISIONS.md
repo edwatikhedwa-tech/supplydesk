@@ -13,6 +13,52 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-022 — Cross-tenant canonical company directory (`canonical_companies`)
+
+- Decision ID: `DECISION-022`
+- Date: `2026-09-11`
+- Status: `ACTIVE`
+- Context: The owner asked for a "единая база поставщиков" so a company
+  discovered by one SupplyDesk customer (workspace) doesn't get re-searched
+  and re-enriched from scratch by another. Clarified explicitly (asked via
+  AskUserQuestion, since this changes architecture and touches data privacy
+  across accounts): the owner confirmed this means genuine cross-tenant
+  reuse, not just the existing per-workspace `global_suppliers` dedup.
+- Decision: Added `canonical_companies` (+ `canonical_company_finance_history`,
+  `canonical_company_risks`; `migrations/038_canonical_companies.sql`) as the
+  one table cluster in the project with no `workspace_id`. It holds only
+  general, public company facts (ИНН/ОГРН/name/site/public contact/registry
+  status/finance history/risks/source/timestamps) — never a workspace's
+  relationship to a supplier, communication, notes, prices, or anything else
+  currently scoped to a tenant. `apply_supplier_enrichment` writes through to
+  it whenever it resolves a real company (trusted source, same trust
+  boundary as `trusted_name=True`). `_resolve_missing_inn`
+  (`backend/domain/supplier_enrichment/orchestrator.py`) reads from it before
+  spending a live Checko `lookup()`/`finances()` call for an ИНН another
+  workspace already resolved.
+- Reason: This is the minimum real "identity resolution + reuse" layer that
+  satisfies the owner's cost concern (User A resolves `keramstroi.ru`, User B
+  later discovering the same company reuses the result) while keeping every
+  other table's tenant isolation completely unchanged — proven by
+  `tests/test_canonical_companies.py::test_write_through_carries_no_tenant_specific_data`
+  asserting the exact allowed field set.
+- Consequences: A workspace's enrichment can now silently get faster/cheaper
+  for a company another (unrelated) workspace already resolved. Checko/
+  DaData-sourced facts about a company are now retained beyond the single
+  workspace that fetched them, for reuse by any other SupplyDesk workspace.
+- Non-goals / explicitly NOT done: only one enrichment stage
+  (`_resolve_missing_inn`) reads the cache — the larger registry-resolution
+  pipeline (`_process_enrich_step` and friends) does not yet; deduplication
+  by domain (not just ИНН) is not implemented; no TTL/staleness policy
+  exists yet (see `docs/domain/SUPPLIER_MODEL.md` §5) — every canonical row
+  is treated as always-valid once written. **Checko/DaData's terms of
+  service on caching/storing their API responses were not verified** (tool
+  failure — WebSearch/WebFetch were unavailable in this session) before
+  shipping the write-through; this is a real compliance risk the owner
+  should confirm or have someone confirm before this reuse path handles
+  meaningful volume.
+- Related: `docs/domain/SUPPLIER_MODEL.md` §1, §6; `mail/canonical_companies.py`.
+
 ## DECISION-021 — AI-context and supplier-name invariants for Messages/supplier model
 
 - Decision ID: `DECISION-021`

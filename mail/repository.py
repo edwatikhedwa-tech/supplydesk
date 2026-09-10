@@ -16,6 +16,7 @@ from uuid import uuid4
 
 from .auth import new_token
 from .auth_accounts import AuthAccountsMixin
+from .canonical_companies import CanonicalCompaniesMixin
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
 from .ai_chat_usage import AiChatUsageMixin
@@ -216,6 +217,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 
 class MailRepository(
     AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, AiChatUsageMixin, TasksMixin,
+    CanonicalCompaniesMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
@@ -3282,6 +3284,24 @@ class MailRepository(
                 # заслуживает своей зелёной пометки, а не пустого места.
                 if risks is not None:
                     self._upsert_risk_facts(connection, global_id, risks)
+
+        if effective_inn and company_name:
+            # Write-through into the cross-tenant directory (DECISION-022):
+            # this workspace just resolved effective_inn with an authoritative
+            # source (same condition apply_supplier_enrichment always pairs
+            # inn+company_name under -- see docs/domain/SUPPLIER_MODEL.md §3),
+            # so any other workspace that independently discovers the same
+            # ИНН can reuse it instead of repeating the resolution from
+            # scratch. Only ever fed real registry/Checko facts, never a
+            # placeholder -- same trust boundary as trusted_name=True above.
+            self.upsert_canonical_company(
+                effective_inn, ogrn=registry_ogrn, legal_name=company_name, display_name=company_name,
+                site=host, email=email, phone=phone, region=region, role=role,
+                status=registry_status, is_active=registry_active, registered_at=registry_registered_at,
+                source="apply_supplier_enrichment",
+                finance_history=finance_history,
+                risks=risks,
+            )
 
     def record_supplier_evidence(
         self, workspace_id: int, host: str, items: list[dict[str, Any]],
