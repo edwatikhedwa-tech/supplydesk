@@ -225,6 +225,10 @@ export interface OutgoingMailStatus {
    * runtime gates (production environment, canonical-database check,
    * live-mail lock) also have to pass. See mail/runtime.py. */
   effective_outgoing_enabled: boolean;
+  /** How many messages are sitting in the send queue right now -- enabling
+   * outgoing mail sends all of them immediately, not just a new one you're
+   * about to compose. See ai/DEFERRED_FINDINGS.md FINDING-030. */
+  queued_backlog?: { count: number; oldest_created_at: string | null };
 }
 
 export interface MailStatus {

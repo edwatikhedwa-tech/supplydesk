@@ -96,7 +96,9 @@ this current register. Resolved findings and full chronology are preserved in
 
 - ID: `FINDING-032`
 - Severity: `MEDIUM`
-- Status: `OPEN`
+- Status: `RESOLVED — audited every real provider client; extracted the
+  redaction into a shared helper; XMLRiver had the same vulnerable
+  pattern, now fixed; Dellin/RouterAI/DaData confirmed not exposed`
 - Evidence: This session found and fixed one real secret leak
   (`backend/integrations/registry/checko_client.py`: `requests.HTTPError`'s
   own `__str__` embeds the full request URL, `key=<real Checko key>`
@@ -114,10 +116,36 @@ this current register. Resolved findings and full chronology are preserved in
 - Why deferred: A full audit of every provider client's error-message
   construction is a distinct, scoped task, not a natural extension of the
   Checko-specific fix that found this pattern.
-- Next step: grep every `integrations/`/`providers/` client for
-  `f"...{exc}"`/`str(exc)` patterns feeding into a response or log
-  reachable by the frontend, and either confirm each is already redacted or
-  apply the same `_redact_key`-style scrub.
+- Resolution: Grepped every `backend/integrations/` client and `mail/
+  providers/` for `f"...{exc}"`/`str(exc)` patterns, then checked each
+  candidate's actual auth mechanism (URL query param vs. header vs. request
+  body — only the first can leak through a `requests` exception's `__str__`,
+  which embeds the request URL but never headers or body). Findings:
+  `xmlriver_client.py` had the exact same vulnerable pattern as Checko
+  (`?key=...` query auth) in its connection-error retry path — fixed.
+  `dellin_client.py` (key in the JSON body, never the URL),
+  `routerai_client.py` (`Authorization: Bearer` header), and
+  `dadata_client.py` (`Authorization: Token` header) are not exposed to
+  this defect class — confirmed by reading their actual request
+  construction, not assumed from naming. `mail/providers/` (Yandex/Mail.ru)
+  has no `f"...{exc}"`/`str(exc)` pattern at all. The redaction itself was
+  extracted from Checko's local `_redact_key` into a shared
+  `backend/integrations/secret_redaction.py::redact_url_credentials`
+  (covers `key`/`token`/`api_key`/`apikey`/`appkey`/`secret`/
+  `access_token`, case-insensitive), used by both `checko_client.py` and
+  `xmlriver_client.py` now, so the next client with this pattern has a
+  ready-made fix instead of reinventing it. Proven by
+  `tests/test_secret_redaction.py` (6 tests): the shared helper in
+  isolation, plus two tests that reproduce the live defect shape
+  end-to-end — a real `requests.ConnectionError` raised inside a mocked
+  `session.get`, embedding a real-looking key in the URL exactly as the
+  live bug did, asserting the client's actual returned/raised error message
+  contains `key=***` and never the real key — for both `CheckoClient` and
+  `XmlRiverClient`. Full suite re-run clean at the existing baseline after
+  the change.
+- Next step: none for this finding. If a future provider client
+  authenticates via a URL query parameter, route its error-message
+  construction through `redact_url_credentials` from the start.
 
 ## FINDING-031 — All three configured `CHECKO_KEY` values are invalid (local environment)
 
@@ -148,7 +176,9 @@ this current register. Resolved findings and full chronology are preserved in
 
 - ID: `FINDING-030`
 - Severity: `MEDIUM`
-- Status: `OPEN`
+- Status: `RESOLVED — the outgoing-mail status endpoint now returns the
+  live backlog, and Settings surfaces it both passively and in the
+  enable-confirmation dialog`
 - Evidence: While running the owner-authorized real send test this
   session, enabling the durable outgoing switch caused the queue worker to
   immediately drain not just the one new test job, but three other
@@ -169,10 +199,33 @@ this current register. Resolved findings and full chronology are preserved in
   task's own subject; designing the right UX (visible backlog count?
   required review before flush? auto-expire stale queued jobs?) needs its
   own scoped decision, not a same-session guess.
-- Next step: `GET /api/mail/runtime/outgoing` (or a new endpoint) also
-  returns the count and age of currently `queued` jobs, and the Settings
-  UI surfaces it next to the outgoing-mail toggle so enabling it is never
-  a surprise about what's about to send.
+- Resolution: `mail/repository.py::queued_send_backlog(workspace_id)` counts
+  `mail_jobs` rows with `status='queued'` joined to their message's
+  `created_at`, scoped to the caller's own workspace (verified with a
+  second, different-workspace assertion in the same test — a workspace
+  cannot see another workspace's backlog). `GET /api/mail/runtime/outgoing`
+  now returns it alongside the two existing flags; `Settings.tsx` shows a
+  passive warning next to the toggle ("В очереди N писем ждут отправки
+  (самое старое — …)") whenever the count is non-zero, and repeats a
+  sharper version inside the enable-confirmation dialog itself ("В очереди
+  уже N писем — они уйдут немедленно вместе с новыми"), so the warning is
+  visible both before and at the exact moment of the risky action.
+  Extended the existing `test_eighty_four_queued_jobs_stay_queued_when_
+  outgoing_is_off` test (already the real-data fixture for this exact
+  scenario) with assertions that the backlog reports all 84, and that a
+  different workspace ID sees zero. Verified live end-to-end in the
+  browser beyond the unit test: queued one real test message (outgoing
+  mail left off, so it genuinely never sent) via the real `/api/mail/send`
+  endpoint, confirmed the Settings warning appeared with the correct count
+  and "только что" age, confirmed the enable-confirmation dialog's text
+  updated too, cancelled without enabling, then deleted the test job
+  (which the DB confirmed was still `status='queued'`, i.e. never sent)
+  and confirmed the warning disappeared again. Full suite re-run clean at
+  the existing baseline after the change.
+- Next step: none for this finding. Auto-expiring very old queued jobs
+  (rather than just warning about them) is a separate, larger product
+  decision the owner would need to make explicitly, not implied by this
+  fix.
 
 ## FINDING-029 — No visible signal distinguishing local-dev vs. deployed-production runtime/database identity
 

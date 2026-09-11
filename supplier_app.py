@@ -198,6 +198,7 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                 self._json(200, {
                     "durable_outgoing_enabled": self.app.repository.outgoing_enabled(),
                     "effective_outgoing_enabled": self.app.service.outgoing_enabled(),
+                    "queued_backlog": self.app.repository.queued_send_backlog(session["workspace_id"]),
                 })
             return
         if parsed.path == "/api/mail/accounts":

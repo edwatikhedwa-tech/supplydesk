@@ -298,6 +298,13 @@ class OutgoingSafetyTests(unittest.TestCase):
         self.assertEqual({row["status"]: row["count"] for row in counts}, {"queued": 84})
         self.assertEqual(attempts, 0)
         self.assertEqual(provider.send_calls, 0)
+        # FINDING-030: the backlog must be visible *before* someone flips the
+        # durable switch, not discovered only after 84 jobs sent themselves.
+        backlog = repo.queued_send_backlog(int(user["workspace_id"]))
+        self.assertEqual(backlog["count"], 84)
+        self.assertIsNotNone(backlog["oldest_created_at"])
+        other_workspace_backlog = repo.queued_send_backlog(int(user["workspace_id"]) + 1)
+        self.assertEqual(other_workspace_backlog, {"count": 0, "oldest_created_at": None})
 
     def test_explicit_enable_allows_one_fake_provider_delivery(self) -> None:
         repo = self._repo()

@@ -20,25 +20,15 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
 
 import requests
 
+from backend.integrations.secret_redaction import redact_url_credentials
+
 log = logging.getLogger("checko")
-
-_KEY_PARAM_RE = re.compile(r"([?&]key=)[^&\s]+")
-
-
-def _redact_key(message: str) -> str:
-    """requests' own exception __str__ (HTTPError, ConnectionError, ...)
-    embeds the full request URL, key= querystring included -- this API key
-    must never reach the browser (frontend response, DevTools network tab),
-    so every error string built from an exception is scrubbed before it's
-    stored/returned. See TASK-MESSAGES-QUOTE-CHECKO-DESIGN-SEND-20260911."""
-    return _KEY_PARAM_RE.sub(r"\1***", message)
 
 BASE_URL = "https://api.checko.ru/v2"
 
@@ -228,12 +218,12 @@ class CheckoClient:
                 resp.raise_for_status()
                 return resp.status_code, payload, ""
             except requests.HTTPError as exc:
-                message = _redact_key(f"HTTP {resp.status_code}: {exc}")
+                message = redact_url_credentials(f"HTTP {resp.status_code}: {exc}")
                 kind = "transient" if resp.status_code == 429 or resp.status_code >= 500 else "permanent"
                 self._remember_error(kind, message)
                 return resp.status_code, payload, message
             except requests.RequestException as exc:
-                message = _redact_key(f"сеть: {exc}")
+                message = redact_url_credentials(f"сеть: {exc}")
                 self._remember_error("network", message)
                 return 0, None, message
         return 0, None, last_error

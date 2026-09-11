@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { ApiError, api } from '../lib/api';
 import { useAuth } from '../lib/AuthContext';
-import { formatDateTime } from '../lib/format';
+import { formatDateTime, formatRelativeTime } from '../lib/format';
 import type { MailAccount } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
 
@@ -46,7 +46,8 @@ function OutgoingMailControl() {
     );
   }
 
-  const { durable_outgoing_enabled: durable, effective_outgoing_enabled: effective } = state.data;
+  const { durable_outgoing_enabled: durable, effective_outgoing_enabled: effective, queued_backlog: backlog } = state.data;
+  const hasBacklog = !!backlog && backlog.count > 0;
 
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
@@ -67,6 +68,14 @@ function OutgoingMailControl() {
           Переключатель включён, но сервер всё равно блокирует отправку (не production-окружение, не пройдена проверка канонической базы или не занят live-mail lock).
         </p>
       )}
+      {hasBacklog && (
+        <p className="mt-1.5 flex items-start gap-1.5 text-[11.5px] text-warning">
+          <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+          В очереди {backlog.count} {backlog.count === 1 ? 'письмо ждёт' : 'писем ждут'} отправки
+          {backlog.oldest_created_at && <> (самое старое — {formatRelativeTime(backlog.oldest_created_at)})</>}
+          {!durable && '. Как только вы включите исходящую почту, они уйдут сразу же, не только новое письмо.'}
+        </p>
+      )}
       {message && <p className="mt-1.5 text-[11.5px] text-danger">{message}</p>}
 
       {!confirming ? (
@@ -85,7 +94,9 @@ function OutgoingMailControl() {
             <AlertTriangle size={13} className="mt-0.5 shrink-0" />
             {durable
               ? 'Отключить исходящую почту для всех аккаунтов?'
-              : 'Включить реальную отправку писем поставщикам со всех подключённых аккаунтов?'}
+              : hasBacklog
+                ? `Включить реальную отправку? В очереди уже ${backlog.count} ${backlog.count === 1 ? 'письмо' : 'писем'} — они уйдут немедленно вместе с новыми.`
+                : 'Включить реальную отправку писем поставщикам со всех подключённых аккаунтов?'}
           </p>
           <div className="mt-2.5 flex items-center gap-2">
             <Button variant="primary" size="sm" disabled={busy} onClick={() => void apply(!durable)}>

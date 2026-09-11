@@ -25,6 +25,8 @@ from typing import Any
 
 import requests
 
+from backend.integrations.secret_redaction import redact_url_credentials
+
 log = logging.getLogger("xmlriver")
 
 BASE_URL = "https://xmlriver.com"
@@ -161,7 +163,12 @@ class XmlRiverClient:
                 return self._parse(resp.text, query, page, resp.url)
 
             except (requests.Timeout, requests.ConnectionError) as exc:
-                last_error = XmlRiverTemporaryError(None, f"сеть: {exc}")
+                # requests' own exception __str__ embeds the full request
+                # URL, and this client authenticates via a `?key=...` query
+                # param -- redact before this message can reach a log file
+                # or (if a future caller surfaces it) a response. See
+                # ai/DEFERRED_FINDINGS.md FINDING-032.
+                last_error = XmlRiverTemporaryError(None, redact_url_credentials(f"сеть: {exc}"))
             except XmlRiverTemporaryError as exc:
                 last_error = exc
             except ET.ParseError as exc:

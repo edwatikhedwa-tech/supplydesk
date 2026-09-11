@@ -8188,6 +8188,25 @@ class MailRepository(
             )
         return enabled
 
+    def queued_send_backlog(self, workspace_id: int) -> dict[str, Any]:
+        """How many jobs are sitting in `status='queued'` right now, and how
+        old the oldest one is -- so enabling the outgoing switch is never a
+        surprise about what is about to send immediately. See
+        ai/DEFERRED_FINDINGS.md FINDING-030 (this session's own real send
+        test unexpectedly flushed 3 stale queued jobs from the previous
+        day's testing the moment the switch was flipped on)."""
+
+        with self.connect() as connection:
+            row = connection.execute(
+                """SELECT COUNT(*), MIN(m.created_at)
+                   FROM mail_jobs j JOIN mail_messages m ON m.id = j.message_id
+                   WHERE j.status = 'queued' AND m.workspace_id = ?""",
+                (workspace_id,),
+            ).fetchone()
+        count = int(row[0] or 0)
+        oldest_created_at = row[1] if count > 0 else None
+        return {"count": count, "oldest_created_at": oldest_created_at}
+
     def _historical_queued_reconciliation_preview_connection(
         self,
         connection: sqlite3.Connection | PostgresConnection,
