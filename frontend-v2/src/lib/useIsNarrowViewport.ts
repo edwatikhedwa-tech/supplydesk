@@ -6,14 +6,14 @@ import { useEffect, useState } from 'react';
  * to a single-pane mobile layout below this breakpoint. */
 export const MOBILE_BREAKPOINT_PX = 768;
 
-export function useIsNarrowViewport(): boolean {
-  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT_PX);
+export function useIsNarrowViewport(breakpoint = MOBILE_BREAKPOINT_PX): boolean {
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < breakpoint);
   useEffect(() => {
-    const query = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX - 1}px)`);
+    const query = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
     const onChange = () => setNarrow(query.matches);
     onChange();
     query.addEventListener('change', onChange);
     return () => query.removeEventListener('change', onChange);
-  }, []);
+  }, [breakpoint]);
   return narrow;
 }

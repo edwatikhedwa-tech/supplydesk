@@ -34,3 +34,5 @@ runtime/*.json
 runtime/*.log
 runtime/test-data/
 *.live-mail.lock
+.vercel
+.env*

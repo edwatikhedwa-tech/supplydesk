@@ -167,8 +167,8 @@ export function Requests() {
         />
       )}
 
-      <div className="flex items-center gap-3 overflow-x-auto border-b border-border px-4 sm:px-6 pb-3">
-        <div className="relative w-64 shrink-0">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 pb-3 sm:gap-3 sm:px-6">
+        <div className="relative w-full sm:w-64 sm:shrink-0">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
           <input
             value={search}
@@ -178,7 +178,7 @@ export function Requests() {
             className="h-8 w-full rounded-md border border-border-strong bg-surface pl-8 pr-3 text-[12.5px] outline-none placeholder:text-ink-faint focus:border-accent focus:ring-1 focus:ring-accent-border"
           />
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {statusFilters.map((f) => (
             <button
               key={f.key}

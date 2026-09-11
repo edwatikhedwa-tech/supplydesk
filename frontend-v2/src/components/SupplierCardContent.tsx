@@ -277,10 +277,18 @@ export function SupplierCardContent({ supplierId, compact = false }: { supplierI
                   {supplier.history.map((h) => {
                     const meta = outcomeMeta[h.outcome] ?? outcomeMeta.not_sent;
                     return (
-                      <button
+                      <div
                         key={`${h.request_id}-${h.supplier_id}`}
                         onClick={() => navigate(`/requests/${h.request_id}`)}
-                        className="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 text-left hover:bg-surface-hover"
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            navigate(`/requests/${h.request_id}`);
+                          }
+                        }}
+                        role="link"
+                        tabIndex={0}
+                        className="flex w-full cursor-pointer flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 text-left hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                       >
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[12.5px] font-medium text-ink">{h.request_title}</p>
@@ -299,7 +307,7 @@ export function SupplierCardContent({ supplierId, compact = false }: { supplierI
                         >
                           <span className="hidden sm:inline">Переписка</span>
                         </Button>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>

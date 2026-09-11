@@ -97,6 +97,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Глобальный поиск"
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 pt-[12vh] backdrop-blur-[2px]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -107,6 +110,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           <Search size={15} className="shrink-0 text-ink-faint" />
           <input
             autoFocus
+            aria-label="Поиск по заявкам, поставщикам, перепискам и тексту писем"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Заявки, поставщики, переписки, текст письма…"

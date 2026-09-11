@@ -108,7 +108,7 @@ class PostgresConnection:
         return PostgresCursor(cursor, self)
 
     def executescript(self, script: str) -> None:
-        for statement in script.split(";"):
+        for statement in _split_sql_script(script):
             statement = statement.strip()
             if statement:
                 self.execute(statement)
@@ -126,6 +126,77 @@ class PostgresConnection:
 
     def rollback(self) -> None:
         self.raw.rollback()
+
+
+def _split_sql_script(script: str) -> list[str]:
+    """Split migration SQL without treating comment/string semicolons as delimiters."""
+    statements: list[str] = []
+    current: list[str] = []
+    quote: str | None = None
+    line_comment = False
+    block_comment = False
+    index = 0
+
+    while index < len(script):
+        char = script[index]
+        next_char = script[index + 1] if index + 1 < len(script) else ""
+
+        if line_comment:
+            current.append(char)
+            if char in "\r\n":
+                line_comment = False
+            index += 1
+            continue
+
+        if block_comment:
+            current.append(char)
+            if char == "*" and next_char == "/":
+                current.append(next_char)
+                index += 2
+                block_comment = False
+            else:
+                index += 1
+            continue
+
+        if quote:
+            current.append(char)
+            if char == quote:
+                if next_char == quote:
+                    current.append(next_char)
+                    index += 2
+                    continue
+                quote = None
+            index += 1
+            continue
+
+        if char == "-" and next_char == "-":
+            current.extend((char, next_char))
+            index += 2
+            line_comment = True
+            continue
+
+        if char == "/" and next_char == "*":
+            current.extend((char, next_char))
+            index += 2
+            block_comment = True
+            continue
+
+        if char in ("'", '"'):
+            quote = char
+            current.append(char)
+            index += 1
+            continue
+
+        if char == ";":
+            statements.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+        index += 1
+
+    if current:
+        statements.append("".join(current))
+    return statements
 
 
 def _postgres_migration_sql(script: str) -> str:

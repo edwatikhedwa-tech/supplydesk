@@ -8,9 +8,13 @@ from unittest.mock import patch
 import requests
 
 from backend.domain.logistics.quote_service import (
+    InvalidVariantError,
     LogisticsQuoteInput,
     LogisticsQuoteService,
     MissingRequiredFieldsError,
+    MissingTerminalError,
+    _build_cargo_payload,
+    _build_delivery_payload,
 )
 from backend.integrations.logistics.dellin_client import (
     DellinClient,
@@ -80,6 +84,27 @@ class FakeDellinClient:
         self.calls = 0
 
     def calculate(self, delivery_payload: dict, cargo_payload: dict) -> dict:
+        self.calls += 1
+        outcome = self._responses.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    def search_freight_types(self, name: str) -> list:
+        self.calls += 1
+        outcome = self._responses.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    def search_cities(self, query: str) -> list:
+        self.calls += 1
+        outcome = self._responses.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    def search_terminals(self, city_code: str, direction: str) -> list:
         self.calls += 1
         outcome = self._responses.pop(0)
         if isinstance(outcome, Exception):
@@ -256,6 +281,155 @@ class RepositoryPersistenceTests(unittest.TestCase):
         self.assertIsNotNone(latest)
         self.assertEqual(latest["id"], saved["id"])
         self.assertEqual(latest["price"], 1234.5)
+
+
+class VariantPayloadTests(unittest.TestCase):
+    """delivery.derival/arrival.variant ("address" vs "terminal") and the
+    optional cargo.freightUID -- TASK follow-up to the address-only MVP.
+
+    variant="terminal" requires a real terminal_id: a live call against the
+    actual API (2026-09-11) proved free-text address.search is rejected for
+    this variant (error 180002, "Указан некорректный адрес: требуется указать
+    терминал") -- an earlier, wrong assumption that address.search alone
+    would resolve to a terminal has been corrected here and in quote_service.py.
+    """
+
+    def test_rejects_invalid_variant(self) -> None:
+        with self.assertRaises(InvalidVariantError):
+            LogisticsQuoteInput(**{**VALID_INPUT.__dict__, "route_from_variant": "airport"})
+
+    def test_terminal_variant_without_terminal_id_is_rejected(self) -> None:
+        with self.assertRaises(MissingTerminalError):
+            LogisticsQuoteInput(**{**VALID_INPUT.__dict__, "route_from_variant": "terminal"})
+        with self.assertRaises(MissingTerminalError):
+            LogisticsQuoteInput(**{**VALID_INPUT.__dict__, "route_to_variant": "terminal"})
+
+    def test_address_variant_includes_time_and_no_produce_date_on_arrival(self) -> None:
+        payload = _build_delivery_payload(VALID_INPUT)
+        self.assertEqual(payload["derival"]["variant"], "address")
+        self.assertIn("time", payload["derival"])
+        self.assertIn("produceDate", payload["derival"])
+        self.assertEqual(payload["arrival"]["variant"], "address")
+        self.assertIn("time", payload["arrival"])
+        self.assertNotIn("produceDate", payload["arrival"])
+
+    def test_terminal_variant_sends_terminal_id_not_free_text_address(self) -> None:
+        terminal_input = LogisticsQuoteInput(**{
+            **VALID_INPUT.__dict__,
+            "route_from_variant": "terminal", "route_from_terminal_id": 36,
+            "route_to_variant": "terminal", "route_to_terminal_id": 108,
+        })
+        payload = _build_delivery_payload(terminal_input)
+        self.assertEqual(payload["derival"]["variant"], "terminal")
+        self.assertEqual(payload["derival"]["terminalID"], "36")
+        self.assertNotIn("time", payload["derival"])
+        self.assertNotIn("address", payload["derival"])
+        self.assertEqual(payload["arrival"]["variant"], "terminal")
+        self.assertEqual(payload["arrival"]["terminalID"], "108")
+        self.assertNotIn("time", payload["arrival"])
+        self.assertNotIn("address", payload["arrival"])
+
+    def test_freight_uid_omitted_by_default_and_included_when_set(self) -> None:
+        self.assertNotIn("freightUID", _build_cargo_payload(VALID_INPUT))
+        with_uid = LogisticsQuoteInput(**{**VALID_INPUT.__dict__, "cargo_freight_uid": "0xabc123"})
+        self.assertEqual(_build_cargo_payload(with_uid)["freightUID"], "0xabc123")
+
+    def test_variant_changes_the_cache_key(self) -> None:
+        client = FakeDellinClient([SUCCESS_RESPONSE, SUCCESS_RESPONSE])
+        service = LogisticsQuoteService(client=client)
+        service.calculate(VALID_INPUT)
+        terminal_input = LogisticsQuoteInput(**{
+            **VALID_INPUT.__dict__, "route_from_variant": "terminal", "route_from_terminal_id": 36,
+        })
+        service.calculate(terminal_input)
+        self.assertEqual(client.calls, 2)
+
+
+class FreightTypeSearchTests(unittest.TestCase):
+    """LogisticsQuoteService.search_freight_types -- autocomplete for the
+    optional "характер груза" field, backed by a separate Dellin directory
+    search endpoint (not the calculator)."""
+
+    def test_short_query_returns_empty_without_calling_provider(self) -> None:
+        client = FakeDellinClient([[]])
+        service = LogisticsQuoteService(client=client)
+        result = service.search_freight_types("к")
+        self.assertEqual(result, {"status": "success", "items": []})
+        self.assertEqual(client.calls, 0)
+
+    def test_maps_raw_freight_types_and_skips_incomplete_entries(self) -> None:
+        raw = [
+            {"sqlUID": "0x1", "value": "Коробка передач", "comment": "Обязательна жёсткая упаковка."},
+            {"sqlUID": "0x2", "value": "Кафельная плитка в коробках", "comment": ""},
+            {"sqlUID": "", "value": "Без UID — должно быть отброшено"},
+        ]
+        client = FakeDellinClient([raw])
+        service = LogisticsQuoteService(client=client)
+        result = service.search_freight_types("коробка")
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(len(result["items"]), 2)
+        self.assertEqual(result["items"][0], {"uid": "0x1", "value": "Коробка передач", "comment": "Обязательна жёсткая упаковка."})
+
+    def test_missing_api_key_reports_unavailable_not_an_error(self) -> None:
+        service = LogisticsQuoteService(client=None)
+        with patch.object(LogisticsQuoteService, "_resolve_client", return_value=None):
+            result = service.search_freight_types("коробка")
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["items"], [])
+
+    def test_provider_error_is_reported_not_raised(self) -> None:
+        client = FakeDellinClient([DellinProviderError("недоступны")])
+        service = LogisticsQuoteService(client=client)
+        result = service.search_freight_types("коробка")
+        self.assertEqual(result["status"], "provider_error")
+        self.assertEqual(result["items"], [])
+
+
+class TerminalSearchTests(unittest.TestCase):
+    """LogisticsQuoteService.search_terminals -- city -> KLADR code -> terminal
+    list, needed because variant="terminal" requires a real terminal_id (see
+    VariantPayloadTests docstring for why free-text address doesn't work)."""
+
+    def test_short_query_returns_empty_without_calling_provider(self) -> None:
+        client = FakeDellinClient([[]])
+        service = LogisticsQuoteService(client=client)
+        result = service.search_terminals("м", "derival")
+        self.assertEqual(result, {"status": "success", "items": []})
+        self.assertEqual(client.calls, 0)
+
+    def test_rejects_invalid_direction(self) -> None:
+        service = LogisticsQuoteService(client=FakeDellinClient([]))
+        with self.assertRaises(ValueError):
+            service.search_terminals("Москва", "sideways")
+
+    def test_chains_city_lookup_into_terminal_search_and_maps_results(self) -> None:
+        cities = [{"code": "7700000000000000000000000", "aString": "г. Москва"}]
+        terminals = [
+            {"id": 36, "city": "Москва", "name": "Москва Север", "address": "Москва, ...", "default": True},
+            {"id": 17, "city": "Москва", "name": "Москва офис", "address": "Москва, ...", "default": False},
+            {"id": None, "name": "Без id — должно быть отброшено"},
+        ]
+        client = FakeDellinClient([cities, terminals])
+        service = LogisticsQuoteService(client=client)
+        result = service.search_terminals("Москва", "derival")
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(client.calls, 2)  # search_cities then search_terminals
+        self.assertEqual(len(result["items"]), 2)
+        self.assertEqual(result["items"][0], {"id": 36, "name": "Москва Север", "address": "Москва, ...", "city": "Москва"})
+
+    def test_no_matching_city_returns_empty_without_searching_terminals(self) -> None:
+        client = FakeDellinClient([[]])
+        service = LogisticsQuoteService(client=client)
+        result = service.search_terminals("Несуществующийгород", "arrival")
+        self.assertEqual(result, {"status": "success", "items": []})
+        self.assertEqual(client.calls, 1)  # only search_cities, no wasted terminal call
+
+    def test_missing_api_key_reports_unavailable_not_an_error(self) -> None:
+        service = LogisticsQuoteService(client=None)
+        with patch.object(LogisticsQuoteService, "_resolve_client", return_value=None):
+            result = service.search_terminals("Москва", "derival")
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["items"], [])
 
 
 if __name__ == "__main__":

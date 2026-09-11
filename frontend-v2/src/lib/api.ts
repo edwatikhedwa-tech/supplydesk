@@ -10,8 +10,11 @@ import type {
   InboxConversation,
   InboxPreview,
   InboxSuggestion,
+  FreightTypeOption,
   LogisticsQuote,
   LogisticsQuoteCargoInput,
+  LogisticsRouteVariant,
+  TerminalOption,
   MailAccount,
   MailAttachment,
   MailMessage,
@@ -182,6 +185,7 @@ export const api = {
     body_text: string;
     attachments?: MailAttachment[];
     allow_repeat?: boolean;
+    idempotency_key?: string;
   }) => request<{ ok: true; queued: unknown[] }>('/api/mail/send', { method: 'POST', body: JSON.stringify(input) }),
 
   listInboxPreview: () => request<{ items: InboxPreview[] }>('/api/mail/inbox/preview'),
@@ -242,9 +246,40 @@ export const api = {
 
   getLogisticsQuote: (requestId: number, supplierId: number) =>
     request<{ quote: LogisticsQuote | null }>(`/api/requests/${requestId}/suppliers/${supplierId}/logistics`),
-  calculateLogisticsQuote: (requestId: number, supplierId: number, input: { route_from: string; route_to: string; cargo: LogisticsQuoteCargoInput }) =>
+  calculateLogisticsQuote: (
+    requestId: number,
+    supplierId: number,
+    input: {
+      route_from: string;
+      route_to: string;
+      route_from_variant: LogisticsRouteVariant;
+      route_to_variant: LogisticsRouteVariant;
+      route_from_terminal_id?: number | null;
+      route_to_terminal_id?: number | null;
+      cargo: LogisticsQuoteCargoInput;
+    },
+  ) =>
     request<{ quote: LogisticsQuote; message: string }>(`/api/requests/${requestId}/suppliers/${supplierId}/logistics`, {
       method: 'POST',
       body: JSON.stringify(input),
+    }),
+  searchFreightTypes: (q: string) =>
+    request<{ status: string; items: FreightTypeOption[]; message?: string }>(`/api/logistics/freight-types?q=${encodeURIComponent(q)}`),
+  searchTerminals: (city: string, direction: 'derival' | 'arrival') =>
+    request<{ status: string; items: TerminalOption[]; message?: string }>(
+      `/api/logistics/terminals?city=${encodeURIComponent(city)}&direction=${direction}`,
+    ),
+
+  setSupplierInn: (requestId: number, supplierId: number, inn: string) =>
+    request<{
+      ok: true;
+      inn: string;
+      inn_source: string;
+      checko_status: 'unavailable' | 'loaded' | 'not_found';
+      checko_error: string;
+      global_supplier_id: number | null;
+    }>(`/api/requests/${requestId}/suppliers/${supplierId}/inn`, {
+      method: 'POST',
+      body: JSON.stringify({ inn }),
     }),
 };

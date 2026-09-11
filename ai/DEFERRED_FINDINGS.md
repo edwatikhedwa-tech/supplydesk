@@ -71,11 +71,11 @@ this current register. Resolved findings and full chronology are preserved in
   a follow-up task, not a same-session re-guess.
 - Next step: fold into the same follow-up task as `FINDING-028`.
 
-## FINDING-026 — Live SMTP send unverified from LOCAL_CANONICAL: production-only runtime gate
+## FINDING-026 — Live SMTP send verified from canonical production-mode runtime
 
 - ID: `FINDING-026`
 - Severity: `LOW`
-- Status: `OPEN — architectural, not a defect`
+- Status: `SUPERSEDED 2026-09-11 by verified live-mail evidence`
 - Evidence: `TASK-MESSAGES-LINKS-STATUS-SEND-AI-20260910`'s live send/
   attachment acceptance (real UI, real composer, owner-authorized target:
   the owner's own connected mailbox) proved the entire pipeline end-to-end
@@ -90,17 +90,18 @@ this current register. Resolved findings and full chronology are preserved in
   switch) and the owner-only `/api/mail/runtime/outgoing` durable DB flag
   were enabled for this test and reverted afterward; `effective_outgoing_enabled`
   stayed `false` throughout because of this third, environment-level gate.
-- Impact: No code change can make a real SMTP send observable from
-  `LOCAL_CANONICAL` without weakening a deliberate safety boundary — a real
-  send test can only be observed against the actual `production` deployment.
-- Why deferred: Changing `SUPPLYDESK_ENV` locally to force this gate open
-  would be spoofing the master environment discriminator the rest of the
-  app also keys off of, not a narrow test switch — out of scope for this
-  task and not requested by the owner.
-- Next step: verify a real send only after this task's changes are
-  reviewed and deployed to the actual production environment, the same way
-  prior tasks (e.g. `TASK-VERCEL-FRONTEND-V2-LOGIN-20260909`) verified
-  production behavior separately from local development.
+- Resolution evidence: By explicit owner authorization, the canonical database
+  identity and local runtime configuration were corrected to the current
+  absolute database path and production mode. A single `MAIL_PROVIDER_CHECK`
+  runtime acquired the live-mail lock; both connected accounts passed SMTP and
+  IMAP authentication. Yandex accepted the bounded owner-only test with
+  post-DATA SMTP `250 2.0.0`; Mail.ru accepted its bounded owner-only test with
+  post-DATA SMTP `250`; both Message-IDs were found in Sent. The queue worker
+  was not started for these sends, and business/queue counts stayed unchanged.
+  Both outgoing switches were returned to disabled afterward. The owner then
+  independently confirmed receipt in both target Gmail mailboxes.
+- Next step: none for this finding. The broader active task remains open for
+  its separately listed UI/AI/commit work.
 
 ## FINDING-024 — `refresh_bad_global_supplier_names` cannot run on production: `CHECKO_KEY` not in Vercel env
 

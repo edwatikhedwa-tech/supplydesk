@@ -15,6 +15,43 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-11` — real outgoing-mail acceptance for
+`TASK-MESSAGES-QUOTE-CHECKO-DESIGN-SEND-20260911`: `PASS` for the bounded
+provider smoke requested by the owner. The canonical SQLite identity was
+repointed from the retired OneDrive location to
+`C:\Users\edwat\SupplyDesk\mail-data\supplier.sqlite3`; a single production
+`LOCAL_CANONICAL` runtime acquired the live-mail lock. Both connected accounts
+passed SMTP+IMAP authentication. SupplyDesk's guarded transport then sent one
+short owner-only test per account: Yandex (`edwatik@yandex.ru` →
+`edwatikh@gmail.com`) returned post-DATA SMTP `250 2.0.0` and Mail.ru
+(`edwatik@mail.ru` → `edwatik@gmail.com`) returned post-DATA SMTP `250`.
+Both immutable Message-IDs were found in their providers' Sent folders.
+The owner then independently confirmed that both messages appeared in the
+recipient Gmail mailboxes, closing the delivery check beyond SMTP acceptance.
+No queue worker was started during the send window; before/after counts for
+requests, suppliers, request-supplier state, mail jobs/messages/threads,
+campaigns and send attempts were identical, including the pre-existing queue
+partition (`82 cancelled / 2 delivery_unknown / 4 failed / 3 queued / 131
+sent`). After the test the durable outgoing switch was returned to `false`.
+The owner runtime remains HTTP-ready on `127.0.0.1:8000` with PID `24660`, owns
+the one live-mail lock, and has both durable and effective outgoing disabled.
+SQLite `PRAGMA integrity_check` returned `ok`; the main/authenticated API/error
+smoke returned `200/200/404`. This proves the real SupplyDesk runtime gate,
+both provider transports and Sent-folder evidence without creating a supplier,
+request, campaign or queue record; it deliberately does not claim a new UI
+visual check or a destructive API-scenario check.
+
+The next Messages acceptance slice also completed on `2026-09-11`: the first
+outbound message is collapsed as «Исходный запрос», and quoted history inside
+the visible supplier answer is independently collapsed without changing the
+stored mail. Real canonical Gmail content exposed the localized header form
+`date/time, <email>:` without `написал`; `mail/content.py` now recognizes that
+narrow shape. Ten focused unit tests pass, including false-positive protection,
+and a real browser check confirmed collapse plus full-text recovery on expand.
+The available desktop screenshot showed no overlap or clipping. Tablet/mobile
+screenshots are `NOT VERIFIED` because Windows application control blocked the
+viewport-capable browser executable; no baseline was promoted.
+
 `2026-09-11` — `TASK-MESSAGES-LINKS-STATUS-SEND-AI-20260910` (frontend-v2,
 `experiment/frontend-v2-greenfield-20260905`). Owner filed 14 requirements
 for `/messages`: clickable HTML email links, a per-request-supplier

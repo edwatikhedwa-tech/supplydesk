@@ -177,7 +177,7 @@ export function AiChatPanel({
   const capReached = usage !== null && usage.spent_rub >= usage.limit_rub;
 
   return (
-    <div className="flex h-full w-full shrink-0 flex-col border-l border-border bg-canvas p-3 sm:w-[340px]">
+    <div className="flex h-full min-w-0 w-full shrink-0 flex-col border-l border-border bg-canvas p-2">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
         <div className="flex items-center justify-between border-b border-border bg-gradient-to-r from-accent-subtle/60 to-transparent px-4 py-3">
           <span className="flex items-center gap-2 text-[13px] font-semibold text-ink">
@@ -323,10 +323,10 @@ export function AiChatPanel({
               <div
                 className={
                   entry.role === 'user'
-                    ? 'max-w-[78%] rounded-2xl rounded-br-sm bg-accent px-3.5 py-2 text-[12.5px] text-white'
+                    ? 'max-w-[90%] rounded-2xl rounded-br-sm bg-accent px-3.5 py-2 text-[12.5px] text-white'
                     : entry.role === 'assistant'
-                      ? 'max-w-[78%] rounded-2xl rounded-bl-sm border border-border bg-canvas px-3.5 py-2 text-[12.5px] text-ink'
-                      : 'max-w-[78%] rounded-2xl rounded-bl-sm border border-danger-border bg-danger-subtle px-3.5 py-2 text-[12px] text-danger'
+                      ? 'max-w-[90%] rounded-2xl rounded-bl-sm border border-border bg-canvas px-3.5 py-2 text-[12.5px] text-ink'
+                      : 'max-w-[90%] rounded-2xl rounded-bl-sm border border-danger-border bg-danger-subtle px-3.5 py-2 text-[12px] text-danger'
                 }
               >
                 {entry.text}

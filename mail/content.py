@@ -16,11 +16,14 @@ Two independent jobs live here:
 
 from __future__ import annotations
 
+import logging
 import re
 
 import nh3
 import quotequail
 from bs4 import BeautifulSoup
+
+log = logging.getLogger("mail.content")
 
 # Tags an email may keep. Everything structural and inline that carries meaning
 # or layout; nothing that can execute, embed, or phone home on its own.
@@ -355,6 +358,51 @@ def email_has_remote_images(value: str | None) -> bool:
 # not email content, so building it directly is safe as long as the chunks
 # quotequail hands back already went through the allowlist.
 
+# quotequail's own Russian reply-header pattern only matches a line ending in
+# "...написал(а):" (see quotequail/_patterns.py REPLY_PATTERNS). A header
+# ending in plain "...написал:" (no "(а)") is just as real a reply marker but
+# doesn't match, so the message is never folded at all -- not a wrong fold,
+# no fold. Extending quotequail's own pattern list (its intended
+# extensibility surface -- COMPILED_PATTERN_MAP["reply"] is a plain mutable
+# list, read by reference at match time, not snapshotted at import) is the
+# correct fix: quotequail still decides split points from the *original*
+# text, nothing is rewritten before folding, so the visible text after
+# expanding the fold is always exactly what the supplier actually sent.
+# Mail.ru webmail's own auto-generated reply header is a third, different
+# shape again -- not "<name> написал(а):" at all, but
+# "Понедельник, 31 августа 2026, 22:18 +03:00 от edwatik@mail.ru:" (a
+# weekday/date/time/UTC-offset stamp, then " от <address>:"). Verified on a
+# real production message (ООО «ШАЛЕ», request 1059) during live testing --
+# quotequail did not fold it under any existing pattern. Anchored on the
+# time+UTC-offset immediately before " от ...:" specifically so this never
+# matches an ordinary sentence that happens to contain the word "от"
+# ("Мы получили предложение от поставщика:" does not match -- no
+# HH:MM ±HH:MM immediately before "от").
+_MAILRU_DATETIME_FROM_HEADER = re.compile(r"^.*\d{1,2}:\d{2}(?::\d{2})?\s*[+-]\d{2}:?\d{2}\s+от\s+\S+:$")
+
+# Gmail/Yandex can render a reply header as a localized date/time followed by
+# only an angle-bracket email address, without a translated "wrote" token:
+# "Сб, 29 авг. 2026 г. в 10:04, <name@example.com>:".  Require both a
+# four-digit year, a time and an angle-bracket address so an ordinary sentence
+# ending in an email address is not treated as quoted history.
+_DATETIME_ANGLE_EMAIL_HEADER = re.compile(
+    r"^.*\b\d{4}\b.*\b\d{1,2}:\d{2},\s*(?:\"[^\"]+\"\s*)?<[^<>\s]+@[^<>\s]+>:$"
+)
+
+try:
+    from quotequail._patterns import COMPILED_PATTERN_MAP as _QUOTEQUAIL_PATTERNS
+
+    _RUSSIAN_HEADER_WITHOUT_GENDER_SUFFIX = re.compile(r"^(.*) написал:$")
+    for _extra_pattern in (
+        _RUSSIAN_HEADER_WITHOUT_GENDER_SUFFIX,
+        _MAILRU_DATETIME_FROM_HEADER,
+        _DATETIME_ANGLE_EMAIL_HEADER,
+    ):
+        if not any(p.pattern == _extra_pattern.pattern for p in _QUOTEQUAIL_PATTERNS["reply"]):
+            _QUOTEQUAIL_PATTERNS["reply"].append(_extra_pattern)
+except Exception:  # noqa: BLE001 - a quotequail internals change must degrade to "no widening", not a crash
+    log.warning("Could not extend quotequail's Russian reply-header patterns", exc_info=True)
+
 
 def collapse_quoted_html(sanitized_html: str | None) -> str:
     """Fold quoted history in already-sanitized HTML behind a <details> toggle.
@@ -383,7 +431,7 @@ def collapse_quoted_html(sanitized_html: str | None) -> str:
         body = "".join(quoted_chunk)
         quoted_chunk.clear()
         out.append(
-            '<details class="mail-quote"><summary>Показать процитированный текст</summary>'
+            '<details class="mail-quote"><summary>Показать процитированную переписку</summary>'
             f'<div class="mail-quote-body">{body}</div></details>'
         )
 

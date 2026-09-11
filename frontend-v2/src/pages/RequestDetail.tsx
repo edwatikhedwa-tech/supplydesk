@@ -342,7 +342,7 @@ export function RequestDetail() {
                     />
                     <div className="min-w-0 flex-1">
                       {s.global_supplier_id ? (
-                        <Link to={`/suppliers/${s.global_supplier_id}`} className="truncate font-medium text-ink hover:text-accent">
+                        <Link to={`/suppliers/${s.global_supplier_id}`} className="block truncate font-medium text-ink hover:text-accent">
                           {formatCompanyName(s.name)}
                         </Link>
                       ) : (

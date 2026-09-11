@@ -32,6 +32,8 @@ load_dotenv(PROJECT_ROOT / ".env")
 # and misconfigured previews runnable; production must provide DATABASE_URL for
 # shared durable storage.
 os.environ.setdefault("MAIL_DB_PATH", "/tmp/supplydesk.sqlite3")
+if os.getenv("VERCEL"):
+    os.environ.setdefault("SUPPLYDESK_RUNTIME_PATH", "/tmp/supplydesk-runtime")
 
 # Preview deployments get a usable callback fallback. Production should set
 # APP_BASE_URL and YANDEX_REDIRECT_URI explicitly to the stable public URL.

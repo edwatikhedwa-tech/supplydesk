@@ -144,6 +144,9 @@ class RequestRouteMixin:
                 self._json(404, {"error": "Поставщик не найден в этой заявке."})
                 return
             cargo = body.get("cargo") or {}
+            freight_uid = cargo.get("freight_uid") or None
+            route_from_terminal_id = body.get("route_from_terminal_id")
+            route_to_terminal_id = body.get("route_to_terminal_id")
             quote_input = LogisticsQuoteInput(
                 route_from=str(body.get("route_from") or ""),
                 route_to=str(body.get("route_to") or ""),
@@ -153,6 +156,11 @@ class RequestRouteMixin:
                 cargo_max_length_cm=float(cargo.get("max_length_cm") or 0),
                 cargo_max_width_cm=float(cargo.get("max_width_cm") or 0),
                 cargo_max_height_cm=float(cargo.get("max_height_cm") or 0),
+                route_from_variant=str(body.get("route_from_variant") or "address"),
+                route_to_variant=str(body.get("route_to_variant") or "address"),
+                route_from_terminal_id=int(route_from_terminal_id) if route_from_terminal_id else None,
+                route_to_terminal_id=int(route_to_terminal_id) if route_to_terminal_id else None,
+                cargo_freight_uid=str(freight_uid) if freight_uid else None,
             )
             result = self.app.logistics_quote_service.calculate(quote_input)
             dims = f"{quote_input.cargo_max_length_cm:g}x{quote_input.cargo_max_width_cm:g}x{quote_input.cargo_max_height_cm:g}"

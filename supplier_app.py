@@ -164,6 +164,24 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                 self.app.maybe_sync_incoming(session["user_id"], session["workspace_id"])
                 self._json(200, {"items": self.app.repository.list_threads(session["workspace_id"], session["user_id"])})
             return
+        if parsed.path == "/api/logistics/freight-types":
+            session = self._require_session()
+            if session:
+                query = parse_qs(parsed.query)
+                search = (query.get("q") or [""])[0]
+                self._json(200, self.app.logistics_quote_service.search_freight_types(search))
+            return
+        if parsed.path == "/api/logistics/terminals":
+            session = self._require_session()
+            if session:
+                query = parse_qs(parsed.query)
+                city = (query.get("city") or [""])[0]
+                direction = (query.get("direction") or ["derival"])[0]
+                if direction not in ("derival", "arrival"):
+                    self._json(400, {"error": 'direction должен быть "derival" или "arrival".'})
+                    return
+                self._json(200, self.app.logistics_quote_service.search_terminals(city, direction))
+            return
         if parsed.path == "/api/mail/template":
             session = self._require_session()
             if session:

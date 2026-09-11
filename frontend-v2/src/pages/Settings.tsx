@@ -208,7 +208,7 @@ function AccountCard({ account, onChanged }: { account: MailAccount; onChanged: 
       {incomingError && <p className="mt-1 text-[11px] font-medium text-danger">Ошибка входящих: {incomingError}</p>}
       {message && <p className="mt-1.5 text-[11.5px] text-ink-soft">{message}</p>}
 
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" icon={testing ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />} disabled={testing} onClick={() => void handleTest()}>
           Проверить
         </Button>
@@ -224,7 +224,7 @@ function AccountCard({ account, onChanged }: { account: MailAccount; onChanged: 
         <Button
           variant="ghost"
           size="sm"
-          className="ml-auto text-danger hover:bg-danger-subtle"
+          className="sm:ml-auto text-danger hover:bg-danger-subtle"
           icon={<Trash2 size={13} />}
           disabled={disconnecting}
           onClick={() => void handleDisconnect()}

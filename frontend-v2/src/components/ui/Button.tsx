@@ -16,8 +16,10 @@ const variantClasses: Record<Variant, string> = {
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: 'h-7 px-2.5 text-[12.5px] gap-1.5',
-  md: 'h-8 px-3 text-[13px] gap-1.5',
+  // ReUI-style action sizing: the compact action still has a stable 32 px
+  // hit area, matching Select and other controls across the workspace.
+  sm: 'h-8 px-3 text-[12px] gap-1.5',
+  md: 'h-9 px-3.5 text-[13px] gap-1.5',
 };
 
 export function Button({
@@ -35,7 +37,7 @@ export function Button({
   return (
     <button
       className={clsx(
-        'inline-flex items-center justify-center rounded-md font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-border disabled:opacity-50 disabled:pointer-events-none',
+        'inline-flex items-center justify-center rounded-[10px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-border disabled:opacity-50 disabled:pointer-events-none',
         variantClasses[variant],
         sizeClasses[size],
         className,

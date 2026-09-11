@@ -58,6 +58,28 @@ class MissingRequiredFieldsError(ValueError):
         )
 
 
+class InvalidVariantError(ValueError):
+    """route_from_variant/route_to_variant не равны "address" или "terminal"."""
+
+
+class MissingTerminalError(ValueError):
+    """variant="terminal" выбран, но terminal_id не передан.
+
+    Деловые Линии отклоняют "variant": "terminal" со свободным текстом адреса
+    (ошибка 180002 "Указан некорректный адрес: требуется указать терминал",
+    подтверждено живым вызовом калькулятора 2026-09-11) — терминал обязателен
+    выбрать из списка (см. LogisticsQuoteService.search_terminals), а не
+    вписать текстом.
+    """
+
+
+# Официально документированные значения "request.delivery.derival.variant"/
+# "request.delivery.arrival.variant" (кроме "airport" — он используется только
+# для авиаперевозки, которую этот MVP не поддерживает: deliveryType всегда
+# "auto").
+_VALID_VARIANTS = ("address", "terminal")
+
+
 @dataclass(frozen=True)
 class LogisticsQuoteInput:
     route_from: str
@@ -68,6 +90,31 @@ class LogisticsQuoteInput:
     cargo_max_length_cm: float
     cargo_max_width_cm: float
     cargo_max_height_cm: float
+    # "address" — забрать/доставить по конкретному адресу (курьер): route_from/
+    # route_to остаётся свободным текстом города/адреса, как раньше.
+    # "terminal" — самовывоз/выдача в пункте приёма-выдачи Деловых Линий: для
+    # этого варианта свободный текст адреса API отклоняет (ошибка 180002,
+    # подтверждено живым вызовом 2026-09-11) — обязателен конкретный
+    # terminal_id, выбранный из LogisticsQuoteService.search_terminals.
+    route_from_variant: str = "address"
+    route_to_variant: str = "address"
+    route_from_terminal_id: int | None = None
+    route_to_terminal_id: int | None = None
+    # UID из справочника "Характер груза" (см. LogisticsQuoteService.search_freight_types).
+    # Необязательное поле API — при отсутствии калькулятор считает по груза
+    # по умолчанию.
+    cargo_freight_uid: str | None = None
+
+    def __post_init__(self) -> None:
+        for value in (self.route_from_variant, self.route_to_variant):
+            if value not in _VALID_VARIANTS:
+                raise InvalidVariantError(
+                    f'Недопустимый способ передачи груза: "{value}". Допустимо: "address" или "terminal".'
+                )
+        if self.route_from_variant == "terminal" and self.route_from_terminal_id is None:
+            raise MissingTerminalError("Выберите пункт приёма отправителя из списка терминалов.")
+        if self.route_to_variant == "terminal" and self.route_to_terminal_id is None:
+            raise MissingTerminalError("Выберите пункт выдачи получателя из списка терминалов.")
 
 
 @dataclass
@@ -107,16 +154,34 @@ def compute_input_hash(quote_input: LogisticsQuoteInput) -> str:
         "cargo_max_length_cm": round(float(quote_input.cargo_max_length_cm), 1),
         "cargo_max_width_cm": round(float(quote_input.cargo_max_width_cm), 1),
         "cargo_max_height_cm": round(float(quote_input.cargo_max_height_cm), 1),
+        "route_from_variant": quote_input.route_from_variant,
+        "route_to_variant": quote_input.route_to_variant,
+        "route_from_terminal_id": quote_input.route_from_terminal_id or 0,
+        "route_to_terminal_id": quote_input.route_to_terminal_id or 0,
+        "cargo_freight_uid": quote_input.cargo_freight_uid or "",
     }
     encoded = json.dumps(normalized, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
+def _build_leg_payload(
+    variant: str, search_text: str, terminal_id: int | None, work_time: dict[str, str]
+) -> dict[str, Any]:
+    # variant="address": свободный текст города/адреса в address.search,
+    # "time" обязателен (передача груза курьеру по расписанию).
+    # variant="terminal": калькулятор отклоняет address.search как
+    # "некорректный адрес" (ошибка 180002, подтверждено живым вызовом
+    # 2026-09-11) — нужен конкретный terminalID из "Справочника терминалов"
+    # (см. LogisticsQuoteService.search_terminals); "time" в этом случае не
+    # передаётся ("Справочник терминалов" сам знает часы работы терминала).
+    if variant == "terminal":
+        return {"variant": "terminal", "terminalID": str(terminal_id)}
+    return {"variant": "address", "address": {"search": search_text.strip()}, "time": dict(work_time)}
+
+
 def _build_delivery_payload(quote_input: LogisticsQuoteInput) -> dict[str, Any]:
     # MVP не собирает часы работы склада отдельным полем формы — берём
-    # стандартный рабочий день. variant="address" со свободным текстом
-    # города/терминала — задокументированный способ калькулятора не
-    # передавать отдельно КЛАДР-код города (см. dellin_client.py).
+    # стандартный рабочий день.
     work_time = {"worktimeStart": "09:00", "worktimeEnd": "18:00"}
     # Дёловые Линии отклоняют дату отправления "сегодня" почти на любом
     # маршруте (код ошибки 180012, "Выбранная дата недоступна для выбранного
@@ -124,19 +189,17 @@ def _build_delivery_payload(quote_input: LogisticsQuoteInput) -> dict[str, Any]:
     # ближайший следующий день как минимальную дату, которую перевозчик
     # реально принимает.
     produce_date = (dt.date.today() + dt.timedelta(days=1)).isoformat()
+    derival = _build_leg_payload(
+        quote_input.route_from_variant, quote_input.route_from, quote_input.route_from_terminal_id, work_time
+    )
+    derival["produceDate"] = produce_date
+    arrival = _build_leg_payload(
+        quote_input.route_to_variant, quote_input.route_to, quote_input.route_to_terminal_id, work_time
+    )
     return {
         "deliveryType": {"type": "auto"},
-        "derival": {
-            "produceDate": produce_date,
-            "variant": "address",
-            "address": {"search": quote_input.route_from.strip()},
-            "time": dict(work_time),
-        },
-        "arrival": {
-            "variant": "address",
-            "address": {"search": quote_input.route_to.strip()},
-            "time": dict(work_time),
-        },
+        "derival": derival,
+        "arrival": arrival,
     }
 
 
@@ -155,6 +218,8 @@ def _build_cargo_payload(quote_input: LogisticsQuoteInput) -> dict[str, Any]:
         # больше одного. Формы MVP не собирают вес по местам отдельно — берём
         # общий вес как консервативную (не занижающую стоимость) оценку.
         payload["weight"] = quote_input.cargo_weight_kg
+    if quote_input.cargo_freight_uid:
+        payload["freightUID"] = quote_input.cargo_freight_uid
     return payload
 
 
@@ -300,3 +365,99 @@ class LogisticsQuoteService:
             price=price, currency="RUB", term_days=_compute_term_days(data),
             cost_breakdown=cost_breakdown, raw_response=data,
         )
+
+    def search_freight_types(self, name: str) -> dict[str, Any]:
+        """Автодополнение "Характер груза" по введённой строке (необязательное
+        поле — см. LogisticsQuoteInput.cargo_freight_uid). Не кэшируется: это
+        интерактивный поиск-по-мере-набора, а не повторяющийся расчёт."""
+        name = name.strip()
+        if len(name) < 2:
+            # Документация: "Минимальная длина строки - 2 символа" — короче
+            # не имеет смысла отправлять запрос к провайдеру.
+            return {"status": "success", "items": []}
+        client = self._resolve_client()
+        if client is None:
+            return {
+                "status": "unavailable", "items": [],
+                "message": "DELLIN_API_KEY не настроен — поиск характера груза недоступен.",
+            }
+        try:
+            raw_items = client.search_freight_types(name)
+        except DellinRateLimitedError as exc:
+            return {"status": "rate_limited", "items": [], "message": str(exc)}
+        except DellinInvalidInputError as exc:
+            return {"status": "invalid_input", "items": [], "message": str(exc)}
+        except DellinProviderError as exc:
+            return {"status": "provider_error", "items": [], "message": str(exc)}
+
+        items = []
+        for item in raw_items:
+            if not isinstance(item, dict):
+                continue
+            uid = item.get("sqlUID")
+            value = item.get("value")
+            if not uid or not value:
+                continue
+            items.append({"uid": str(uid), "value": str(value), "comment": str(item.get("comment") or "")})
+        return {"status": "success", "items": items}
+
+    def search_terminals(self, city: str, direction: str) -> dict[str, Any]:
+        """Список терминалов Деловых Линий в городе — нужен, чтобы получить
+        terminal_id для варианта "Пункт приёма/выдачи" (LogisticsQuoteInput.
+        route_from_terminal_id/route_to_terminal_id). Два реальных вызова к
+        API цепочкой: город -> КЛАДР-код (search_cities), затем терминалы
+        этого кода (search_terminals) — сам калькулятор terminalID по тексту
+        города не резолвит (см. dellin_client.py).
+
+        Берём первый найденный город по строке — как и address.search в
+        обычном варианте "адрес", это наивное упрощение MVP: без отдельного
+        UI для разрешения неоднозначных названий городов.
+        """
+        if direction not in ("derival", "arrival"):
+            raise ValueError('direction должен быть "derival" или "arrival".')
+        city = city.strip()
+        if len(city) < 2:
+            return {"status": "success", "items": []}
+        client = self._resolve_client()
+        if client is None:
+            return {
+                "status": "unavailable", "items": [],
+                "message": "DELLIN_API_KEY не настроен — поиск терминалов недоступен.",
+            }
+        try:
+            cities = client.search_cities(city)
+        except DellinRateLimitedError as exc:
+            return {"status": "rate_limited", "items": [], "message": str(exc)}
+        except DellinInvalidInputError as exc:
+            return {"status": "invalid_input", "items": [], "message": str(exc)}
+        except DellinProviderError as exc:
+            return {"status": "provider_error", "items": [], "message": str(exc)}
+
+        city_code = next((c.get("code") for c in cities if isinstance(c, dict) and c.get("code")), None)
+        if not city_code:
+            return {"status": "success", "items": []}
+
+        try:
+            raw_terminals = client.search_terminals(str(city_code), direction)
+        except DellinRateLimitedError as exc:
+            return {"status": "rate_limited", "items": [], "message": str(exc)}
+        except DellinInvalidInputError as exc:
+            return {"status": "invalid_input", "items": [], "message": str(exc)}
+        except DellinProviderError as exc:
+            return {"status": "provider_error", "items": [], "message": str(exc)}
+
+        items = []
+        for item in raw_terminals:
+            if not isinstance(item, dict):
+                continue
+            terminal_id = item.get("id")
+            name = item.get("name")
+            if terminal_id is None or not name:
+                continue
+            items.append({
+                "id": int(terminal_id),
+                "name": str(name),
+                "address": str(item.get("address") or ""),
+                "city": str(item.get("city") or ""),
+            })
+        return {"status": "success", "items": items}

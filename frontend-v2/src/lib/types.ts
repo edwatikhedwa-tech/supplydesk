@@ -420,10 +420,26 @@ export interface LogisticsQuote {
   calculated_at: string;
 }
 
+export type LogisticsRouteVariant = 'address' | 'terminal';
+
+export interface FreightTypeOption {
+  uid: string;
+  value: string;
+  comment: string;
+}
+
+export interface TerminalOption {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+}
+
 export interface LogisticsQuoteCargoInput {
   places: number;
   weight_kg: number;
   volume_m3: number;
+  freight_uid?: string | null;
   max_length_cm: number;
   max_width_cm: number;
   max_height_cm: number;
