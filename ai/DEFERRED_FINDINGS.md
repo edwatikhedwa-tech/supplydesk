@@ -250,7 +250,8 @@ this current register. Resolved findings and full chronology are preserved in
 
 - ID: `FINDING-031`
 - Severity: `MEDIUM`
-- Status: `OPEN — needs owner action`
+- Status: `RESOLVED — CHECKO_KEY replaced with a valid owner-provided key,
+  verified end-to-end against the real running app`
 - Evidence: Direct live test this session (`requests.get` against
   `https://api.checko.ru/v2/company` with each of `CHECKO_KEY`,
   `CHECKO_KEY_2`, `CHECKO_KEY_3` from the local `.env`) returned
@@ -267,9 +268,33 @@ this current register. Resolved findings and full chronology are preserved in
   don't work either.
 - Why deferred: Renewing/replacing third-party API keys is an owner
   action, not something an agent should do unilaterally.
-- Next step: owner checks the Checko account dashboard for these keys'
-  actual status (expired, revoked, wrong account) and updates local `.env`
-  (and, per `FINDING-024`, Vercel production) with working keys.
+- Resolution: Owner provided a new key this session. Verified valid
+  directly against `https://api.checko.ru/v2/company` (`200`, real data)
+  before use, then set as `CHECKO_KEY` in local `.env` (line 44),
+  replacing the invalid value; `CHECKO_KEY_2`/`CHECKO_KEY_3` left
+  unchanged (still invalid — rotation only engages them on quota
+  exhaustion, so they don't block normal use). Local canonical backend
+  restarted to pick up the change.
+- Verification: Live end-to-end test against the real running local
+  backend (not just the isolated API check) — logged in as the real owner
+  session, called `POST /api/requests/1043/suppliers/5/inn` (a genuinely
+  unlinked real supplier) with a real ИНН. Response:
+  `checko_status: "loaded"`, `checko_error: ""`, and the resulting global
+  supplier card carried real Checko data (company name, ОГРН, registry
+  status, finances, risk flags) — confirming the new key resolves through
+  the actual manual-ИНН enrichment pipeline, not just the standalone API.
+  Test-only writes (the link on supplier_id=5, the manually-entered ИНН,
+  the newly-created global supplier row and its registry/finance/risk
+  rows) were reverted afterward so the local dev database is unchanged
+  from before this check.
+- Not verified / residual: production (Vercel) still has no `CHECKO_KEY`
+  configured at all — that is `FINDING-024`, a separate, higher-stakes
+  action on the live deployed site that needs explicit owner authorization
+  before an agent touches it (`vercel env add` or the Vercel dashboard).
+  This resolution only covers the local environment.
+- Next step: none locally. For production, see `FINDING-024` — owner
+  decides whether/when to add a `CHECKO_KEY` to Vercel's environment
+  variables.
 
 ## FINDING-030 — Mail queue can silently accumulate a backlog while outgoing is disabled, then flush it all at once
 
