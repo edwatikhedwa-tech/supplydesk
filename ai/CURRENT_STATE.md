@@ -3,8 +3,8 @@ document_id: STATE-001
 status: CURRENT
 canonical: true
 owner: project-control
-updated_at: 2026-09-04
-based_on_commit: faff551026e96ceed9f3a1d0856d628380d4cb98
+updated_at: 2026-09-11
+based_on_commit: c212db962dbd1423fc1835731ce35b48c293ef13
 ---
 
 # Current State
@@ -14,6 +14,33 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-11` — `TASK-VERCEL-PRODUCTION-DEPLOY-20260911` (Claude Code cloud
+session, not the local `OWNER_SESSION`) diagnosed the current frontend and
+published it to Vercel production. No application code changed. Confirmed
+`frontend/src/pages/Login.tsx` already implements the requested magic-ring
+login with three provider buttons (Яндекс, Google, Mail.ru); Yandex is fully
+wired (`/api/auth/yandex/start` → `backend/http_auth.py`), while Google and
+Mail.ru remain UI-only placeholders — no `GOOGLE_CLIENT_ID`/`MAILRU_CLIENT_ID`
+exist in `backend/app_config.py` and no matching routes exist in
+`backend/http_auth.py`; the owner was asked and chose to leave this as-is for
+now (no OAuth credentials supplied). Confirmed `RequestsList`, `NewRequest`,
+`Messages`, `Suppliers` and `Blacklist` pages all exist and build. In this
+Linux session: `npm ci`, `npm run typecheck` and `npm run build` (Vite,
+`RUNTIME_GUARD: PASS`) all passed cleanly; the Windows-only backend
+diagnostics (`tests/run-tests.ps1`, `scripts/doctor.py`, the VibeCoding
+workspace gate) were not re-run. Deployment: the domain the owner named,
+`supplydesk-2769.vercel.app`, belongs to a separate Vercel project that is not
+connected to GitHub and last held an unrelated branch
+(`experiment/frontend-v2-greenfield-20260905`) from a one-off CLI upload;
+reconnecting that specific project was not possible with the available
+tooling. Instead, per the owner's explicit choice, the existing `supplydesk`
+Vercel project (already linked to `edwatikhedwa-tech/supplydesk` on GitHub)
+had its Production Branch set to `ui/external-redesign-shadcn-v2-20260904`
+(this branch, also the repository's GitHub default branch), and this commit
+is pushed to it to trigger a real production deployment. Every future push to
+this branch redeploys automatically.
+Detailed evidence: [`ai/reports/TASK-VERCEL-PRODUCTION-DEPLOY-20260911-report.md`](reports/TASK-VERCEL-PRODUCTION-DEPLOY-20260911-report.md).
 
 `2026-09-04` — `TASK-PREPARE-CLEAN-EXTERNAL-REDESIGN-BASE-V2-20260904` fixed
 the documentation anchors for the already completed
