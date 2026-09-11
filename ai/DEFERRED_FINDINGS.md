@@ -13,6 +13,67 @@ Only unresolved, accepted-risk, or explicitly superseded findings belong in
 this current register. Resolved findings and full chronology are preserved in
 [`ai/history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md`](history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md).
 
+## FINDING-036 — A second governance validator (`validate_state.py`) had been silently unable to pass since a restructuring commit, masked by the first validator's own failure
+
+- ID: `FINDING-036`
+- Severity: `MEDIUM`
+- Status: `RESOLVED — validate_state.py updated to the current file
+  structure; a real missing content gap (Root hygiene) restored with
+  accurate, current guidance`
+- Evidence: After pushing the FINDING-033 fix and watching the real GitHub
+  Actions CI run it triggered (`gh run view`, run `34626904581`), "Validate
+  VibeCoding policy" turned green as expected, but the very next step in
+  the same job, "Validate state" (`ai/tools/validate_state.py`), then
+  failed — a check that had never run to a real result on this branch
+  before, because CI stops at the first failing step and "Validate
+  VibeCoding policy" had been failing first this whole time (confirmed:
+  the prior failing run, `34475032778`, shows "Validate state" as
+  skipped, not run). `validate_state.py`'s `REQUIRED_SECTIONS` for
+  `AGENTS.md`/`CLAUDE.md` still named their pre-restructuring titles and
+  headings (`"# Codex project instructions"`, `"## Before work"`, `"##
+  Required final check"`, `"# Claude Code project instructions"`) — `git
+  log -S` traced this to commit `0d16945` ("feat(frontend-v2): AI context
+  scoped to real communication, supplier card in Messages"), which
+  deliberately rewrote both files into their current numbered-section
+  format (373/405 lines changed) without updating this validator to match.
+- Impact: Same shape as `FINDING-033`'s own two sub-bugs — a check that
+  cannot pass regardless of the real files' correctness gives false
+  confidence once whatever was masking it gets fixed, and in this case,
+  also meant a real content gap (see below) went unnoticed for the same
+  reason.
+- Resolution: For `"# Codex project instructions"`/`"## Before work"`/`"##
+  Required final check"` and `"# Claude Code project instructions"` — these
+  are the same concepts as the current, deliberately-chosen titles and the
+  current `"1. Session bootstrap"`/`"10. Final rule check"` sections, just
+  renamed as part of a legitimate restructuring — updated the validator to
+  match the current real titles/headings rather than reverting genuinely
+  better, current files to satisfy a stale check. For `"## Root hygiene"`
+  — checked whether this was *only* a naming mismatch (like the others) or
+  real lost content: `git show 0d16945^:CLAUDE.md` showed a substantive
+  section (where scratch/generated files belong at repo root) that does
+  not exist anywhere in the current file, and `.gitignore` still has a
+  live comment pointing at it ("Единственное место для временных/рабочих
+  файлов сессии — см. корневой CLAUDE.md"/"The only place for
+  temporary/working session files — see the root CLAUDE.md") — so this
+  was a real gap, not just a rename. Restored it to `CLAUDE.md`, but not
+  as a verbatim copy of the 2026-09-10 content: checked each directory it
+  named against the current repo (`results/`, `artifacts/`, `cache/` are
+  still live per `.gitignore`; `_archive/` no longer appears there) and
+  wrote the new section from that current evidence instead of carrying
+  forward stale references.
+- Verification: `python ai/tools/validate_state.py` → `PASS`. Also ran
+  every other step from the same CI job locally before pushing again
+  (`validate_docs.py`, `validate_traceability.py`, the full
+  `tests/diagnostics` suite — 80 tests, all pass — and a manual replica of
+  the Git/protected-path safety check) rather than pushing and waiting on
+  CI again to discover the next masked step, given two had already turned
+  up in a row this way.
+- Next step: none for this finding. If a future restructuring of
+  `AGENTS.md`/`CLAUDE.md` happens again, update `validate_state.py`'s
+  `REQUIRED_SECTIONS` in the same change, not as an afterthought — this is
+  the second time in one session a governance validator drifted out of
+  sync with the file it checks.
+
 ## FINDING-035 — No coordination signal between concurrent sessions editing the same branch
 
 - ID: `FINDING-035`

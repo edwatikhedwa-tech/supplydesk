@@ -48,8 +48,22 @@ REQUIRED_DIRECTORIES = [
 ]
 
 REQUIRED_SECTIONS = {
-    "AGENTS.md": ["# Codex project instructions", "## Before work", "## Required final check"],
-    "CLAUDE.md": ["# Claude Code project instructions", "## Root hygiene"],
+    # AGENTS.md/CLAUDE.md were deliberately restructured in commit 0d16945
+    # ("feat(frontend-v2): AI context scoped to real communication, supplier
+    # card in Messages") into the current numbered-section format -- this
+    # list previously still named the pre-restructuring titles/headings, so
+    # "Validate state" had been unable to pass since that commit. It never
+    # surfaced: "Validate VibeCoding policy" (an earlier step in the same CI
+    # job) was independently failing this whole time and CI stops at the
+    # first failing step, so this check silently never ran to completion on
+    # a real, current AGENTS.md/CLAUDE.md until both were fixed in the same
+    # session. "Before work"/"Required final check" are the same concepts as
+    # the current "1. Session bootstrap"/"10. Final rule check" sections,
+    # just renamed as part of that restructuring -- updated here rather than
+    # reverting the (substantively better, more current) real files to match
+    # a stale check. See ai/DEFERRED_FINDINGS.md FINDING-036.
+    "AGENTS.md": ["# SupplyDesk — Codex Instructions", "## 1. Session bootstrap", "## 10. Final rule check"],
+    "CLAUDE.md": ["# SupplyDesk — Claude Code Instructions", "## Root hygiene"],
     "ai/AI_CONTRACT.md": ["# AI Contract", "## Evidence discipline", "## Working rules", "## Status vocabulary"],
     "ai/WORKFLOW.md": ["# Workflow", "## AUDIT", "## DESIGN DECISION", "## IMPLEMENT", "## ACCEPTANCE", "## CLOSE", "## UPDATE STATE"],
     "ai/CURRENT_STATE.md": ["# Current State", "## Last update", "## Project", "## Runtime", "## Implemented", "## Verified", "## Not verified", "## Blockers", "## Active constraints", "## Current next step"],

@@ -57,6 +57,25 @@ Do not use the legacy recovery tree for ordinary development work.
 
 ---
 
+## Root hygiene
+
+The repository root holds only real, load-bearing source and config —
+nothing generated, scratch, or temporary. Before adding anything to root,
+use one of the designated locations instead (see `.gitignore` for the
+authoritative, current list):
+
+* `tmp/` — the one place for temporary/working session files. Downloaded
+  archives being extracted, one-off debug scripts, intermediate output —
+  all go here, never loose at root.
+* `results/`, `artifacts/` — gitignored output folders for data exports
+  and QA/visual artifacts (screenshots, etc.) respectively. Not a source
+  of truth; safe to regenerate or discard.
+* `cache/` — generated cache (e.g. `benchmark_models.py`'s crawled-page
+  cache), rebuilt on each run, not a source of truth.
+* `fixtures/` — static seed/demo data the backend reads at runtime.
+
+---
+
 ## 3. Task preflight
 
 Before each independent task, verify:
