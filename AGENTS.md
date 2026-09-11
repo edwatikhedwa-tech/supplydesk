@@ -9,9 +9,12 @@ Canonical shared AI rules live in:
 
 Do not duplicate shared policy here.
 
+The one exception is the VibeCoding acknowledgement itself
+(`ai/VIBECODING_RULES.md`): it appears exactly once in the final response for a session, after the task is completed or stopped; never emit it in intermediate responses.
+
 ## 1. Session bootstrap
 
-At the start of a new Codex session, read in this order:
+At the start of a new session, read in this order:
 
 1. `AGENTS.md`
 2. `ai/AI_CONTRACT.md`
@@ -31,11 +34,15 @@ Do not repeatedly reload the full bootstrap during the same healthy session unle
 * agent context was reset;
 * relevant project state changed.
 
-For continuation messages in the same task, perform only the checks required for the next action.
+For continuation messages in the same task, perform only an action-specific check for the next action.
 
 ---
 
 ## 2. Workspace hard gate
+
+This is the canonical `SESSION_WORKSPACE_HARD_GATE` defined in
+`ai/VIBECODING_RULES.md` — apply it before any project-specific analysis or
+execution.
 
 Canonical repository root:
 

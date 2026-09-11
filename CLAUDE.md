@@ -9,9 +9,12 @@ Canonical shared AI rules live in:
 
 Do not duplicate shared policy here.
 
+The one exception is the VibeCoding acknowledgement itself
+(`ai/VIBECODING_RULES.md`): it appears exactly once in the final response for a session, after the task is completed or stopped; never emit it in intermediate responses.
+
 ## 1. Session bootstrap
 
-At the start of a new Claude Code session, read:
+At the start of a new session, read:
 
 1. `CLAUDE.md`
 2. `ai/AI_CONTRACT.md`
@@ -29,6 +32,10 @@ Do not repeatedly reload the full instruction set for continuation messages unle
 ---
 
 ## 2. Workspace guard
+
+This is the canonical `SESSION_WORKSPACE_HARD_GATE` defined in
+`ai/VIBECODING_RULES.md` — apply it before any project-specific analysis or
+execution.
 
 Canonical repository root:
 

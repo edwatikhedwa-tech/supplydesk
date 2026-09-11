@@ -66,7 +66,8 @@ this current register. Resolved findings and full chronology are preserved in
 
 - ID: `FINDING-033`
 - Severity: `LOW`
-- Status: `OPEN`
+- Status: `RESOLVED — genuine 0 failures / 0 errors baseline now, both root
+  causes fixed rather than the marker text guessed at`
 - Evidence: `python scripts/run_test_suite.py` has returned the same
   `failures=2, errors=9` baseline across every run this session (and per
   `ai/CURRENT_STATE.md`, across prior sessions too) — the two `POLICY-022`/
@@ -86,11 +87,48 @@ this current register. Resolved findings and full chronology are preserved in
   `test_adapters_point_to_the_single_canonical_gate` and the `POLICY-022`/
   `POLICY-026` checks — a policy-document change, not an application fix,
   and out of scope for the tasks that ran into it this session.
-- Next step: a dedicated task either (a) updates `AGENTS.md`/`CLAUDE.md` to
-  satisfy the governance tests, or (b) if those tests encode an outdated
-  policy that no longer applies, updates the tests — either way the goal
-  is a genuine `0 failures / 0 errors` baseline, not a permanently
-  tolerated count.
+- Resolution, the 2 failures: read `ai/tools/validate_vibecoding.py`'s exact
+  checks instead of guessing at wording. `POLICY-026` needed the literal
+  substring `"new session"` in both files (both said "a new Claude Code
+  session"/"a new Codex session" — broken up by the product name, so never
+  matched) and `"action-specific check"` in `AGENTS.md` specifically
+  (worded differently there than in `CLAUDE.md`, which already had it).
+  `POLICY-022` needed the literal substrings `"exactly once in the final
+  response"` and `"never emit it in intermediate"` in both files — neither
+  file stated the VibeCoding acknowledgement's final-only semantics at all
+  (`ai/VIBECODING_RULES.md`, the canonical source, already did; the
+  per-agent entrypoints didn't restate it). `test_adapters_point_to_the_
+  single_canonical_gate` needed both files to name the canonical
+  `SESSION_WORKSPACE_HARD_GATE` (`ai/AI_CONTRACT.md` §13) by name in their
+  own workspace-guard sections, tying the local guard description to the
+  one canonical concept instead of describing it as if invented locally.
+  First attempt at the ACK-semantics sentence introduced the exact
+  substrings but line-wrapped the markdown so `"never emit it in\nintermediate"`
+  had a literal newline inside the required phrase — `read_text()` does no
+  whitespace normalization, so the substring check still failed; caught by
+  re-running the validator immediately after the edit rather than assuming
+  it worked, fixed by keeping the phrase on one line.
+- Resolution, the 9 errors: all nine were the same root cause —
+  `tests/diagnostics/test_change_classifier.py` hardcoded `"pwsh"`
+  (PowerShell Core) as the interpreter for `scripts/ci/classify_changes.ps1`,
+  but this machine only has Windows PowerShell 5.1 (`powershell.exe`) —
+  confirmed via `where pwsh` (not found) and `where powershell` (found).
+  Before treating this as unfixable environment drift, ran
+  `classify_changes.ps1` directly under `powershell.exe`: it worked
+  correctly and produced the exact expected classification output, proving
+  the script itself uses no PS7-only syntax and the mismatch was purely in
+  which executable name the test hardcoded. Fixed by resolving the
+  interpreter once via `shutil.which("pwsh") or shutil.which("powershell")`
+  instead of a hardcoded name — real CI (which has `pwsh`) is unaffected,
+  local Windows dev machines with only Windows PowerShell now work too.
+  This means these 9 tests had never actually exercised
+  `classify_changes.ps1` on this machine, in any session, until now.
+- Verification: `python scripts/run_test_suite.py` — `failures=0`,
+  `errors=0` (down from the standing `2`/`9`), same `587` tests and `2`
+  skipped as before the fix (nothing newly skipped or removed).
+- Next step: none for this finding. If a future local run ever needs
+  `pwsh` specifically (not just PowerShell-compatible syntax), that's a
+  separate, real environment gap to raise then — not implied by this fix.
 
 ## FINDING-032 — No systematic audit for other raw-exception-message secret leaks
 

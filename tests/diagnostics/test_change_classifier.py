@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import unittest
 from pathlib import Path
@@ -7,11 +8,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CLASSIFIER = ROOT / "scripts/ci/classify_changes.ps1"
 
+# CI runs this under real PowerShell Core (`pwsh`), but a Windows dev
+# machine commonly only has Windows PowerShell 5.1 (`powershell.exe`) --
+# classify_changes.ps1 uses no PS7-only syntax (confirmed by running it
+# directly under `powershell.exe`), so prefer `pwsh` where it exists and
+# fall back instead of hardcoding the CI-only name. Previously hardcoded
+# "pwsh", which silently errored with FileNotFoundError on every local run
+# on this machine -- 9 tests "erroring" every session regardless of
+# whether classify_changes.ps1 itself was ever actually exercised. See
+# ai/DEFERRED_FINDINGS.md FINDING-033.
+_POWERSHELL_EXE = shutil.which("pwsh") or shutil.which("powershell") or "pwsh"
+
 
 def classify(*paths: str, event: str = "push", profile: str = "FAST") -> dict[str, str]:
     result = subprocess.run(
         [
-            "pwsh",
+            _POWERSHELL_EXE,
             "-NoProfile",
             "-File",
             str(CLASSIFIER),

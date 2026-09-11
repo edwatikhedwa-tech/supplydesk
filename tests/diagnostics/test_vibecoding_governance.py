@@ -80,9 +80,19 @@ class VibeCodingGovernanceTests(unittest.TestCase):
         try:
             path = root / "AGENTS.md"
             text = path.read_text(encoding="utf-8")
+            compliant_sentence = (
+                "it appears exactly once in the final response for a session, "
+                "after the task is completed or stopped; never emit it in intermediate responses."
+            )
+            # Guard against this test silently passing for the wrong reason
+            # (found live: the fixture's own baseline was already
+            # non-compliant, so the assertions below passed regardless of
+            # whether this replace() actually matched anything -- see
+            # ai/DEFERRED_FINDINGS.md FINDING-033).
+            self.assertIn(compliant_sentence, text)
             text = text.replace(
-                "Emit the\nVibeCoding acknowledgement exactly once in the final response after the task\n",
-                "emit `Я использую правила VibeCoding'a от <last_corrected>.`\n",
+                compliant_sentence,
+                "begin its response with: emit `Я использую правила VibeCoding'a от <last_corrected>.`",
             )
             path.write_text(text, encoding="utf-8")
             result = self.run_validator(root)
@@ -141,7 +151,18 @@ class VibeCodingGovernanceTests(unittest.TestCase):
         root = self.make_fixture()
         try:
             path = root / "CLAUDE.md"
-            text = path.read_text(encoding="utf-8").replace("Task Preflight", "Removed Preflight", 1)
+            original = path.read_text(encoding="utf-8")
+            # The marker check is case-insensitive (POLICY-026 lowercases
+            # before comparing), but this corruption step matched an exact
+            # case ("Task Preflight") that never actually occurs in
+            # CLAUDE.md's real heading ("Task preflight") -- a silent no-op
+            # that this test's assertions never caught, because the fixture
+            # was already non-compliant for an unrelated reason (missing
+            # ACK semantics) until that was fixed. See
+            # ai/DEFERRED_FINDINGS.md FINDING-033.
+            self.assertIn("Task preflight", original)
+            text = re.sub(r"(?i)task preflight", "Removed Preflight", original, count=1)
+            self.assertNotIn("task preflight", text.lower())
             path.write_text(text, encoding="utf-8")
             result = self.run_validator(root)
             self.assertNotEqual(result.returncode, 0)
