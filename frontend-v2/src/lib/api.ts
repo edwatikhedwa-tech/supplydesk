@@ -93,10 +93,19 @@ async function request<T>(path: string, options: RequestInit = {}, retryingAfter
   return payload as T;
 }
 
+/** Which database/environment actually answered this request -- so "local
+ * dev vs. deployed production" is never a guess from the UI alone. See
+ * ai/DEFERRED_FINDINGS.md FINDING-029. */
+export interface RuntimeIdentity {
+  environment: string;
+  database: 'postgres' | 'sqlite';
+}
+
 export interface MeResponse {
   authenticated: boolean;
   csrf_token?: string;
   user?: AuthUser;
+  runtime?: RuntimeIdentity;
 }
 
 export const api = {

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import os
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 
@@ -46,9 +47,24 @@ class AuthHandlerMixin:
     def _auth_me(self) -> None:
         session = self.app.repository.get_session(self._session_token())
         if not session or not self._keep_session_alive(session):
-            self._json(200, {"authenticated": False})
+            self._json(200, {"authenticated": False, "runtime": self._runtime_identity()})
             return
-        self._json(200, {"authenticated": True, "csrf_token": self._csrf_token_for_session(session), "user": self._public_user(session)})
+        self._json(200, {
+            "authenticated": True,
+            "csrf_token": self._csrf_token_for_session(session),
+            "user": self._public_user(session),
+            "runtime": self._runtime_identity(),
+        })
+
+    def _runtime_identity(self) -> dict[str, str]:
+        """Which database/environment this response actually came from --
+        surfaced in the UI so "which SupplyDesk am I looking at" is never a
+        guess (local SQLite dev vs. a real deployed Postgres production
+        both call themselves "SupplyDesk" with no other visible cue). See
+        FINDING-029."""
+        environment = getattr(self.app.runtime, "environment", None) or os.getenv("SUPPLYDESK_ENV", "unknown")
+        database = "postgres" if getattr(self.app.repository, "database_url", "") else "sqlite"
+        return {"environment": environment, "database": database}
 
     def _pkce_pair(self) -> tuple[str, str]:
         code_verifier = new_token(48)

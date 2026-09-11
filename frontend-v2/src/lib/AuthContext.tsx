@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { ApiError, api, setCsrfToken, setSessionExpiredHandler } from './api';
+import { ApiError, api, setCsrfToken, setSessionExpiredHandler, type RuntimeIdentity } from './api';
 import type { AuthUser } from './types';
 
 type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
@@ -7,6 +7,8 @@ type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 interface AuthState {
   status: AuthStatus;
   user: AuthUser | null;
+  /** Which database/environment answered -- null only while still loading. */
+  runtime: RuntimeIdentity | null;
   error: string | null;
   sessionExpired: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -18,6 +20,7 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [runtime, setRuntime] = useState<RuntimeIdentity | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
 
@@ -25,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api
       .me()
       .then((res) => {
+        if (res.runtime) setRuntime(res.runtime);
         if (res.authenticated && res.user) {
           setCsrfToken(res.csrf_token ?? '');
           setUser(res.user);
@@ -68,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('anonymous');
   }, []);
 
-  return <AuthContext.Provider value={{ status, user, error, sessionExpired, login, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ status, user, runtime, error, sessionExpired, login, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthState {

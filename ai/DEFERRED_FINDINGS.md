@@ -13,6 +13,216 @@ Only unresolved, accepted-risk, or explicitly superseded findings belong in
 this current register. Resolved findings and full chronology are preserved in
 [`ai/history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md`](history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md).
 
+## FINDING-035 — No coordination signal between concurrent sessions editing the same branch
+
+- ID: `FINDING-035`
+- Severity: `LOW`
+- Status: `OPEN`
+- Evidence: During `TASK-MESSAGES-QUOTE-CHECKO-DESIGN-SEND-20260911`, the
+  working tree repeatedly picked up unrelated changes from another
+  concurrent session/agent on the same branch (`Frame.tsx`, logistics/
+  Dellin client changes, a differently-styled `ConversationStatusSelect`)
+  between tool calls, with no in-session signal that this had happened
+  other than the file-changed-on-disk system reminder. `ai/ACTIVE_TASK.md`
+  exists for exactly this coordination purpose but was not consistently
+  read/updated by whichever session made those changes.
+- Impact: Low probability but real risk of two sessions silently
+  overwriting each other's in-progress edits to the same file, or shipping
+  a combined commit neither session fully reviewed alone.
+- Why deferred: A process/discipline gap, not a code defect — no safe
+  automated fix; needs an owner decision on workflow (e.g. always check
+  `ai/ACTIVE_TASK.md` before a long edit session, or avoid running
+  multiple sessions against the same branch concurrently).
+- Next step: owner decides whether concurrent same-branch sessions are an
+  accepted working style; if so, tighten `ai/ACTIVE_TASK.md` usage
+  discipline (a session claims a task there before editing, clears it when
+  done).
+
+## FINDING-034 — No E2E/visual-regression coverage for frontend-v2
+
+- ID: `FINDING-034`
+- Severity: `MEDIUM`
+- Status: `OPEN`
+- Evidence: All UI verification this session (status-select redesign,
+  scroll-preservation fix, default-filter change, quote folding) was done
+  by hand through the Browser tool — screenshots, computed-style checks,
+  manual click sequences. No Playwright/axe/Storybook setup exists for
+  `frontend-v2` (confirmed absent; see also the project's own
+  `frontend-v2-migration-reviewer` agent description, which names this gap
+  explicitly).
+- Impact: Manual verification is slow, easy to skip under time pressure,
+  and does not run automatically on future changes — a regression in, say,
+  the status-filter default or the scroll-preservation fix would only be
+  caught by another manual pass.
+- Why deferred: Standing up even a minimal Playwright harness is
+  substantial, cross-cutting work, not a fix for a single defect — needs
+  its own scoped task.
+- Next step: a follow-up task adds a minimal Playwright smoke suite for
+  `frontend-v2` (open Messages, select a thread, change a status, verify
+  the filter default and one real send-path in a disposable-DB fixture)
+  as a first slice, not full coverage at once.
+
+## FINDING-033 — Backend test suite carries a permanently-accepted 2-failure/9-error baseline
+
+- ID: `FINDING-033`
+- Severity: `LOW`
+- Status: `OPEN`
+- Evidence: `python scripts/run_test_suite.py` has returned the same
+  `failures=2, errors=9` baseline across every run this session (and per
+  `ai/CURRENT_STATE.md`, across prior sessions too) — the two `POLICY-022`/
+  `POLICY-026` governance-marker failures on `AGENTS.md`/`CLAUDE.md`, and
+  errors from the `SESSION_WORKSPACE_HARD_GATE` workspace-guard test
+  expecting a marker that `CLAUDE.md` does not currently contain (see
+  `tests/diagnostics/test_workspace_guard.py`). Every session, including
+  this one, treats this as "the known baseline" rather than something to
+  fix.
+- Impact: A baseline that never gets to zero is a real long-term risk —
+  new genuine failures could land inside this same count and go unnoticed
+  because "N failures" already reads as normal. Also directly costs signal
+  value: `scripts/run_test_suite.py`'s output cannot be trusted at a glance
+  to mean "something broke" vs "same as always."
+- Why deferred: Fixing the two governance-marker failures means editing
+  `AGENTS.md`/`CLAUDE.md`'s own policy text to satisfy
+  `test_adapters_point_to_the_single_canonical_gate` and the `POLICY-022`/
+  `POLICY-026` checks — a policy-document change, not an application fix,
+  and out of scope for the tasks that ran into it this session.
+- Next step: a dedicated task either (a) updates `AGENTS.md`/`CLAUDE.md` to
+  satisfy the governance tests, or (b) if those tests encode an outdated
+  policy that no longer applies, updates the tests — either way the goal
+  is a genuine `0 failures / 0 errors` baseline, not a permanently
+  tolerated count.
+
+## FINDING-032 — No systematic audit for other raw-exception-message secret leaks
+
+- ID: `FINDING-032`
+- Severity: `MEDIUM`
+- Status: `OPEN`
+- Evidence: This session found and fixed one real secret leak
+  (`backend/integrations/registry/checko_client.py`: `requests.HTTPError`'s
+  own `__str__` embeds the full request URL, `key=<real Checko key>`
+  included, and that string reached the browser verbatim in
+  `/api/requests/{id}/suppliers/{id}/inn`'s JSON response — confirmed via a
+  real network-response inspection before and after the fix). The fix
+  (`_redact_key`) was scoped to exactly that one call site. No systematic
+  check was made for the same pattern elsewhere (any other provider client
+  that builds an error string from a caught exception whose `__str__`
+  might embed a URL with credentials/tokens in it — e.g. `dellin_client.py`,
+  the Yandex/Mail.ru OAuth token-refresh paths, RouterAI's client).
+- Impact: An unaudited codebase could have other, still-live instances of
+  the exact same defect class this session already proved is real and
+  reaches the browser.
+- Why deferred: A full audit of every provider client's error-message
+  construction is a distinct, scoped task, not a natural extension of the
+  Checko-specific fix that found this pattern.
+- Next step: grep every `integrations/`/`providers/` client for
+  `f"...{exc}"`/`str(exc)` patterns feeding into a response or log
+  reachable by the frontend, and either confirm each is already redacted or
+  apply the same `_redact_key`-style scrub.
+
+## FINDING-031 — All three configured `CHECKO_KEY` values are invalid (local environment)
+
+- ID: `FINDING-031`
+- Severity: `MEDIUM`
+- Status: `OPEN — needs owner action`
+- Evidence: Direct live test this session (`requests.get` against
+  `https://api.checko.ru/v2/company` with each of `CHECKO_KEY`,
+  `CHECKO_KEY_2`, `CHECKO_KEY_3` from the local `.env`) returned
+  `401 {"meta": {"message": "API-ключ не действителен"}}` for all three,
+  not just quota exhaustion. `CheckoClient`'s rotation only advances on a
+  quota-exhaustion signature, not a flat invalid-key 401, so in the current
+  state rotation would not have helped even if it triggered.
+- Impact: Manual-ИНН lookup and enrichment retries always land on
+  `checko_status: "unavailable"` locally — the UI degrades correctly (no
+  crash, ИНН still saved), but no real Checko data has been loading
+  locally for some unknown period before this session. Related to but
+  distinct from `FINDING-024` (production has no `CHECKO_KEY` configured
+  at all); this finding is that the ones that *are* configured, locally,
+  don't work either.
+- Why deferred: Renewing/replacing third-party API keys is an owner
+  action, not something an agent should do unilaterally.
+- Next step: owner checks the Checko account dashboard for these keys'
+  actual status (expired, revoked, wrong account) and updates local `.env`
+  (and, per `FINDING-024`, Vercel production) with working keys.
+
+## FINDING-030 — Mail queue can silently accumulate a backlog while outgoing is disabled, then flush it all at once
+
+- ID: `FINDING-030`
+- Severity: `MEDIUM`
+- Status: `OPEN`
+- Evidence: While running the owner-authorized real send test this
+  session, enabling the durable outgoing switch caused the queue worker to
+  immediately drain not just the one new test job, but three other
+  `mail_jobs` rows that had been sitting in `status='queued'` since
+  `2026-09-10` (created during an earlier session's testing, `created_at`
+  ~16-20 hours before they finally sent at `2026-09-11T12:15-12:17`). All
+  four happened to be addressed to the same safe owner-controlled test
+  address (`edwatikh@gmail.com`), so no real supplier was affected this
+  time — confirmed by checking every `to_email` before and after. Nothing
+  in the UI or API surfaced that a backlog existed before the switch was
+  flipped.
+- Impact: If a queued-but-unsent job had instead been addressed to a real
+  supplier (e.g. a reply composed while outgoing was disabled, or queued
+  during an outage), enabling the durable switch would send it
+  immediately and silently, with no review step — the owner would have no
+  chance to notice or cancel it first.
+- Why deferred: Found as a side effect of an authorized send test, not the
+  task's own subject; designing the right UX (visible backlog count?
+  required review before flush? auto-expire stale queued jobs?) needs its
+  own scoped decision, not a same-session guess.
+- Next step: `GET /api/mail/runtime/outgoing` (or a new endpoint) also
+  returns the count and age of currently `queued` jobs, and the Settings
+  UI surfaces it next to the outgoing-mail toggle so enabling it is never
+  a surprise about what's about to send.
+
+## FINDING-029 — No visible signal distinguishing local-dev vs. deployed-production runtime/database identity
+
+- ID: `FINDING-029`
+- Severity: `MEDIUM`
+- Status: `RESOLVED — a runtime-identity badge now renders in Settings,
+  sourced from the backend's own database-engine knowledge`
+- Evidence: This session, the owner viewed the deployed production site
+  (`supplydesk-2769.vercel.app`, real Postgres via `DATABASE_URL`) on their
+  phone and saw outgoing mail "Включена," while being told (accurately, but
+  without the scope being obvious) that outgoing had just been disabled —
+  on a completely separate local SQLite-backed runtime
+  (`127.0.0.1:8000`, `mail-data/supplier.sqlite3`) that the owner was not
+  looking at. Nothing in the Settings UI (or anywhere else in the app)
+  states which database/environment identity is currently being viewed.
+- Impact: Confusion like this session's is easy to repeat, and the next
+  time it could be about something with real consequences (e.g. someone
+  believing a real-supplier send was blocked locally when the toggle that
+  matters is the production one, or vice versa).
+- Why deferred: Found while investigating the owner's own report of the
+  above confusion; the right fix (what to show, where) is a small but
+  real product decision, not a one-line patch to make mid-investigation.
+- Resolution: `backend/http_auth.py::_auth_me` now returns a `runtime`
+  object (`{environment, database}`) on every call, both authenticated and
+  not, computed from `self.app.runtime.environment` and
+  `bool(self.app.repository.database_url)` — the same signals the
+  outgoing-mail gate itself already relies on, so the badge can never drift
+  out of sync with the actual gate logic. The first attempt labeled the
+  badge from `runtime.environment` directly ("Продакшн"/"Локальная
+  разработка"), which turned out to be wrong: local dev is deliberately
+  configured with `SUPPLYDESK_ENV=production` too (required for a real send
+  test from a laptop), so `environment` alone cannot distinguish "this
+  machine" from "the deployed site" — verified live (the badge read
+  "Продакшн" against the local backend before the fix). Corrected to key
+  the label off `database` instead (`sqlite` → "Эта машина (локально)",
+  `postgres` → "Облако (Vercel)", `danger`-toned for the deployed case),
+  which is the only signal that's actually always different between the
+  two — confirmed live against the local backend post-fix (reads "Эта
+  машина (локально)"). `frontend-v2/src/lib/AuthContext.tsx` exposes
+  `runtime` via `useAuth()`; `Settings.tsx`'s `RuntimeBadge` renders it in
+  the page header next to the outgoing-mail toggle it was specifically
+  meant to disambiguate. `tsc -b`, lint, and the full backend suite
+  (`scripts/run_test_suite.py`, 581 tests) all stayed clean/at-baseline
+  after the change; `tests.test_mail_integrity`/`tests.test_outgoing_safety`
+  (the modules covering `/api/auth/me` and the outgoing-mail gate this
+  touches) re-run individually and pass.
+- Next step: none for this finding. Whether to also surface it on the
+  Login page (before a session exists) is a separate, smaller follow-up if
+  the owner wants it.
+
 ## FINDING-028 — AI Stress Test 3 (history-aware reply): model re-asks already-answered questions
 
 - ID: `FINDING-028`

@@ -2,9 +2,11 @@ import { AlertTriangle, Check, ExternalLink, Loader2, Mail, MailWarning, Refresh
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../components/shell/PageHeader';
+import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { ApiError, api } from '../lib/api';
+import { useAuth } from '../lib/AuthContext';
 import { formatDateTime } from '../lib/format';
 import type { MailAccount } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
@@ -236,6 +238,27 @@ function AccountCard({ account, onChanged }: { account: MailAccount; onChanged: 
   );
 }
 
+/** Which deployment this page is actually talking to -- local dev and the
+ * deployed Vercel site both say "SupplyDesk" with nothing else
+ * distinguishing them, which caused real confusion this session about
+ * whether the outgoing-mail switch shown here was the local or the deployed
+ * one. `runtime.environment` alone can't tell them apart: local dev is
+ * deliberately configured with `SUPPLYDESK_ENV=production` too (that's what
+ * lets a real send be tested from a laptop), so the database engine --
+ * always SQLite locally, always Postgres on Vercel -- is the only reliable
+ * signal for *which deployment*, not the safety-gate "environment" concept.
+ * See ai/DEFERRED_FINDINGS.md FINDING-029. */
+function RuntimeBadge() {
+  const { runtime } = useAuth();
+  if (!runtime) return null;
+  const isDeployed = runtime.database === 'postgres';
+  return (
+    <Badge tone={isDeployed ? 'danger' : 'neutral'} dot>
+      {isDeployed ? 'Облако (Vercel)' : 'Эта машина (локально)'}
+    </Badge>
+  );
+}
+
 export function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const state = useApiData(() => api.mailStatus(), []);
@@ -282,7 +305,7 @@ export function Settings() {
   if (state.status === 'loading') {
     return (
       <div className="flex h-full flex-col overflow-auto">
-        <PageHeader title="Настройки" />
+        <PageHeader title="Настройки" actions={<RuntimeBadge />} />
         <LoadingState label="Загружаем настройки почты…" />
       </div>
     );
@@ -290,7 +313,7 @@ export function Settings() {
   if (state.status === 'error') {
     return (
       <div className="flex h-full flex-col overflow-auto">
-        <PageHeader title="Настройки" />
+        <PageHeader title="Настройки" actions={<RuntimeBadge />} />
         <ErrorState message={state.message} onRetry={state.reload} />
       </div>
     );
@@ -301,7 +324,7 @@ export function Settings() {
 
   return (
     <div className="flex h-full flex-col overflow-auto">
-      <PageHeader title="Настройки" description="Почтовые аккаунты для отправки и приёма писем поставщиков" />
+      <PageHeader title="Настройки" description="Почтовые аккаунты для отправки и приёма писем поставщиков" actions={<RuntimeBadge />} />
 
       <div className="max-w-2xl space-y-4 px-4 sm:px-6 pb-6">
         {banner && (
