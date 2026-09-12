@@ -6,11 +6,14 @@ import {
   Mail,
   MessageSquareText,
   Phone,
+  Plus,
   Send,
   ShieldCheck,
   Star,
   TrendingDown,
   TrendingUp,
+  TriangleAlert,
+  Trash2,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -115,6 +118,7 @@ export function SupplierCardContent({ supplierId, compact = false }: { supplierI
   const profit = supplier.finances?.profit ?? null;
   const latestThread = supplier.history.find((h) => h.outcome !== 'not_sent') ?? null;
   const latestRequestOnly = latestThread ? null : (supplier.history[0] ?? null);
+  const hasCheckoRisks = (supplier.risks?.length ?? 0) > 0;
 
   return (
     <div className={compact ? 'space-y-4 px-3.5 py-3.5' : ''}>
@@ -261,6 +265,9 @@ export function SupplierCardContent({ supplierId, compact = false }: { supplierI
             </div>
           </section>
 
+          <SupplierContacts supplierId={supplier.id} contacts={supplier.contacts} onChanged={state.reload} />
+          <SupplierClassifications supplierId={supplier.id} classifications={supplier.classifications} onChanged={state.reload} />
+
           {supplier.finance_history.length >= 2 && (
             <section className="rounded-lg border border-border bg-surface p-4">
               <FinanceTrend years={supplier.finance_history} />
@@ -347,6 +354,28 @@ export function SupplierCardContent({ supplierId, compact = false }: { supplierI
             )}
           </section>
 
+          <section className={`rounded-lg border p-4 ${hasCheckoRisks ? 'border-danger-border bg-danger-subtle/40' : 'border-border bg-surface'}`}>
+              <h2 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
+                {hasCheckoRisks ? <TriangleAlert size={14} className="text-danger" /> : <ShieldCheck size={14} className={supplier.risks === null ? 'text-ink-muted' : 'text-success'} />}
+                Проверка Checko
+              </h2>
+              {hasCheckoRisks ? (
+                <ul className="mt-2 space-y-1.5">
+                  {supplier.risks?.map((risk) => (
+                    <li key={risk} className="flex gap-1.5 text-[11.5px] leading-snug text-danger">
+                      <span aria-hidden="true">•</span>
+                      <span>{risk}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : supplier.risks === null ? (
+                <p className="mt-1.5 text-[11.5px] leading-snug text-ink-muted">Риски по Checko ещё не проверены для этого поставщика.</p>
+              ) : (
+                <p className="mt-1.5 text-[11.5px] leading-snug text-ink-muted">В текущих данных Checko нет отмеченных факторов риска.</p>
+              )}
+              <p className="mt-2 text-[10.5px] text-ink-faint">Сведения из публичного реестра; проверяйте их актуальность перед важной сделкой.</p>
+          </section>
+
           <section className="rounded-lg border border-border bg-surface p-4">
             <h2 className="mb-2 text-[12.5px] font-semibold text-ink">Заметка о поставщике</h2>
             {noteLoaded && (
@@ -389,4 +418,93 @@ export function SupplierCardContent({ supplierId, compact = false }: { supplierI
       </div>
     </div>
   );
+}
+
+function SupplierContacts({ supplierId, contacts, onChanged }: { supplierId: number; contacts: import('../lib/types').WorkspaceSupplierContact[]; onChanged: () => void }) {
+  const empty: { name: string; role: string; phone: string; email: string; visibility: 'private' | 'workspace' } = { name: '', role: '', phone: '', email: '', visibility: 'private' };
+  const [draft, setDraft] = useState(empty);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const editing = contacts.find((contact) => contact.id === editingId) ?? null;
+
+  function beginEdit(contact: import('../lib/types').WorkspaceSupplierContact) {
+    setEditingId(contact.id);
+    setDraft({ name: contact.name, role: contact.role, phone: contact.phone, email: contact.email, visibility: contact.visibility });
+    setError('');
+    setOpen(true);
+  }
+
+  async function save() {
+    if (!draft.name.trim()) return;
+    setBusy(true);
+    setError('');
+    try {
+      if (editing) await api.updateWorkspaceSupplierContact(supplierId, editing.id, draft);
+      else await api.createWorkspaceSupplierContact(supplierId, draft);
+      setDraft(empty); setEditingId(null); setOpen(false); onChanged();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Не удалось сохранить контакт.');
+    } finally { setBusy(false); }
+  }
+
+  async function remove(contactId: number) {
+    setBusy(true); setError('');
+    try { await api.deleteWorkspaceSupplierContact(supplierId, contactId); onChanged(); }
+    catch (e) { setError(e instanceof ApiError ? e.message : 'Не удалось удалить контакт.'); }
+    finally { setBusy(false); }
+  }
+
+  return <section aria-label="Классификация поставщика" className="rounded-lg border border-border bg-surface">
+    <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+      <div><h2 className="text-[12.5px] font-semibold text-ink">Контактные лица</h2><p className="text-[10.5px] text-ink-faint">Личные или для команды; не публикуются в карточке компании.</p></div>
+      <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => { setEditingId(null); setDraft(empty); setError(''); setOpen((value) => !value); }}>Контакт</Button>
+    </header>
+    {contacts.length === 0 && !open && <p className="px-4 py-3 text-[12px] text-ink-faint">Контактных лиц пока нет.</p>}
+    {contacts.length > 0 && <div className="divide-y divide-border">{contacts.map((contact) => <div key={contact.id} className="flex items-start gap-3 px-4 py-3">
+      <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1.5"><p className="font-medium text-[12.5px] text-ink">{contact.name}</p><Badge tone="neutral">{contact.visibility === 'private' ? 'Личный' : 'Команда'}</Badge></div>
+      {contact.role && <p className="mt-0.5 text-[11.5px] text-ink-muted">{contact.role}</p>}<div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-ink-soft">{contact.email && <a href={`mailto:${contact.email}`} className="hover:text-accent">{contact.email}</a>}{contact.phone && <a href={`tel:${contact.phone}`} className="hover:text-accent">{contact.phone}</a>}</div></div>
+      <div className="flex shrink-0 gap-1"><button type="button" onClick={() => beginEdit(contact)} className="rounded px-2 py-1 text-[11px] text-ink-muted hover:bg-surface-hover">Изменить</button><button type="button" onClick={() => void remove(contact.id)} disabled={busy} aria-label="Удалить контакт" className="flex h-7 w-7 items-center justify-center rounded text-ink-faint hover:bg-danger-subtle hover:text-danger disabled:opacity-50"><Trash2 size={13} /></button></div>
+    </div>)}</div>}
+    {open && <div className="grid gap-2 border-t border-border p-4 sm:grid-cols-2"><input autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Имя *" aria-label="Имя контактного лица" className="h-8 rounded-md border border-border-strong bg-canvas px-2.5 text-[12px] outline-none focus:border-accent" /><input value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value })} placeholder="Роль" aria-label="Роль контактного лица" className="h-8 rounded-md border border-border-strong bg-canvas px-2.5 text-[12px] outline-none focus:border-accent" /><input value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} placeholder="Телефон" aria-label="Телефон контактного лица" inputMode="tel" className="h-8 rounded-md border border-border-strong bg-canvas px-2.5 text-[12px] outline-none focus:border-accent" /><input value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} placeholder="Email" aria-label="Email контактного лица" className="h-8 rounded-md border border-border-strong bg-canvas px-2.5 text-[12px] outline-none focus:border-accent" /><select value={draft.visibility} onChange={(e) => setDraft({ ...draft, visibility: e.target.value as 'private' | 'workspace' })} aria-label="Видимость контакта" className="h-8 rounded-md border border-border-strong bg-canvas px-2 text-[12px] outline-none focus:border-accent"><option value="private">Только я</option><option value="workspace">Для команды</option></select><div className="flex justify-end gap-2"><Button variant="secondary" size="sm" onClick={() => { setOpen(false); setEditingId(null); }}>Отмена</Button><Button variant="primary" size="sm" disabled={!draft.name.trim() || busy} onClick={() => void save()}>{editing ? 'Сохранить' : 'Добавить'}</Button></div>{error && <p className="text-[11.5px] text-danger sm:col-span-2">{error}</p>}</div>}
+  </section>;
+}
+
+const classificationLabels = { category: 'Категория', product: 'Товар', brand: 'Бренд', specialization: 'Специализация' } as const;
+const classificationSourceLabels = { manual: 'Вручную', registry: 'Реестр', ai: 'AI' } as const;
+
+function SupplierClassifications({ supplierId, classifications, onChanged }: { supplierId: number; classifications: import('../lib/types').WorkspaceSupplierClassification[]; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState<'category' | 'product' | 'brand' | 'specialization'>('category');
+  const [value, setValue] = useState('');
+  const [confidence, setConfidence] = useState<'low' | 'medium' | 'high'>('medium');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function add() {
+    if (!value.trim()) return;
+    setBusy(true); setError('');
+    try {
+      await api.createWorkspaceSupplierClassification(supplierId, { kind, value, confidence });
+      setValue(''); setOpen(false); onChanged();
+    } catch (e) { setError(e instanceof ApiError ? e.message : 'Не удалось сохранить классификацию.'); }
+    finally { setBusy(false); }
+  }
+  async function remove(id: number) {
+    setBusy(true); setError('');
+    try { await api.deleteWorkspaceSupplierClassification(supplierId, id); onChanged(); }
+    catch (e) { setError(e instanceof ApiError ? e.message : 'Не удалось удалить классификацию.'); }
+    finally { setBusy(false); }
+  }
+
+  return <section className="rounded-lg border border-border bg-surface">
+    <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+      <div><h2 className="text-[12.5px] font-semibold text-ink">Классификация</h2><p className="text-[10.5px] text-ink-faint">Рабочие метки с источником и уровнем уверенности.</p></div>
+      <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => { setError(''); setOpen((current) => !current); }}>Метка</Button>
+    </header>
+    {classifications.length === 0 && !open && <p className="px-4 py-3 text-[12px] text-ink-faint">Категории, товары и бренды пока не добавлены.</p>}
+    {classifications.length > 0 && <div className="divide-y divide-border">{classifications.map((item) => <div key={item.id} className="flex items-start gap-3 px-4 py-2.5"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1.5"><Badge tone="accent">{classificationLabels[item.kind]}</Badge><p className="truncate text-[12.5px] font-medium text-ink">{item.value}</p></div><p className="mt-1 text-[10.5px] text-ink-faint">{classificationSourceLabels[item.source]} · уверенность: {item.confidence === 'high' ? 'высокая' : item.confidence === 'low' ? 'низкая' : 'средняя'}</p></div><button type="button" onClick={() => void remove(item.id)} disabled={busy} aria-label={`Удалить метку ${item.value}`} className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-ink-faint hover:bg-danger-subtle hover:text-danger disabled:opacity-50"><Trash2 size={13} /></button></div>)}</div>}
+    {open && <div className="grid gap-2 border-t border-border p-4 sm:grid-cols-2"><select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} aria-label="Тип классификации" className="h-8 rounded-md border border-border-strong bg-canvas px-2 text-[12px] outline-none focus:border-accent">{Object.entries(classificationLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><input autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder="Например, печи-камины" aria-label="Значение классификации" className="h-8 rounded-md border border-border-strong bg-canvas px-2.5 text-[12px] outline-none focus:border-accent"/><select value={confidence} onChange={(e) => setConfidence(e.target.value as typeof confidence)} aria-label="Уверенность классификации" className="h-8 rounded-md border border-border-strong bg-canvas px-2 text-[12px] outline-none focus:border-accent"><option value="high">Высокая уверенность</option><option value="medium">Средняя уверенность</option><option value="low">Низкая уверенность</option></select><div className="flex justify-end gap-2"><Button variant="secondary" size="sm" onClick={() => setOpen(false)}>Отмена</Button><Button variant="primary" size="sm" disabled={!value.trim() || busy} onClick={() => void add()}>Добавить</Button></div>{error && <p className="text-[11.5px] text-danger sm:col-span-2">{error}</p>}<p className="text-[10.5px] text-ink-faint sm:col-span-2">Ручная метка всегда хранится с источником «Вручную». Источник «Реестр» или «AI» появится только при отдельной подтверждённой интеграции.</p></div>}
+  </section>;
 }

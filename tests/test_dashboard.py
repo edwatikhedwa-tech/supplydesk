@@ -254,7 +254,7 @@ class DashboardRepositoryTests(unittest.TestCase):
             found=True, error="", emails=["registry@example.com"], phones=["+7 900 000-00-00"],
             region="Москва", role="оптовик", name_full="ООО Реестр", name="Реестр",
             ogrn="1027700132195", status="Действует", active=True, registered="2002-01-01",
-            risks=[],
+            risks=["в реестре недобросовестных поставщиков"],
         )
         fake_finances = SimpleNamespace(found=True, error="", report_year=2025, revenue=1000, profit=100, history=[])
         fake_checko = MagicMock()
@@ -270,6 +270,10 @@ class DashboardRepositoryTests(unittest.TestCase):
         self.assertEqual(refreshed["name"], "ООО Реестр")
         self.assertEqual(refreshed["registry"]["status"], "Действует")
         self.assertEqual(refreshed["finances"]["revenue"], 1000)
+        detail = self.repo.global_supplier_detail(workspace_id, result["global_supplier_id"])
+        self.assertIsNotNone(detail)
+        assert detail is not None
+        self.assertEqual(detail["risks"], ["в реестре недобросовестных поставщиков"])
         fake_checko.lookup.assert_called_once_with("7707083893")
         fake_checko.finances.assert_called_once_with("7707083893")
 

@@ -94,6 +94,9 @@ export function Dashboard() {
     { label: 'Новых ответов', value: kpis.new_replies, tone: kpis.new_replies > 0 },
     { label: 'Без привязки', value: kpis.unmatched_mail, tone: kpis.unmatched_mail > 0 },
   ];
+  const showReplies = threadsState.status !== 'ready' || newReplies.length > 0;
+  const showUnmatched = unmatchedState.status !== 'ready' || unmatched.length > 0;
+  const hasAttentionContent = attentionRequests.length > 0 || staleRequests.length > 0 || showReplies || showUnmatched;
 
   return (
     <div className="flex h-full flex-col overflow-auto">
@@ -108,53 +111,45 @@ export function Dashboard() {
         ))}
       </div>
 
-      <div className="grid flex-1 grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-2">
-        <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 content-start gap-4 p-4 sm:grid-cols-[repeat(auto-fit,minmax(320px,1fr))] sm:p-6">
+        {attentionRequests.length > 0 && (
           <SectionCard title="Сроки и просрочки" icon={AlertTriangle} count={attentionRequests.length} viewAllTo="/requests">
-            {attentionRequests.length === 0 ? (
-              <EmptyState icon={AlertTriangle} title="Просроченных и срочных заявок нет" />
-            ) : (
-              attentionRequests.map((r) => (
-                <Row key={r.id}>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12.5px] font-medium text-ink">{r.name}</p>
-                    <p className="truncate text-[11.5px] text-ink-muted">
-                      {r.suppliers_count - r.replies_count > 0 ? `${r.suppliers_count - r.replies_count} поставщиков без ответа` : 'Ответили все поставщики'}
-                    </p>
-                  </div>
-                  <DeadlineTag deadline={r.deadline} />
-                </Row>
-              ))
-            )}
+            {attentionRequests.map((r) => (
+              <Row key={r.id}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12.5px] font-medium text-ink">{r.name}</p>
+                  <p className="truncate text-[11.5px] text-ink-muted">
+                    {r.suppliers_count - r.replies_count > 0 ? `${r.suppliers_count - r.replies_count} поставщиков без ответа` : 'Ответили все поставщики'}
+                  </p>
+                </div>
+                <DeadlineTag deadline={r.deadline} />
+              </Row>
+            ))}
           </SectionCard>
+        )}
 
+        {staleRequests.length > 0 && (
           <SectionCard title="Заявки без движения" icon={PauseCircle} count={staleRequests.length} viewAllTo="/requests">
-            {staleRequests.length === 0 ? (
-              <EmptyState icon={PauseCircle} title="Все активные заявки в работе" />
-            ) : (
-              staleRequests.map((r) => (
-                <Row key={r.id}>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12.5px] font-medium text-ink">{r.name}</p>
-                    <p className="truncate text-[11.5px] text-ink-muted">
-                      Отправлено {r.sent_count}, ответов нет · обновлено {formatRelativeTime(r.updated_at)}
-                    </p>
-                  </div>
-                  <Badge tone="neutral">Без ответов</Badge>
-                </Row>
-              ))
-            )}
+            {staleRequests.map((r) => (
+              <Row key={r.id}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12.5px] font-medium text-ink">{r.name}</p>
+                  <p className="truncate text-[11.5px] text-ink-muted">
+                    Отправлено {r.sent_count}, ответов нет · обновлено {formatRelativeTime(r.updated_at)}
+                  </p>
+                </div>
+                <Badge tone="neutral">Без ответов</Badge>
+              </Row>
+            ))}
           </SectionCard>
-        </div>
+        )}
 
-        <div className="flex flex-col gap-4">
+        {showReplies && (
           <SectionCard title="Новые ответы" icon={MessageSquareText} count={newReplies.length} viewAllTo="/messages">
             {threadsState.status === 'loading' ? (
               <LoadingState />
             ) : threadsState.status === 'error' ? (
               <ErrorState message={threadsState.message} onRetry={threadsState.reload} />
-            ) : newReplies.length === 0 ? (
-              <EmptyState icon={MessageSquareText} title="Нет непрочитанных ответов" />
             ) : (
               newReplies.map((t) => (
                 <Row key={t.id}>
@@ -172,14 +167,14 @@ export function Dashboard() {
               ))
             )}
           </SectionCard>
+        )}
 
+        {showUnmatched && (
           <SectionCard title="Письма без заявки" icon={Inbox} count={unmatched.length} viewAllTo="/messages">
             {unmatchedState.status === 'loading' ? (
               <LoadingState />
             ) : unmatchedState.status === 'error' ? (
               <ErrorState message={unmatchedState.message} onRetry={unmatchedState.reload} />
-            ) : unmatched.length === 0 ? (
-              <EmptyState icon={Inbox} title="Непривязанных писем нет" />
             ) : (
               unmatched.slice(0, 4).map((m) => (
                 <Row key={m.id}>
@@ -192,7 +187,13 @@ export function Dashboard() {
               ))
             )}
           </SectionCard>
-        </div>
+        )}
+
+        {!hasAttentionContent && (
+          <section className="rounded-lg border border-border bg-surface">
+            <EmptyState icon={AlertTriangle} title="Срочных дел и новых писем нет" />
+          </section>
+        )}
       </div>
 
       <div className="px-4 sm:px-6 pb-6">

@@ -1,10 +1,11 @@
 import { Plus, SquareCheck, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '../lib/api';
-import { formatDeadline } from '../lib/format';
+import { dueAtInput, formatTaskDeadline } from '../lib/taskSchedule';
 import { useApiData } from '../lib/useApiData';
 import { DatePicker } from './ui/DatePicker';
 import { TaskSupplierPreview } from './TaskSupplierPreview';
+import { TaskCreatedNotice, type CreatedTaskNotice } from './TaskCreatedNotice';
 
 /** Right-rail task list scoped to this exact thread (request + supplier) --
  * the Dashboard's "Мои задачи" stays the place to see everything at once;
@@ -25,9 +26,12 @@ export function TasksPanel({
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [dueTime, setDueTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [createdTask, setCreatedTask] = useState<CreatedTaskNotice | null>(null);
+  const [createError, setCreateError] = useState('');
 
   const tasks =
     state.status === 'ready' && supplierId !== null
@@ -37,12 +41,18 @@ export function TasksPanel({
   async function addTask() {
     if (!title.trim() || supplierId === null) return;
     setSubmitting(true);
+    setCreateError('');
     try {
-      await api.createTask({ title: title.trim(), due_date: dueDate || undefined, request_id: requestId, supplier_id: supplierId });
+      const schedule = dueAtInput(dueDate, dueTime);
+      const created = await api.createTask({ title: title.trim(), due_date: dueDate || undefined, due_at: schedule.due_at ?? undefined, timezone: schedule.timezone ?? undefined, request_id: requestId, supplier_id: supplierId });
+      setCreatedTask({ id: created.task_id, title: title.trim(), dueDate: dueDate || null, dueAt: schedule.due_at, timezone: schedule.timezone });
       setTitle('');
       setDueDate('');
+      setDueTime('');
       setAdding(false);
       state.reload();
+    } catch {
+      setCreateError('Не удалось создать задачу. Проверьте соединение и повторите попытку.');
     } finally {
       setSubmitting(false);
     }
@@ -70,6 +80,20 @@ export function TasksPanel({
 
   return (
     <div className="flex h-full w-full shrink-0 flex-col border-l border-border bg-surface sm:w-72">
+      {createdTask && (
+        <TaskCreatedNotice
+          task={createdTask}
+          onOpen={() => {
+            setExpandedId(createdTask.id);
+            setCreatedTask(null);
+          }}
+          onUndo={async () => {
+            await api.deleteTask(createdTask.id);
+            state.reload();
+          }}
+          onDismiss={() => setCreatedTask(null)}
+        />
+      )}
       <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
         <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
           <SquareCheck size={14} />
@@ -114,7 +138,7 @@ export function TasksPanel({
                   className="min-w-0 flex-1 text-left disabled:cursor-default"
                 >
                   <p className="text-[12.5px] leading-snug text-ink">{t.title}</p>
-                  {t.due_date && <p className="mt-0.5 text-[11px] text-ink-faint">{formatDeadline(t.due_date)}</p>}
+                  {t.due_date && <p className="mt-0.5 text-[11px] text-ink-faint">{formatTaskDeadline(t)}</p>}
                 </button>
                 <button
                   type="button"
@@ -142,6 +166,7 @@ export function TasksPanel({
               className="h-7 w-full rounded-md border border-border-strong bg-surface px-2 text-[12px] outline-none focus:border-accent focus:ring-1 focus:ring-accent-border"
             />
             <DatePicker value={dueDate} onChange={setDueDate} size="sm" />
+            <input aria-label="Время задачи" type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} className="h-7 rounded-md border border-border-strong bg-surface px-2 text-[12px] text-ink outline-none focus:border-accent focus:ring-1 focus:ring-accent-border" />
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
@@ -155,6 +180,7 @@ export function TasksPanel({
                 Отмена
               </button>
             </div>
+            {createError && <p className="text-[11.5px] text-danger">{createError}</p>}
           </div>
         )}
       </div>

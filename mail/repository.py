@@ -24,6 +24,7 @@ from .ai_conversations import AiConversationsMixin
 from .tasks import TasksMixin
 from .thread_metadata import ThreadMetadataMixin
 from .thread_notes import ThreadNotesMixin
+from .support import SupportMixin
 from .bounce import classify_bounce, failed_recipients
 from .content import (
     clean_email_text,
@@ -48,7 +49,7 @@ from .time_utils import (  # noqa: F401 -- re-exported for mail/queue.py, backen
     iso_now,
     utc_now,
 )
-from backend.domain.supplier_identity.inn_extractor import validate_inn_checksum
+from backend.domain.supplier_identity.inn_extractor import normalize_inn, validate_inn_checksum
 from .pacing import PacingSettings
 from .deliverability import transient_health_metrics
 
@@ -217,7 +218,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 
 
 class MailRepository(
-    AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, AiChatUsageMixin, AiConversationsMixin, TasksMixin,
+    AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, SupportMixin, AiChatUsageMixin, AiConversationsMixin, TasksMixin,
     CanonicalCompaniesMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
@@ -3748,6 +3749,58 @@ class MailRepository(
             summaries = self._global_supplier_summaries(connection, workspace_id, gs_ids)
         return [self._compose_global_supplier(dict(row), summaries.get(int(row["id"]), {})) for row in gs_rows]
 
+    def import_new_global_suppliers(self, workspace_id: int, user_id: int, rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
+        """Create only new workspace cards from a previously confirmed import.
+
+        This method intentionally uses ``ON CONFLICT DO NOTHING`` rather than
+        the normal global-card upsert helper: an import must never update an
+        existing supplier, including a record found concurrently after preview.
+        """
+        created: list[int] = []
+        skipped_duplicate_lines: list[int] = []
+        skipped_attention_lines: list[int] = []
+        with self.connect() as connection:
+            for raw in rows:
+                line = int(raw.get("line") or 0)
+                inn = normalize_inn(str(raw.get("inn") or ""))
+                name = str(raw.get("name") or "").strip()
+                if not name or not validate_inn_checksum(inn):
+                    skipped_attention_lines.append(line)
+                    continue
+                now = iso_now()
+                cursor = connection.execute(
+                    "INSERT INTO global_suppliers(workspace_id, inn, name, site, email, phone, note, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(workspace_id, inn) DO NOTHING",
+                    (
+                        workspace_id, inn, name, str(raw.get("site") or "").strip(),
+                        str(raw.get("email") or "").strip(), str(raw.get("phone") or "").strip(),
+                        str(raw.get("note") or "").strip(), now, now,
+                    ),
+                )
+                if cursor.rowcount != 1:
+                    skipped_duplicate_lines.append(line)
+                    continue
+                supplier = connection.execute(
+                    "SELECT id FROM global_suppliers WHERE workspace_id=? AND inn=?", (workspace_id, inn)
+                ).fetchone()
+                supplier_id = int(supplier[0])
+                created.append(supplier_id)
+                self._audit_connection(
+                    connection, workspace_id, user_id, "supplier.imported", "global_supplier", str(supplier_id),
+                    {"source": "import", "line": line, "inn": inn},
+                )
+            connection.commit()
+        return {
+            "created": len(created),
+            "created_supplier_ids": created,
+            "skipped_duplicates": len(skipped_duplicate_lines),
+            "skipped_duplicate_lines": skipped_duplicate_lines,
+            "skipped_attention": len(skipped_attention_lines),
+            "skipped_attention_lines": skipped_attention_lines,
+            "updated": 0,
+            "automatic_merges": 0,
+        }
+
     def list_supplier_directory(self, workspace_id: int) -> list[dict[str, Any]]:
         """Return every supplier identity owned by a workspace.
 
@@ -3995,7 +4048,7 @@ class MailRepository(
                 restored += 1
         return {"restored": restored, "received": len(items)}
 
-    def global_supplier_detail(self, workspace_id: int, global_supplier_id: int) -> dict[str, Any] | None:
+    def global_supplier_detail(self, workspace_id: int, global_supplier_id: int, *, user_id: int | None = None) -> dict[str, Any] | None:
         with self.connect() as connection:
             gs_row = connection.execute(
                 "SELECT id, inn, name, site, email, phone, note, is_favorite FROM global_suppliers WHERE workspace_id=? AND id=?",
@@ -4051,6 +4104,23 @@ class MailRepository(
             ).fetchone()
             supplier["history"] = history
             supplier["issues"] = [dict(row) for row in issue_rows]
+            contacts_clause = "visibility='workspace'" if user_id is None else "(visibility='workspace' OR owner_user_id=?)"
+            contact_rows = connection.execute(
+                f"""SELECT id, owner_user_id, visibility, name, role, phone, email, created_at, updated_at
+                    FROM workspace_supplier_contacts
+                    WHERE workspace_id=? AND global_supplier_id=? AND {contacts_clause}
+                    ORDER BY name COLLATE NOCASE, id""",
+                (workspace_id, global_supplier_id) if user_id is None else (workspace_id, global_supplier_id, user_id),
+            ).fetchall()
+            supplier["contacts"] = [dict(row) for row in contact_rows]
+            classification_rows = connection.execute(
+                """SELECT id, owner_user_id, kind, value, source, confidence, source_url, created_at, updated_at
+                   FROM workspace_supplier_classifications
+                   WHERE workspace_id=? AND global_supplier_id=?
+                   ORDER BY kind, value COLLATE NOCASE, id""",
+                (workspace_id, global_supplier_id),
+            ).fetchall()
+            supplier["classifications"] = [dict(row) for row in classification_rows]
             supplier["registry"] = (
                 {
                     "ogrn": registry_row["ogrn"],
@@ -4269,6 +4339,85 @@ class MailRepository(
                 "UPDATE global_suppliers SET note=?, updated_at=? WHERE workspace_id=? AND id=?",
                 (note, iso_now(), workspace_id, global_supplier_id),
             )
+
+    @staticmethod
+    def _normalize_workspace_contact(*, name: str, role: str, phone: str, email: str, visibility: str) -> tuple[str, str, str, str, str]:
+        name, role, phone, email, visibility = name.strip(), role.strip(), phone.strip(), email.strip().lower(), visibility.strip()
+        if not name or len(name) > 160:
+            raise ValueError("Укажите имя контактного лица до 160 символов.")
+        if len(role) > 120 or len(phone) > 64 or len(email) > 254:
+            raise ValueError("Контакт содержит слишком длинное значение.")
+        if visibility not in {"private", "workspace"}:
+            raise ValueError("Допустима только личная или workspace-видимость контакта.")
+        if email and "@" not in email:
+            raise ValueError("Укажите корректный email контакта.")
+        if phone and len("".join(char for char in phone if char.isdigit())) < 7:
+            raise ValueError("Укажите корректный телефон контакта.")
+        return name, role, phone, email, visibility
+
+    def create_workspace_supplier_contact(self, workspace_id: int, user_id: int, global_supplier_id: int, *, name: str, role: str, phone: str, email: str, visibility: str) -> int:
+        name, role, phone, email, visibility = self._normalize_workspace_contact(name=name, role=role, phone=phone, email=email, visibility=visibility)
+        now = iso_now()
+        with self.connect() as connection:
+            if not connection.execute("SELECT 1 FROM global_suppliers WHERE id=? AND workspace_id=?", (global_supplier_id, workspace_id)).fetchone():
+                raise ValueError("Поставщик не найден.")
+            cursor = connection.execute("""INSERT INTO workspace_supplier_contacts(workspace_id, global_supplier_id, owner_user_id, visibility, name, role, phone, email, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", (workspace_id, global_supplier_id, user_id, visibility, name, role, phone, email, now, now))
+            self._audit_connection(connection, workspace_id, user_id, "supplier_contact.created", "global_supplier", str(global_supplier_id), {"visibility": visibility})
+            return int(cursor.lastrowid)
+
+    def update_workspace_supplier_contact(self, workspace_id: int, user_id: int, global_supplier_id: int, contact_id: int, *, name: str, role: str, phone: str, email: str, visibility: str) -> None:
+        name, role, phone, email, visibility = self._normalize_workspace_contact(name=name, role=role, phone=phone, email=email, visibility=visibility)
+        with self.connect() as connection:
+            cursor = connection.execute("""UPDATE workspace_supplier_contacts SET name=?, role=?, phone=?, email=?, visibility=?, updated_at=?
+                WHERE id=? AND workspace_id=? AND global_supplier_id=? AND owner_user_id=?""", (name, role, phone, email, visibility, iso_now(), contact_id, workspace_id, global_supplier_id, user_id))
+            if cursor.rowcount != 1:
+                raise PermissionError("Изменить контакт может только добавивший его участник.")
+
+    def delete_workspace_supplier_contact(self, workspace_id: int, user_id: int, global_supplier_id: int, contact_id: int) -> None:
+        with self.connect() as connection:
+            cursor = connection.execute("DELETE FROM workspace_supplier_contacts WHERE id=? AND workspace_id=? AND global_supplier_id=? AND owner_user_id=?", (contact_id, workspace_id, global_supplier_id, user_id))
+            if cursor.rowcount != 1:
+                raise PermissionError("Удалить контакт может только добавивший его участник.")
+
+    @staticmethod
+    def _normalize_workspace_supplier_classification(*, kind: str, value: str, source: str, confidence: str, source_url: str) -> tuple[str, str, str, str, str]:
+        kind, value = kind.strip(), " ".join(value.strip().split())
+        source, confidence, source_url = source.strip(), confidence.strip(), source_url.strip()
+        if kind not in {"category", "product", "brand", "specialization"}:
+            raise ValueError("Выберите тип классификации.")
+        if not value or len(value) > 160:
+            raise ValueError("Укажите значение до 160 символов.")
+        if source not in {"manual", "registry", "ai"}:
+            raise ValueError("Укажите допустимый источник классификации.")
+        if confidence not in {"low", "medium", "high"}:
+            raise ValueError("Укажите уровень уверенности классификации.")
+        if len(source_url) > 1_000:
+            raise ValueError("Ссылка на источник слишком длинная.")
+        return kind, value, source, confidence, source_url
+
+    def create_workspace_supplier_classification(self, workspace_id: int, user_id: int, global_supplier_id: int, *, kind: str, value: str, source: str, confidence: str, source_url: str = "") -> int:
+        kind, value, source, confidence, source_url = self._normalize_workspace_supplier_classification(kind=kind, value=value, source=source, confidence=confidence, source_url=source_url)
+        now = iso_now()
+        with self.connect() as connection:
+            if not connection.execute("SELECT 1 FROM global_suppliers WHERE id=? AND workspace_id=?", (global_supplier_id, workspace_id)).fetchone():
+                raise ValueError("Поставщик не найден.")
+            cursor = connection.execute(
+                """INSERT INTO workspace_supplier_classifications(workspace_id, global_supplier_id, owner_user_id, kind, value, source, confidence, source_url, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (workspace_id, global_supplier_id, user_id, kind, value, source, confidence, source_url, now, now),
+            )
+            self._audit_connection(connection, workspace_id, user_id, "supplier_classification.created", "global_supplier", str(global_supplier_id), {"kind": kind, "source": source, "confidence": confidence})
+            return int(cursor.lastrowid)
+
+    def delete_workspace_supplier_classification(self, workspace_id: int, user_id: int, global_supplier_id: int, classification_id: int) -> None:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM workspace_supplier_classifications WHERE id=? AND workspace_id=? AND global_supplier_id=? AND owner_user_id=?",
+                (classification_id, workspace_id, global_supplier_id, user_id),
+            )
+            if cursor.rowcount != 1:
+                raise PermissionError("Удалить классификацию может только добавивший её участник.")
 
     def set_global_supplier_relationship(
         self, workspace_id: int, user_id: int, global_supplier_id: int, status: str, *, reason: str = "",

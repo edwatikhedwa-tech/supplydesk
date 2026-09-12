@@ -19,6 +19,7 @@ from mail.deliverability import DeliverabilityPreflightError
 from mail.queue import MailQueue
 from mail.repository import DeliveryResolutionRequiredError, MailRepository
 from mail.runtime import RuntimeSession
+from mail.task_reminder_mock import phone_reminders_mode
 from mail.service import MailService
 from mail.test_data_cleanup import CONFIRMATION_TEXT, apply_cleanup, plan_cleanup
 from mail.types import ProviderError
@@ -44,10 +45,13 @@ from backend.domain.ai_agent.chat_service import AiChatService
 from backend.domain.logistics.quote_service import LogisticsQuoteService
 from backend.integrations.registry.checko_client import CheckoClient
 from backend.domain.supplier_identity.inn_extractor import validate_inn_checksum
+from backend.domain.supplier_import.csv_preview import preview_csv_bytes
+from backend.domain.supplier_import.apply_plan import build_apply_plan
 from backend.domain.supplier_enrichment.orchestrator import EnrichmentOrchestratorMixin
 from backend.http_auth import AuthHandlerMixin
 from backend.http_global_suppliers import GlobalSupplierRouteMixin
 from backend.http_requests import RequestRouteMixin
+from backend.http_support import SupportRouteMixin
 from scripts.runtime_guard import RuntimeSelectionError, print_runtime_context, validate_runtime_selection
 
 log = logging.getLogger("supplier_app")
@@ -65,7 +69,7 @@ def _strict_optional_bool(payload: dict, field: str) -> bool | None:
     return value
 
 
-class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMixin, SimpleHTTPRequestHandler):
+class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMixin, SupportRouteMixin, SimpleHTTPRequestHandler):
     server_version = "SupplydeskMail/1.0"
 
     @property
@@ -96,6 +100,11 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
         if parsed.path == "/api/auth/yandex/start":
             self._auth_yandex_start()
             return
+        if parsed.path.startswith("/api/support/"):
+            session = self._require_session()
+            if session:
+                self._support_get_route(session, parsed.path)
+            return
         if parsed.path == "/api/dashboard/summary":
             session = self._require_session()
             if session:
@@ -104,7 +113,16 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
         if parsed.path == "/api/tasks":
             session = self._require_session()
             if session:
-                self._json(200, {"items": self.app.repository.list_tasks(session["workspace_id"], session["user_id"])})
+                include_done = (parse_qs(parsed.query).get("include_done") or [""])[0] in {"1", "true"}
+                self._json(200, {
+                    "items": self.app.repository.list_tasks(session["workspace_id"], session["user_id"], include_done=include_done),
+                    "phone_reminders_mode": phone_reminders_mode(self.app.config.environment),
+                })
+            return
+        if parsed.path == "/api/workspace/members":
+            session = self._require_session()
+            if session:
+                self._json(200, {"items": self.app.repository.list_workspace_members(session["workspace_id"])})
             return
         if parsed.path == "/api/requests":
             session = self._require_session()
@@ -760,6 +778,8 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                     "spent_rub": result.spent_rub_today, "limit_rub": result.limit_rub, "message": result.message,
                     "conversation_id": result.conversation_id,
                 })
+            elif parsed.path.startswith("/api/support/"):
+                self._support_post_route(session, parsed.path, body)
             elif parsed.path == "/api/tasks":
                 request_id_raw = body.get("request_id")
                 supplier_id_raw = body.get("supplier_id")
@@ -768,8 +788,44 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                     due_date=str(body["due_date"]) if body.get("due_date") else None,
                     request_id=int(request_id_raw) if request_id_raw not in (None, "") else None,
                     supplier_id=int(supplier_id_raw) if supplier_id_raw not in (None, "") else None,
+                    description=str(body.get("description") or ""),
+                    due_at=str(body["due_at"]) if body.get("due_at") else None,
+                    timezone=str(body["timezone"]) if body.get("timezone") else None,
+                    priority=str(body.get("priority") or "normal"),
+                    assignee_user_id=int(body["assignee_user_id"]) if body.get("assignee_user_id") not in (None, "") else None,
+                    reminders=body.get("reminders") if "reminders" in body else None,
                 )
                 self._json(201, {"ok": True, "task_id": task_id})
+            elif parsed.path == "/api/supplier-import/preview":
+                csv_text = body.get("csv_text")
+                if not isinstance(csv_text, str):
+                    raise ValueError("csv_text должен быть строкой CSV в UTF-8.")
+                mapping = body.get("mapping")
+                if mapping is not None and not isinstance(mapping, dict):
+                    raise ValueError("mapping должен быть объектом сопоставления столбцов.")
+                result = preview_csv_bytes(
+                    csv_text.encode("utf-8"), mapping=mapping,
+                    existing_suppliers=self.app.repository.list_supplier_directory(session["workspace_id"]),
+                )
+                self._json(200, {"ok": True, **result, "apply_plan": build_apply_plan(result)})
+            elif parsed.path == "/api/supplier-import/apply":
+                if body.get("confirmed") is not True:
+                    raise ValueError("Подтвердите итог импорта перед записью.")
+                csv_text = body.get("csv_text")
+                if not isinstance(csv_text, str):
+                    raise ValueError("csv_text должен быть строкой CSV в UTF-8.")
+                mapping = body.get("mapping")
+                if mapping is not None and not isinstance(mapping, dict):
+                    raise ValueError("mapping должен быть объектом сопоставления столбцов.")
+                preview = preview_csv_bytes(
+                    csv_text.encode("utf-8"), mapping=mapping,
+                    existing_suppliers=self.app.repository.list_supplier_directory(session["workspace_id"]),
+                )
+                plan = build_apply_plan(preview)
+                result = self.app.repository.import_new_global_suppliers(
+                    session["workspace_id"], session["user_id"], plan["create_rows"],
+                )
+                self._json(200, {"ok": True, "plan": {key: value for key, value in plan.items() if key != "create_rows"}, **result})
             elif parsed.path.startswith("/api/tasks/") and parsed.path.endswith("/done"):
                 task_id = int(parsed.path.split("/")[3])
                 result = self.app.repository.set_task_done(session["workspace_id"], session["user_id"], task_id, bool(body.get("done", True)))
@@ -844,6 +900,42 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             # from production logs (found while chasing a silent /api/ai/chat 500).
             log.exception("Unhandled error in POST %s", parsed.path)
             self._json(500, {"error": "Внутренняя ошибка сервера. Попробуйте ещё раз."})
+
+    def do_PUT(self) -> None:
+        parsed = urlparse(self.path)
+        body = self._read_json()
+        if body is None:
+            return
+        session = self._require_session()
+        if not session or not self._require_csrf(session):
+            return
+        if not self.app.allow_api_request(self._session_token()):
+            self._json(429, {"error": "Слишком много запросов. Попробуйте через минуту."})
+            return
+        parts = [part for part in parsed.path.split("/") if part]
+        if len(parts) != 3 or parts[:2] != ["api", "tasks"]:
+            self._json(404, {"error": "Маршрут задачи не найден."})
+            return
+        try:
+            task_id = int(parts[2])
+            assignee_raw = body.get("assignee_user_id")
+            self.app.repository.update_task(
+                session["workspace_id"], session["user_id"], task_id,
+                title=str(body.get("title") or ""), description=str(body.get("description") or ""),
+                due_date=str(body["due_date"]) if body.get("due_date") else None,
+                due_at=str(body["due_at"]) if body.get("due_at") else None,
+                timezone=str(body["timezone"]) if body.get("timezone") else None,
+                priority=str(body.get("priority") or "normal"),
+                assignee_user_id=int(assignee_raw) if assignee_raw not in (None, "") else None,
+                reminders=body.get("reminders") if "reminders" in body else None,
+            )
+        except PermissionError as exc:
+            self._json(403, {"error": str(exc)})
+            return
+        except (ValueError, TypeError) as exc:
+            self._json(400, {"error": str(exc)})
+            return
+        self._json(200, {"ok": True, "task_id": task_id})
 
     def do_DELETE(self) -> None:
         parsed = urlparse(self.path)

@@ -7,7 +7,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import clsx from 'clsx';
-import { ArrowUpDown, Plus, Search, Truck } from 'lucide-react';
+import { ArrowUpDown, MessageSquareText, Plus, Search, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewRequestModal } from '../components/NewRequestModal';
@@ -82,6 +82,16 @@ export function Requests() {
                   title={`Новых ответов: ${unread}`}
                 >
                   {unread}
+                </span>
+              )}
+              {ctx.row.original.replies_count > 0 && (
+                <span
+                  aria-label={`Есть ответы: ${ctx.row.original.replies_count}`}
+                  title={`Ответили поставщики: ${ctx.row.original.replies_count}`}
+                  className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-success-subtle px-1.5 text-[10.5px] font-semibold text-success"
+                >
+                  <MessageSquareText size={11} aria-hidden="true" />
+                  {ctx.row.original.replies_count}
                 </span>
               )}
             </div>
@@ -226,6 +236,16 @@ export function Requests() {
                       {unread > 0 && (
                         <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white">
                           {unread}
+                        </span>
+                      )}
+                      {r.replies_count > 0 && (
+                        <span
+                          aria-label={`Есть ответы: ${r.replies_count}`}
+                          title={`Ответили поставщики: ${r.replies_count}`}
+                          className="inline-flex h-5 items-center gap-1 rounded-full bg-success-subtle px-1.5 text-[10.5px] font-semibold text-success"
+                        >
+                          <MessageSquareText size={11} aria-hidden="true" />
+                          {r.replies_count}
                         </span>
                       )}
                       <Badge tone={meta.tone}>{meta.label}</Badge>

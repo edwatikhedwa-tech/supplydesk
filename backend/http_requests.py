@@ -63,8 +63,8 @@ class RequestRouteMixin:
             except ValueError:
                 self._json(400, {"error": "Некорректный идентификатор поставщика."})
                 return
-            note = self.app.repository.get_thread_note(session["workspace_id"], session["user_id"], request_id, supplier_id)
-            self._json(200, {"note": note})
+            notes = self.app.repository.get_thread_notes(session["workspace_id"], session["user_id"], request_id, supplier_id)
+            self._json(200, {"note": (notes["private"] or {}).get("note", ""), "notes": notes})
             return
         self._json(404, {"error": "Маршрут заявки не найден."})
 
@@ -181,9 +181,14 @@ class RequestRouteMixin:
             except ValueError:
                 self._json(400, {"error": "Некорректный идентификатор поставщика."})
                 return
-            saved_note = self.app.repository.save_thread_note(
-                session["workspace_id"], session["user_id"], request_id, supplier_id, str(body.get("note") or ""),
-            )
+            try:
+                saved_note = self.app.repository.save_thread_note(
+                    session["workspace_id"], session["user_id"], request_id, supplier_id,
+                    str(body.get("note") or ""), str(body.get("visibility") or "private"),
+                )
+            except ValueError as exc:
+                self._json(400, {"error": str(exc)})
+                return
             self._json(200, {"ok": True, **saved_note})
             return
         if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "irrelevant":

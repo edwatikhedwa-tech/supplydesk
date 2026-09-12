@@ -1,5 +1,5 @@
-import { ChevronDown, History, Plus, Send, Sparkles, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, History, Send, Sparkles, X } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 
@@ -15,12 +15,133 @@ interface ConversationSummary {
   updated_at: string;
 }
 
+const REQUEST_STARTERS = [
+  {
+    label: 'Сравнить предложения',
+    prompt: 'Сравни предложения в текущей и выбранных переписках. Дай таблицу: поставщик, товар или модель, цена, наличие, срок или доставка, условия и что не указано.',
+  },
+  {
+    label: 'Выделить условия и риски',
+    prompt: 'Выдели из переписки важные условия, ограничения и риски. Не додумывай: для каждого пункта укажи, что подтверждено письмом, а что нужно уточнить.',
+  },
+  {
+    label: 'Подготовить вопросы',
+    prompt: 'Подготовь короткий список уточняющих вопросов поставщику по пробелам в текущей переписке: цена, наличие, срок, доставка, оплата и гарантия — только если эти данные действительно отсутствуют.',
+  },
+];
+
+const INBOX_STARTERS = [
+  {
+    label: 'Кратко разобрать письмо',
+    prompt: 'Кратко разберись в текущем письме: что предлагает поставщик, какие условия уже названы и что осталось неясным.',
+  },
+  {
+    label: 'Выделить цену и условия',
+    prompt: 'Выдели из письма цену, товар или модель, наличие, срок, доставку и условия оплаты. Для отсутствующих данных так и напиши: «нет данных».',
+  },
+  {
+    label: 'Подготовить ответ',
+    prompt: 'Подготовь вежливый короткий ответ поставщику с уточняющими вопросами только по данным, которых нет в текущем письме.',
+  },
+];
+
 function pluralSuppliers(n: number): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
   if (mod10 === 1 && mod100 !== 11) return 'поставщик';
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'поставщика';
   return 'поставщиков';
+}
+
+function renderInlineAiText(value: string): ReactNode {
+  return value.split(/(\*\*[^*]+\*\*)/g).map((part, index) => (
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={index} className="font-semibold text-[#26262b]">{part.slice(2, -2)}</strong>
+      : part
+  ));
+}
+
+function isMarkdownTableDivider(row: string): boolean {
+  return /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(row.trim());
+}
+
+function markdownTableCells(row: string): string[] {
+  return row.trim().replace(/^\||\|$/g, '').split('|').map((cell) => cell.trim());
+}
+
+/**
+ * AI output is treated as plain text. This intentionally recognises only the
+ * small Markdown subset the chat asks the model to use, so model output never
+ * becomes raw HTML in the application. Tables get their own scrolling surface
+ * instead of widening the floating dialog.
+ */
+function renderAiAnswer(text: string): ReactNode {
+  const lines = text.replace(/\r/g, '').split('\n');
+  const blocks: ReactNode[] = [];
+
+  for (let index = 0; index < lines.length;) {
+    const line = lines[index].trim();
+    if (!line) {
+      index += 1;
+      continue;
+    }
+
+    if (line.startsWith('|') && index + 1 < lines.length && isMarkdownTableDivider(lines[index + 1])) {
+      const header = markdownTableCells(line);
+      index += 2;
+      const rows: string[][] = [];
+      while (index < lines.length && lines[index].trim().startsWith('|')) {
+        rows.push(markdownTableCells(lines[index]));
+        index += 1;
+      }
+      blocks.push(
+        <div key={`table-${index}`} className="my-2 overflow-x-auto rounded-lg border border-[#dedee2] bg-white">
+          <table className="min-w-[820px] w-full border-collapse text-left text-[10.5px] leading-4">
+            <thead className="bg-[#f5f5f6] text-[#4b4b52]">
+              <tr>{header.map((cell, cellIndex) => <th key={cellIndex} className="border-b border-[#dedee2] px-2 py-1.5 font-semibold">{renderInlineAiText(cell)}</th>)}</tr>
+            </thead>
+            <tbody className="text-[#38383e]">
+              {rows.map((row, rowIndex) => (
+                <tr key={rowIndex} className="align-top even:bg-[#fbfbfc]">
+                  {header.map((_, cellIndex) => <td key={cellIndex} className="border-b border-[#ececef] px-2 py-1.5 last:border-b-0">{renderInlineAiText(row[cellIndex] ?? '—')}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
+      );
+      continue;
+    }
+
+    const heading = line.match(/^#{1,3}\s+(.+)$/);
+    if (heading) {
+      blocks.push(<p key={`heading-${index}`} className="mt-2 font-semibold text-[#26262b]">{renderInlineAiText(heading[1])}</p>);
+      index += 1;
+      continue;
+    }
+
+    const listMatch = line.match(/^[-*]\s+(.+)$/);
+    const numberedMatch = line.match(/^\d+[.)]\s+(.+)$/);
+    if (listMatch || numberedMatch) {
+      const ordered = Boolean(numberedMatch);
+      const items: string[] = [];
+      while (index < lines.length) {
+        const current = lines[index].trim();
+        const match = ordered ? current.match(/^\d+[.)]\s+(.+)$/) : current.match(/^[-*]\s+(.+)$/);
+        if (!match) break;
+        items.push(match[1]);
+        index += 1;
+      }
+      const List = ordered ? 'ol' : 'ul';
+      blocks.push(<List key={`list-${index}`} className={ordered ? 'my-2 list-decimal space-y-1 pl-5' : 'my-2 list-disc space-y-1 pl-5'}>{items.map((item, itemIndex) => <li key={itemIndex}>{renderInlineAiText(item)}</li>)}</List>);
+      continue;
+    }
+
+    blocks.push(<p key={`paragraph-${index}`} className="my-1.5 whitespace-pre-wrap">{renderInlineAiText(line)}</p>);
+    index += 1;
+  }
+
+  return blocks;
 }
 
 /** History/current chat are scoped to one заявка (requestId) or one
@@ -175,51 +296,41 @@ export function AiChatPanel({
   }
 
   const capReached = usage !== null && usage.spent_rub >= usage.limit_rub;
+  const starters = requestId !== null ? REQUEST_STARTERS : INBOX_STARTERS;
 
   return (
-    <div className="flex h-full min-w-0 w-full shrink-0 flex-col border-l border-border bg-canvas p-2">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
-        <div className="flex items-center justify-between border-b border-border bg-gradient-to-r from-accent-subtle/60 to-transparent px-4 py-3">
-          <span className="flex items-center gap-2 text-[13px] font-semibold text-ink">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-white">
-              <Sparkles size={12} />
-            </span>
-            ИИ-помощник
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Закрыть ИИ-помощника"
-            className="flex h-6 w-6 items-center justify-center rounded-full text-ink-muted hover:bg-surface-hover hover:text-ink"
-          >
-            <X size={14} />
-          </button>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1 border-b border-border px-2 py-1.5">
-          <button
-            type="button"
-            onClick={startNewChat}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-ink-soft hover:bg-surface-hover hover:text-ink"
-          >
-            <Plus size={12} /> Новый чат
-          </button>
+    <section
+      className="fixed bottom-4 right-4 z-50 flex h-[min(660px,calc(100dvh-32px))] w-[min(420px,calc(100vw-32px))] flex-col overflow-hidden rounded-[26px] border border-[#d9d9dd] bg-[#fffefe] text-[#1c1c20] shadow-[0_18px_55px_rgba(31,31,36,0.16)]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="ИИ-помощник SupplyDesk"
+    >
+      <header className="flex h-14 shrink-0 items-center border-b border-[#e7e7ea] px-5">
+        <p className="text-[10px] font-semibold tracking-[0.11em] text-[#4b4b52]">SUPPLYDESK · AI</p>
+        <div className="ml-auto flex items-center gap-3 text-[10px] font-semibold tracking-[0.1em] text-[#55555c]">
+          <button type="button" onClick={startNewChat} className="hover:text-[#17171b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a7a7ae]" aria-label="Новый ИИ-чат">NEW</button>
           {requestId !== null && (
             <button
               type="button"
               onClick={toggleHistory}
-              className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium ${historyOpen ? 'bg-accent-subtle text-accent' : 'text-ink-soft hover:bg-surface-hover hover:text-ink'}`}
+              className={`flex h-5 w-5 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a7a7ae] ${historyOpen ? 'bg-[#efeff1] text-[#17171b]' : 'hover:text-[#17171b]'}`}
+              aria-label="История ИИ-чатов"
             >
-              <History size={12} /> История
+              <History size={13} />
             </button>
           )}
-          <span className="min-w-0 flex-1 truncate px-1.5 text-right text-[11px] text-ink-faint" title={conversationTitle || 'Новый чат'}>
-            {conversationTitle || (loadingHistory ? 'Загружаем…' : 'Новый чат')}
-          </span>
+          <button type="button" onClick={onClose} className="text-[17px] font-normal leading-none hover:text-[#17171b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a7a7ae]" aria-label="Закрыть ИИ-помощника">×</button>
         </div>
+      </header>
+
+      <div className="flex shrink-0 items-center border-b border-[#e7e7ea] px-5 py-2.5">
+        <span className="min-w-0 flex-1 truncate text-[11px] text-[#777780]" title={conversationTitle || 'Новый чат'}>
+          {conversationTitle || (loadingHistory ? 'Загружаем…' : 'Новый чат')}
+        </span>
+      </div>
 
         {historyOpen && (
-          <div className="max-h-40 shrink-0 overflow-y-auto border-b border-border">
+          <div className="max-h-40 shrink-0 overflow-y-auto border-b border-[#e7e7ea]">
             {historyLoading ? (
               <p className="px-3 py-2 text-[11px] text-ink-faint">Загружаем историю…</p>
             ) : historyList && historyList.length > 0 ? (
@@ -239,31 +350,36 @@ export function AiChatPanel({
           </div>
         )}
 
-        {siblingThreads.length > 0 && (
+        {requestId !== null && (
           // Fixed-shrink header/toggle row + a capped-height, independently
           // scrolling chip list -- this is what actually keeps the message
           // input and "Отправить" reachable regardless of how many suppliers
           // are selected: nothing below this block can be pushed off-screen
           // by chip count, because the chip list's own height is bounded and
           // this whole section never grows past max-h-48 collapsed height.
-          <div className="shrink-0 border-b border-border">
-            <div className="flex items-center gap-2 px-3 py-2">
-              <button
-                type="button"
-                onClick={() => setSiblingsExpanded((v) => !v)}
-                className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[11px] font-medium text-ink-soft hover:text-ink"
-              >
-                <ChevronDown size={12} className={`shrink-0 text-ink-faint transition-transform ${siblingsExpanded ? 'rotate-180' : ''}`} />
-                <span className="truncate">
-                  {selectedSiblingIds.length > 0
-                    ? `Контекст: ${selectedSiblingIds.length + 1} ${pluralSuppliers(selectedSiblingIds.length + 1)}`
-                    : 'Сравнение с другими поставщиками'}
-                </span>
-              </button>
-              <div className="flex shrink-0 items-center gap-2">
+          <div className="shrink-0 border-b border-[#e7e7ea]">
+            <div className="px-5 py-3">
+              {siblingThreads.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setSiblingsExpanded((v) => !v)}
+                  className="flex min-w-0 items-center gap-1.5 text-left text-[11px] font-medium text-ink-soft hover:text-ink"
+                >
+                  <ChevronDown size={12} className={`shrink-0 text-ink-faint transition-transform ${siblingsExpanded ? 'rotate-180' : ''}`} />
+                  <span className="truncate">
+                    {selectedSiblingIds.length > 0
+                      ? `Контекст: текущая переписка + ${selectedSiblingIds.length} ${pluralSuppliers(selectedSiblingIds.length)}`
+                      : 'Текущая переписка включена'}
+                  </span>
+                </button>
+              ) : (
+                <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-ink-soft">Текущая переписка включена</span>
+              )}
+              {(selectedSiblingIds.length < siblingThreads.length || selectedSiblingIds.length > 0) && (
+                <div className="mt-1 flex items-center gap-2">
                 {selectedSiblingIds.length < siblingThreads.length && (
                   <button type="button" onClick={onSelectAllSiblings} className="text-[11px] font-medium text-accent hover:underline">
-                    Выбрать всех поставщиков по заявке
+                    Выбрать остальных поставщиков
                   </button>
                 )}
                 {selectedSiblingIds.length > 0 && (
@@ -271,10 +387,11 @@ export function AiChatPanel({
                     Очистить
                   </button>
                 )}
-              </div>
+                </div>
+              )}
             </div>
             {siblingsExpanded && (
-              <div className="max-h-40 overflow-y-auto border-t border-border px-3 py-2">
+              <div className="max-h-40 overflow-y-auto border-t border-[#e7e7ea] px-5 py-2.5">
                 {selectedSiblingIds.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-1.5">
                     {selectedSiblingIds.map((id) => {
@@ -304,13 +421,32 @@ export function AiChatPanel({
           </div>
         )}
 
-        <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-3.5 py-3.5">
+        <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {entries.length === 0 && !loadingHistory && (
             <div className="flex flex-col items-center gap-2 py-6 text-center">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-subtle text-accent">
                 <Sparkles size={16} />
               </span>
-              <p className="max-w-[200px] text-[12px] text-ink-faint">Спросите что-нибудь про эту заявку или поставщика.</p>
+              <p className="max-w-[250px] text-[12px] text-ink-faint">
+                {requestId !== null
+                  ? 'ИИ видит текущую переписку и только выбранных поставщиков этой заявки.'
+                  : 'ИИ видит только открытое письмо. Связать его с заявкой можно отдельно.'}
+              </p>
+              <div className="mt-2 w-full max-w-[280px] text-left">
+                <p className="mb-1.5 text-[9px] font-semibold tracking-[0.12em] text-ink-faint">НАЧАТЬ С</p>
+                <div className="divide-y divide-[#e7e7ea] rounded-xl border border-[#e7e7ea] bg-white">
+                  {starters.map((starter) => (
+                    <button
+                      key={starter.label}
+                      type="button"
+                      onClick={() => setDraft(starter.prompt)}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-[11.5px] font-medium text-[#3d3d43] transition-colors hover:bg-[#f7f7f8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a7a7ae]"
+                    >
+                      <span>{starter.label}</span><span aria-hidden="true" className="text-[#8c8c94]">›</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
           {entries.map((entry, i) => (
@@ -329,7 +465,7 @@ export function AiChatPanel({
                       : 'max-w-[90%] rounded-2xl rounded-bl-sm border border-danger-border bg-danger-subtle px-3.5 py-2 text-[12px] text-danger'
                 }
               >
-                {entry.text}
+                {entry.role === 'assistant' ? renderAiAnswer(entry.text) : entry.text}
               </div>
             </div>
           ))}
@@ -343,8 +479,8 @@ export function AiChatPanel({
           )}
         </div>
 
-        <div className="border-t border-border p-3">
-          <div className="flex items-end gap-1.5 rounded-xl border border-border-strong bg-canvas px-2 py-1.5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent-border">
+        <div className="shrink-0 border-t border-[#e7e7ea] px-4 pb-4 pt-3">
+          <div className="flex items-end gap-1.5 rounded-2xl border border-[#d7d7db] bg-[#fbfbfc] px-2 py-1.5 focus-within:border-[#a7a7ae] focus-within:ring-1 focus-within:ring-[#a7a7ae]">
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -355,7 +491,7 @@ export function AiChatPanel({
                 }
               }}
               disabled={capReached}
-              placeholder={capReached ? 'Дневной лимит исчерпан' : 'Вопрос…'}
+              placeholder={capReached ? 'Дневной лимит исчерпан' : 'Например: сравни цену, сроки и риски'}
               rows={1}
               className="min-h-[28px] w-full resize-none bg-transparent px-1 py-1 text-[12.5px] outline-none placeholder:text-ink-faint disabled:opacity-50"
             />
@@ -364,7 +500,7 @@ export function AiChatPanel({
               onClick={() => void send()}
               disabled={!draft.trim() || sending || capReached}
               aria-label="Отправить"
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-white hover:bg-accent-hover disabled:opacity-40"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#686871] text-white hover:bg-[#45454c] disabled:opacity-40"
             >
               <Send size={13} />
             </button>
@@ -375,7 +511,6 @@ export function AiChatPanel({
               : 'Загружаем расход за сегодня…'}
           </p>
         </div>
-      </div>
-    </div>
+    </section>
   );
 }

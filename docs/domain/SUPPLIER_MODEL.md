@@ -3,7 +3,7 @@ document_id: DOC-DOMAIN-SUPPLIER-MODEL-001
 status: CURRENT
 canonical: false
 owner: product-docs
-updated_at: 2026-09-11
+updated_at: 2026-09-12
 ---
 
 # Модель поставщика в SupplyDesk
@@ -69,6 +69,15 @@ updated_at: 2026-09-11
    явно подтвердил (через уточняющий вопрос в сессии 2026-09-11), что имелся
    в виду именно обмен между разными аккаунтами SupplyDesk, а не только
    между заявками одного аккаунта.
+5. **`workspace_supplier_classifications`**
+   (`migrations/046_workspace_supplier_classifications.sql`) — рабочие
+   классификации одной карточки внутри одного workspace: категория, товар,
+   бренд или специализация. Каждая запись несёт собственные `value`, `source`,
+   `confidence`, необязательный `source_url` и timestamps. Факты с источником
+   `manual`, `registry` и `ai` хранятся раздельно: новая ручная метка не
+   выдаётся за реестровую/AI и не перезаписывает их. UI текущего MVP создаёт
+   только `manual`; появления источников `registry`/`ai` потребуют отдельной
+   подтверждённой интеграции.
 
 ## 2. Supplier invariant (реализован на уровне ИНН-резолюции, 2026-09-11)
 
@@ -189,10 +198,32 @@ updated_at: 2026-09-11
 Переписка, заявки, заметки, цены, отношения, задачи, приватные контакты и
 любые другие пользовательские данные остаются исключительно в
 `workspace_id`-scoped таблицах (`suppliers`, `request_suppliers`,
-`mail_threads`/`mail_messages`, `thread_notes`, `tasks`, `logistics_quotes`
-и т.д.) — они никогда не попадают в `canonical_companies` и не становятся
-видимыми другому workspace. Изоляция проверена тестами
+`mail_threads`/`mail_messages`, `thread_notes`, `tasks`, `logistics_quotes`,
+`workspace_supplier_contacts`, `workspace_supplier_classifications`).
+
+`workspace_supplier_contacts` (migration `045`) хранит ручные контактные
+лица карточки поставщика. Запись принадлежит одному workspace; вариант
+`private` видит только создавший её пользователь, `workspace` — участники
+этого workspace. Ни имя, ни телефон, ни email из этой таблицы не становятся
+canonical/public-данными компании и не используются для автоматической
+рассылки. Эти и другие workspace-данные никогда не попадают в
+`canonical_companies` и не становятся видимыми другому workspace. Изоляция
+проверена тестами
 `test_directory_never_leaks_another_workspace` (per-workspace слой) и
 `test_a_different_workspace_can_reuse_a_company_resolved_elsewhere` +
 `test_write_through_carries_no_tenant_specific_data` (кросс-tenant слой —
 что расшаривается, и что не расшаривается).
+
+`workspace_supplier_classifications` (migration `046`) следует той же
+границе: метка принадлежит workspace и её автору; изменить или удалить её
+может только автор. Поля происхождения не являются косметической подписью —
+они входят в саму запись, поэтому ручной ввод, реестр и AI остаются
+различимыми в API и карточке. Ни одна такая метка не повышает статус
+`canonical_companies` и не используется для автоматической рассылки.
+
+Контракт адресации карточки также tenant-scoped: `global_supplier_detail`
+сначала ищет `global_suppliers` по паре `(workspace_id, id)` и возвращает
+отсутствие карточки для чужого идентификатора. Создание workspace-контакта или
+классификации повторяет ту же проверку до INSERT. Это покрыто
+`tests/test_supplier_workspace_isolation.py`: данные и попытки мутации из
+второго workspace не пересекают границу, даже при одинаковом ИНН организации.

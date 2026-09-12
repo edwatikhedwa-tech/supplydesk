@@ -9,14 +9,74 @@ based_on_commit: b2c620b2b1c336aab60d45347a032d82bd75275d
 
 # Active Task
 
-Task ID: `TASK-MESSAGES-QUOTE-CHECKO-DESIGN-SEND-20260911`
-Agent: `Codex` (принято у Claude Code по указанию владельца 2026-09-11)
+Task ID: `TASK-MVP-SHOWREADY-20260911`
+Agent: `Codex` (продолжение по прямому указанию владельца 2026-09-12)
 Mode: `IMPLEMENTATION`
 Started: `2026-09-11`
-Scope: `Real verified outgoing-mail test against production; email-thread restructuring (original request collapsed by default, quoted-history folding fixes, nothing physically deleted); Checko ИНН-enrichment UI wired to the already-built backend (manual entry + debounced auto-lookup + dedup + masked key-rotation display in Settings); double-submit/idempotency protection on send; a scoped visual pass adopting real free external component primitives (coss.com's free mirror of ReUI's Frame, @coss/select, table, button -- reui.io's own registry turned out to require a paid license, confirmed live and disclosed) normalized onto SupplyDesk's existing design tokens. Full plan: C:\Users\edwat\.claude\plans\playful-wondering-music.md`
-Allowed files: `frontend-v2/src/pages/Messages.tsx, frontend-v2/src/pages/Settings.tsx, frontend-v2/src/pages/RequestDetail.tsx, frontend-v2/src/pages/Suppliers.tsx, frontend-v2/src/pages/Blacklist.tsx, frontend-v2/src/pages/Requests.tsx, frontend-v2/src/components/SupplierCardPanel.tsx, frontend-v2/src/components/ui/Button.tsx, frontend-v2/src/components/ui/*.tsx (new: frame.tsx, select.tsx, table.tsx), frontend-v2/src/lib/api.ts, frontend-v2/src/lib/cn.ts, frontend-v2/src/index.css, frontend-v2/tsconfig.app.json, frontend-v2/vite.config.ts, frontend-v2/package.json, mail/content.py, mail/service.py, backend/http_requests.py, backend/http_settings.py (new), supplier_app.py, tests/test_mail_content.py (new), docs/ui/MESSAGES_SCREEN_SPEC.md, ai/CURRENT_STATE.md, ai/ACTIVE_TASK.md, ai/DECISIONS.md, ai/DEFERRED_FINDINGS.md`
-Status: `IN_PROGRESS`
-Last update: `2026-09-11`
+Scope: `Доведение утверждённого MVP-интерфейса до готовности к показу: задачи, календарь, напоминания только через безопасный UI/mock и последующие P0/P1/P2 пункты из docs/product/MVP_BACKLOG.md. Реальные телефония, публикация, deploy и любые новые платные сервисы исключены.`
+Allowed files: `Затронутые узкие frontend/backend/test/documentation файлы текущего backlog-пункта; ai/CURRENT_STATE.md, ai/ACTIVE_TASK.md, docs/product/MVP_BACKLOG.md, docs/product/APPROVED_MVP_INTERFACE.md, work/active/TASK-MVP-SHOWREADY-20260911.md.`
+Status: `COMPLETE_WITH_LIMITATIONS`
+Last update: `2026-09-12`
+
+Current scoped continuation: the prior FAQ-only `SUP-025` outcome did not
+meet the owner-provided Support Chat specification. This completed iteration implements
+the specified unified technical-support chat with durable conversations,
+automatic page/request context, user attachments, and a compact history. It
+also makes a task's linked company visible in Calendar using the existing real
+`supplier_name` API field. The visual screenshot named by the owner is not
+available in the supplied attachment directory, so exact pixel comparison is
+tracked as `NOT VERIFIED` until it is attached again; browser verification of
+the implementation itself is recorded in `ai/CURRENT_STATE.md`.
+The Messages AI assistant now uses the same compact floating visual pattern as
+technical support; the former desktop third column/right icon rail has been
+replaced with modern header actions for notes, tasks and AI, without changing
+the server-side conversation, usage or context contracts.
+
+Completed MVP scope and disclosed limits: `SUP-015`, `SUP-017`, `SUP-018`, `SUP-019` and `SUP-020`
+are complete locally. `SUP-021` (supplier contact persons) is PARTIAL: API,
+isolation and desktop UI exist, but no live owner-data write was performed.
+`SUP-022` is PARTIAL: CSV-first preview/mapping UI and authenticated API parse
+UTF-8 CSV in memory, flag invalid INN and workspace duplicate candidates.
+Confirmed Apply creates only new cards with valid INN, skips duplicates strictly
+by INN and never updates or merges existing cards; audit records keep import
+source, line and author. The preview/confirmation round-trip was checked using
+an artificial CSV (one create candidate, one INN duplicate and one missing-INN
+row) at 1280/768/390 px; final Apply was intentionally not invoked, so no
+owner-data card was created. XLSX remains unverified.
+`SUP-023` is PARTIAL: migration 046 stores workspace-only category/product/
+brand/specialization facts with a durable source and confidence; the card
+supports manual labels without claiming registry/AI provenance. Focused source,
+ownership and validation tests pass; registry/AI producers and a live owner-data
+write are intentionally not implemented. This was followed by `SUP-024`
+public-vs-workspace supplier-data isolation.
+`SUP-024` is PARTIAL: a two-workspace regression now proves cards cannot be
+read or used as a mutation target across the workspace boundary, including
+matching-ИНН suppliers. A separate live second-user browser session was not
+opened. This was followed by `SUP-025` Support Assistant, limited to
+truthful product help and an explicit human-escalation path.
+`SUP-025` is PARTIAL: the support mini-chat is the sole primary support path;
+`/help` is now secondary «Справка», removed from the sidebar and reachable from
+that window. It contains verified local product guidance and a truthful
+unknown-question path that only copies a user-authored request for manual
+escalation. It makes no support ticket, network call or AI claim. This was
+followed by `SUP-026`, an evidence-based decision on whether advanced shared-note
+versioning is justified for the MVP.
+`SUP-026` is DONE as an evidence-based non-expansion: the MVP retains one
+current private and one current workspace note per context. A correctness fix
+records the last workspace-note editor; no revision history is justified until
+separate conflict/recovery/audit acceptance criteria exist. This was followed
+by `SUP-027`, an evidence audit for explainable supplier scoring.
+`SUP-027` is DONE as an evidence-based non-expansion: raw registry risks,
+finance, response metrics and per-deal ratings remain separate. There is no
+approved weighting, freshness rule, rater/reason, missing-data rule or owner
+for a composite score. The only remaining backlog item, `SUP-028`, is
+explicitly DEFERRED real telephony and is outside this task's authorized scope.
+The historical mail/Checko record below is retained as evidence only; it is not
+an active-task conflict.
+
+---
+
+Historical record from the preceding mail/Checko task (not active scope):
 
 Mail acceptance substage: `PASS` on `2026-09-11`. The canonical SQLite
 identity and `.env` now point to

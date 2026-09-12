@@ -26,7 +26,7 @@ class GlobalSupplierRouteMixin:
         if len(parts) != 3:
             self._json(404, {"error": "Маршрут не найден."})
             return
-        detail = self.app.repository.global_supplier_detail(session["workspace_id"], global_supplier_id)
+        detail = self.app.repository.global_supplier_detail(session["workspace_id"], global_supplier_id, user_id=session["user_id"])
         if not detail:
             self._json(404, {"error": "Поставщик не найден."})
             return
@@ -70,5 +70,53 @@ class GlobalSupplierRouteMixin:
                     session["workspace_id"], session["user_id"], global_supplier_id, "blacklisted", reason=reason,
                 )
             self._json(201, {"ok": True, "issue_id": issue_id})
+            return
+        if len(parts) == 4 and parts[3] == "contacts":
+            contact_id = self.app.repository.create_workspace_supplier_contact(
+                session["workspace_id"], session["user_id"], global_supplier_id,
+                name=str(body.get("name") or ""), role=str(body.get("role") or ""),
+                phone=str(body.get("phone") or ""), email=str(body.get("email") or ""),
+                visibility=str(body.get("visibility") or "private"),
+            )
+            self._json(201, {"ok": True, "contact_id": contact_id})
+            return
+        if len(parts) == 4 and parts[3] == "classifications":
+            # User-entered values are always declared manual. Registry and AI
+            # sources are reserved for explicit server-side integrations.
+            classification_id = self.app.repository.create_workspace_supplier_classification(
+                session["workspace_id"], session["user_id"], global_supplier_id,
+                kind=str(body.get("kind") or ""), value=str(body.get("value") or ""),
+                source="manual", confidence=str(body.get("confidence") or "medium"),
+            )
+            self._json(201, {"ok": True, "classification_id": classification_id})
+            return
+        if len(parts) == 5 and parts[3] == "contacts":
+            try:
+                contact_id = int(parts[4])
+            except ValueError:
+                self._json(400, {"error": "Некорректный идентификатор контакта."})
+                return
+            if body.get("action") == "delete":
+                self.app.repository.delete_workspace_supplier_contact(session["workspace_id"], session["user_id"], global_supplier_id, contact_id)
+            else:
+                self.app.repository.update_workspace_supplier_contact(
+                    session["workspace_id"], session["user_id"], global_supplier_id, contact_id,
+                    name=str(body.get("name") or ""), role=str(body.get("role") or ""),
+                    phone=str(body.get("phone") or ""), email=str(body.get("email") or ""),
+                    visibility=str(body.get("visibility") or "private"),
+                )
+            self._json(200, {"ok": True})
+            return
+        if len(parts) == 5 and parts[3] == "classifications":
+            try:
+                classification_id = int(parts[4])
+            except ValueError:
+                self._json(400, {"error": "Некорректный идентификатор классификации."})
+                return
+            if body.get("action") != "delete":
+                self._json(404, {"error": "Действие не найдено."})
+                return
+            self.app.repository.delete_workspace_supplier_classification(session["workspace_id"], session["user_id"], global_supplier_id, classification_id)
+            self._json(200, {"ok": True})
             return
         self._json(404, {"error": "Действие не найдено."})

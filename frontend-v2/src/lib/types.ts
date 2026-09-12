@@ -181,6 +181,43 @@ export interface SupplierDirectoryItem extends GlobalSupplierSummary {
   verification_status: 'verified' | 'missing_inn';
 }
 
+export type SupplierImportTargetField = 'name' | 'inn' | 'site' | 'email' | 'phone' | 'region' | 'role' | 'note';
+
+export interface SupplierImportPreviewRow {
+  line: number;
+  source: Record<string, string>;
+  fields: Partial<Record<SupplierImportTargetField, string>>;
+  issues: { code: string; message: string }[];
+  duplicate_candidate: { id: number; name: string; inn: string } | null;
+  status: 'ready' | 'needs_attention';
+}
+
+export interface SupplierImportPreview {
+  mode: 'preview_only';
+  delimiter: 'comma' | 'semicolon' | 'tab';
+  columns: { source: string; target: SupplierImportTargetField | null }[];
+  rows: SupplierImportPreviewRow[];
+  summary: { rows_total: number; ready: number; needs_attention: number; issues: number; writes: 0; automatic_merges: 0 };
+  apply_plan: {
+    requires_confirmation: true;
+    to_create: number;
+    skipped_duplicates: number;
+    skipped_attention: number;
+    preview_only_fields: SupplierImportTargetField[];
+  };
+}
+
+export interface SupplierImportApplyResult {
+  created: number;
+  created_supplier_ids: number[];
+  skipped_duplicates: number;
+  skipped_duplicate_lines: number[];
+  skipped_attention: number;
+  skipped_attention_lines: number[];
+  updated: 0;
+  automatic_merges: 0;
+}
+
 /** A blocked marketplace/aggregator domain -- distinct from a blacklisted
  * global_suppliers row: this exists even before any company card does
  * (mail/auth_accounts.py's default seed blocks e.g. Ozon on day one). */
@@ -265,16 +302,52 @@ export interface GlobalSupplierFinanceYear {
 }
 
 export interface GlobalSupplierDetail extends GlobalSupplierSummary {
+  contacts: WorkspaceSupplierContact[];
+  classifications: WorkspaceSupplierClassification[];
   history: GlobalSupplierHistoryEntry[];
   issues: GlobalSupplierIssue[];
   /** Up to the last 6 report years, ascending. */
   finance_history: GlobalSupplierFinanceYear[];
+  /** `null` means Checko has not checked the supplier yet; an empty array
+   * means the current Checko check returned no marked risk factors. */
+  risks: string[] | null;
+}
+
+export interface WorkspaceSupplierContact {
+  id: number;
+  owner_user_id: number;
+  visibility: 'private' | 'workspace';
+  name: string;
+  role: string;
+  phone: string;
+  email: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkspaceSupplierClassification {
+  id: number;
+  owner_user_id: number;
+  kind: 'category' | 'product' | 'brand' | 'specialization';
+  value: string;
+  source: 'manual' | 'registry' | 'ai';
+  confidence: 'low' | 'medium' | 'high';
+  source_url: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Task {
   id: number;
   title: string;
+  description: string;
   due_date: string | null;
+  due_at: string | null;
+  timezone: string | null;
+  priority: 'low' | 'normal' | 'high';
+  assignee_user_id: number | null;
+  assignee_name: string | null;
+  reminders: TaskReminder[];
   done: boolean;
   request_id: number | null;
   supplier_id: number | null;
@@ -283,6 +356,65 @@ export interface Task {
   completed_at: string | null;
   request_name: string | null;
   supplier_name: string | null;
+}
+
+export type SupportConversationStatus = 'received' | 'in_progress' | 'waiting_user' | 'resolved';
+export type SupportCategory = 'bug' | 'technical' | 'request' | 'improvement' | 'general';
+
+export interface SupportMessage {
+  id: number;
+  conversation_id: number;
+  sender_type: 'user' | 'support';
+  text: string;
+  attachment_filename: string;
+  attachment_mime_type: string;
+  attachment_url: string | null;
+  created_at: string;
+}
+
+export interface SupportConversationSummary {
+  id: number;
+  linked_request_id: number | null;
+  request_name: string | null;
+  category: SupportCategory;
+  status: SupportConversationStatus;
+  current_section: string;
+  created_at: string;
+  updated_at: string;
+  last_message: string;
+}
+
+export interface SupportConversation extends SupportConversationSummary {
+  user_id: number;
+  current_url: string;
+  browser: string;
+  app_version: string;
+  messages: SupportMessage[];
+}
+
+export interface TaskReminder {
+  id: number;
+  task_id: number;
+  channel: 'in_app' | 'email' | 'phone';
+  scheduled_at: string;
+  timezone: string;
+  status: 'scheduled' | 'cancelled' | 'mock_triggered';
+  recipient: string | null;
+  mock_state?: 'mock' | 'not_connected' | null;
+  created_at: string;
+}
+
+export interface TaskReminderInput {
+  channel: TaskReminder['channel'];
+  scheduled_at: string;
+  timezone: string;
+  recipient?: string;
+}
+
+export interface WorkspaceMember {
+  id: number;
+  display_name: string;
+  role: 'owner' | 'member';
 }
 
 export type MailDirection = 'outbound' | 'inbound';

@@ -3,7 +3,7 @@ document_id: STATE-001
 status: CURRENT
 canonical: true
 owner: project-control
-updated_at: 2026-09-11
+updated_at: 2026-09-12
 based_on_commit: pending-commit-TASK-MESSAGES-LINKS-STATUS-SEND-AI-20260910
 ---
 
@@ -14,6 +14,177 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-12` — уточнён контракт `SUP-029`: ключевой сценарий не отправка из
+SupplyDesk, а самостоятельное письмо из обычной внешней почты с последующей
+синхронизацией. Read-only audit подтвердил, что Yandex и Mail.ru сейчас
+читают только `INBOX`, поэтому это письмо из `Sent` пока не может быть
+обнаружено. Корректный MVP-порядок: явная `[SD-…]` метка для первой связи,
+затем RFC `Message-ID/In-Reply-To/References`; тема+адрес и AI лишь создают
+candidate. Новый provider-neutral контракт требует per-folder cursors,
+one-copy dedupe, сохранения списка адресов и обратимых relations, а не
+отдельного алгоритма для provider. Он зафиксирован в
+[`docs/product/PERSONAL_MAIL_SYNC_PROPOSAL.md`](../docs/product/PERSONAL_MAIL_SYNC_PROPOSAL.md).
+Текущий `mail_inbox_messages` workspace-scoped, поэтому личный ящик требует
+private-by-default до связки с заявкой. Код, migrations, OAuth, provider
+connection и реальная почта в этой аналитической итерации не менялись.
+
+`2026-09-12` — после повторной сверки с исходным MVP-заданием устранено
+последнее расхождение `SUP-007`: экран «Сообщения» больше не содержит
+отдельный вручную написанный header, а использует общий `PageHeader` как
+Dashboard, Calendar, Requests, Suppliers, Blacklist, Settings и Help. Общий
+паттерн — акцентная точка, title, короткий divider и описание. `ConversationStatusSelect`
+теперь рисует статус одним семантически окрашенным trigger без вложенной
+второй плашки; `AiChatPanel` в новом чате предлагает контекстные, не
+отправляемые автоматически стартовые сценарии сравнения/условий/уточнений.
+Build, focused source tests и live desktop/mobile browser renders пройдены;
+на 390 px ширина страницы и floating AI-dialog совпадают (`390 px`).
+
+`2026-09-12` — `TASK-MVP-SHOWREADY-20260911` продолжен по уточнению владельца:
+FAQ-экран сам по себе не заменяет техническую поддержку. Migration 047 добавляет
+отдельные durable `support_conversations`/`support_messages`; API сохраняет
+автоматический URL/раздел/request context, user/workspace ownership, статус и
+одно безопасно валидируемое вложение. Глобальный mini-chat открывается как
+`SUPPLYDESK · SUPPORT`, создаёт реальные обращения, показывает статус и историю,
+а не изображает ИИ или человека. Это единственная основная точка поддержки:
+`/help` переименован в «Справку», убран из боковой навигации и доступен
+вторичной ссылкой из этого окна. В live owner session созданы два явных
+приёмочных обращения, включая №2, привязанное к заявке 1059; они намеренно
+сохранены как наблюдаемый результат проверки. Calendar теперь показывает
+связанную компанию вторичной строкой по настоящему `supplier_name`, не угадывая
+её из текста. На телефоне и планшете дата с задачей открывает компактный
+список задач дня с читаемым сокращённым именем компании; desktop сохраняет
+вторую строку прямо в ячейке. Focused support tests (5), frontend production build, root HTTP 200,
+unauthenticated support API 401 и browser desktop/mobile flows подтверждены.
+Pixel-to-pixel acceptance against the owner screenshot и browser file upload
+остаются `NOT VERIFIED`: файл screenshot отсутствовал в доступной attachment
+directory, а загрузка отдельного локального файла в owner session не выполнялась.
+На `/messages` ИИ-помощник теперь использует тот же компактный floating-паттерн,
+что и техподдержка: он не сужает открытую переписку, а открывается поверх неё
+в карточке `SUPPLYDESK · AI`. Отдельный правый рэйл удалён; Заметки, Задачи и
+ИИ доступны как три современные иконки в шапке открытой переписки. Desktop и
+390 px mobile-рендеры, открытие и закрытие ИИ, отсутствие горизонтального
+выхода проверены в браузере.
+По отдельному явному разрешению владельца выполнены два живых AI-запроса в
+owner session: после выбора двух отвеченных поставщиков ИИ извлёк из писем
+модели, цены, наличие, мощность, материал, требования и гарантию, не выдавая
+отсутствующие факты за известные. Фактический счётчик после проверки —
+`0.02 ₽ из 10 ₽`; сообщения сохранены в серверной истории текущей заявки.
+После живого сложного ответа UI безопасно научен отображать таблицы, заголовки
+и списки модели как React-элементы без интерпретации HTML; широкая таблица
+прокручивается только внутри диалога ИИ.
+
+`2026-09-12` — `TASK-MVP-SHOWREADY-20260911` is complete locally with the
+explicit PARTIAL/DEFERRED limits recorded below. P0 Checko is
+`DONE`: a real server-side company lookup returned registry facts without a
+401 or key disclosure, while absent finance reporting was distinguished from
+an auth error. The supplier card now states Checko risk availability, and no
+internal Checko configuration marker reaches the UI. P0 smoke is `PARTIAL`:
+the live authenticated session, Dashboard, requests, suppliers and Messages
+rendered successfully; frontend/auth/unknown-API responses were `200/200/404`.
+A deliberate new logout/login was not run so as not to disrupt the owner's
+working session. P1 completed in this slice: a shared Russian money formatter
+from rubles through trillions, existing note-marker verification, PageHeader
+audit, a Dashboard that suppresses empty categories and has no horizontal
+overflow at 390px, responsive table audits, a supplier-card finance trend with
+safe year-over-year percentages, the approved separation of attention from
+task/calendar data, and distinct reply-count badges. Sidebar fallbacks are
+explicit and its manual collapse preference persists locally. The exact
+  surname-initial profile format remains partial: it needs structured identity
+  data and an explicit OAuth consent/scope decision, not inference from a
+  display name. Task creation now provides a shared concrete confirmation,
+  open target and recoverable undo across Dashboard, supplier card and quick
+  add; it shows the real date or no deadline, because the present API has no
+  time field. Live create/delete was intentionally not run on owner data.
+  Thread notes now have separate private and workspace storage;
+  workspace notes carry author/create/update metadata, while legacy private
+  notes retain only their truthful update timestamp. Disposable-DB coverage
+  proves separation and cross-workspace isolation. Migration 041 is applied
+  to the canonical local DB; the backend was restarted with outgoing mail
+  forced off, and both note tabs were rendered on desktop and 390px mobile.
+  The Messages context panel also now has a read-only activity list built only
+  from the latest thread email, its private/workspace notes, and active or
+  completed tasks related to the same request or global supplier. A live
+  record showed the related task and last email; desktop, 768px and 390px
+  renders were checked, with `scrollWidth === clientWidth` at 390px.
+  Task migration 042 is now applied to the canonical local DB: a companion
+  `task_details` table preserves legacy tasks while allowing description,
+  local due time with an explicit IANA timezone, priority and workspace
+  assignee. The three existing create forms and inline editor expose optional
+  time, description, priority and a safe workspace-member picker while
+  retaining date-only compatibility. Assignees can update content and status,
+  but cannot reassign or delete a task they do not author. Desktop, 768px and
+  390px forms rendered without horizontal overflow, so SUP-017 is `DONE`.
+  SUP-018 is `DONE`: the new `/calendar` route exposes month, week, agenda,
+  upcoming and today views over active dated tasks only. It uses no added
+  calendar dependency, keeps date-less tasks out of calendar events, and links
+  a calendar item back to the original task. Real owner data plus the empty
+  today state rendered at 1440, 768 and 390px; at every checked width,
+  `scrollWidth === clientWidth` and no inspected control exited the viewport.
+  SUP-019 is `DONE`: migration 043 introduced provider-neutral in-app/email
+  reminder persistence, edit/delete semantics and list/calendar presentation;
+  it intentionally schedules no external delivery. SUP-020 is `DONE`:
+  migration 044 extends that record with a `phone` channel only for a local
+  dev/test mock. The mock logs `PHONE_REMINDER_MOCK_TRIGGERED` and updates an
+  internal status, never calling a network service. `PHONE_REMINDERS_MODE`
+  fails closed: `live` and production resolve to disabled; the actual local
+  production-safe UI visibly renders «Позвонить мне · скоро». The desktop
+  phone screen was visually checked; 768/390 phone-specific renders were not
+  checked because the production UI intentionally keeps the option disabled.
+  SUP-021 is `PARTIAL`: migration 045 adds a workspace-only contact-person
+  record with name, role, phone, email and private/team visibility. A member
+  cannot see another member's private contact or alter it; that isolation and
+  the native mailto/tel-only actions are covered by focused tests. The owner
+  supplier card and an unsaved contact form rendered on desktop, 768 px and
+  390 px. No contact was written into the owner's local data, so live CRUD is
+  intentionally not claimed.
+  SUP-022 is `PARTIAL`: CSV-first preview/mapping UI and authenticated API now
+  accept UTF-8 CSV in memory (1 MB/500 nonempty-row limit), propose/manual-map
+  columns, validate INN and show workspace duplicate candidates. Confirmed
+  Apply creates only new workspace cards with a valid INN; duplicates are
+  skipped strictly by INN, and existing cards are neither updated nor merged.
+  Audit records preserve import source, CSV line and author. `region` and
+  `role` remain preview-only by design. The complete preview/confirmation flow
+  was exercised in the browser with an artificial CSV (one create candidate,
+  one INN duplicate and one missing-INN row) at 1280/768/390 px. Final Apply
+  was intentionally not invoked, so no owner-data card was created. At 390 px
+  the preview panel now scrolls within the viewport without horizontal overflow;
+  XLSX remains unimplemented.
+  SUP-023 is `PARTIAL`: migration 046 adds workspace-only supplier
+  classifications (`category`, `product`, `brand`, `specialization`) with
+  durable `value/source/confidence/source_url/timestamps`. The card shows
+  source/confidence and allows a manual label only; the API forces UI writes to
+  `manual`, preserving the distinction from `registry` and `ai`. Disposable-DB
+  tests prove source separation, owner-only mutation and validation; the live
+  unsaved card/form rendered at desktop, 768 px and 390 px. Registry/AI
+  producer integrations remain deliberately absent.
+  SUP-024 is `PARTIAL`: supplier card reads and workspace-contact/
+  classification writes require the same `workspace_id + global_supplier_id`.
+  A disposable two-workspace regression verifies no cross-card read or write,
+  including two supplier records with the same INN. A second live browser
+  session was intentionally not opened, so cross-session UI proof is not
+  claimed.
+  SUP-025 is `PARTIAL`: the new `/help` screen offers only verified local FAQ
+  answers for current MVP capabilities. An unmatched question explicitly says
+  it cannot be confirmed and permits copying user-authored text for manual
+  support escalation; no ticket, network request, invented contact channel or
+  AI-generated answer is made. Browser checks covered a CSV question and an
+  unsupported WhatsApp-bot question without overflow. A full knowledge base,
+  onboarding and connected support channel remain unimplemented.
+  SUP-026 is `DONE` as a scoped product decision: a private and a workspace
+  note remain the sole current-context records; no evidence supports the
+  complexity of revision history, conflict resolution, restore and retention.
+  The workspace-note upsert now records the last editor, which the panel labels
+  truthfully; a two-member focused test verifies it. Any future versioning
+  needs standalone acceptance criteria.
+  SUP-027 is `DONE` as a product decision not to add an artificial supplier
+  score. Existing Checko facts, finance, communication metrics and per-deal
+  ratings have no approved common weights, provenance, freshness or
+  missing-data semantics. The UI deliberately preserves those facts separately;
+  a future score requires a standalone explainability contract.
+  The task form and forced compact navigation at narrow widths were rendered
+  at 390, 768 and 1440 px with no horizontal overflow. Production deployment,
+  commit, and any real telephony remain out of scope.
 
 `2026-09-11` — real outgoing-mail acceptance for
 `TASK-MESSAGES-QUOTE-CHECKO-DESIGN-SEND-20260911`: `PASS` for the bounded

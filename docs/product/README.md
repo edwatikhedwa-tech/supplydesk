@@ -27,6 +27,11 @@ requirements.
 
 - [`messages-workspace.md`](messages-workspace.md) — procurement-oriented
   correspondence workspace and safe unmatched workflow.
+- [`APPROVED_MVP_INTERFACE.md`](APPROVED_MVP_INTERFACE.md) — утверждённый
+  продуктовый контракт MVP: экраны, данные, Activity, календарь и границы
+  phone reminders.
+- [`MVP_BACKLOG.md`](MVP_BACKLOG.md) — единый проверяемый backlog MVP с
+  приоритетами, зависимостями, рисками и методами проверки.
 
 ## Status
 

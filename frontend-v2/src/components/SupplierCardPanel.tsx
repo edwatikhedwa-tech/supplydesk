@@ -1,8 +1,11 @@
 import { Check, ExternalLink, FileText, Loader2, Search, StickyNote, TriangleAlert, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, type ThreadNoteVisibility, type ThreadNotes } from '../lib/api';
+import { formatDateTime } from '../lib/format';
 import { SupplierCardContent } from './SupplierCardContent';
+import { ActivityTimeline } from './ActivityTimeline';
+import type { Task } from '../lib/types';
 
 /** Opened only from the Messages "Заметки" action. It keeps the active
  * request, the current-thread note and the supplier card together, so a user
@@ -12,13 +15,14 @@ import { SupplierCardContent } from './SupplierCardContent';
  * The per-thread note (this request + this supplier specifically) is kept
  * alongside the supplier's global note rather than dropped -- it predates
  * this panel and nothing else surfaces it. */
-type InnState = 'idle' | 'searching' | 'invalid' | 'not_found' | 'unavailable' | 'no_key' | 'error';
+type InnState = 'idle' | 'searching' | 'invalid' | 'not_found' | 'unavailable' | 'error';
 
 export function SupplierCardPanel({
   requestId,
   requestName,
   supplierId,
   globalSupplierId,
+  lastMessageAt,
   onClose,
   onNoteSaved,
   onSupplierLinked,
@@ -30,6 +34,7 @@ export function SupplierCardPanel({
   supplierId: number;
   /** Global картотека id -- null until this thread's supplier is confirmed/linked. */
   globalSupplierId: number | null;
+  lastMessageAt: string | null;
   onClose: () => void;
   onNoteSaved?: () => void;
   /** Fired once a manual ИНН entry links this thread's supplier to the
@@ -37,9 +42,11 @@ export function SupplierCardPanel({
    * `globalSupplierId` from the outside, e.g. for the AI-context panel too). */
   onSupplierLinked?: () => void;
 }) {
-  const [threadNote, setThreadNote] = useState('');
+  const [threadNotes, setThreadNotes] = useState<ThreadNotes>({ private: null, workspace: null });
+  const [threadNoteVisibility, setThreadNoteVisibility] = useState<ThreadNoteVisibility>('private');
   const [threadNoteLoaded, setThreadNoteLoaded] = useState(false);
   const [threadNoteSaveState, setThreadNoteSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [relatedTasks, setRelatedTasks] = useState<Task[]>([]);
   const threadNoteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [innValue, setInnValue] = useState('');
@@ -47,15 +54,28 @@ export function SupplierCardPanel({
   const [innMessage, setInnMessage] = useState('');
   const [resolvedGlobalSupplierId, setResolvedGlobalSupplierId] = useState<number | null>(null);
   const innSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const effectiveGlobalSupplierId = globalSupplierId ?? resolvedGlobalSupplierId;
 
   useEffect(() => {
     setThreadNoteLoaded(false);
     api
       .getThreadNote(requestId, supplierId)
-      .then((res) => setThreadNote(res.note))
-      .catch(() => setThreadNote(''))
+      // A live frontend can briefly meet a backend that has not restarted to
+      // pick up migration 041. Preserve the old personal note in that safe,
+      // read-only compatibility window instead of rendering an empty panel.
+      .then((res) => setThreadNotes(res.notes ?? {
+        private: res.note ? { note: res.note, visibility: 'private', author_name: 'Вы', created_at: null, updated_at: '' } : null,
+        workspace: null,
+      }))
+      .catch(() => setThreadNotes({ private: null, workspace: null }))
       .finally(() => setThreadNoteLoaded(true));
   }, [requestId, supplierId]);
+
+  useEffect(() => {
+    api.listTasks(true)
+      .then((result) => setRelatedTasks(result.items.filter((task) => task.request_id === requestId || (effectiveGlobalSupplierId !== null && task.supplier_id === effectiveGlobalSupplierId))))
+      .catch(() => setRelatedTasks([]));
+  }, [requestId, effectiveGlobalSupplierId]);
 
   useEffect(() => {
     setInnValue('');
@@ -64,8 +84,6 @@ export function SupplierCardPanel({
     setResolvedGlobalSupplierId(null);
     if (innSearchTimer.current) clearTimeout(innSearchTimer.current);
   }, [requestId, supplierId]);
-
-  const effectiveGlobalSupplierId = globalSupplierId ?? resolvedGlobalSupplierId;
 
   function handleInnInputChange(raw: string) {
     const digits = raw.replace(/\D/g, '').slice(0, 12);
@@ -99,12 +117,9 @@ export function SupplierCardPanel({
       } else if (res.checko_status === 'not_found') {
         setInnState('not_found');
         setInnMessage(res.checko_error || 'Компания с этим ИНН не найдена в Checko. ИНН сохранён.');
-      } else if (res.checko_error.includes('CHECKO_KEY')) {
-        setInnState('no_key');
-        setInnMessage(res.checko_error);
       } else {
         setInnState('unavailable');
-        setInnMessage(res.checko_error || 'Checko временно недоступен. ИНН сохранён, попробуйте обновить данные позже.');
+        setInnMessage('Проверка по Checko временно недоступна. ИНН сохранён, попробуйте обновить данные позже.');
       }
     } catch (e) {
       if (e instanceof ApiError && e.status === 400) {
@@ -118,14 +133,24 @@ export function SupplierCardPanel({
   }
 
   function handleThreadNoteChange(value: string) {
-    setThreadNote(value);
+    setThreadNotes((current) => ({
+      ...current,
+      [threadNoteVisibility]: {
+        note: value,
+        visibility: threadNoteVisibility,
+        author_name: current[threadNoteVisibility]?.author_name || 'Вы',
+        created_at: current[threadNoteVisibility]?.created_at || null,
+        updated_at: current[threadNoteVisibility]?.updated_at || '',
+      },
+    }));
     setThreadNoteSaveState('idle');
     if (threadNoteSaveTimer.current) clearTimeout(threadNoteSaveTimer.current);
     threadNoteSaveTimer.current = setTimeout(() => {
       setThreadNoteSaveState('saving');
       api
-        .saveThreadNote(requestId, supplierId, value)
-        .then(() => {
+        .saveThreadNote(requestId, supplierId, value, threadNoteVisibility)
+        .then((res) => {
+          setThreadNotes(res.notes);
           setThreadNoteSaveState('saved');
           onNoteSaved?.();
         })
@@ -176,9 +201,26 @@ export function SupplierCardPanel({
             <StickyNote size={13} />
             Заметка по этой переписке
           </h2>
+          <div className="mb-2 flex gap-1 rounded-md bg-surface-hover p-0.5 text-[11px]" role="tablist" aria-label="Видимость заметки">
+            {([
+              ['private', 'Личная'],
+              ['workspace', 'Для команды'],
+            ] as const).map(([visibility, label]) => (
+              <button
+                key={visibility}
+                type="button"
+                role="tab"
+                aria-selected={threadNoteVisibility === visibility}
+                onClick={() => setThreadNoteVisibility(visibility)}
+                className={`flex-1 rounded px-2 py-1 font-medium ${threadNoteVisibility === visibility ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           {threadNoteLoaded && (
             <textarea
-              value={threadNote}
+              value={threadNotes[threadNoteVisibility]?.note || ''}
               onChange={(e) => handleThreadNoteChange(e.target.value)}
               placeholder="Например: обещал прислать сертификаты до пятницы, звонить лучше после обеда…"
               className="min-h-[80px] w-full resize-y rounded-md border border-border-strong bg-canvas px-3 py-2 text-[12.5px] leading-relaxed outline-none placeholder:text-ink-faint focus:border-accent focus:ring-1 focus:ring-accent-border"
@@ -192,9 +234,19 @@ export function SupplierCardPanel({
                 Сохранено
               </>
             )}
-            {threadNoteSaveState === 'idle' && 'Видна только вам, привязана к этой переписке'}
+            {threadNoteSaveState === 'idle' && (
+              threadNotes[threadNoteVisibility]
+                ? threadNoteVisibility === 'workspace'
+                  ? `Для команды · последний редактор: ${threadNotes.workspace?.author_name} · изменено ${formatDateTime(threadNotes.workspace?.updated_at || new Date().toISOString())}`
+                  : `Личная заметка · ${threadNotes.private?.author_name} · изменено ${formatDateTime(threadNotes.private?.updated_at || new Date().toISOString())}`
+                : threadNoteVisibility === 'private'
+                  ? 'Видна только вам, привязана к этой переписке'
+                  : 'Видна участникам этого рабочего пространства'
+            )}
           </p>
         </section>
+
+        <ActivityTimeline lastMessageAt={lastMessageAt} notes={threadNotes} tasks={relatedTasks} />
 
         {effectiveGlobalSupplierId != null ? (
           <>
@@ -204,7 +256,7 @@ export function SupplierCardPanel({
                 {innMessage}
               </p>
             )}
-            {(innState === 'unavailable' || innState === 'no_key') && (
+            {innState === 'unavailable' && (
               <p className="flex items-start gap-1.5 border-b border-border bg-surface-hover px-3.5 py-2 text-[11.5px] leading-relaxed text-ink-muted">
                 <TriangleAlert size={13} className="mt-0.5 shrink-0" />
                 {innMessage}

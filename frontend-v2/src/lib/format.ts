@@ -72,14 +72,25 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} МБ`;
 }
 
-/** Compact RUB amount for supplier finance figures: "15.4 млн ₽", "290 тыс ₽". */
+/**
+ * Compact RUB amount for supplier finance figures.
+ *
+ * Keep amounts below a million exact enough to recognise in a table; use a
+ * one-decimal Russian compact unit only when the full number stops being
+ * scannable. This prevents values such as 261 369,8 млн ₽ being presented as
+ * if they were still millions instead of 261,4 млрд ₽.
+ */
 export function formatMoney(value: number | null): string {
-  if (value === null) return '—';
+  if (value === null || !Number.isFinite(value)) return '—';
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : '';
-  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1).replace(/\.0$/, '')} млн ₽`;
-  if (abs >= 1_000) return `${sign}${Math.round(abs / 1_000)} тыс ₽`;
-  return `${sign}${Math.round(abs)} ₽`;
+  const compact = (amount: number, unit: string) =>
+    `${sign}${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(amount)} ${unit} ₽`;
+
+  if (abs >= 1_000_000_000_000) return compact(abs / 1_000_000_000_000, 'трлн');
+  if (abs >= 1_000_000_000) return compact(abs / 1_000_000_000, 'млрд');
+  if (abs >= 1_000_000) return compact(abs / 1_000_000, 'млн');
+  return `${sign}${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(abs)} ₽`;
 }
 
 function pluralYears(n: number): string {

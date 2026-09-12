@@ -4,7 +4,9 @@ import { AppShell } from './components/shell/AppShell';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 
 const Blacklist = lazy(() => import('./pages/Blacklist').then(({ Blacklist }) => ({ default: Blacklist })));
+const Calendar = lazy(() => import('./pages/Calendar').then(({ Calendar }) => ({ default: Calendar })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(({ Dashboard }) => ({ default: Dashboard })));
+const Help = lazy(() => import('./pages/Help').then(({ Help }) => ({ default: Help })));
 const Login = lazy(() => import('./pages/Login').then(({ Login }) => ({ default: Login })));
 const Messages = lazy(() => import('./pages/Messages').then(({ Messages }) => ({ default: Messages })));
 const RequestDetail = lazy(() => import('./pages/RequestDetail').then(({ RequestDetail }) => ({ default: RequestDetail })));
@@ -42,6 +44,7 @@ function Gate() {
         <Routes>
           <Route element={<AppShell />}>
             <Route index element={<Dashboard />} />
+            <Route path="calendar" element={<Calendar />} />
             <Route path="requests" element={<Requests />} />
             <Route path="requests/:id" element={<RequestDetail />} />
             <Route path="suppliers" element={<Suppliers />} />
@@ -49,6 +52,7 @@ function Gate() {
             <Route path="messages" element={<Messages />} />
             <Route path="blacklist" element={<Blacklist />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="help" element={<Help />} />
           </Route>
         </Routes>
       </HashRouter>

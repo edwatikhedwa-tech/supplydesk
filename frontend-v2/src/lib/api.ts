@@ -28,8 +28,16 @@ import type {
   RequestDetail,
   RequestListItem,
   SupplierDirectoryItem,
+  SupplierImportPreview,
+  SupplierImportApplyResult,
+  SupplierImportTargetField,
   SupplierSendInput,
+  SupportCategory,
+  SupportConversation,
+  SupportConversationSummary,
   Task,
+  TaskReminderInput,
+  WorkspaceMember,
   ThreadSummary,
 } from './types';
 
@@ -108,6 +116,22 @@ export interface MeResponse {
   runtime?: RuntimeIdentity;
 }
 
+export type ThreadNoteVisibility = 'private' | 'workspace';
+
+export interface ThreadNoteEntry {
+  note: string;
+  visibility: ThreadNoteVisibility;
+  author_name: string;
+  /** Legacy personal notes predate created_at; null means it was not recorded. */
+  created_at: string | null;
+  updated_at: string;
+}
+
+export interface ThreadNotes {
+  private: ThreadNoteEntry | null;
+  workspace: ThreadNoteEntry | null;
+}
+
 export const api = {
   me: () => request<MeResponse>('/api/auth/me'),
   login: (email: string, password: string) =>
@@ -118,12 +142,29 @@ export const api = {
   logout: () => request<{ ok: true }>('/api/auth/logout', { method: 'POST' }),
 
   dashboardSummary: () => request<DashboardSummary>('/api/dashboard/summary'),
-  listTasks: () => request<{ items: Task[] }>('/api/tasks'),
-  createTask: (input: { title: string; due_date?: string; request_id?: number; supplier_id?: number }) =>
+  listTasks: (includeDone = false) => request<{ items: Task[]; phone_reminders_mode: 'mock' | 'disabled' }>(`/api/tasks${includeDone ? '?include_done=1' : ''}`),
+  createTask: (input: {
+    title: string; description?: string; due_date?: string; due_at?: string;
+    timezone?: string; priority?: 'low' | 'normal' | 'high'; assignee_user_id?: number;
+    request_id?: number; supplier_id?: number; reminders?: TaskReminderInput[];
+  }) =>
     request<{ ok: true; task_id: number }>('/api/tasks', { method: 'POST', body: JSON.stringify(input) }),
+  updateTask: (taskId: number, input: {
+    title: string; description?: string; due_date?: string; due_at?: string; timezone?: string;
+    priority?: 'low' | 'normal' | 'high'; assignee_user_id?: number; reminders?: TaskReminderInput[];
+  }) => request<{ ok: true; task_id: number }>(`/api/tasks/${taskId}`, { method: 'PUT', body: JSON.stringify(input) }),
   setTaskDone: (taskId: number, done: boolean) =>
     request<{ ok: true; id: number; done: boolean }>(`/api/tasks/${taskId}/done`, { method: 'POST', body: JSON.stringify({ done }) }),
   deleteTask: (taskId: number) => request<{ ok: true }>(`/api/tasks/${taskId}`, { method: 'DELETE' }),
+  listWorkspaceMembers: () => request<{ items: WorkspaceMember[] }>('/api/workspace/members'),
+  listSupportConversations: () => request<{ items: SupportConversationSummary[] }>('/api/support/conversations'),
+  getSupportConversation: (conversationId: number) => request<{ conversation: SupportConversation }>(`/api/support/conversations/${conversationId}`),
+  createSupportConversation: (input: {
+    text: string; category: SupportCategory; linked_request_id: number | null; current_url: string;
+    current_section: string; app_version: string; attachment?: MailAttachment;
+  }) => request<{ conversation: SupportConversation }>('/api/support/conversations', { method: 'POST', body: JSON.stringify(input) }),
+  sendSupportMessage: (conversationId: number, input: { text: string; attachment?: MailAttachment }) =>
+    request<{ conversation: SupportConversation }>(`/api/support/conversations/${conversationId}/messages`, { method: 'POST', body: JSON.stringify(input) }),
   listRequests: () => request<{ items: RequestListItem[] }>('/api/requests'),
   getRequestDetail: (requestId: number) => request<RequestDetail>(`/api/requests/${requestId}`),
   markSupplierIrrelevant: (requestId: number, supplierId: number) =>
@@ -159,11 +200,25 @@ export const api = {
   }) => request<{ ok: true; queued: QueuedBulkResult[] }>('/api/mail/send-bulk', { method: 'POST', body: JSON.stringify(input) }),
   listGlobalSuppliers: () => request<{ items: GlobalSupplierSummary[] }>('/api/global-suppliers'),
   listSupplierDirectory: () => request<{ items: SupplierDirectoryItem[] }>('/api/supplier-directory'),
+  previewSupplierImport: (input: { csv_text: string; mapping?: Record<string, SupplierImportTargetField | null> }) =>
+    request<{ ok: true } & SupplierImportPreview>('/api/supplier-import/preview', { method: 'POST', body: JSON.stringify(input) }),
+  applySupplierImport: (input: { csv_text: string; mapping?: Record<string, SupplierImportTargetField | null>; confirmed: true }) =>
+    request<{ ok: true; plan: Omit<SupplierImportPreview['apply_plan'], 'requires_confirmation'> } & SupplierImportApplyResult>('/api/supplier-import/apply', { method: 'POST', body: JSON.stringify(input) }),
   getGlobalSupplierDetail: (id: number) => request<GlobalSupplierDetail>(`/api/global-suppliers/${id}`),
   saveGlobalSupplierNote: (id: number, note: string) =>
     request<{ ok: true }>(`/api/global-suppliers/${id}`, { method: 'POST', body: JSON.stringify({ note }) }),
   setGlobalSupplierRelationship: (id: number, status: 'none' | 'favorite' | 'blacklisted', reason = '') =>
     request<{ ok: true }>(`/api/global-suppliers/${id}/relationship`, { method: 'POST', body: JSON.stringify({ status, reason }) }),
+  createWorkspaceSupplierContact: (supplierId: number, input: { name: string; role: string; phone: string; email: string; visibility: 'private' | 'workspace' }) =>
+    request<{ ok: true; contact_id: number }>(`/api/global-suppliers/${supplierId}/contacts`, { method: 'POST', body: JSON.stringify(input) }),
+  updateWorkspaceSupplierContact: (supplierId: number, contactId: number, input: { name: string; role: string; phone: string; email: string; visibility: 'private' | 'workspace' }) =>
+    request<{ ok: true }>(`/api/global-suppliers/${supplierId}/contacts/${contactId}`, { method: 'POST', body: JSON.stringify(input) }),
+  deleteWorkspaceSupplierContact: (supplierId: number, contactId: number) =>
+    request<{ ok: true }>(`/api/global-suppliers/${supplierId}/contacts/${contactId}`, { method: 'POST', body: JSON.stringify({ action: 'delete' }) }),
+  createWorkspaceSupplierClassification: (supplierId: number, input: { kind: 'category' | 'product' | 'brand' | 'specialization'; value: string; confidence: 'low' | 'medium' | 'high' }) =>
+    request<{ ok: true; classification_id: number }>(`/api/global-suppliers/${supplierId}/classifications`, { method: 'POST', body: JSON.stringify(input) }),
+  deleteWorkspaceSupplierClassification: (supplierId: number, classificationId: number) =>
+    request<{ ok: true }>(`/api/global-suppliers/${supplierId}/classifications/${classificationId}`, { method: 'POST', body: JSON.stringify({ action: 'delete' }) }),
   listBlacklist: () => request<{ items: BlacklistEntry[] }>('/api/blacklist'),
   restoreBlacklist: (entryId: number) => request<{ ok: true }>(`/api/blacklist/${entryId}/restore`, { method: 'POST' }),
 
@@ -246,11 +301,11 @@ export const api = {
       body: JSON.stringify({ status }),
     }),
 
-  getThreadNote: (requestId: number, supplierId: number) => request<{ note: string }>(`/api/requests/${requestId}/suppliers/${supplierId}/note`),
-  saveThreadNote: (requestId: number, supplierId: number, note: string) =>
-    request<{ ok: true; note: string }>(`/api/requests/${requestId}/suppliers/${supplierId}/note`, {
+  getThreadNote: (requestId: number, supplierId: number) => request<{ note: string; notes?: ThreadNotes }>(`/api/requests/${requestId}/suppliers/${supplierId}/note`),
+  saveThreadNote: (requestId: number, supplierId: number, note: string, visibility: ThreadNoteVisibility = 'private') =>
+    request<{ ok: true; note: string; visibility: ThreadNoteVisibility; notes: ThreadNotes }>(`/api/requests/${requestId}/suppliers/${supplierId}/note`, {
       method: 'POST',
-      body: JSON.stringify({ note }),
+      body: JSON.stringify({ note, visibility }),
     }),
 
   getLogisticsQuote: (requestId: number, supplierId: number) =>

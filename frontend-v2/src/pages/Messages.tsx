@@ -4,15 +4,16 @@ import {
   ArrowLeft,
   ArrowUpRight,
   Ban,
+  BrainCircuit,
   Check,
   CheckCheck,
   ChevronRight,
   Inbox,
+  ListTodo,
   Link2,
+  NotebookPen,
   Send,
   Sparkles,
-  SquareCheck,
-  StickyNote,
   Truck,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -34,6 +35,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { Frame, FrameDescription, FrameHeader, FramePanel, FrameTitle } from '../components/ui/Frame';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { PageHeader } from '../components/shell/PageHeader';
 import { ApiError, api } from '../lib/api';
 import { useAuth } from '../lib/AuthContext';
 import { threadResponseStatus, messageSenderName, type ResponseStatus } from '../lib/derive';
@@ -826,8 +828,7 @@ export function Messages() {
                     <Button variant="secondary" size="sm" icon={<Truck size={13} />} onClick={() => setLogisticsOpen(true)}>
                       Доставка
                     </Button>
-                    {isNarrow && (
-                      <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => {
@@ -835,10 +836,11 @@ export function Messages() {
                             setTasksOpen(false);
                             setAiOpen(false);
                           }}
-                          title="Заметки"
-                          className={clsx('relative flex h-8 w-8 items-center justify-center rounded-[10px]', notesOpen ? 'bg-accent-subtle text-accent' : hasNote ? 'text-warning' : 'text-ink-muted hover:bg-surface-hover')}
+                          title="Заметки по поставщику"
+                          aria-label="Заметки по поставщику"
+                          className={clsx('relative flex h-8 w-8 items-center justify-center rounded-[10px] border border-border-strong bg-surface transition-colors', notesOpen ? 'border-accent-border bg-accent-subtle text-accent' : hasNote ? 'text-warning hover:bg-surface-hover' : 'text-ink-muted hover:bg-surface-hover hover:text-ink')}
                         >
-                          <StickyNote size={15} fill={hasNote && !notesOpen ? 'currentColor' : 'none'} />
+                          <NotebookPen size={16} />
                         </button>
                         <button
                           type="button"
@@ -847,10 +849,11 @@ export function Messages() {
                             setNotesOpen(false);
                             setAiOpen(false);
                           }}
-                          title="Задачи"
-                          className={clsx('flex h-8 w-8 items-center justify-center rounded-[10px]', tasksOpen ? 'bg-accent-subtle text-accent' : 'text-ink-muted hover:bg-surface-hover')}
+                          title="Задачи поставщика"
+                          aria-label="Задачи поставщика"
+                          className={clsx('flex h-8 w-8 items-center justify-center rounded-[10px] border border-border-strong bg-surface transition-colors', tasksOpen ? 'border-accent-border bg-accent-subtle text-accent' : 'text-ink-muted hover:bg-surface-hover hover:text-ink')}
                         >
-                          <SquareCheck size={15} />
+                          <ListTodo size={16} />
                         </button>
                         <button
                           type="button"
@@ -859,13 +862,13 @@ export function Messages() {
                             setNotesOpen(false);
                             setTasksOpen(false);
                           }}
-                          title="ИИ-помощник"
-                          className={clsx('flex h-8 w-8 items-center justify-center rounded-[10px]', aiOpen ? 'bg-accent-subtle text-accent' : 'text-ink-muted hover:bg-surface-hover')}
+                          title="Открыть ИИ-помощника"
+                          aria-label="Открыть ИИ-помощника"
+                          className={clsx('flex h-8 w-8 items-center justify-center rounded-[10px] border border-border-strong bg-surface transition-colors', aiOpen ? 'border-accent-border bg-accent-subtle text-accent' : 'text-ink-muted hover:bg-surface-hover hover:text-ink')}
                         >
-                          <Sparkles size={15} />
+                          <BrainCircuit size={16} />
                         </button>
-                      </div>
-                    )}
+                    </div>
                   </div>
                 </FrameHeader>
                 {hasReplies && (
@@ -1075,14 +1078,7 @@ export function Messages() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <header className="px-4 pt-4 pb-3 sm:px-6 sm:pt-5">
-        <div className="flex items-center gap-2" aria-label="Раздел сообщений">
-          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent" />
-          <h1 className="font-display text-[19px] font-semibold leading-tight text-ink">Сообщения</h1>
-          <div role="separator" aria-hidden="true" className="ml-2 h-px min-w-8 max-w-24 flex-1 bg-border" />
-        </div>
-        <p className="mt-1 text-left text-[12px] text-ink-muted">Переписка с поставщиками и письма без привязки</p>
-      </header>
+      <PageHeader title="Сообщения" description="Переписка с поставщиками и письма без привязки" />
       <div className="flex min-h-0 flex-1">
         {isNarrow ? (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -1090,23 +1086,17 @@ export function Messages() {
           </div>
         ) : (
           <Group orientation="horizontal" className="flex flex-1">
-            <Panel defaultSize={aiChatPanel ? '38%' : '34%'} minSize="22%" maxSize="42%" className="flex min-w-0 flex-col border-r border-border">
+            <Panel defaultSize="34%" minSize="22%" maxSize="42%" className="flex min-w-0 flex-col border-r border-border">
               {threadListPane}
             </Panel>
             <Separator className="group relative flex w-2 cursor-col-resize items-stretch justify-center bg-transparent before:w-px before:bg-border hover:before:bg-accent-border" />
-            <Panel defaultSize={aiChatPanel ? '36%' : undefined} minSize={aiChatPanel ? '36%' : '35%'} className="flex min-w-0 flex-1 flex-col">
+            <Panel minSize="35%" className="flex min-w-0 flex-1 flex-col">
               {conversationPane}
             </Panel>
-            {aiChatPanel && (
-              <>
-                <Separator className="group relative flex w-2 cursor-col-resize items-stretch justify-center bg-transparent before:w-px before:bg-border hover:before:bg-accent-border" />
-                <Panel defaultSize="26%" minSize="20%" maxSize="42%" className="flex min-w-0 flex-col">
-                  {aiChatPanel}
-                </Panel>
-              </>
-            )}
           </Group>
         )}
+
+        {aiChatPanel}
 
         {/* On mobile these render as full-screen overlays (the panels' own
             root is w-full there); on sm+ the wrapper becomes `contents` --
@@ -1119,6 +1109,7 @@ export function Messages() {
               requestName={activeThread.request_name}
               supplierId={activeThread.supplier_id}
               globalSupplierId={activeThread.global_supplier_id}
+              lastMessageAt={activeThread.last_message_at}
               onClose={() => setNotesOpen(false)}
               onNoteSaved={() => noteState.reload()}
               onSupplierLinked={() => threadsState.reload()}
@@ -1132,85 +1123,6 @@ export function Messages() {
           </div>
         )}
 
-        {isNarrow && aiChatPanel && (
-          <div className="fixed inset-0 z-40">
-            {aiChatPanel}
-          </div>
-        )}
-
-        {/* The vertical icon rail only makes sense with room to spare -- on
-            mobile the same three actions live in the conversation header
-            instead (see conversationPane), so this whole column is skipped
-            there rather than eating ~48px next to an already-narrow pane. */}
-        {!isNarrow && (
-          <div className="flex w-12 shrink-0 flex-col items-center gap-1 border-l border-border py-3">
-            <button
-              type="button"
-              disabled={!activeThread}
-              onClick={() => {
-                setNotesOpen((v) => !v);
-                setTasksOpen(false);
-                setAiOpen(false);
-              }}
-              title={activeThread ? (hasNote ? 'Заметки — есть заметка' : 'Заметки') : 'Заметки — откройте переписку по заявке'}
-              className={clsx(
-                'relative flex h-9 w-9 items-center justify-center rounded-md',
-                !activeThread
-                  ? 'cursor-not-allowed text-ink-faint'
-                  : notesOpen
-                    ? 'bg-accent-subtle text-accent'
-                    : hasNote
-                      ? 'text-warning hover:bg-surface-hover'
-                      : 'text-ink-muted hover:bg-surface-hover hover:text-ink',
-              )}
-            >
-              <StickyNote size={16} fill={hasNote && !notesOpen ? 'currentColor' : 'none'} />
-              {hasNote && !notesOpen && (
-                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-warning ring-2 ring-surface" />
-              )}
-            </button>
-            <button
-              type="button"
-              disabled={!activeThread}
-              onClick={() => {
-                setTasksOpen((v) => !v);
-                setNotesOpen(false);
-                setAiOpen(false);
-              }}
-              title={activeThread ? 'Задачи' : 'Задачи — откройте переписку по заявке'}
-              className={clsx(
-                'flex h-9 w-9 items-center justify-center rounded-md',
-                !activeThread
-                  ? 'cursor-not-allowed text-ink-faint'
-                  : tasksOpen
-                    ? 'bg-accent-subtle text-accent'
-                    : 'text-ink-muted hover:bg-surface-hover hover:text-ink',
-              )}
-            >
-              <SquareCheck size={16} />
-            </button>
-            <button
-              type="button"
-              disabled={!activeThread && !activeUnmatchedId}
-              onClick={() => {
-                setAiOpen((v) => !v);
-                setNotesOpen(false);
-                setTasksOpen(false);
-              }}
-              title={activeThread || activeUnmatchedId ? 'ИИ-помощник' : 'ИИ-помощник — откройте переписку'}
-              className={clsx(
-                'flex h-9 w-9 items-center justify-center rounded-md',
-                !activeThread && !activeUnmatchedId
-                  ? 'cursor-not-allowed text-ink-faint'
-                  : aiOpen
-                    ? 'bg-accent-subtle text-accent'
-                    : 'text-ink-muted hover:bg-surface-hover hover:text-ink',
-              )}
-            >
-              <Sparkles size={16} />
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

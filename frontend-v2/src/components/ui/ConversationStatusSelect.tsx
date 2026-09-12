@@ -12,24 +12,25 @@ const LABEL: Record<ConversationStatus | 'none', string> = {
   deferred: 'Отложено',
   rejected: 'Отклонено',
 };
-const PILL_CLASS: Record<ConversationStatus | 'none', string> = {
-  none: 'bg-surface-hover text-ink-muted',
+const STATUS_SURFACE_CLASS: Record<ConversationStatus | 'none', string> = {
+  none: 'border-border-strong bg-surface-hover text-ink-muted hover:bg-surface-hover',
   // Green is reserved for the factual delivery state "Есть ответ".
   // The operator's next action should be visually distinct from that fact.
-  in_progress: 'bg-accent-subtle text-accent',
-  deferred: 'bg-warning-subtle text-warning',
-  rejected: 'bg-danger-subtle text-danger',
+  in_progress: 'border-accent-border bg-accent-subtle text-accent hover:bg-accent-subtle/80',
+  deferred: 'border-warning-border bg-warning-subtle text-warning hover:bg-warning-subtle/80',
+  rejected: 'border-danger-border bg-danger-subtle text-danger hover:bg-danger-subtle/80',
 };
 const ORDER: (ConversationStatus | 'none')[] = ['none', 'in_progress', 'deferred', 'rejected'];
 
 function StatusPill({ status }: { status: ConversationStatus | 'none' }) {
-  return <span className={cn('inline-flex h-5 w-20 shrink-0 items-center justify-center rounded-md px-1.5 text-[10px] font-medium leading-none whitespace-nowrap', PILL_CLASS[status])}>{LABEL[status]}</span>;
+  return <span className={cn('inline-flex h-6 min-w-24 shrink-0 items-center justify-center rounded-md border px-2 text-[10px] font-medium leading-none whitespace-nowrap', STATUS_SURFACE_CLASS[status])}>{LABEL[status]}</span>;
 }
 
 /**
  * ReUI's c-select-19 composition, adapted to SupplyDesk's existing Radix
- * Select and status vocabulary: a visible label, a rectangular status badge
- * in the trigger, and the same badges in the option list.
+ * Select and status vocabulary: one fully tinted semantic trigger instead of
+ * an outlined control that contains a second visual badge. The option list
+ * uses the same status surfaces.
  */
 export function ConversationStatusSelect({
  value,
@@ -54,18 +55,19 @@ export function ConversationStatusSelect({
         aria-label={ariaLabel}
         onClick={onClick}
         className={cn(
-          'border-border-strong bg-surface px-2.5 shadow-none hover:bg-surface-hover',
+          'px-2.5 shadow-none',
+          STATUS_SURFACE_CLASS[key],
           size === 'sm' && showLabel
             ? 'min-w-[152px] gap-1.5 text-[11px]'
             : size === 'sm'
-              ? 'h-8 w-[116px] shrink-0 justify-between gap-1 rounded-[10px] border-border-strong bg-surface px-2 text-[11px] hover:bg-surface-hover'
-              : 'h-8 w-[200px] rounded-[10px] gap-1.5 text-sm',
+              ? 'h-8 w-[116px] shrink-0 justify-between gap-1 rounded-[10px] px-2 text-[11px]'
+              : 'h-8 w-[176px] rounded-[10px] gap-1.5 text-sm',
         )}
       >
         <span className="flex min-w-0 items-center gap-1.5">
-          {showLabel && <span className="shrink-0 font-medium text-ink">Статус:</span>}
+          {showLabel && <span className="shrink-0 font-medium">Статус:</span>}
           <SelectValue>
-            <StatusPill status={key} />
+            <span className="truncate font-medium">{LABEL[key]}</span>
           </SelectValue>
         </span>
       </SelectTrigger>

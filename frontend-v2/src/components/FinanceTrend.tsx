@@ -18,6 +18,16 @@ function axisTick(value: number): string {
   return String(value);
 }
 
+/** Show a comparable year-over-year change without inventing a value for a
+ * missing or zero base year. Profit can legitimately be negative, therefore
+ * its magnitude is used as the denominator. */
+function percentageChange(current: number | null, previous: number | null): string | null {
+  if (current == null || previous == null || previous === 0) return null;
+  const change = ((current - previous) / Math.abs(previous)) * 100;
+  const value = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(Math.abs(change));
+  return `${change >= 0 ? '+' : '−'}${value}%`;
+}
+
 interface TooltipPayloadItem {
   dataKey?: string | number;
   value?: number | string | null;
@@ -48,9 +58,12 @@ export function FinanceTrend({ years }: { years: GlobalSupplierFinanceYear[] }) 
 
   const first = data[0];
   const last = data[data.length - 1];
+  const previous = data[data.length - 2];
   const revenueGrew = (last.revenue ?? 0) >= (first.revenue ?? 0);
   const profitFell = (last.profit ?? 0) < (first.profit ?? 0);
   const hasLoss = data.some((y) => (y.profit ?? 0) < 0);
+  const revenueChange = percentageChange(last.revenue, previous.revenue);
+  const profitChange = percentageChange(last.profit, previous.profit);
 
   return (
     <div>
@@ -94,6 +107,15 @@ export function FinanceTrend({ years }: { years: GlobalSupplierFinanceYear[] }) 
           Прибыль
         </span>
       </div>
+
+      {(revenueChange || profitChange) && (
+        <p className="mt-2 text-[11px] text-ink-muted">
+          {last.report_year} к {previous.report_year}:{' '}
+          {revenueChange && <span className={revenueChange.startsWith('+') ? 'text-success' : 'text-danger'}>выручка {revenueChange}</span>}
+          {revenueChange && profitChange && <span aria-hidden="true"> · </span>}
+          {profitChange && <span className={profitChange.startsWith('+') ? 'text-success' : 'text-danger'}>прибыль {profitChange}</span>}
+        </p>
+      )}
 
       {hasLoss && <p className="mt-2 text-[11px] text-danger">Были убыточные годы — проверьте условия предоплаты.</p>}
       {!hasLoss && revenueGrew && profitFell && (
