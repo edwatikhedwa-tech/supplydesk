@@ -35,7 +35,10 @@ class AiPanelContextCopyTests(unittest.TestCase):
 
         self.assertIn('role="dialog"', panel)
         self.assertIn('SUPPLYDESK · AI', panel)
-        self.assertIn('w-[min(420px,calc(100vw-32px))]', panel)
+        self.assertIn('max-w-[calc(100vw-32px)]', panel)
+        self.assertIn('max-h-[calc(100dvh-32px)]', panel)
+        self.assertIn('aria-label="Изменить размер ИИ-помощника"', panel)
+        self.assertIn('Новый чат', panel)
         self.assertIn('function renderAiAnswer', panel)
         self.assertIn('isMarkdownTableDivider', panel)
         self.assertIn('overflow-x-auto rounded-lg', panel)
@@ -43,7 +46,8 @@ class AiPanelContextCopyTests(unittest.TestCase):
         self.assertIn('Подготовить вопросы', panel)
         self.assertIn('NotebookPen', messages)
         self.assertIn('ListTodo', messages)
-        self.assertIn('BrainCircuit', messages)
+        self.assertIn('MessageCircleMore', messages)
+        self.assertNotIn('BrainCircuit', messages)
         self.assertIn('PageHeader title="Сообщения"', messages)
         self.assertNotIn('flex w-12 shrink-0 flex-col items-center', messages)
 

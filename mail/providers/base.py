@@ -60,3 +60,44 @@ class MailProvider(ABC):
         max_messages: int,
     ) -> IncomingBatch:
         raise ProviderError("Этот почтовый провайдер пока не поддерживает чтение входящих сообщений.")
+
+    def preview_sent(self, email: str, access_token: str, *, subject_marker: str | None = None) -> dict[str, object]:
+        """Return a read-only, metadata-only preview of marked Sent mail."""
+
+        raise ProviderError("Этот почтовый провайдер пока не поддерживает чтение отправленных сообщений.")
+
+    def fetch_sent(
+        self,
+        email: str,
+        access_token: str,
+        *,
+        uidvalidity: str | None,
+        last_uid: int,
+        max_messages: int,
+        subject_marker: str | None = None,
+    ) -> IncomingBatch:
+        raise ProviderError("Этот почтовый провайдер пока не поддерживает чтение отправленных сообщений.")
+
+    def preview_topic(
+        self,
+        email: str,
+        access_token: str,
+        *,
+        subject: str,
+        max_messages: int,
+    ) -> list[IncomingMessage]:
+        """Return matching Inbox/Sent headers without reading message bodies."""
+
+        raise ProviderError("Этот почтовый провайдер пока не поддерживает поиск переписки по теме.")
+
+    def fetch_topic(
+        self,
+        email: str,
+        access_token: str,
+        *,
+        subject: str,
+        max_messages: int,
+    ) -> list[IncomingMessage]:
+        """Read explicitly confirmed Inbox/Sent messages for one topic."""
+
+        raise ProviderError("Этот почтовый провайдер пока не поддерживает импорт переписки по теме.")

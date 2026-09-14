@@ -348,10 +348,15 @@ export function EmailRenderer({ html, text, className, hasRemoteImages = false }
         });
       };
 
-      const mutationObserver = new MutationObserver(updateHeight);
+      // The email body lives inside an iframe.  Observers must be constructed
+      // from that frame's Window; a parent-window MutationObserver rejects an
+      // iframe Node in Chromium and leaves the message panel in its fallback.
+      const FrameMutationObserver = doc.defaultView?.MutationObserver ?? MutationObserver;
+      const mutationObserver = new FrameMutationObserver(updateHeight);
       mutationObserver.observe(body, { childList: true, subtree: true });
 
-      const resizeObserver = 'ResizeObserver' in window ? new ResizeObserver(updateHeight) : null;
+      const FrameResizeObserver = doc.defaultView?.ResizeObserver;
+      const resizeObserver = FrameResizeObserver ? new FrameResizeObserver(updateHeight) : null;
       resizeObserver?.observe(body);
 
       const imageListeners: Array<{ image: HTMLImageElement; type: 'load' | 'error' }> = [];

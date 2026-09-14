@@ -52,6 +52,7 @@ from .time_utils import (  # noqa: F401 -- re-exported for mail/queue.py, backen
 from backend.domain.supplier_identity.inn_extractor import normalize_inn, validate_inn_checksum
 from .pacing import PacingSettings
 from .deliverability import transient_health_metrics
+from .request_references import make_request_email_reference, normalize_mail_topic, parse_request_email_reference, parse_request_reference_from_subject
 
 
 _MAIL_STATUS_LABELS = {
@@ -261,6 +262,17 @@ class MailRepository(
                 is_postgres_only = migration.lstrip().startswith("-- postgres-only")
                 if is_postgres_only and not self.database_url:
                     continue  # SQLite has no ALTER COLUMN TYPE; not needed there anyway (no fixed-width ints)
+                # Migrations are intentionally replayed at every local start.
+                # SQLite has no portable `ADD COLUMN IF NOT EXISTS`, so this
+                # additive migration must be skipped once an older runtime has
+                # already added the column to the canonical database.
+                if not self.database_url and migration_path.name == "050_sent_auto_sync_consent.sql":
+                    columns = {
+                        str(row["name"])
+                        for row in connection.execute("PRAGMA table_info(mail_account_profiles)").fetchall()
+                    }
+                    if "sent_sync_enabled" in columns:
+                        continue
                 if self.database_url:
                     migration = _postgres_migration_sql(migration)
                 connection.executescript(migration)
@@ -595,6 +607,7 @@ class MailRepository(
     # which rendered as blank/undefined on the request detail page (e.g. the
     # "N позиций" fact and the workflow-step highlight both went silently empty).
     _REQUEST_SELECT_COLUMNS = """r.id, r.name, r.description, r.sender_name, r.company_name, r.created_at,
+                          COALESCE(er.email_reference, 'SD-' || r.id) AS email_reference,
                           COALESCE(d.deadline, '') AS deadline,
                           COALESCE(m.status, 'draft') AS status, COALESCE(m.search_progress, 0) AS search_progress,
                            COALESCE(m.search_total, 0) AS search_total, COALESCE(c.search_depth, o.search_depth, 1) AS search_depth,
@@ -603,7 +616,7 @@ class MailRepository(
                           (SELECT COUNT(*) FROM request_suppliers rs WHERE rs.request_id=r.id AND rs.is_irrelevant=0) AS suppliers_count,
                           (SELECT COUNT(*) FROM mail_messages mm WHERE mm.request_id=r.id AND mm.direction='outbound' AND mm.status='sent') AS sent_count,
                           (SELECT COUNT(*) FROM mail_messages mm WHERE mm.request_id=r.id AND mm.direction='inbound' AND lower(COALESCE(mm.from_email,'')) NOT LIKE 'mailer-daemon@%' AND lower(COALESCE(mm.from_email,'')) NOT LIKE 'postmaster@%') AS replies_count"""
-    _REQUEST_SELECT_JOIN = "LEFT JOIN request_meta m ON m.request_id=r.id LEFT JOIN request_details d ON d.request_id=r.id LEFT JOIN request_search_config c ON c.request_id=r.id LEFT JOIN request_search_options o ON o.request_id=r.id"
+    _REQUEST_SELECT_JOIN = "LEFT JOIN request_email_references er ON er.request_id=r.id LEFT JOIN request_meta m ON m.request_id=r.id LEFT JOIN request_details d ON d.request_id=r.id LEFT JOIN request_search_config c ON c.request_id=r.id LEFT JOIN request_search_options o ON o.request_id=r.id"
 
     def list_requests(self, workspace_id: int) -> list[dict[str, Any]]:
         with self.connect() as connection:
@@ -677,6 +690,7 @@ class MailRepository(
         self, workspace_id: int, *, name: str, description: str,
         positions: list[dict[str, Any]], sender_name: str, company_name: str,
         user_id: int, deadline: str = "", search_depth: int = 1,
+        email_reference: str | None = None,
     ) -> int:
         name = str(name or "").strip()[:240]
         if not name:
@@ -694,12 +708,22 @@ class MailRepository(
                 cleaned.append((f"p{index}", position_name, str(item.get("quantity") or item.get("qty") or "").strip()[:120]))
         if not cleaned:
             raise ValueError("Добавьте хотя бы одну позицию в заявку.")
+        requested_reference = str(email_reference or "").strip()
+        if requested_reference:
+            requested_reference = parse_request_email_reference(requested_reference) or ""
+            if not requested_reference:
+                raise ValueError("Метка заявки в теме должна выглядеть как SD-123.")
         now = iso_now()
         with self.connect() as connection:
             next_id = int(connection.execute("SELECT COALESCE(MAX(id), 1042) + 1 FROM requests").fetchone()[0])
+            resolved_reference = requested_reference or make_request_email_reference(next_id)
             connection.execute(
                 "INSERT INTO requests(id, workspace_id, name, description, sender_name, company_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (next_id, workspace_id, name, str(description or "").strip()[:5000], str(sender_name or "").strip()[:120], str(company_name or "").strip()[:240], now),
+            )
+            connection.execute(
+                "INSERT INTO request_email_references(request_id, workspace_id, email_reference, created_at) VALUES (?, ?, ?, ?)",
+                (next_id, workspace_id, resolved_reference, now),
             )
             connection.execute("INSERT INTO request_meta(request_id, status, search_progress, search_total, updated_at) VALUES (?, 'draft', 0, ?, ?)", (next_id, len(cleaned), now))
             connection.execute("INSERT INTO request_search_config(request_id, search_depth) VALUES (?, ?)", (next_id, search_depth))
@@ -1999,6 +2023,43 @@ class MailRepository(
                 (account_id, now, str(error or "Ошибка синхронизации входящих сообщений.")[:500], now, now),
             )
 
+    def get_mail_folder_sync_state(self, account_id: int, folder: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM mail_folder_sync_states WHERE mail_account_id=? AND folder=?",
+                (account_id, folder),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def save_mail_folder_sync_state(
+        self,
+        account_id: int,
+        folder: str,
+        *,
+        uidvalidity: str,
+        last_uid: int,
+        imported_count: int,
+        linked_count: int,
+    ) -> None:
+        now = iso_now()
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT INTO mail_folder_sync_states(mail_account_id, folder, uidvalidity, last_uid, last_sync_at, last_imported_count, last_linked_count, last_error_at, last_error_message, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)
+                   ON CONFLICT(mail_account_id, folder) DO UPDATE SET uidvalidity=excluded.uidvalidity, last_uid=excluded.last_uid, last_sync_at=excluded.last_sync_at, last_imported_count=excluded.last_imported_count, last_linked_count=excluded.last_linked_count, last_error_at=NULL, last_error_message=NULL, updated_at=excluded.updated_at""",
+                (account_id, folder, uidvalidity, int(last_uid), now, int(imported_count), int(linked_count), now, now),
+            )
+
+    def mark_mail_folder_sync_error(self, account_id: int, folder: str, error: str) -> None:
+        now = iso_now()
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT INTO mail_folder_sync_states(mail_account_id, folder, last_error_at, last_error_message, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(mail_account_id, folder) DO UPDATE SET last_error_at=excluded.last_error_at, last_error_message=excluded.last_error_message, updated_at=excluded.updated_at""",
+                (account_id, folder, now, str(error or "Ошибка синхронизации отправленных сообщений.")[:500], now, now),
+            )
+
     def diagnostic_list_suppliers_trace(self, workspace_id: int, request_id: int, target_supplier_id: int) -> dict[str, Any]:
         """Read-only diagnostic (TASK-SUPPLIER-CLEANUP-MISCLASSIFICATION-20260910):
         does list_suppliers()'s target supplier survive the raw SQL rows, and
@@ -2172,6 +2233,307 @@ class MailRepository(
                 imported += 1
             connection.commit()
         return {"imported": imported, "skipped": skipped, "unmatched": unmatched}
+
+    def import_sent_messages(
+        self,
+        *,
+        workspace_id: int,
+        user_id: int,
+        account_id: int,
+        messages: Iterable[Any],
+        only_request_reference: str | None = None,
+    ) -> dict[str, int]:
+        """Persist only explicitly marked external Sent mail and link it safely.
+
+        No guessed subject/address match is allowed here.  A valid marker is
+        still checked against the workspace, and an existing RFC Message-ID
+        wins over a contradictory marker instead of silently moving history.
+        """
+
+        imported = linked = history_imported = skipped = conflicts = invalid = 0
+        with self.connect() as connection:
+            if not self.database_url:
+                connection.execute("BEGIN IMMEDIATE")
+            for outgoing in messages:
+                duplicate = connection.execute(
+                    "SELECT id FROM mail_sent_messages WHERE mail_account_id=? AND provider_message_id=?",
+                    (account_id, outgoing.provider_message_id),
+                ).fetchone()
+
+                parsed = parse_request_reference_from_subject(str(outgoing.subject or ""))
+                if parsed.status != "valid" or not parsed.email_reference:
+                    invalid += 1
+                    continue
+                # IMAP HEADER Subject matching is substring-based on common
+                # providers.  A request-scoped import must therefore validate
+                # the parsed marker again before it is allowed to persist a
+                # message for another request (for example SD-10590 vs
+                # SD-1059).
+                if only_request_reference and parsed.email_reference != only_request_reference:
+                    skipped += 1
+                    continue
+                request = connection.execute(
+                    """SELECT r.id
+                       FROM requests r JOIN request_email_references er ON er.request_id=r.id
+                       WHERE r.workspace_id=? AND er.email_reference=?""",
+                    (workspace_id, parsed.email_reference),
+                ).fetchone()
+                if not request:
+                    invalid += 1
+                    continue
+                request_id = int(request["id"])
+                sent_at = outgoing.received_at.astimezone(UTC).isoformat()
+                existing_history = connection.execute(
+                    """SELECT id, request_id FROM mail_messages
+                       WHERE workspace_id=? AND mail_account_id=? AND message_id<>'' AND message_id=?
+                       LIMIT 1""",
+                    (workspace_id, account_id, outgoing.message_id),
+                ).fetchone()
+                if existing_history and int(existing_history["request_id"]) != request_id:
+                    if duplicate is None:
+                        connection.execute(
+                        """INSERT INTO mail_sent_messages(workspace_id, user_id, mail_account_id, provider_message_id, message_id, in_reply_to, references_header, from_email, to_email, subject, body_text, body_html, sent_at, request_id, match_status, match_reason, created_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'conflict', 'explicit_reference_conflicts_existing_thread', ?)""",
+                        (workspace_id, user_id, account_id, outgoing.provider_message_id, outgoing.message_id, outgoing.in_reply_to, outgoing.references, outgoing.from_email, outgoing.to_email, outgoing.subject, outgoing.body_text, outgoing.body_html, sent_at, sent_at),
+                        )
+                    conflicts += 1
+                    continue
+
+                if duplicate is None:
+                    connection.execute(
+                    """INSERT INTO mail_sent_messages(workspace_id, user_id, mail_account_id, provider_message_id, message_id, in_reply_to, references_header, from_email, to_email, subject, body_text, body_html, sent_at, request_id, match_status, match_reason, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'explicit_reference', ?)""",
+                    (workspace_id, user_id, account_id, outgoing.provider_message_id, outgoing.message_id, outgoing.in_reply_to, outgoing.references, outgoing.from_email, outgoing.to_email, outgoing.subject, outgoing.body_text, outgoing.body_html, sent_at, request_id, "matched_reference", sent_at),
+                    )
+                    imported += 1
+                    linked += 1
+
+                recipients = tuple(dict.fromkeys(
+                    candidate.strip().lower()
+                    for candidate in (getattr(outgoing, "recipient_emails", ()) or (outgoing.to_email,))
+                    if "@" in candidate.strip()
+                ))
+                added_history = 0
+                for recipient in recipients:
+                    supplier = connection.execute(
+                        """SELECT rs.supplier_id
+                           FROM request_suppliers rs JOIN suppliers s ON s.id=rs.supplier_id
+                           WHERE rs.request_id=? AND s.workspace_id=? AND lower(trim(s.email))=?
+                           ORDER BY rs.supplier_id LIMIT 1""",
+                        (request_id, workspace_id, recipient),
+                    ).fetchone()
+                    if supplier is None:
+                        host = recipient.rsplit("@", 1)[1]
+                        supplier_row = connection.execute(
+                            "SELECT id FROM suppliers WHERE workspace_id=? AND lower(trim(email))=? ORDER BY id LIMIT 1",
+                            (workspace_id, recipient),
+                        ).fetchone()
+                        if supplier_row is None:
+                            connection.execute(
+                                """INSERT INTO suppliers(workspace_id, external_key, name, email, host, created_at, updated_at)
+                                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                                (workspace_id, f"mail:{recipient}", recipient, recipient, host, sent_at, sent_at),
+                            )
+                            supplier_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+                        else:
+                            supplier_id = int(supplier_row["id"])
+                        connection.execute(
+                            """INSERT INTO request_suppliers(request_id, supplier_id, position_keys_json, reason, source, updated_at)
+                               VALUES (?, ?, '[]', 'Письмо синхронизировано из Отправленных', 'mail_sent', ?)""",
+                            (request_id, supplier_id, sent_at),
+                        )
+                    else:
+                        supplier_id = int(supplier["supplier_id"])
+                    already_linked = connection.execute(
+                        """SELECT id FROM mail_messages
+                           WHERE workspace_id=? AND request_id=? AND mail_account_id=?
+                             AND lower(trim(to_email))=?
+                             AND ((provider_message_id=? ) OR (message_id<>'' AND message_id=?))
+                           LIMIT 1""",
+                        (workspace_id, request_id, account_id, recipient, outgoing.provider_message_id, outgoing.message_id),
+                    ).fetchone()
+                    if already_linked:
+                        continue
+                    thread = connection.execute(
+                        "SELECT id FROM mail_threads WHERE workspace_id=? AND request_id=? AND supplier_id=?",
+                        (workspace_id, request_id, supplier_id),
+                    ).fetchone()
+                    if thread is None:
+                        connection.execute(
+                        """INSERT INTO mail_threads(workspace_id, user_id, request_id, supplier_id, mail_account_id, subject, last_message_at, created_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (workspace_id, user_id, request_id, supplier_id, account_id, outgoing.subject, sent_at, sent_at),
+                        )
+                        thread_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+                    else:
+                        thread_id = int(thread["id"])
+                    connection.execute(
+                    """INSERT INTO mail_messages(thread_id, workspace_id, user_id, request_id, supplier_id, mail_account_id, provider_message_id, message_id, in_reply_to, references_header, direction, from_email, to_email, subject, body_text, body_html, status, created_at, sent_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'outbound', ?, ?, ?, ?, ?, 'sent', ?, ?)""",
+                    (thread_id, workspace_id, user_id, request_id, supplier_id, account_id, outgoing.provider_message_id, outgoing.message_id, outgoing.in_reply_to, outgoing.references, outgoing.from_email, recipient, outgoing.subject, outgoing.body_text, outgoing.body_html, sent_at, sent_at),
+                    )
+                    message_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+                    connection.execute(
+                    "UPDATE mail_threads SET last_message_at=CASE WHEN last_message_at IS NULL OR last_message_at < ? THEN ? ELSE last_message_at END WHERE id=?",
+                    (sent_at, sent_at, thread_id),
+                    )
+                    connection.execute(
+                    """INSERT INTO request_supplier_states(request_id, supplier_id, mail_account_id, status, last_message_id, last_error, updated_at)
+                       VALUES (?, ?, ?, 'sent', ?, NULL, ?)
+                       ON CONFLICT(request_id, supplier_id) DO UPDATE SET mail_account_id=excluded.mail_account_id, status='sent', last_message_id=excluded.last_message_id, last_error=NULL, updated_at=excluded.updated_at""",
+                    (request_id, supplier_id, account_id, message_id, sent_at),
+                    )
+                    self._audit_connection(connection, workspace_id, user_id, "mail.sent_imported", "mail_message", str(message_id), {"request_id": request_id, "reason": "explicit_reference"})
+                    history_imported += 1
+                    added_history += 1
+                if duplicate is not None and added_history == 0:
+                    skipped += 1
+            connection.commit()
+        return {"imported": imported, "linked": linked, "history_imported": history_imported, "skipped": skipped, "conflicts": conflicts, "invalid": invalid}
+
+    def import_mail_topic_messages(
+        self,
+        *,
+        workspace_id: int,
+        user_id: int,
+        request_id: int,
+        topic: str,
+        messages: Iterable[tuple[int, Any]],
+    ) -> dict[str, int]:
+        """Attach an explicitly confirmed, exact mail topic to one draft.
+
+        This deliberately creates a minimal supplier record only when there is
+        no existing workspace supplier for the correspondent email.  The user
+        chose the topic and confirmed the import; no similar-title or domain
+        guessing takes place here.
+        """
+
+        normalized_topic = normalize_mail_topic(topic)
+        if not normalized_topic:
+            raise ValueError("Укажите тему письма для импорта.")
+        imported = linked_suppliers = created_suppliers = skipped = conflicts = 0
+        with self.connect() as connection:
+            if not self.database_url:
+                connection.execute("BEGIN IMMEDIATE")
+            request = connection.execute(
+                "SELECT id FROM requests WHERE id=? AND workspace_id=?", (request_id, workspace_id),
+            ).fetchone()
+            if not request:
+                raise ValueError("Заявка не найдена в текущем рабочем пространстве.")
+            for account_id, message in sorted(messages, key=lambda item: item[1].received_at):
+                if normalize_mail_topic(getattr(message, "subject", "")) != normalized_topic:
+                    skipped += 1
+                    continue
+                if message.direction == "outbound":
+                    counterparts = tuple(dict.fromkeys(
+                        candidate.strip().lower()
+                        for candidate in (getattr(message, "recipient_emails", ()) or (message.to_email,))
+                        if "@" in candidate.strip()
+                    ))
+                else:
+                    counterparts = (message.from_email.strip().lower(),)
+                if not counterparts:
+                    skipped += 1
+                    continue
+                for counterpart in counterparts:
+                    if len(counterpart) > 254:
+                        skipped += 1
+                        continue
+                    duplicate = connection.execute(
+                        """SELECT id, request_id FROM mail_messages
+                           WHERE workspace_id=?
+                             AND lower(trim(to_email))=?
+                             AND ((mail_account_id=? AND provider_message_id=?)
+                                  OR (message_id<>'' AND message_id=?))
+                           LIMIT 1""",
+                        (workspace_id, counterpart, account_id, message.provider_message_id, message.message_id),
+                    ).fetchone()
+                    if duplicate:
+                        if int(duplicate["request_id"]) != request_id:
+                            conflicts += 1
+                        else:
+                            skipped += 1
+                        continue
+                    supplier = connection.execute(
+                    "SELECT id FROM suppliers WHERE workspace_id=? AND lower(trim(email))=? ORDER BY id LIMIT 1",
+                    (workspace_id, counterpart),
+                    ).fetchone()
+                    if supplier is None:
+                        host = counterpart.rsplit("@", 1)[1]
+                        external_key = f"mail:{counterpart}"
+                        connection.execute(
+                        """INSERT INTO suppliers(workspace_id, external_key, name, email, host, created_at, updated_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                        (workspace_id, external_key, counterpart, counterpart, host, message.received_at.astimezone(UTC).isoformat(), message.received_at.astimezone(UTC).isoformat()),
+                        )
+                        supplier_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+                        created_suppliers += 1
+                    else:
+                        supplier_id = int(supplier["id"])
+                    link = connection.execute(
+                    "SELECT 1 FROM request_suppliers WHERE request_id=? AND supplier_id=?", (request_id, supplier_id),
+                    ).fetchone()
+                    if not link:
+                        connection.execute(
+                        """INSERT INTO request_suppliers(request_id, supplier_id, position_keys_json, reason, source, updated_at)
+                           VALUES (?, ?, '[]', 'Переписка импортирована по теме', 'mail_topic', ?)""",
+                        (request_id, supplier_id, message.received_at.astimezone(UTC).isoformat()),
+                        )
+                        linked_suppliers += 1
+                    thread = connection.execute(
+                    "SELECT id FROM mail_threads WHERE workspace_id=? AND request_id=? AND supplier_id=?",
+                    (workspace_id, request_id, supplier_id),
+                    ).fetchone()
+                    occurred_at = message.received_at.astimezone(UTC).isoformat()
+                    if thread is None:
+                        connection.execute(
+                        """INSERT INTO mail_threads(workspace_id, user_id, request_id, supplier_id, mail_account_id, subject, last_message_at, created_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (workspace_id, user_id, request_id, supplier_id, account_id, message.subject, occurred_at, occurred_at),
+                        )
+                        thread_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+                    else:
+                        thread_id = int(thread["id"])
+                    status = "received" if message.direction == "inbound" else "sent"
+                    connection.execute(
+                    """INSERT INTO mail_messages(thread_id, workspace_id, user_id, request_id, supplier_id, mail_account_id,
+                                                  provider_message_id, message_id, in_reply_to, references_header, direction,
+                                                  from_email, to_email, subject, body_text, body_html, status, created_at, sent_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (thread_id, workspace_id, user_id, request_id, supplier_id, account_id,
+                     message.provider_message_id, message.message_id, message.in_reply_to, message.references, message.direction,
+                     message.from_email, counterpart if message.direction == "outbound" else message.to_email, message.subject, message.body_text, message.body_html,
+                     status, occurred_at, occurred_at),
+                    )
+                    message_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+                    connection.execute(
+                    "UPDATE mail_threads SET last_message_at=CASE WHEN last_message_at IS NULL OR last_message_at < ? THEN ? ELSE last_message_at END WHERE id=?",
+                    (occurred_at, occurred_at, thread_id),
+                    )
+                    state = "replied" if message.direction == "inbound" else "sent"
+                    connection.execute(
+                    """INSERT INTO request_supplier_states(request_id, supplier_id, mail_account_id, status, last_message_id, last_error, updated_at)
+                       VALUES (?, ?, ?, ?, ?, NULL, ?)
+                       ON CONFLICT(request_id, supplier_id) DO UPDATE SET
+                         mail_account_id=excluded.mail_account_id,
+                         status=CASE WHEN request_supplier_states.status='replied' OR excluded.status='replied' THEN 'replied' ELSE 'sent' END,
+                         last_message_id=excluded.last_message_id,
+                         last_error=NULL, updated_at=excluded.updated_at""",
+                    (request_id, supplier_id, account_id, state, message_id, occurred_at),
+                    )
+                    self._audit_connection(
+                    connection, workspace_id, user_id, "mail.topic_imported", "mail_message", str(message_id),
+                    {"request_id": request_id, "reason": "confirmed_exact_topic", "folder": message.folder},
+                    )
+                    imported += 1
+            connection.commit()
+        return {
+            "imported": imported,
+            "linked_suppliers": linked_suppliers,
+            "created_suppliers": created_suppliers,
+            "skipped": skipped,
+            "conflicts": conflicts,
+        }
 
     def list_unmatched_incoming_preview(self, workspace_id: int, *, limit: int = 5) -> list[dict[str, Any]]:
         """Лёгкая версия list_unmatched_incoming — для дашборда.
@@ -2729,6 +3091,28 @@ class MailRepository(
             result = dict(row)
             result["mail_metrics"] = self._request_mail_metrics(connection, request_id)
         return result
+
+    def find_request_by_email_reference(self, workspace_id: int, email_reference: str) -> dict[str, Any] | None:
+        """Resolve only a normalized explicit marker in the current workspace."""
+        normalized = parse_request_email_reference(email_reference)
+        if not normalized:
+            return None
+        with self.connect() as connection:
+            row = connection.execute(
+                f"""SELECT {self._REQUEST_SELECT_COLUMNS}
+                   FROM requests r {self._REQUEST_SELECT_JOIN}
+                   WHERE r.workspace_id=? AND er.email_reference=?""",
+                (workspace_id, normalized),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def find_request_by_email_subject(self, workspace_id: int, subject: str) -> tuple[dict[str, Any] | None, str]:
+        """Expose a conservative matcher for the future Inbox/Sent ingestion step."""
+        parsed = parse_request_reference_from_subject(subject)
+        if parsed.status != "valid" or not parsed.email_reference:
+            return None, parsed.status
+        request = self.find_request_by_email_reference(workspace_id, parsed.email_reference)
+        return request, "explicit_reference" if request else "invalid_reference"
 
     def request_positions(self, workspace_id: int, request_id: int) -> list[dict[str, Any]]:
         with self.connect() as connection:

@@ -1,5 +1,5 @@
-import { AlertTriangle, Check, ExternalLink, Loader2, Mail, MailWarning, RefreshCw, Send, ShieldCheck, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { AlertTriangle, Check, ExternalLink, FolderSearch, Loader2, Mail, MailWarning, RefreshCw, Send, ShieldCheck, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
@@ -151,8 +151,13 @@ function MiniStat({ label, value, tone = 'neutral' }: { label: string; value: st
 function AccountCard({ account, onChanged }: { account: MailAccount; onChanged: () => void }) {
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [previewingSent, setPreviewingSent] = useState(false);
+  const [syncingSent, setSyncingSent] = useState(false);
+  const [updatingSentAutomation, setUpdatingSentAutomation] = useState(false);
+  const syncingSentRef = useRef(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [message, setMessage] = useState('');
+  const [sentPreview, setSentPreview] = useState<{ folder: string; marked_count: number } | null>(null);
 
   const incoming = incomingHealthLabel(account);
   const outgoingTone: 'success' | 'danger' | 'warning' = account.outgoing_health === 'error' ? 'danger' : account.outgoing_enabled ? 'success' : 'warning';
@@ -183,6 +188,57 @@ function AccountCard({ account, onChanged }: { account: MailAccount; onChanged: 
       setMessage(e instanceof ApiError ? e.message : 'Не удалось синхронизировать входящие.');
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleSentPreview() {
+    setPreviewingSent(true);
+    setMessage('');
+    try {
+      const preview = await api.mailSentPreview(account.id);
+      setSentPreview(preview);
+      setMessage(preview.marked_count
+        ? `Найдено писем с SD-ID: ${preview.marked_count}. Импорт будет ограничен 25 письмами.`
+        : 'В «Отправленных» нет писем с SD-ID. Личные письма не читались.');
+    } catch (e) {
+      setMessage(e instanceof ApiError ? e.message : 'Не удалось проверить отправленные.');
+    } finally {
+      setPreviewingSent(false);
+    }
+  }
+
+  async function handleSentSync() {
+    if (syncingSentRef.current) return;
+    syncingSentRef.current = true;
+    setSyncingSent(true);
+    setMessage('');
+    try {
+      const result = await api.mailSentSync(account.id);
+      setSentPreview(null);
+      setMessage(`Связано с заявками: ${result.linked}. В истории переписки: ${result.history_imported}.`);
+      onChanged();
+    } catch (e) {
+      setMessage(e instanceof ApiError ? e.message : 'Не удалось импортировать отправленные.');
+    } finally {
+      syncingSentRef.current = false;
+      setSyncingSent(false);
+    }
+  }
+
+  async function handleSentAutomation() {
+    const enabled = !account.sent_sync_enabled;
+    setUpdatingSentAutomation(true);
+    setMessage('');
+    try {
+      await api.setMailSentSyncEnabled(account.id, enabled);
+      setMessage(enabled
+        ? 'Автопоиск SD-писем включён: раз в 5 минут будут читаться только письма с [SD-…] в теме.'
+        : 'Автопоиск SD-писем выключен. Ручной поиск в карточке заявки остаётся доступен.');
+      onChanged();
+    } catch (e) {
+      setMessage(e instanceof ApiError ? e.message : 'Не удалось изменить автопоиск отправленных.');
+    } finally {
+      setUpdatingSentAutomation(false);
     }
   }
 
@@ -218,6 +274,22 @@ function AccountCard({ account, onChanged }: { account: MailAccount; onChanged: 
       <p className="mt-2.5 text-[11px] text-ink-faint">
         Последняя проверка: {account.incoming_last_success_at ? formatDateTime(account.incoming_last_success_at) : 'не проверялась'}
       </p>
+      <div className="mt-2.5 flex items-center justify-between gap-3 rounded-md bg-canvas px-2.5 py-2">
+        <div className="min-w-0">
+          <p className="text-[11.5px] font-medium text-ink">Автопоиск SD-писем</p>
+          <p className="text-[10.5px] text-ink-muted">Только «Отправленные» с <code>[SD-…]</code>; личные темы не читаются.</p>
+        </div>
+        <Button
+          variant={account.sent_sync_enabled ? 'secondary' : 'ghost'}
+          size="sm"
+          icon={updatingSentAutomation ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+          disabled={updatingSentAutomation}
+          aria-pressed={account.sent_sync_enabled}
+          onClick={() => void handleSentAutomation()}
+        >
+          {account.sent_sync_enabled ? 'Включён' : 'Выключен'}
+        </Button>
+      </div>
       {incomingError && <p className="mt-1 text-[11px] font-medium text-danger">Ошибка входящих: {incomingError}</p>}
       {message && <p className="mt-1.5 text-[11.5px] text-ink-soft">{message}</p>}
 
@@ -235,6 +307,26 @@ function AccountCard({ account, onChanged }: { account: MailAccount; onChanged: 
           {incoming.tone === 'danger' ? 'Повторить входящие' : 'Синхронизировать входящие'}
         </Button>
         <Button
+          variant="secondary"
+          size="sm"
+          icon={previewingSent ? <Loader2 size={13} className="animate-spin" /> : <FolderSearch size={13} />}
+          disabled={previewingSent || syncingSent}
+          onClick={() => void handleSentPreview()}
+        >
+          Найти в отправленных
+        </Button>
+        {sentPreview && sentPreview.marked_count > 0 && (
+          <Button
+            variant="primary"
+            size="sm"
+            icon={syncingSent ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+            disabled={syncingSent}
+            onClick={() => void handleSentSync()}
+          >
+            Импортировать SD-письма
+          </Button>
+        )}
+        <Button
           variant="ghost"
           size="sm"
           className="sm:ml-auto text-danger hover:bg-danger-subtle"
@@ -245,6 +337,9 @@ function AccountCard({ account, onChanged }: { account: MailAccount; onChanged: 
           Отключить
         </Button>
       </div>
+      <p className="mt-2 text-[11px] text-ink-faint">
+        Поиск в «Отправленных» читает только темы с меткой <code>[SD-…]</code> и ничего не меняет; импорт появится только после просмотра результата.
+      </p>
     </div>
   );
 }

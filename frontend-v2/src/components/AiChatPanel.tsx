@@ -1,7 +1,8 @@
-import { ChevronDown, History, Send, Sparkles, X } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ChevronDown, Grip, History, Send, Sparkles, X } from 'lucide-react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
+import { formatDateTime } from '../lib/format';
 
 interface ChatEntry {
   id?: number;
@@ -188,6 +189,36 @@ export function AiChatPanel({
   // collapses it again, it never auto-collapses out from under them.
   const [siblingsExpanded, setSiblingsExpanded] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const resizeStartRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [panelSize, setPanelSize] = useState({ width: 420, height: 660 });
+
+  useEffect(() => {
+    function moveResize(event: PointerEvent) {
+      const start = resizeStartRef.current;
+      if (!start) return;
+      const maxWidth = Math.max(300, window.innerWidth - 32);
+      const maxHeight = Math.max(360, window.innerHeight - 32);
+      setPanelSize({
+        width: Math.max(320, Math.min(maxWidth, start.width + start.x - event.clientX)),
+        height: Math.max(420, Math.min(maxHeight, start.height + start.y - event.clientY)),
+      });
+    }
+    function endResize() {
+      resizeStartRef.current = null;
+    }
+    window.addEventListener('pointermove', moveResize);
+    window.addEventListener('pointerup', endResize);
+    return () => {
+      window.removeEventListener('pointermove', moveResize);
+      window.removeEventListener('pointerup', endResize);
+    };
+  }, []);
+
+  function startResize(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    resizeStartRef.current = { x: event.clientX, y: event.clientY, width: panelSize.width, height: panelSize.height };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
 
   // Resume the заявка's most recent chat on open -- a chat must survive
   // refresh, per the owner's requirement, so opening the panel should not
@@ -300,15 +331,25 @@ export function AiChatPanel({
 
   return (
     <section
-      className="fixed bottom-4 right-4 z-50 flex h-[min(660px,calc(100dvh-32px))] w-[min(420px,calc(100vw-32px))] flex-col overflow-hidden rounded-[26px] border border-[#d9d9dd] bg-[#fffefe] text-[#1c1c20] shadow-[0_18px_55px_rgba(31,31,36,0.16)]"
+      className="fixed bottom-4 right-4 z-50 flex max-h-[calc(100dvh-32px)] max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-[26px] border border-[#d9d9dd] bg-[#fffefe] text-[#1c1c20] shadow-[0_18px_55px_rgba(31,31,36,0.16)]"
+      style={{ width: panelSize.width, height: panelSize.height }}
       role="dialog"
       aria-modal="true"
       aria-label="ИИ-помощник SupplyDesk"
     >
-      <header className="flex h-14 shrink-0 items-center border-b border-[#e7e7ea] px-5">
+      <header className="relative flex h-14 shrink-0 items-center border-b border-[#e7e7ea] pl-9 pr-5">
+        <button
+          type="button"
+          onPointerDown={startResize}
+          className="absolute left-2 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-nwse-resize items-center justify-center rounded-md text-[#85858c] hover:bg-[#f1f0f6] hover:text-[#5142c6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a7a7ae]"
+          aria-label="Изменить размер ИИ-помощника"
+          title="Потяните, чтобы изменить размер"
+        >
+          <Grip size={14} />
+        </button>
         <p className="text-[10px] font-semibold tracking-[0.11em] text-[#4b4b52]">SUPPLYDESK · AI</p>
         <div className="ml-auto flex items-center gap-3 text-[10px] font-semibold tracking-[0.1em] text-[#55555c]">
-          <button type="button" onClick={startNewChat} className="hover:text-[#17171b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a7a7ae]" aria-label="Новый ИИ-чат">NEW</button>
+          <button type="button" onClick={startNewChat} className="hover:text-[#17171b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a7a7ae]" aria-label="Новый ИИ-чат">Новый чат</button>
           {requestId !== null && (
             <button
               type="button"
@@ -342,6 +383,7 @@ export function AiChatPanel({
                   className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11.5px] hover:bg-surface-hover ${c.id === conversationId ? 'bg-accent-subtle/40 text-accent' : 'text-ink-soft'}`}
                 >
                   <span className="min-w-0 flex-1 truncate">{c.title || 'Без названия'}</span>
+                  <time className="shrink-0 text-[10px] text-ink-faint" dateTime={c.updated_at}>{formatDateTime(c.updated_at)}</time>
                 </button>
               ))
             ) : (

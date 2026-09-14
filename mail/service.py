@@ -31,6 +31,7 @@ from .deliverability import (
 from .content import html_to_text, sanitize_email_html
 from .pacing import PacingSettings
 from .providers.base import MailProvider
+from .request_references import normalize_mail_topic, parse_request_reference_from_subject
 from .repository import (
     ContactSendGuardConflictError,
     ContinuationPlanConflictError,
@@ -355,6 +356,259 @@ class MailService:
             else:
                 self.repository.mark_mail_error(account["id"], exc.message)
             raise
+
+    def preview_sent(self, user_id: int, workspace_id: int, *, mail_account_id: int, request_id: int | None = None) -> dict[str, Any]:
+        """Read only folder metadata; no body or database import happens here."""
+
+        account, access_token = self._get_account_and_token(
+            user_id, workspace_id, mail_account_id=mail_account_id, require_outgoing=False,
+        )
+        provider = self._provider_for_account(account, access_token)
+        request = self.repository.get_request(workspace_id, request_id) if request_id is not None else None
+        if request_id is not None and not request:
+            raise ValueError("Заявка не найдена в текущем рабочем пространстве.")
+        reference = str((request or {}).get("email_reference") or "").strip() or None
+        try:
+            preview = provider.preview_sent(account["email"], access_token, **({"subject_marker": reference} if reference else {}))
+            return {"ok": True, "account_id": int(account["id"]), "email_reference": reference, **preview}
+        except ProviderError as exc:
+            self.repository.mark_mail_folder_sync_error(int(account["id"]), "Sent", exc.message)
+            raise
+
+    def sync_sent(
+        self,
+        user_id: int,
+        workspace_id: int,
+        *,
+        mail_account_id: int,
+        confirmed: bool = False,
+        max_messages: int = 25,
+        request_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Import a bounded set of explicitly marked external Sent messages.
+
+        Requiring confirmation at the service boundary keeps a future UI or API
+        caller from turning a preview into an implicit mailbox import.
+        """
+
+        if not confirmed:
+            raise ValueError("Сначала просмотрите найденные письма и подтвердите импорт.")
+        account, access_token = self._get_account_and_token(
+            user_id, workspace_id, mail_account_id=mail_account_id, require_outgoing=False,
+        )
+        provider = self._provider_for_account(account, access_token)
+        request = self.repository.get_request(workspace_id, request_id) if request_id is not None else None
+        if request_id is not None and not request:
+            raise ValueError("Заявка не найдена в текущем рабочем пространстве.")
+        reference = str((request or {}).get("email_reference") or "").strip() or None
+        state_folder = f"Sent:{reference}" if reference else "Sent"
+        state = self.repository.get_mail_folder_sync_state(int(account["id"]), state_folder) or {}
+        try:
+            batch = provider.fetch_sent(
+                account["email"],
+                access_token,
+                uidvalidity=state.get("uidvalidity"),
+                last_uid=int(state.get("last_uid") or 0),
+                max_messages=max(1, min(int(max_messages), 25)),
+                **({"subject_marker": reference} if reference else {}),
+            )
+            result = self.repository.import_sent_messages(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                account_id=int(account["id"]),
+                messages=batch.messages,
+                **({"only_request_reference": reference} if reference else {}),
+            )
+            self.repository.save_mail_folder_sync_state(
+                int(account["id"]),
+                state_folder,
+                uidvalidity=batch.uidvalidity,
+                last_uid=batch.last_uid,
+                imported_count=result["imported"],
+                linked_count=result["linked"],
+            )
+            self.repository.mark_mail_error(account["id"], "", status="connected")
+            return {"ok": True, "account_id": int(account["id"]), "email_reference": reference, "scanned": batch.scanned_count, **result}
+        except ProviderError as exc:
+            self.repository.mark_mail_folder_sync_error(int(account["id"]), "Sent", exc.message)
+            raise
+
+    def sync_sent_automatically(self, user_id: int, workspace_id: int, *, mail_account_id: int) -> dict[str, Any]:
+        """Import SD-marked Sent messages only after durable per-account consent.
+
+        Interactive import requires a preview.  This background path is used
+        only after the mailbox owner has explicitly enabled it; the provider
+        searches headers for ``[SD-`` and the repository rejects every message
+        without one valid current-workspace reference before persistence.
+        """
+
+        account, access_token = self._get_account_and_token(
+            user_id, workspace_id, mail_account_id=mail_account_id, require_outgoing=False,
+        )
+        if not bool(account.get("account_sent_sync_enabled", 0)):
+            return {"ok": True, "skipped": True, "reason": "sent_sync_disabled"}
+        provider = self._provider_for_account(account, access_token)
+        state = self.repository.get_mail_folder_sync_state(int(account["id"]), "Sent:auto") or {}
+        try:
+            batch = provider.fetch_sent(
+                account["email"], access_token,
+                uidvalidity=state.get("uidvalidity"),
+                last_uid=int(state.get("last_uid") or 0),
+                max_messages=25,
+                subject_marker="[SD-",
+            )
+            result = self.repository.import_sent_messages(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                account_id=int(account["id"]),
+                messages=batch.messages,
+            )
+            self.repository.save_mail_folder_sync_state(
+                int(account["id"]), "Sent:auto",
+                uidvalidity=batch.uidvalidity,
+                last_uid=batch.last_uid,
+                imported_count=result["imported"],
+                linked_count=result["linked"],
+            )
+            self.repository.mark_mail_error(account["id"], "", status="connected")
+            return {"ok": True, "account_id": int(account["id"]), "scanned": batch.scanned_count, **result}
+        except ProviderError as exc:
+            self.repository.mark_mail_folder_sync_error(int(account["id"]), "Sent:auto", exc.message)
+            raise
+
+    @staticmethod
+    def _validate_mail_topic(value: str) -> str:
+        subject = str(value or "").replace("\r", " ").replace("\n", " ").strip()
+        if not subject:
+            raise ValueError("Укажите тему письма.")
+        if len(subject) > 240:
+            raise ValueError("Тема письма не должна быть длиннее 240 символов.")
+        if not normalize_mail_topic(subject):
+            raise ValueError("Укажите тему письма.")
+        return subject
+
+    def preview_mail_topic(self, user_id: int, workspace_id: int, *, subject: str) -> dict[str, Any]:
+        """Read only matching message headers from explicitly connected mailboxes."""
+
+        topic = self._validate_mail_topic(subject)
+        accounts = [account for account in self.repository.list_mail_accounts(user_id, workspace_id) if account.get("status") == "connected"]
+        if not accounts:
+            raise ValueError("Подключите хотя бы один почтовый ящик, чтобы найти переписку.")
+        items: list[dict[str, Any]] = []
+        errors: list[dict[str, Any]] = []
+        seen: set[tuple[str, str]] = set()
+        for public_account in accounts:
+            account_id = int(public_account["id"])
+            try:
+                account, access_token = self._get_account_and_token(
+                    user_id, workspace_id, mail_account_id=account_id, require_outgoing=False,
+                )
+                provider = self._provider_for_account(account, access_token)
+                for message in provider.preview_topic(account["email"], access_token, subject=topic, max_messages=200):
+                    dedupe_key = (str(message.message_id or ""), str(message.provider_message_id or ""))
+                    if dedupe_key in seen:
+                        continue
+                    seen.add(dedupe_key)
+                    items.append({
+                        "account_id": account_id,
+                        "account_email": str(account["email"]),
+                        # Provider folder names may be IMAP modified UTF-7;
+                        # never expose that transport representation to a
+                        # user who only needs the familiar folder meaning.
+                        "folder": "Отправленные" if message.direction == "outbound" else "Входящие",
+                        "direction": message.direction,
+                        "from_email": message.from_email,
+                        "to_email": message.to_email,
+                        "subject": message.subject,
+                        "received_at": message.received_at.isoformat(),
+                    })
+            except ProviderError as exc:
+                errors.append({"account_id": account_id, "account_email": str(public_account.get("email") or ""), "error": exc.message})
+        parsed_reference = parse_request_reference_from_subject(topic)
+        existing = (
+            self.repository.find_request_by_email_reference(workspace_id, parsed_reference.email_reference)
+            if parsed_reference.status == "valid" and parsed_reference.email_reference else None
+        )
+        return {
+            "ok": True,
+            "subject": topic,
+            "normalized_topic": normalize_mail_topic(topic),
+            "items": sorted(items, key=lambda item: item["received_at"]),
+            "count": len(items),
+            "errors": errors,
+            "existing_request_id": int(existing["id"]) if existing else None,
+            "email_reference": parsed_reference.email_reference if parsed_reference.status == "valid" else None,
+        }
+
+    def import_mail_topic(
+        self,
+        user_id: int,
+        workspace_id: int,
+        *,
+        subject: str,
+        confirmed: bool = False,
+    ) -> dict[str, Any]:
+        """Create one draft and attach the previously previewable topic after confirmation."""
+
+        if confirmed is not True:
+            raise ValueError("Сначала просмотрите найденные письма и подтвердите импорт.")
+        topic = self._validate_mail_topic(subject)
+        parsed_reference = parse_request_reference_from_subject(topic)
+        if parsed_reference.status == "valid" and parsed_reference.email_reference:
+            existing = self.repository.find_request_by_email_reference(workspace_id, parsed_reference.email_reference)
+            if existing:
+                raise ValueError(f"Заявка с меткой {parsed_reference.email_reference} уже существует: №{existing['id']}.")
+        accounts = [account for account in self.repository.list_mail_accounts(user_id, workspace_id) if account.get("status") == "connected"]
+        if not accounts:
+            raise ValueError("Подключите хотя бы один почтовый ящик, чтобы импортировать переписку.")
+        fetched: list[tuple[int, Any]] = []
+        errors: list[dict[str, Any]] = []
+        for public_account in accounts:
+            account_id = int(public_account["id"])
+            try:
+                account, access_token = self._get_account_and_token(
+                    user_id, workspace_id, mail_account_id=account_id, require_outgoing=False,
+                )
+                provider = self._provider_for_account(account, access_token)
+                fetched.extend((account_id, message) for message in provider.fetch_topic(account["email"], access_token, subject=topic, max_messages=200))
+            except ProviderError as exc:
+                errors.append({"account_id": account_id, "account_email": str(public_account.get("email") or ""), "error": exc.message})
+        if not fetched:
+            if errors:
+                raise ProviderError("Не удалось загрузить письма по теме. Проверьте подключение почты.", transient=True, provider_code="imap-topic-import")
+            raise ValueError("По этой теме не найдено писем. Черновик заявки не создан.")
+        title = re.sub(r"^\s*\[SD-[^\]]+\]\s*", "", topic, flags=re.IGNORECASE).strip() or topic
+        request_id = self.repository.create_request(
+            workspace_id,
+            user_id=user_id,
+            name=title,
+            description=f"Переписка импортирована из почты по теме: {topic}",
+            positions=[{"name": title}],
+            sender_name="",
+            company_name="",
+            email_reference=parsed_reference.email_reference if parsed_reference.status == "valid" else None,
+        )
+        result = self.repository.import_mail_topic_messages(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            request_id=request_id,
+            topic=topic,
+            messages=fetched,
+        )
+        return {"ok": True, "request_id": request_id, "subject": topic, "errors": errors, **result}
+
+    def set_sent_sync_enabled(
+        self, *, user_id: int, workspace_id: int, mail_account_id: int, enabled: bool,
+    ) -> dict[str, Any]:
+        if type(enabled) is not bool:
+            raise ValueError("enabled должен быть логическим значением true или false.")
+        account = self.repository.get_mail_account_for_owner(mail_account_id, user_id, workspace_id)
+        if not account or str(account.get("status")) != "connected":
+            raise ValueError("Подключённый почтовый аккаунт не найден.")
+        if not self.repository.set_sent_sync_enabled(mail_account_id, user_id, workspace_id, enabled):
+            raise ValueError("Не удалось изменить настройку отправленных писем.")
+        updated = self.repository.get_mail_account_for_owner(mail_account_id, user_id, workspace_id) or {}
+        return {"ok": True, "account": self._public_account(updated)}
 
     def sync_all_incoming(self, user_id: int, workspace_id: int, *, max_messages: int = 100) -> dict[str, Any]:
         results: list[dict[str, Any]] = []
@@ -1918,6 +2172,7 @@ class MailService:
         account_outgoing_enabled = bool(account.get("account_outgoing_enabled", 0))
         effective_outgoing_enabled = account_outgoing_enabled if outgoing_enabled is None else bool(outgoing_enabled)
         incoming_enabled = bool(account.get("account_incoming_enabled", 1))
+        sent_sync_enabled = bool(account.get("account_sent_sync_enabled", 0))
         incoming_error = account.get("incoming_last_error") or None
         if not incoming_enabled:
             incoming_health = "disabled"
@@ -1941,6 +2196,7 @@ class MailService:
             "outgoing_enabled": effective_outgoing_enabled,
             "outgoing_health": "ready" if effective_outgoing_enabled else "disabled",
             "incoming_enabled": incoming_enabled,
+            "sent_sync_enabled": sent_sync_enabled,
             "incoming_health": incoming_health,
             "incoming_last_success_at": account.get("incoming_last_success_at"),
             "incoming_last_error_at": account.get("incoming_last_error_at"),

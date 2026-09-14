@@ -139,6 +139,14 @@ class IncomingMessage:
     body_text: str
     body_html: str
     received_at: datetime
+    # The existing name is retained for compatibility: this normalized record
+    # now also represents a read-only copy from the Sent folder.
+    folder: str = "INBOX"
+    direction: Literal["inbound", "outbound"] = "inbound"
+    # The legacy ``to_email`` remains the primary recipient for compatibility.
+    # Sent messages can address several suppliers, so importers must preserve
+    # every explicit recipient rather than silently collapsing the list.
+    recipient_emails: tuple[str, ...] = ()
 
 
 @dataclass(slots=True)
@@ -147,6 +155,7 @@ class IncomingBatch:
     last_uid: int
     messages: list[IncomingMessage]
     scanned_count: int
+    folder: str = "INBOX"
 
 
 def safe_provider_error(exc: BaseException) -> ProviderError:

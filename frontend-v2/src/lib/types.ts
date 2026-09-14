@@ -8,6 +8,8 @@ export type RequestStatus = 'draft' | 'searching' | 'updating' | 'completed' | '
 
 export interface RequestListItem {
   id: number;
+  /** Immutable public marker for linking an email composed outside SupplyDesk. */
+  email_reference: string;
   name: string;
   description: string | null;
   /** Empty string means "no deadline set" — the real API never sends null here. */
@@ -247,6 +249,8 @@ export interface MailAccount {
   outgoing_enabled: boolean;
   outgoing_health?: 'ready' | 'disabled' | 'error' | string;
   incoming_enabled: boolean;
+  /** Explicit per-account consent for background import of [SD-…] Sent mail. */
+  sent_sync_enabled: boolean;
   incoming_health?: 'healthy' | 'error' | 'pending' | 'disabled' | string;
   incoming_last_success_at?: string | null;
   incoming_last_error_at?: string | null;
@@ -276,6 +280,29 @@ export interface MailStatus {
   last_error?: string | null;
   updated_at?: string | null;
   accounts: MailAccount[];
+}
+
+/** Header-only result shown before a user imports a mail topic. */
+export interface MailTopicPreviewItem {
+  account_id: number;
+  account_email: string;
+  folder: string;
+  direction: 'inbound' | 'outbound';
+  from_email: string;
+  to_email: string;
+  subject: string;
+  received_at: string;
+}
+
+export interface MailTopicPreview {
+  ok: true;
+  subject: string;
+  normalized_topic: string;
+  items: MailTopicPreviewItem[];
+  count: number;
+  errors: { account_id: number; account_email: string; error: string }[];
+  existing_request_id: number | null;
+  email_reference: string | null;
 }
 
 export interface GlobalSupplierHistoryEntry {

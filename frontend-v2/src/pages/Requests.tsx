@@ -7,10 +7,11 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import clsx from 'clsx';
-import { ArrowUpDown, MessageSquareText, Plus, Search, Truck } from 'lucide-react';
+import { ArrowUpDown, FolderSearch, MessageSquareText, Plus, Search, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewRequestModal } from '../components/NewRequestModal';
+import { ImportMailTopicModal } from '../components/ImportMailTopicModal';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -38,6 +39,7 @@ export function Requests() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [creating, setCreating] = useState(false);
+  const [importingTopic, setImportingTopic] = useState(false);
   const [search, setSearch] = useState(() => searchParams.get('q') ?? '');
   const [status, setStatus] = useState<RequestStatus | 'all'>('all');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'deadline', desc: false }]);
@@ -164,9 +166,14 @@ export function Requests() {
         title="Заявки"
         description={state.status === 'ready' ? `${requests.length} заявок в работе` : 'Загружаем заявки…'}
         actions={
-          <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreating(true)}>
-            Новая заявка
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" icon={<FolderSearch size={14} />} onClick={() => setImportingTopic(true)}>
+              Импортировать переписку
+            </Button>
+            <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreating(true)}>
+              Новая заявка
+            </Button>
+          </div>
         }
       />
 
@@ -174,6 +181,20 @@ export function Requests() {
         <NewRequestModal
           onClose={() => setCreating(false)}
           onCreated={() => state.reload()}
+        />
+      )}
+      {importingTopic && (
+        <ImportMailTopicModal
+          onClose={() => setImportingTopic(false)}
+          onOpenExisting={(requestId) => {
+            setImportingTopic(false);
+            navigate(`/requests/${requestId}`);
+          }}
+          onImported={(requestId) => {
+            setImportingTopic(false);
+            void state.reload();
+            navigate(`/requests/${requestId}`);
+          }}
         />
       )}
 

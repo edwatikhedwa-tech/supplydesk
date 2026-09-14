@@ -127,6 +127,7 @@ class AuthAccountsMixin:
         request_id = int(connection.execute(
             "SELECT COALESCE(MAX(id), 1042) + 1 FROM requests"
         ).fetchone()[0])
+        created_at = iso_now()
         connection.execute(
             """INSERT INTO requests(id, workspace_id, name, description, sender_name, company_name, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -137,8 +138,12 @@ class AuthAccountsMixin:
                 "Кирпич облицовочный — 12 000 шт; кирпич рядовой — 20 000 шт; печной шамотный — 800 шт; газобетонный блок D500 — 40 м³.",
                 "Снабжение",
                 "Рабочее пространство снабжения",
-                iso_now(),
+                created_at,
             ),
+        )
+        connection.execute(
+            "INSERT INTO request_email_references(request_id, workspace_id, email_reference, created_at) VALUES (?, ?, ?, ?)",
+            (request_id, workspace_id, f"SD-{request_id}", created_at),
         )
 
     def authenticate(self, email: str, password: str) -> dict[str, Any] | None:
@@ -307,6 +312,7 @@ class AuthAccountsMixin:
                 """SELECT a.*, p.display_name, p.auth_mode, p.credential_reference,
                           COALESCE(p.outgoing_enabled, 0) AS account_outgoing_enabled,
                           COALESCE(p.incoming_enabled, 1) AS account_incoming_enabled,
+                          COALESCE(p.sent_sync_enabled, 0) AS account_sent_sync_enabled,
                           s.last_sync_at AS incoming_last_success_at,
                           s.last_error_at AS incoming_last_error_at,
                           s.last_error_message AS incoming_last_error
@@ -343,6 +349,7 @@ class AuthAccountsMixin:
                 """SELECT a.*, p.display_name, p.auth_mode, p.credential_reference,
                           COALESCE(p.outgoing_enabled, 0) AS account_outgoing_enabled,
                           COALESCE(p.incoming_enabled, 1) AS account_incoming_enabled,
+                          COALESCE(p.sent_sync_enabled, 0) AS account_sent_sync_enabled,
                           s.last_sync_at AS incoming_last_success_at,
                           s.last_error_at AS incoming_last_error_at,
                           s.last_error_message AS incoming_last_error
@@ -356,7 +363,7 @@ class AuthAccountsMixin:
         return [dict(row) for row in rows]
 
     def list_active_mail_accounts(self) -> list[dict[str, Any]]:
-        """Подключённые ящики — для фоновой синхронизации входящих.
+        """Подключённые ящики — для разрешённых фоновых синхронизаций.
 
         Только id/user/workspace/email: токены фоновой задаче не нужны, их
         достаёт и расшифровывает сам MailService при обращении.
@@ -364,10 +371,12 @@ class AuthAccountsMixin:
         with self.connect() as connection:
             rows = connection.execute(
                 """SELECT a.id, a.user_id, a.workspace_id, a.provider, a.email,
-                          COALESCE(p.incoming_enabled, 1) AS account_incoming_enabled
+                          COALESCE(p.incoming_enabled, 1) AS account_incoming_enabled,
+                          COALESCE(p.sent_sync_enabled, 0) AS account_sent_sync_enabled
                    FROM mail_accounts a
                    LEFT JOIN mail_account_profiles p ON p.account_id=a.id
-                   WHERE a.status = 'connected' AND COALESCE(p.incoming_enabled, 1)=1"""
+                   WHERE a.status = 'connected'
+                     AND (COALESCE(p.incoming_enabled, 1)=1 OR COALESCE(p.sent_sync_enabled, 0)=1)"""
             ).fetchall()
         return [dict(row) for row in rows]
 
@@ -377,6 +386,7 @@ class AuthAccountsMixin:
                 """SELECT a.*, p.display_name, p.auth_mode, p.credential_reference,
                           COALESCE(p.outgoing_enabled, 0) AS account_outgoing_enabled,
                           COALESCE(p.incoming_enabled, 1) AS account_incoming_enabled,
+                          COALESCE(p.sent_sync_enabled, 0) AS account_sent_sync_enabled,
                           s.last_sync_at AS incoming_last_success_at,
                           s.last_error_at AS incoming_last_error_at,
                           s.last_error_message AS incoming_last_error
@@ -393,7 +403,8 @@ class AuthAccountsMixin:
             row = connection.execute(
                 """SELECT a.*, p.display_name, p.auth_mode, p.credential_reference,
                           COALESCE(p.outgoing_enabled, 0) AS account_outgoing_enabled,
-                          COALESCE(p.incoming_enabled, 1) AS account_incoming_enabled
+                          COALESCE(p.incoming_enabled, 1) AS account_incoming_enabled,
+                          COALESCE(p.sent_sync_enabled, 0) AS account_sent_sync_enabled
                    FROM mail_accounts a
                    LEFT JOIN mail_account_profiles p ON p.account_id=a.id
                    WHERE a.id=? AND a.user_id=? AND a.workspace_id=?""",
@@ -498,6 +509,23 @@ class AuthAccountsMixin:
                 (account_id,),
             ).fetchone()
         return str(row[0]) if row and row[0] else None
+
+    def set_sent_sync_enabled(self, account_id: int, user_id: int, workspace_id: int, enabled: bool) -> bool:
+        """Persist the owner's explicit consent for automatic SD-marked Sent import."""
+
+        with self.connect() as connection:
+            updated = connection.execute(
+                """UPDATE mail_account_profiles
+                   SET sent_sync_enabled=?, updated_at=?
+                   WHERE account_id=?
+                     AND EXISTS (
+                       SELECT 1 FROM mail_accounts a
+                       WHERE a.id=mail_account_profiles.account_id
+                         AND a.user_id=? AND a.workspace_id=?
+                     )""",
+                (1 if enabled else 0, iso_now(), int(account_id), int(user_id), int(workspace_id)),
+            )
+        return updated.rowcount == 1
 
     def update_mail_tokens(self, account_id: int, access_token_encrypted: str, refresh_token_encrypted: str, token_expires_at: str) -> None:
         with self.connect() as connection:

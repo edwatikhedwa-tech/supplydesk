@@ -1,13 +1,13 @@
-import { ArrowLeft, Ban, ExternalLink, Inbox, MessageSquareText, Package, PenSquare, RotateCw, Search, Send } from 'lucide-react';
+import { ArrowLeft, Ban, Check, Copy, ExternalLink, FolderSearch, Inbox, Loader2, Mail, MessageSquareText, Package, PenSquare, RotateCw, Search, Send } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import checkoIcon from '../assets/checko-icon.png';
 import { BulkComposeModal } from '../components/BulkComposeModal';
+import { CopyButton } from '../components/ui/CopyButton';
 import { QuickAddTaskButton } from '../components/QuickAddTaskButton';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { CopyButton } from '../components/ui/CopyButton';
 import { DeadlineTag } from '../components/ui/DeadlineTag';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
@@ -60,6 +60,13 @@ export function RequestDetail() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [composeOpen, setComposeOpen] = useState(false);
   const [quickComposeId, setQuickComposeId] = useState<number | null>(null);
+  const [copiedEmailValue, setCopiedEmailValue] = useState<'subject' | 'reference' | null>(null);
+  const [emailCopyError, setEmailCopyError] = useState('');
+  const mailAccountsState = useApiData(() => api.mailStatus(), []);
+  const [sentPreview, setSentPreview] = useState<{ accountId: number; accountEmail: string; count: number }[] | null>(null);
+  const [sentPreviewing, setSentPreviewing] = useState(false);
+  const [sentImporting, setSentImporting] = useState(false);
+  const [sentSyncMessage, setSentSyncMessage] = useState('');
 
   const suppliers = state.status === 'ready' ? state.data.items : [];
   const requestStatus = state.status === 'ready' ? state.data.request.status : undefined;
@@ -149,6 +156,64 @@ export function RequestDetail() {
   const { request, positions } = state.data;
   const statusMeta = requestStatusMeta[request.status];
   const metrics = request.mail_metrics;
+  const externalEmailSubject = `[${request.email_reference}] ${request.name}`;
+
+  async function copyEmailValue(value: string, kind: 'subject' | 'reference') {
+    setEmailCopyError('');
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedEmailValue(kind);
+      window.setTimeout(() => setCopiedEmailValue(null), 1800);
+    } catch {
+      setEmailCopyError('Не удалось скопировать. Выделите текст и скопируйте вручную.');
+    }
+  }
+
+  async function previewRequestSentMail() {
+    const accounts = mailAccountsState.status === 'ready'
+      ? mailAccountsState.data.accounts.filter((account) => account.connected)
+      : [];
+    if (accounts.length === 0) {
+      setSentSyncMessage('Подключите почтовый аккаунт в настройках, чтобы найти письмо.');
+      return;
+    }
+    setSentPreviewing(true);
+    setSentSyncMessage('');
+    try {
+      const previews = await Promise.all(accounts.map(async (account) => {
+        const result = await api.mailSentPreview(account.id, requestId);
+        return { accountId: account.id, accountEmail: account.email, count: result.marked_count };
+      }));
+      const found = previews.filter((item) => item.count > 0);
+      setSentPreview(found);
+      const count = found.reduce((total, item) => total + item.count, 0);
+      setSentSyncMessage(count
+        ? `Найдено ${count} писем с [${request.email_reference}]. Проверьте результат и импортируйте их в переписку.`
+        : `В подключённых ящиках нет писем с [${request.email_reference}]. Личные письма с другими темами не читались.`);
+    } catch (error) {
+      setSentPreview(null);
+      setSentSyncMessage(error instanceof ApiError ? error.message : 'Не удалось проверить «Отправленные».');
+    } finally {
+      setSentPreviewing(false);
+    }
+  }
+
+  async function importRequestSentMail() {
+    if (!sentPreview || sentPreview.length === 0) return;
+    setSentImporting(true);
+    setSentSyncMessage('');
+    try {
+      const results = await Promise.all(sentPreview.map((item) => api.mailSentSync(item.accountId, requestId)));
+      const linked = results.reduce((total, item) => total + item.linked, 0);
+      const history = results.reduce((total, item) => total + item.history_imported, 0);
+      setSentPreview(null);
+      setSentSyncMessage(`Импорт завершён: связано с заявкой — ${linked}, добавлено в переписку — ${history}.`);
+    } catch (error) {
+      setSentSyncMessage(error instanceof ApiError ? error.message : 'Не удалось импортировать найденные письма.');
+    } finally {
+      setSentImporting(false);
+    }
+  }
 
   async function retrySearch() {
     setRetrying(true);
@@ -225,6 +290,38 @@ export function RequestDetail() {
       {retryError && <p className="px-4 sm:px-6 pb-2 text-[12px] text-danger">{retryError}</p>}
 
       {request.description && <p className="px-4 sm:px-6 pb-3 text-[12.5px] text-ink-soft">{request.description}</p>}
+
+      <section aria-labelledby="external-email-title" className="mx-4 sm:mx-6 mb-3 rounded-lg border border-border bg-surface px-3 py-2.5">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-[12px] font-semibold text-ink">
+              <Mail size={13} className="text-accent" aria-hidden="true" />
+              <h2 id="external-email-title">Первое письмо из вашей почты</h2>
+            </div>
+            <p className="mt-0.5 text-[11.5px] text-ink-muted">Вставьте тему в Gmail, Яндекс.Почту или корпоративный клиент — ID поможет найти переписку после синхронизации.</p>
+          </div>
+          <span className="shrink-0 rounded-md bg-accent-subtle px-2 py-1 font-mono text-[11px] font-semibold text-accent">{request.email_reference}</span>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <p title={externalEmailSubject} className="min-w-0 flex-1 truncate rounded-md bg-surface-hover px-2.5 py-1.5 font-mono text-[11.5px] text-ink-soft">{externalEmailSubject}</p>
+          <Button variant="secondary" size="sm" icon={copiedEmailValue === 'subject' ? <Check size={13} /> : <Copy size={13} />} onClick={() => void copyEmailValue(externalEmailSubject, 'subject')}>
+            {copiedEmailValue === 'subject' ? 'Скопировано' : 'Скопировать тему'}
+          </Button>
+          <Button variant="secondary" size="sm" icon={copiedEmailValue === 'reference' ? <Check size={13} /> : <Copy size={13} />} onClick={() => void copyEmailValue(request.email_reference, 'reference')}>
+            {copiedEmailValue === 'reference' ? 'Скопировано' : 'Скопировать ID'}
+          </Button>
+          {sentPreview && sentPreview.length > 0 ? (
+            <Button variant="primary" size="sm" icon={sentImporting ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} disabled={sentImporting} onClick={() => void importRequestSentMail()}>
+              Импортировать ({sentPreview.reduce((total, item) => total + item.count, 0)})
+            </Button>
+          ) : (
+            <Button variant="secondary" size="sm" icon={sentPreviewing ? <Loader2 size={13} className="animate-spin" /> : <FolderSearch size={13} />} disabled={sentPreviewing || sentImporting} onClick={() => void previewRequestSentMail()}>
+              Найти в «Отправленных»
+            </Button>
+          )}
+        </div>
+        <p aria-live="polite" className={emailCopyError || sentSyncMessage ? 'mt-1.5 text-[11px] text-ink-muted' : 'sr-only'}>{emailCopyError || sentSyncMessage}</p>
+      </section>
 
       {positions.length > 0 && (
         <div className="px-4 sm:px-6 pb-3">

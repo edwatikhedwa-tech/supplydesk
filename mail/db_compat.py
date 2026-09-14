@@ -202,4 +202,8 @@ def _split_sql_script(script: str) -> list[str]:
 def _postgres_migration_sql(script: str) -> str:
     script = re.sub(r"^\s*PRAGMA[^;]+;", "", script, flags=re.IGNORECASE | re.MULTILINE)
     script = re.sub(r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT", "SERIAL PRIMARY KEY", script, flags=re.IGNORECASE)
+    # SQLite needs WHERE 1 to disambiguate INSERT … SELECT … ON CONFLICT;
+    # PostgreSQL treats that numeric predicate as a type error. The predicate
+    # is a SQLite grammar workaround, not part of the migration's logic.
+    script = re.sub(r"\bWHERE\s+1\s*(?=ON\s+CONFLICT)", "", script, flags=re.IGNORECASE)
     return re.sub(r"\bBLOB\b", "BYTEA", script, flags=re.IGNORECASE)

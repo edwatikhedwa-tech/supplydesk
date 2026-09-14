@@ -490,6 +490,16 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                     email=str(body.get("email") or ""), app_password=str(body.get("app_password") or ""),
                 )
                 self._json(201, {"ok": True, "account": account})
+            elif parsed.path.startswith("/api/mail/accounts/") and parsed.path.endswith("/sent-sync"):
+                account_id = int(parsed.path.split("/")[4])
+                enabled = _strict_optional_bool(body, "enabled")
+                if enabled is None:
+                    raise ValueError("enabled должен быть указан явно.")
+                result = self.app.service.set_sent_sync_enabled(
+                    user_id=session["user_id"], workspace_id=session["workspace_id"],
+                    mail_account_id=account_id, enabled=enabled,
+                )
+                self._json(200, result)
             elif parsed.path.startswith("/api/mail/accounts/") and parsed.path.endswith("/test"):
                 account_id = int(parsed.path.split("/")[4])
                 self.app.service.test_connection(session["user_id"], session["workspace_id"], mail_account_id=account_id)
@@ -498,6 +508,36 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                 account_id = int(body["mail_account_id"]) if body.get("mail_account_id") is not None else None
                 result = self.app.service.sync_incoming(session["user_id"], session["workspace_id"], mail_account_id=account_id) if account_id is not None else self.app.service.sync_all_incoming(session["user_id"], session["workspace_id"])
                 self._json(200, result)
+            elif parsed.path == "/api/mail/sent/preview":
+                account_id = int(body["mail_account_id"]) if body.get("mail_account_id") is not None else None
+                if account_id is None:
+                    raise ValueError("mail_account_id обязателен.")
+                request_id = int(body["request_id"]) if body.get("request_id") is not None else None
+                result = self.app.service.preview_sent(session["user_id"], session["workspace_id"], mail_account_id=account_id, request_id=request_id)
+                self._json(200, result)
+            elif parsed.path == "/api/mail/sent/sync":
+                account_id = int(body["mail_account_id"]) if body.get("mail_account_id") is not None else None
+                if account_id is None:
+                    raise ValueError("mail_account_id обязателен.")
+                result = self.app.service.sync_sent(
+                    session["user_id"], session["workspace_id"],
+                    mail_account_id=account_id,
+                    confirmed=bool(_strict_optional_bool(body, "confirmed")),
+                    request_id=int(body["request_id"]) if body.get("request_id") is not None else None,
+                )
+                self._json(200, result)
+            elif parsed.path == "/api/mail/topic/preview":
+                result = self.app.service.preview_mail_topic(
+                    session["user_id"], session["workspace_id"], subject=str(body.get("subject") or ""),
+                )
+                self._json(200, result)
+            elif parsed.path == "/api/mail/topic/import":
+                result = self.app.service.import_mail_topic(
+                    session["user_id"], session["workspace_id"],
+                    subject=str(body.get("subject") or ""),
+                    confirmed=body.get("confirmed") is True,
+                )
+                self._json(201, result)
             elif parsed.path == "/api/mail/diagnose-headers":
                 account_id = int(body["mail_account_id"]) if body.get("mail_account_id") is not None else None
                 if account_id is None:
@@ -1381,15 +1421,26 @@ class SupplierApp(EnrichmentOrchestratorMixin):
                 continue
             for account in accounts:
                 try:
-                    result = self.service.sync_incoming(
-                        account["user_id"], account["workspace_id"],
-                        mail_account_id=int(account["id"]),
-                    )
-                    if result.get("imported") or result.get("unmatched"):
-                        log.info(
-                            "Фоновая синхронизация: импортировано %s, без привязки %s",
-                            result.get("imported", 0), result.get("unmatched", 0),
+                    if bool(account.get("account_incoming_enabled", 1)):
+                        result = self.service.sync_incoming(
+                            account["user_id"], account["workspace_id"],
+                            mail_account_id=int(account["id"]),
                         )
+                        if result.get("imported") or result.get("unmatched"):
+                            log.info(
+                                "Фоновая синхронизация: импортировано %s, без привязки %s",
+                                result.get("imported", 0), result.get("unmatched", 0),
+                            )
+                    if bool(account.get("account_sent_sync_enabled", 0)):
+                        sent = self.service.sync_sent_automatically(
+                            account["user_id"], account["workspace_id"],
+                            mail_account_id=int(account["id"]),
+                        )
+                        if sent.get("imported") or sent.get("linked"):
+                            log.info(
+                                "Фоновая синхронизация отправленных: импортировано %s, связано %s",
+                                sent.get("imported", 0), sent.get("linked", 0),
+                            )
                 except Exception as exc:  # noqa: BLE001 — один ящик не ломает остальные
                     log.info("Фоновая синхронизация ящика %s: %s", account.get("email", "?"), exc)
 

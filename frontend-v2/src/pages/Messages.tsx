@@ -4,13 +4,13 @@ import {
   ArrowLeft,
   ArrowUpRight,
   Ban,
-  BrainCircuit,
   Check,
   CheckCheck,
   ChevronRight,
   Inbox,
   ListTodo,
   Link2,
+  MessageCircleMore,
   NotebookPen,
   Send,
   Sparkles,
@@ -168,7 +168,18 @@ export function Messages() {
       });
   }, [threads]);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedThreadIdParam = searchParams.get('thread');
+  const requestedRequestId = searchParams.get('request');
+  const requestedSupplierId = searchParams.get('supplier');
   const [threadFilter, setThreadFilter] = useState<ThreadFilter>('answered');
+  // A deep link from a request is an explicit request to see its whole mail
+  // history. Leaving the default "Есть ответ" filter in place hid newly sent
+  // correspondence until a supplier replied, which made an imported request
+  // look as though it had never reached Messages.
+  useEffect(() => {
+    if (requestedRequestId) setThreadFilter('all');
+  }, [requestedRequestId]);
   const threadFilterCounts = useMemo(
     () => ({
       all: threads.filter((t) => t.conversation_status !== 'rejected').length,
@@ -224,10 +235,6 @@ export function Messages() {
     }
   }
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const requestedThreadIdParam = searchParams.get('thread');
-  const requestedRequestId = searchParams.get('request');
-  const requestedSupplierId = searchParams.get('supplier');
   // Captured once on mount (functional initial state), not read on every
   // render -- selectionInitialized's effect below clears the URL's search
   // params shortly after mount, so reading them live would lose the value.
@@ -249,10 +256,14 @@ export function Messages() {
   useEffect(() => {
     if (expanded === null && groups.length > 0) {
       const withUnread = groups.filter((g) => g.threads.some((t) => t.unread_count > 0)).map((g) => g.request_id);
-      const requested = requestedThreadId ? groups.find((g) => g.threads.some((t) => t.id === Number(requestedThreadId))) : null;
+      const requested = requestedThreadId
+        ? groups.find((g) => g.threads.some((t) => t.id === Number(requestedThreadId)))
+        : requestedRequestId
+          ? groups.find((g) => g.request_id === Number(requestedRequestId))
+          : null;
       setExpanded(new Set(requested ? [...withUnread, requested.request_id] : withUnread));
     }
-  }, [groups, expanded, requestedThreadId]);
+  }, [groups, expanded, requestedThreadId, requestedRequestId]);
 
   const [selection, setSelection] = useState<Selection>(null);
   const [selectionInitialized, setSelectionInitialized] = useState(false);
@@ -620,13 +631,14 @@ export function Messages() {
             />
           ) : (
             filteredGroups.map((g) => {
-              const isOpen = threadFilter !== 'all' || (expanded?.has(g.request_id) ?? false);
+              const isOpen = expanded?.has(g.request_id) ?? false;
               const unread = g.threads.reduce((s, t) => s + t.unread_count, 0);
               return (
                 <Frame key={g.request_id} className="mx-2 my-1.5 w-auto max-w-none gap-1 rounded-lg p-1 shadow-none md:max-lg:mx-0 md:max-lg:rounded-none md:max-lg:border-x-0">
                   <FrameHeader className="p-0">
                     <button
                       onClick={() => toggleGroup(g.request_id)}
+                      aria-expanded={isOpen}
                       className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-surface"
                     >
                       <ChevronRight size={13} className={'shrink-0 text-ink-faint transition-transform ' + (isOpen ? 'rotate-90' : '')} />
@@ -866,7 +878,7 @@ export function Messages() {
                           aria-label="Открыть ИИ-помощника"
                           className={clsx('flex h-8 w-8 items-center justify-center rounded-[10px] border border-border-strong bg-surface transition-colors', aiOpen ? 'border-accent-border bg-accent-subtle text-accent' : 'text-ink-muted hover:bg-surface-hover hover:text-ink')}
                         >
-                          <BrainCircuit size={16} />
+                          <MessageCircleMore size={16} />
                         </button>
                     </div>
                   </div>

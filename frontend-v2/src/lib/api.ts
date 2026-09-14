@@ -19,6 +19,7 @@ import type {
   MailAttachment,
   MailMessage,
   MailStatus,
+  MailTopicPreview,
   MailTemplate,
   OutgoingMailStatus,
   ManualLinkRequestOption,
@@ -229,6 +230,16 @@ export const api = {
     request<{ ok: true; message: string }>('/api/mail/test', { method: 'POST', body: JSON.stringify(mailAccountId == null ? {} : { mail_account_id: mailAccountId }) }),
   mailSync: (mailAccountId?: number) =>
     request<{ imported?: number } & Record<string, unknown>>('/api/mail/sync', { method: 'POST', body: JSON.stringify(mailAccountId == null ? {} : { mail_account_id: mailAccountId }) }),
+  mailSentPreview: (mailAccountId: number, requestId?: number) =>
+    request<{ ok: true; folder: string; marked_count: number; min_uid: number | null; max_uid: number | null; email_reference?: string | null }>('/api/mail/sent/preview', { method: 'POST', body: JSON.stringify({ mail_account_id: mailAccountId, ...(requestId == null ? {} : { request_id: requestId }) }) }),
+  mailSentSync: (mailAccountId: number, requestId?: number) =>
+    request<{ ok: true; scanned: number; imported: number; linked: number; history_imported: number; skipped: number; conflicts: number; invalid: number; email_reference?: string | null }>('/api/mail/sent/sync', { method: 'POST', body: JSON.stringify({ mail_account_id: mailAccountId, confirmed: true, ...(requestId == null ? {} : { request_id: requestId }) }) }),
+  mailTopicPreview: (subject: string) =>
+    request<MailTopicPreview>('/api/mail/topic/preview', { method: 'POST', body: JSON.stringify({ subject }) }),
+  importMailTopic: (subject: string) =>
+    request<{ ok: true; request_id: number; subject: string; imported: number; linked_suppliers: number; created_suppliers: number; skipped: number; conflicts: number; errors: { account_id: number; account_email: string; error: string }[] }>('/api/mail/topic/import', { method: 'POST', body: JSON.stringify({ subject, confirmed: true }) }),
+  setMailSentSyncEnabled: (mailAccountId: number, enabled: boolean) =>
+    request<{ ok: true; account: MailAccount }>(`/api/mail/accounts/${mailAccountId}/sent-sync`, { method: 'POST', body: JSON.stringify({ enabled }) }),
   mailDisconnectAccount: (mailAccountId: number) => request<{ ok: true }>(`/api/mail/accounts/${mailAccountId}`, { method: 'DELETE' }),
 
   outgoingMailStatus: () => request<OutgoingMailStatus>('/api/mail/runtime/outgoing'),

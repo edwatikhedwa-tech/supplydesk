@@ -21,6 +21,7 @@ from urllib.parse import unquote, urlencode
 from urllib.request import Request, urlopen
 
 from ..content import html_to_text
+from ..request_references import normalize_mail_topic, parse_request_reference_from_subject
 from ..types import (
     DeliveryCheck,
     OutgoingMessage,
@@ -181,20 +182,235 @@ class YandexMailProvider(MailProvider):
         last_uid: int,
         max_messages: int,
     ) -> IncomingBatch:
+        return self._fetch_folder(
+            email,
+            access_token,
+            uidvalidity=uidvalidity,
+            last_uid=last_uid,
+            max_messages=max_messages,
+            folder="INBOX",
+            direction="inbound",
+            marked_only=False,
+        )
+
+    def preview_sent(self, email: str, access_token: str, *, subject_marker: str | None = None) -> dict[str, object]:
+        """Inspect only Sent metadata for an SD marker or one exact request marker."""
+
         connection = None
         try:
             connection = self._imap_connection(email, access_token)
-            status, _ = connection.select("INBOX", readonly=True)
+            folder = self._resolve_sent_folder(connection)
+            status, _ = connection.select(folder, readonly=True)
             if status != "OK":
-                raise ProviderError("Яндекс не открыл папку входящих сообщений.", transient=True, provider_code="imap-select")
+                raise ProviderError("Не удалось открыть папку отправленных сообщений.", transient=True, provider_code="imap-select-sent")
+            marker = str(subject_marker or "SD-").strip()
+            status, data = connection.uid("SEARCH", None, f'HEADER Subject "{marker}"')
+            if status != "OK":
+                raise ProviderError("Почтовый сервер не вернул список отправленных писем.", transient=True, provider_code="imap-search-sent")
+            ids = [int(value) for value in (data[0] or b"").split() if value.isdigit()]
+            return {"folder": folder, "marked_count": len(ids), "min_uid": min(ids) if ids else None, "max_uid": max(ids) if ids else None}
+        except ProviderError:
+            raise
+        except imaplib.IMAP4.error as exc:
+            raise ProviderError("Не удалось прочитать отправленные сообщения. Проверьте IMAP-доступ к почте.", transient=True, provider_code="imap-read-sent") from exc
+        except (socket.timeout, TimeoutError, OSError) as exc:
+            raise ProviderError("Почтовый сервер временно недоступен.", transient=True, provider_code="imap-network") from exc
+        finally:
+            if connection is not None:
+                try:
+                    connection.logout()
+                except (imaplib.IMAP4.error, OSError):
+                    pass
+
+    def fetch_sent(
+        self,
+        email: str,
+        access_token: str,
+        *,
+        uidvalidity: str | None,
+        last_uid: int,
+        max_messages: int,
+        subject_marker: str | None = None,
+    ) -> IncomingBatch:
+        return self._fetch_folder(
+            email,
+            access_token,
+            uidvalidity=uidvalidity,
+            last_uid=last_uid,
+            max_messages=max_messages,
+            folder=None,
+            direction="outbound",
+            marked_only=True,
+            subject_marker=subject_marker,
+        )
+
+    def preview_topic(
+        self,
+        email: str,
+        access_token: str,
+        *,
+        subject: str,
+        max_messages: int,
+    ) -> list[IncomingMessage]:
+        """Inspect Inbox and Sent headers for one user-selected topic only."""
+
+        return self._fetch_topic(
+            email, access_token, subject=subject, max_messages=max_messages,
+            headers_only=True,
+        )
+
+    def fetch_topic(
+        self,
+        email: str,
+        access_token: str,
+        *,
+        subject: str,
+        max_messages: int,
+    ) -> list[IncomingMessage]:
+        """Read the bodies only after the caller has confirmed the preview."""
+
+        return self._fetch_topic(
+            email, access_token, subject=subject, max_messages=max_messages,
+            headers_only=False,
+        )
+
+    @staticmethod
+    def _imap_subject_criterion(subject: str) -> str:
+        # IMAP quoted strings use backslash escaping.  Keep user input inside
+        # one Subject criterion; a quote/newline must never turn into another
+        # IMAP search token.
+        safe = str(subject or "").replace("\\", "\\\\").replace('"', '\\"').replace("\r", " ").replace("\n", " ")
+        return f'HEADER Subject "{safe}"'
+
+    @staticmethod
+    def _topic_search(connection: imaplib.IMAP4_SSL, *, criterion: str, subject: str):
+        """Run a Subject search without assuming ASCII-only topic text."""
+
+        if subject.isascii():
+            return connection.uid("SEARCH", None, criterion)
+        capabilities = {str(value).upper() for value in getattr(connection, "capabilities", ())}
+        if "ENABLE" in capabilities:
+            try:
+                status, _ = connection.enable("UTF8=ACCEPT")
+                if status == "OK":
+                    # imaplib switches its command encoding to UTF-8 itself.
+                    return connection.uid("SEARCH", None, criterion)
+            except imaplib.IMAP4.error:
+                # Some servers advertise ENABLE but reject UTF8=ACCEPT.  The
+                # RFC 3501 CHARSET form below is the conservative fallback.
+                pass
+        previous_encoding = getattr(connection, "_encoding", "ascii")
+        try:
+            # IMAP SEARCH permits UTF-8 with an explicit CHARSET.  imaplib
+            # otherwise tries to encode its command arguments as ASCII before
+            # the request reaches the provider.
+            connection._encoding = "utf-8"
+            return connection.uid("SEARCH", "CHARSET", "UTF-8", criterion)
+        finally:
+            connection._encoding = previous_encoding
+
+    def _fetch_topic(
+        self,
+        email: str,
+        access_token: str,
+        *,
+        subject: str,
+        max_messages: int,
+        headers_only: bool,
+    ) -> list[IncomingMessage]:
+        normalized_topic = normalize_mail_topic(subject)
+        if not normalized_topic:
+            raise ProviderError("Укажите тему письма для поиска.")
+        connection = None
+        try:
+            connection = self._imap_connection(email, access_token)
+            folders = (("INBOX", "inbound"), (self._resolve_sent_folder(connection), "outbound"))
+            messages: list[IncomingMessage] = []
+            parsed_reference = parse_request_reference_from_subject(subject)
+            # A server may retain a Cyrillic Subject as an RFC 2047 encoded
+            # header and then fail to match its decoded form.  The explicit
+            # SD marker is ASCII and survives transport unchanged, so it is
+            # the reliable narrow candidate query for this common flow.  The
+            # local normalized comparison below still requires the full topic.
+            search_terms = [subject]
+            if parsed_reference.status == "valid" and parsed_reference.email_reference:
+                search_terms.insert(0, f"[{parsed_reference.email_reference}]")
+            fetch_part = "(BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE MESSAGE-ID IN-REPLY-TO REFERENCES)])" if headers_only else "(BODY.PEEK[])"
+            limit = max(1, min(int(max_messages), 200))
+            for folder, direction in folders:
+                status, _ = connection.select(folder, readonly=True)
+                if status != "OK":
+                    raise ProviderError("Не удалось открыть папку почты для поиска темы.", transient=True, provider_code="imap-select-topic")
+                uidvalidity = self._imap_uidvalidity(connection)
+                ids: set[int] = set()
+                for search_term in search_terms:
+                    status, data = self._topic_search(
+                        connection,
+                        criterion=self._imap_subject_criterion(search_term),
+                        subject=search_term,
+                    )
+                    if status != "OK":
+                        raise ProviderError("Почтовый сервер не вернул список писем по теме.", transient=True, provider_code="imap-search-topic")
+                    ids.update(int(value) for value in (data[0] or b"").split() if value.isdigit())
+                ids = sorted(ids)[:limit]
+                for uid in ids:
+                    fetch_status, fetched = connection.uid("FETCH", str(uid), fetch_part)
+                    if fetch_status != "OK":
+                        continue
+                    raw = b"".join(part[1] for part in (fetched or []) if isinstance(part, tuple) and len(part) > 1 and isinstance(part[1], bytes))
+                    parsed = self._parse_incoming(
+                        raw, email=email, uidvalidity=uidvalidity, uid=uid,
+                        folder=folder, direction=direction,
+                    )
+                    # IMAP HEADER is substring-based on common servers.  The
+                    # second, local comparison makes the user-selected topic
+                    # exact while still including ordinary Re:/Fwd: replies.
+                    if parsed and normalize_mail_topic(parsed.subject) == normalized_topic:
+                        messages.append(parsed)
+            return messages
+        except ProviderError:
+            raise
+        except imaplib.IMAP4.error as exc:
+            raise ProviderError("Не удалось прочитать письма по выбранной теме. Проверьте IMAP-доступ к почте.", transient=True, provider_code="imap-read-topic") from exc
+        except (socket.timeout, TimeoutError, OSError) as exc:
+            raise ProviderError("Почтовый сервер временно недоступен.", transient=True, provider_code="imap-network") from exc
+        finally:
+            if connection is not None:
+                try:
+                    connection.logout()
+                except (imaplib.IMAP4.error, OSError):
+                    pass
+
+    def _fetch_folder(
+        self,
+        email: str,
+        access_token: str,
+        *,
+        uidvalidity: str | None,
+        last_uid: int,
+        max_messages: int,
+        folder: str | None,
+        direction: str,
+        marked_only: bool,
+        subject_marker: str | None = None,
+    ) -> IncomingBatch:
+        connection = None
+        try:
+            connection = self._imap_connection(email, access_token)
+            selected_folder = folder or self._resolve_sent_folder(connection)
+            status, _ = connection.select(selected_folder, readonly=True)
+            if status != "OK":
+                label = "отправленных" if direction == "outbound" else "входящих"
+                raise ProviderError(f"Яндекс не открыл папку {label} сообщений.", transient=True, provider_code="imap-select")
             current_uidvalidity = self._imap_uidvalidity(connection)
             cursor = int(last_uid or 0) if uidvalidity and uidvalidity == current_uidvalidity else 0
+            criteria = f'HEADER Subject "{str(subject_marker or "SD-").strip()}"' if marked_only else "ALL"
             if cursor:
-                status, data = connection.uid("SEARCH", None, f"UID {cursor + 1}:*")
+                status, data = connection.uid("SEARCH", None, f"UID {cursor + 1}:* {criteria}")
             else:
-                status, data = connection.uid("SEARCH", None, "ALL")
+                status, data = connection.uid("SEARCH", None, criteria)
             if status != "OK":
-                raise ProviderError("Яндекс не вернул список входящих сообщений.", transient=True, provider_code="imap-search")
+                raise ProviderError("Яндекс не вернул список сообщений.", transient=True, provider_code="imap-search")
             ids = [int(value) for value in (data[0] or b"").split() if value.isdigit()]
             if not cursor:
                 # A brand-new watermark (first sync, or uidvalidity changed) must
@@ -222,14 +438,14 @@ class YandexMailProvider(MailProvider):
                     break
                 newest_uid = uid
                 raw = b"".join(part[1] for part in (fetched or []) if isinstance(part, tuple) and len(part) > 1 and isinstance(part[1], bytes))
-                parsed = self._parse_incoming(raw, email=email, uidvalidity=current_uidvalidity, uid=uid)
+                parsed = self._parse_incoming(raw, email=email, uidvalidity=current_uidvalidity, uid=uid, folder=selected_folder, direction=direction)
                 if parsed:
                     messages.append(parsed)
-            return IncomingBatch(current_uidvalidity, newest_uid, messages, len(ids))
+            return IncomingBatch(current_uidvalidity, newest_uid, messages, len(ids), selected_folder)
         except ProviderError:
             raise
         except imaplib.IMAP4.error as exc:
-            raise ProviderError("Не удалось прочитать входящую почту Яндекса. Проверьте, что IMAP и OAuth-токены включены в настройках Почты.", transient=True, provider_code="imap-read") from exc
+            raise ProviderError("Не удалось прочитать почту Яндекса. Проверьте, что IMAP и OAuth-токены включены в настройках Почты.", transient=True, provider_code="imap-read") from exc
         except (socket.timeout, TimeoutError, OSError) as exc:
             raise ProviderError("Сервер входящей почты Яндекса временно недоступен.", transient=True, provider_code="imap-network") from exc
         finally:
@@ -238,6 +454,41 @@ class YandexMailProvider(MailProvider):
                     connection.logout()
                 except (imaplib.IMAP4.error, OSError):
                     pass
+
+    @staticmethod
+    def _resolve_sent_folder(connection: imaplib.IMAP4_SSL) -> str:
+        """Find the provider's Sent mailbox by IMAP special-use, not UI locale."""
+
+        status, folders = connection.list()
+        if status != "OK":
+            raise ProviderError("Не удалось получить список почтовых папок.", transient=True, provider_code="imap-list")
+
+        def folder_name(raw: bytes | str) -> str | None:
+            """Return the last IMAP LIST mailbox token without assuming quotes.
+
+            Servers may return the same special-use mailbox as either
+            ``(\\Sent) \"/\" \"Sent\"`` or ``(\\Sent) \"/\" Sent``. The former
+            was the only shape covered before live preview reached Yandex.
+            """
+
+            text = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else str(raw)
+            match = re.search(r'(?:"(?P<quoted>[^"]+)"|(?P<atom>[^\s"]+))\s*$', text)
+            if not match:
+                return None
+            return match.group("quoted") or match.group("atom")
+
+        for raw in folders or []:
+            text = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else str(raw)
+            if r"\Sent" not in text:
+                continue
+            name = folder_name(raw)
+            if name:
+                return name
+        for raw in folders or []:
+            name = folder_name(raw)
+            if name and name.casefold() in {"sent", "отправленные"}:
+                return name
+        raise ProviderError("В почтовом ящике не найдена папка «Отправленные».", provider_code="imap-sent-folder")
 
     def _imap_connection(self, email: str, access_token: str) -> imaplib.IMAP4_SSL:
         connection = None
@@ -376,14 +627,30 @@ class YandexMailProvider(MailProvider):
                     pass
 
     @classmethod
-    def _parse_incoming(cls, raw: bytes, *, email: str, uidvalidity: str, uid: int) -> IncomingMessage | None:
+    def _parse_incoming(
+        cls,
+        raw: bytes,
+        *,
+        email: str,
+        uidvalidity: str,
+        uid: int,
+        folder: str = "INBOX",
+        direction: str = "inbound",
+    ) -> IncomingMessage | None:
         if not raw:
             return None
         message = BytesParser(policy=policy.default).parsebytes(raw)
         _, from_email = parseaddr(str(message.get("From", "")))
+        recipient_emails = tuple(dict.fromkeys(
+            address.strip().lower()
+            for _name, address in getaddresses(
+                [*message.get_all("To", []), *message.get_all("Cc", [])]
+            )
+            if "@" in address.strip()
+        ))
         _, to_email = parseaddr(str(message.get("To", "")))
         from_email = from_email.strip().lower()
-        to_email = (to_email or email).strip().lower()
+        to_email = (to_email or (recipient_emails[0] if recipient_emails else email)).strip().lower()
         if "@" not in from_email:
             return None
         body_text, source_html = cls._extract_bodies(message)
@@ -407,7 +674,7 @@ class YandexMailProvider(MailProvider):
         # reader then sees prose broken at arbitrary column widths.
         body_html = source_html[:400_000] if source_html else f"<p>{escape(body_text).replace(chr(10), '<br>')}</p>"
         return IncomingMessage(
-            provider_message_id=f"imap:INBOX:{uidvalidity}:{uid}",
+            provider_message_id=f"imap:{folder.replace(':', '_')}:{uidvalidity}:{uid}",
             message_id=message_id,
             in_reply_to=in_reply_to,
             references=references,
@@ -417,6 +684,9 @@ class YandexMailProvider(MailProvider):
             body_text=body_text,
             body_html=body_html,
             received_at=received_at,
+            folder=folder,
+            direction="outbound" if direction == "outbound" else "inbound",
+            recipient_emails=recipient_emails,
         )
 
     @classmethod
