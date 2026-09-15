@@ -331,6 +331,7 @@ export interface GlobalSupplierFinanceYear {
 export interface GlobalSupplierDetail extends GlobalSupplierSummary {
   contacts: WorkspaceSupplierContact[];
   classifications: WorkspaceSupplierClassification[];
+  email_contacts: SupplierEmailContacts;
   history: GlobalSupplierHistoryEntry[];
   issues: GlobalSupplierIssue[];
   /** Up to the last 6 report years, ascending. */
@@ -486,11 +487,55 @@ export interface ThreadSummary {
   is_important: boolean;
   priority: 1 | 2 | 3 | null;
   conversation_status: ConversationStatus | null;
+  /** Derived (never a stored status) -- true when a "Ждём ответа" thread has
+   * waited past its request's configured SLA. Never replaces `waiting`; see
+   * docs/ui/MESSAGES_SCREEN_SPEC.md §13a. */
+  needs_followup: boolean;
 }
 
 /** Operator workflow status for one supplier's correspondence within one заявка --
  * independent of transport/delivery status and of blacklist_entries. */
 export type ConversationStatus = 'in_progress' | 'deferred' | 'rejected';
+
+export type ContactResult =
+  | 'not_reached'
+  | 'contact_confirmed'
+  | 'new_email_provided'
+  | 'call_back_later'
+  | 'supplier_declines';
+
+export type ContactPurpose = 'rfq' | 'sales' | 'tender' | 'general' | 'personal' | 'unknown';
+export type ContactStatus = 'preferred' | 'secondary' | 'deprecated' | 'candidate';
+
+export interface FollowupSettings {
+  request_id: number;
+  sla_business_days: number;
+  is_default: boolean;
+}
+
+export interface WorkspaceContactOverride {
+  email: string;
+  purpose: ContactPurpose;
+  basis: string;
+  created_at: string;
+}
+
+export interface GlobalEmailContact {
+  email: string;
+  purpose: ContactPurpose;
+  status: ContactStatus;
+  last_verified_at: string | null;
+  first_seen_at: string;
+  confirming_workspace_count: number;
+  has_strong_signal: boolean;
+  hard_bounce_count: number;
+  soft_bounce_count: number;
+}
+
+export interface SupplierEmailContacts {
+  workspace_override: WorkspaceContactOverride | null;
+  global_contacts: GlobalEmailContact[];
+}
 
 export interface AiConversationSummary {
   id: number;

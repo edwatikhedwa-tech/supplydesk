@@ -17,6 +17,7 @@ from uuid import uuid4
 from .auth import new_token
 from .auth_accounts import AuthAccountsMixin
 from .canonical_companies import CanonicalCompaniesMixin
+from .contact_intelligence import ContactIntelligenceMixin
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
 from .ai_chat_usage import AiChatUsageMixin
@@ -220,7 +221,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 
 class MailRepository(
     AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, SupportMixin, AiChatUsageMixin, AiConversationsMixin, TasksMixin,
-    CanonicalCompaniesMixin,
+    CanonicalCompaniesMixin, ContactIntelligenceMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
@@ -1859,6 +1860,7 @@ class MailRepository(
             key = (int(item["request_id"]), int(item["supplier_id"]))
             item.update(metadata.get(key, {"is_important": False, "priority": None}))
             item["conversation_status"] = statuses.get(key)
+        self.annotate_needs_followup(workspace_id, items)
         return items
 
     def get_thread_owned(self, workspace_id: int, request_id: int, thread_id: int) -> dict[str, Any] | None:
@@ -4497,6 +4499,7 @@ class MailRepository(
                 (workspace_id, global_supplier_id) if user_id is None else (workspace_id, global_supplier_id, user_id),
             ).fetchall()
             supplier["contacts"] = [dict(row) for row in contact_rows]
+            supplier["email_contacts"] = self.list_email_contacts_for_global_supplier(workspace_id, global_supplier_id)
             classification_rows = connection.execute(
                 """SELECT id, owner_user_id, kind, value, source, confidence, source_url, created_at, updated_at
                    FROM workspace_supplier_classifications

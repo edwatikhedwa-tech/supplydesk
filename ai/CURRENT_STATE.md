@@ -3,8 +3,8 @@ document_id: STATE-001
 status: CURRENT
 canonical: true
 owner: project-control
-updated_at: 2026-09-14
-based_on_commit: pending-commit-TASK-MESSAGES-LINKS-STATUS-SEND-AI-20260910
+updated_at: 2026-09-15
+based_on_commit: pending-commit-TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915
 ---
 
 # Current State
@@ -14,6 +14,51 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-15` — `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915` on branch
+`feature/followup-contact-intelligence-20260915` (base
+`experiment/frontend-v2-greenfield-20260905`), not merged, not pushed. Adds
+`needs_followup` as a third, purely derived thread state (a "Ждём ответа"
+thread with a genuinely sent outbound, no reply, past the request's
+configurable SLA — default 2 business days, `request_followup_settings`) —
+it never replaces `waiting`/`conversation_status`
+(`docs/ui/MESSAGES_SCREEN_SPEC.md` §13a). Messages now shows a "Требует
+внимания" badge and «Связаться»/«Напомнить» actions for such threads;
+«Связаться» records a historical event (`workspace_supplier_contact_events`)
+and, on «уточнён новый email», sets an immediate workspace-only preferred-
+contact override without touching the global card (AC-02/AC-03, both proven
+by test). «Напомнить» reuses the existing `create_task`, not a new entity.
+Separately, extended the cross-tenant `canonical_companies` layer
+(DECISION-022) with a candidate/preferred/secondary/deprecated email
+registry per company (`canonical_company_contacts`/`_signals`/
+`_promotions`, DECISION-024) — an owner-confirmed architecture decision,
+since consensus across "3 independent workspaces" cannot be computed on the
+per-workspace `global_suppliers.id`. Promotion requires 3 independent
+confirming workspaces (same-workspace users dedup to 1, AC-04) plus a
+strong signal (real inbound reply or an official-source confirmation,
+AC-05/AC-06); a hard bounce demotes a preferred contact without ever
+deleting it, a soft bounce never does (AC-08); no API response ever exposes
+which workspaces confirmed a contact, only counts (AC-09, tested).
+`migrations/051_contact_intelligence.sql` (companion tables only, per this
+repo's re-run-every-migration constraint). Full contract:
+`docs/domain/SUPPLIER_MODEL.md` §7. Backend: 14 new focused tests
+(`tests/test_contact_intelligence.py`, all 9 ACs + needs_followup
+mechanics), full existing suite unchanged at `662 tests, 0 failures, 0
+errors, 2 skipped` (`python -m unittest discover`). Frontend: this task
+also added `vitest`/`@testing-library/react` to frontend-v2 (previously no
+unit-test runner existed there at all) with 4 new component tests for the
+new `ContactResultModal`; `typecheck`/`build`/`oxlint` clean, no new
+warnings. The restarted `LOCAL_CANONICAL` runtime applied the new migration
+cleanly (no startup errors) and was confirmed healthy without
+authentication (`/` 200, `/api/auth/me` 200, `/api/mail/threads` 401, the
+new `/api/requests/{id}/followup-settings` 401 — proving the route exists
+and the auth gate runs before any DB query). **NOT VERIFIED**: no owner
+credentials were available to this session to open an authenticated
+`/messages` session and visually confirm the new UI — see
+`ai/DEFERRED_FINDINGS.md` `FINDING-037` for this and the other disclosed
+scope boundaries (`official_source` signals unwired, bounce/reply sync is
+pull-based not live-hooked, the workspace override is not yet consulted by
+`queue_bulk` for new outbound campaigns, no public-holiday calendar).
 
 `2026-09-14` — локально добавлен ручной `SUP-029B.1`: на странице заявок
 «Импортировать переписку» ищет одну введённую пользователем тему во `Входящих`

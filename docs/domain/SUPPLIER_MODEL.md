@@ -227,3 +227,95 @@ canonical/public-данными компании и не используютс�
 классификации повторяет ту же проверку до INSERT. Это покрыто
 `tests/test_supplier_workspace_isolation.py`: данные и попытки мутации из
 второго workspace не пересекают границу, даже при одинаковом ИНН организации.
+
+## 7. needs_followup и самообновляемые email-контакты (2026-09-15, DECISION-024)
+
+`mail/contact_intelligence.py` (`ContactIntelligenceMixin`, `migrations/
+051_contact_intelligence.sql`). Две независимые части.
+
+### 7.1 needs_followup
+
+Производное (никогда не хранимое) состояние переписки: есть хотя бы одно
+реально ушедшее (`last_outbound_status == 'sent'`) исходящее сообщение, ответа
+нет, и с момента отправки прошло не меньше `sla_business_days` рабочих дней
+(понедельник-пятница, без календаря праздников — открытая граница) для этой
+заявки. По умолчанию — 2 рабочих дня; настраивается per-заявка через
+`request_followup_settings` (`GET/POST /api/requests/{id}/followup-settings`).
+Вычисляется в `MailRepository.annotate_needs_followup`, вызывается из
+`list_threads` — та же логика места, что и клиентский `threadResponseStatus`
+(`frontend-v2/src/lib/derive.ts`), только на backend, чтобы не дублировать
+расчёт бизнес-дней на фронте. **`needs_followup` не заменяет и не трогает**
+`threadResponseStatus`/`waiting` (транспортный статус) и `conversation_status`
+(`mail_thread_status`, §13 `docs/ui/MESSAGES_SCREEN_SPEC.md`) — это третий,
+независимый, чисто производный признак.
+
+Для переписки с `needs_followup=true` в Messages доступны действия
+«Связаться» (открывает форму результата контакта: не дозвонился / контакт
+подтверждён / уточнён новый email / связаться позже / поставщик не работает
+с запросом — `POST /api/requests/{id}/suppliers/{supplier_id}/contact-result`,
+`workspace_supplier_contact_events`, историчная запись с датой/пользователем/
+результатом/комментарием) и «Напомнить» (создаёт обычную задачу через уже
+существующий `MailRepository.create_task`, не отдельную сущность —
+`POST /api/requests/{id}/suppliers/{supplier_id}/remind`).
+
+### 7.2 Email-контакты: workspace-override + кросс-tenant consensus
+
+Два независимых слоя, никогда не путать:
+
+1. **Workspace-override** (`workspace_supplier_contact_overrides`) — если
+   после звонка пользователь указывает новый email через результат
+   «Связаться» (`new_email_provided`), новый адрес становится preferred
+   **только для текущего workspace** и немедленно используется для этого
+   workspace вперёд (AC-02). Append-only: предыдущее значение получает
+   `superseded_at`, а не удаляется (AC-07 на уровне workspace). **Не
+   перезаписывает** ничего в `global_suppliers`/`canonical_companies`.
+2. **Кросс-tenant consensus** (`canonical_company_contacts` +
+   `canonical_company_contact_signals` + `canonical_company_contact_promotions`,
+   расширение слоя `canonical_companies` из §1.4/DECISION-022, ключ —
+   `canonical_company_id` по ИНН, **не** `global_suppliers.id`, который
+   per-workspace и не может агрегировать между разными аккаунтами
+   SupplyDesk — см. DECISION-024). Каждый email компании хранится с
+   назначением (`rfq`/`sales`/`tender`/`general`/`personal`/`unknown`) и
+   статусом (`preferred`/`secondary`/`deprecated`/`candidate`). Сигналы:
+   - `workspace_confirmed` (слабый) — любое подтверждение через «Связаться»
+     (`contact_confirmed` или `new_email_provided`);
+   - `inbound_reply` (сильный) — реальный входящий ответ с этого адреса;
+   - `official_source` (сильный) — зарезервировано для будущего
+     подтверждения из официального источника компании (сейчас не
+     заполняется автоматически ни одним пайплайном);
+   - `hard_bounce`/`soft_bounce` — из `mail/bounce.py::classify_bounce`,
+     синхронизируются pull-based (см. ниже), никогда не удаляют контакт.
+
+   Кандидат становится `preferred`, только если один и тот же нормализованный
+   email подтверждён **минимум 3 независимыми workspace**
+   (`COUNT(DISTINCT workspace_id)` по позитивным сигналам — несколько
+   пользователей одного workspace всегда считаются одним подтверждением,
+   AC-04) **и** есть хотя бы один сильный сигнал (AC-05/AC-06). Предыдущий
+   `preferred`-контакт при этом переводится в `secondary`, но не удаляется
+   (AC-07). Hard bounce снижает доверие: если у него нет более свежего
+   позитивного сигнала, он блокирует новое продвижение в `preferred`, а уже
+   `preferred`-контакт с необработанным hard bounce переводится в
+   `secondary` — но **никогда не удаляется** одним bounce (AC-08). Soft
+   bounce только логируется и не меняет статус контакта.
+
+   Ни один API-ответ не содержит `workspace_id` контрибьютора — только
+   `confirming_workspace_count` (число) и `has_strong_signal` (булево),
+   доказано `tests/test_contact_intelligence.py::
+   test_ac09_explanation_never_exposes_which_workspaces_confirmed` (AC-09).
+
+**Синхронизация сигналов — pull-based, не встроена в живой inbound-pipeline.**
+`_sync_workspace_contact_signals` пересчитывает сигналы этого workspace из
+его собственных `mail_messages` при чтении карточки поставщика
+(`list_email_contacts_for_global_supplier`, вызывается из
+`global_supplier_detail`) или при записи результата контакта. Осознанная
+граница: реальный inbound-приём остаётся нетронутым (высокий риск,
+`MAIL_CHANGE`), а не push-хуком в критический путь. Значит, консенсус
+обновляется не мгновенно при получении письма, а при следующем обращении к
+карточке этого поставщика любым пользователем затронутого workspace —
+задокументированный компромисс, не скрытый баг.
+
+**Что не реализовано (честно):** `official_source`-подтверждения не
+заполняются никаким пайплайном автоматически; workspace-override пока не
+подключён к формированию адресата новой массовой рассылки
+(`mail/service.py::queue_bulk` продолжает брать email из уже переданного
+списка поставщиков) — см. `ai/DEFERRED_FINDINGS.md`.

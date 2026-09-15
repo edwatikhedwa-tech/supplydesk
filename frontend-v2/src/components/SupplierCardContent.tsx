@@ -265,6 +265,7 @@ export function SupplierCardContent({ supplierId, compact = false }: { supplierI
             </div>
           </section>
 
+          <SupplierEmailContacts emailContacts={supplier.email_contacts} />
           <SupplierContacts supplierId={supplier.id} contacts={supplier.contacts} onChanged={state.reload} />
           <SupplierClassifications supplierId={supplier.id} classifications={supplier.classifications} onChanged={state.reload} />
 
@@ -417,6 +418,57 @@ export function SupplierCardContent({ supplierId, compact = false }: { supplierI
         </div>
       </div>
     </div>
+  );
+}
+
+const emailContactStatusTone = { preferred: 'success', secondary: 'neutral', candidate: 'accent', deprecated: 'neutral' } as const;
+const emailContactStatusLabel = { preferred: 'Предпочтительный', secondary: 'Дополнительный', candidate: 'Кандидат', deprecated: 'Устарел' } as const;
+const emailContactPurposeLabel = { rfq: 'Запросы (RFQ)', sales: 'Продажи', tender: 'Тендеры', general: 'Общий', personal: 'Личный', unknown: 'Не указано' } as const;
+
+/** Read-only -- this list is system-derived (workspace override + cross-tenant
+ * consensus, mail/contact_intelligence.py), never hand-edited here. Never
+ * shows which other workspaces confirmed a contact, only the count and
+ * whether a strong signal exists (docs/domain/SUPPLIER_MODEL.md §7, AC-09). */
+function SupplierEmailContacts({ emailContacts }: { emailContacts: import('../lib/types').SupplierEmailContacts }) {
+  const { workspace_override, global_contacts } = emailContacts;
+  if (!workspace_override && global_contacts.length === 0) return null;
+  return (
+    <section aria-label="Email-контакты" className="rounded-lg border border-border bg-surface">
+      <header className="border-b border-border px-4 py-2.5">
+        <h2 className="text-[12.5px] font-semibold text-ink">Email-контакты</h2>
+        <p className="text-[10.5px] text-ink-faint">Определяются автоматически по переписке всех клиентов SupplyDesk с этой компанией.</p>
+      </header>
+      <div className="divide-y divide-border">
+        {workspace_override && (
+          <div className="flex items-start gap-3 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <a href={`mailto:${workspace_override.email}`} className="font-medium text-[12.5px] text-ink hover:text-accent">{workspace_override.email}</a>
+                <Badge tone="accent">Только в этом workspace</Badge>
+              </div>
+              <p className="mt-0.5 text-[11px] text-ink-faint">Используется для новых запросов этого workspace, не меняет глобальную карточку.</p>
+            </div>
+          </div>
+        )}
+        {global_contacts.map((contact) => (
+          <div key={contact.email} className="flex items-start gap-3 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <a href={`mailto:${contact.email}`} className="font-medium text-[12.5px] text-ink hover:text-accent">{contact.email}</a>
+                <Badge tone={emailContactStatusTone[contact.status]}>{emailContactStatusLabel[contact.status]}</Badge>
+                <Badge tone="neutral">{emailContactPurposeLabel[contact.purpose]}</Badge>
+              </div>
+              <p className="mt-1 text-[10.5px] text-ink-faint">
+                Подтверждено {contact.confirming_workspace_count} независимыми клиентами
+                {contact.has_strong_signal ? ' · есть надёжное подтверждение (ответ или официальный источник)' : ''}
+                {contact.last_verified_at ? ` · проверено ${new Date(contact.last_verified_at).toLocaleDateString('ru-RU')}` : ''}
+                {contact.hard_bounce_count > 0 ? ` · жёстких отказов доставки: ${contact.hard_bounce_count}` : ''}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

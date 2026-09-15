@@ -13,6 +13,55 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-024 — needs_followup contact consensus keyed by canonical_companies (ИНН), not per-workspace global_suppliers.id
+
+- Decision ID: `DECISION-024`
+- Date: `2026-09-15`
+- Status: `ACTIVE`
+- Context: `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915` requires that a
+  candidate email become the global preferred RFQ contact for a supplier
+  only after "3 independent workspaces" confirm it plus at least one strong
+  signal (a real inbound reply or an official-source confirmation), while
+  never revealing one workspace's identity to another. `global_suppliers`
+  (`migrations/007_global_suppliers.sql`) is per-workspace by construction
+  (`UNIQUE(workspace_id, inn)`; a different workspace has a different row/id
+  for the same real company) — this consensus cannot be computed there. The
+  owner was asked to confirm this scope explicitly (it changes architecture
+  and a cross-tenant privacy boundary) before implementation, per the same
+  precedent as `DECISION-022`.
+- Decision: The consensus lives in the existing cross-tenant layer
+  (`canonical_companies`, `DECISION-022`), extended with
+  `canonical_company_contacts` (candidate/preferred/secondary/deprecated per
+  email, keyed by `canonical_company_id`/ИНН), an append-only
+  `canonical_company_contact_signals` log (`workspace_confirmed` — weak;
+  `inbound_reply`/`official_source` — strong; `hard_bounce`/`soft_bounce` —
+  trust-reducing, never deleting), and a `canonical_company_contact_promotions`
+  audit trail. `workspace_id` is stored on each signal only to deduplicate
+  independent confirmations (`COUNT(DISTINCT workspace_id)`) and is never
+  returned to any API caller. A separate, purely additive
+  `workspace_supplier_contact_overrides` table gives each workspace an
+  immediate, workspace-only preferred-contact override, independent of the
+  slower cross-tenant consensus (`mail/contact_intelligence.py`).
+- Reason: Matches the existing cross-tenant boundary this project already
+  drew for `canonical_companies` instead of inventing a second, inconsistent
+  one; keeps the fast/local (workspace override) and slow/global (consensus)
+  paths cleanly separable and independently testable.
+- Consequences: A supplier's contact list is now a merge of two sources —
+  see `docs/domain/SUPPLIER_MODEL.md` §7. `needs_followup` itself is a
+  purely derived, never-stored field on `list_threads` (same pattern as
+  `frontend-v2/src/lib/derive.ts::threadResponseStatus`), computed from the
+  request's configurable SLA (`request_followup_settings`, default 2
+  business days) — it never replaces `waiting`/`conversation_status`.
+- Non-goals: No public-holiday calendar (weekday-only business-day math).
+  Live inbound/bounce signal recording is pull-based (synced from a
+  workspace's own stored messages when its own contact card is read or a
+  contact result is recorded), not hooked into the live mail-ingestion
+  critical path — see `ai/DEFERRED_FINDINGS.md`. The workspace-scoped
+  preferred-contact override is not yet wired into the outbound
+  campaign-composition recipient list (`mail/service.py::queue_bulk` still
+  reads `suppliers.email` as supplied by the caller).
+- Related task: `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915`.
+
 ## DECISION-023 — AI chat default model upgraded to Llama 3.3 70B (from 8B)
 
 - Decision ID: `DECISION-023`

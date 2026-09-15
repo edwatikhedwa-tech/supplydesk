@@ -13,6 +13,70 @@ Only unresolved, accepted-risk, or explicitly superseded findings belong in
 this current register. Resolved findings and full chronology are preserved in
 [`ai/history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md`](history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md).
 
+## FINDING-037 — needs_followup/contact-intelligence: disclosed scope boundaries and NOT VERIFIED items
+
+- ID: `FINDING-037`
+- Severity: `LOW`
+- Status: `OPEN`
+- Context: `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915` (`mail/
+  contact_intelligence.py`, `migrations/051_contact_intelligence.sql`).
+  Backend proven by 14 focused tests covering all 9 owner acceptance
+  criteria plus needs_followup mechanics (`tests/
+  test_contact_intelligence.py`, all pass) and the full existing suite (662
+  tests, 0 failures/errors, 2 skipped, unchanged from before this task).
+  Frontend: typecheck/build/lint clean, 4 new component tests pass
+  (`frontend-v2/src/components/ContactResultModal.test.tsx` — this task
+  also added `vitest`/`@testing-library/react` to frontend-v2, which
+  previously had no unit-test runner at all, only typecheck/lint/build/
+  Playwright-on-legacy-v1).
+- Evidence of what is NOT done, honestly:
+  1. **No live authenticated browser verification.** This session had no
+     owner Yandex/password credentials to log in through
+     `http://127.0.0.1:5183`, so the "Требует внимания" badge, the
+     «Связаться»/«Напомнить» buttons, and the new «Email-контакты» supplier-
+     card section were never visually confirmed in a real logged-in
+     session. The restarted `LOCAL_CANONICAL` backend was confirmed healthy
+     without auth (`/` 200, `/api/auth/me` 200, `/api/mail/threads` 401,
+     the new `/api/requests/1/followup-settings` 401 — proving the route
+     exists and the auth gate runs before any DB query, not a 500).
+  2. **`official_source` signals are never produced by any pipeline** —
+     the signal type exists in the schema/CHECK constraint and is handled
+     identically to `inbound_reply` wherever "strong signal" is checked,
+     but nothing currently calls it; only a real inbound reply can supply
+     the strong signal today.
+  3. **Bounce/reply signal sync is pull-based**, not hooked into live mail
+     ingestion — see `docs/domain/SUPPLIER_MODEL.md` §7 and `DECISION-024`
+     for the reasoning. A workspace's own signals update only when that
+     workspace's own contact card is read or a contact result is recorded,
+     not the instant a reply/bounce arrives.
+  4. **The workspace-scoped preferred-contact override is not wired into
+     outbound campaign composition.** `mail/service.py::queue_bulk` still
+     sends to whatever email the caller supplies in its `suppliers` list;
+     nothing yet resolves through `workspace_supplier_contact_overrides`
+     when building a *new* campaign's recipient list. AC-02's "used in
+     subsequent requests of this workspace" is proven at the data-model
+     level (`tests/test_contact_intelligence.py::
+     test_ac02_new_email_is_used_immediately_only_in_this_workspace`) and
+     exposed on the supplier card, but not yet consulted by the send path.
+  5. **No public-holiday calendar** for the "N business days" SLA — only
+     Mon-Fri is excluded.
+  6. **Не выполнена** формальная проверка условий использования каких-либо
+     сторонних API для контактных сигналов — this feature reads only the
+     project's own stored `mail_messages`, so no new third-party ToS
+     surface was introduced, but this is noted for completeness alongside
+     the pre-existing Checko/DaData ToS gap (`FINDING-023`).
+- Why deferred: None of the above blocks the feature's core, tested
+  correctness (all 9 ACs pass against a real repository); each is a
+  disclosed, bounded scope edge rather than a defect, consistent with this
+  project's existing PARTIAL-completion pattern (see e.g. `SUP-021`..`029`
+  entries in `ai/CURRENT_STATE.md`).
+- Next verification: an owner (or an already-authenticated) session opens
+  `/messages` on a real waiting thread aged past its SLA and confirms the
+  badge/actions visually; a follow-up task wires
+  `workspace_supplier_contact_overrides` into `queue_bulk`'s recipient
+  resolution if the owner wants override emails to actually receive new
+  outbound RFQs, not just be visible on the card.
+
 ## FINDING-036 — A second governance validator (`validate_state.py`) had been silently unable to pass since a restructuring commit, masked by the first validator's own failure
 
 - ID: `FINDING-036`

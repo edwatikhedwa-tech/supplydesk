@@ -40,6 +40,8 @@ import type {
   TaskReminderInput,
   WorkspaceMember,
   ThreadSummary,
+  ContactResult,
+  FollowupSettings,
 } from './types';
 
 export class ApiError extends Error {
@@ -310,6 +312,25 @@ export const api = {
     request<{ ok: true; status: ConversationStatus | null }>(`/api/requests/${requestId}/suppliers/${supplierId}/status`, {
       method: 'POST',
       body: JSON.stringify({ status }),
+    }),
+
+  getFollowupSettings: (requestId: number) => request<FollowupSettings>(`/api/requests/${requestId}/followup-settings`),
+  setFollowupSettings: (requestId: number, slaBusinessDays: number) =>
+    request<{ ok: true } & FollowupSettings>(`/api/requests/${requestId}/followup-settings`, {
+      method: 'POST',
+      body: JSON.stringify({ sla_business_days: slaBusinessDays }),
+    }),
+
+  recordContactResult: (requestId: number, supplierId: number, input: { result: ContactResult; comment?: string; new_email?: string }) =>
+    request<{ ok: true; event_id: number; result: ContactResult; override_created: boolean }>(
+      `/api/requests/${requestId}/suppliers/${supplierId}/contact-result`,
+      { method: 'POST', body: JSON.stringify(input) },
+    ),
+
+  remindSupplierFollowup: (requestId: number, supplierId: number, input: { title?: string; due_date?: string } = {}) =>
+    request<{ ok: true; task_id: number }>(`/api/requests/${requestId}/suppliers/${supplierId}/remind`, {
+      method: 'POST',
+      body: JSON.stringify(input),
     }),
 
   getThreadNote: (requestId: number, supplierId: number) => request<{ note: string; notes?: ThreadNotes }>(`/api/requests/${requestId}/suppliers/${supplierId}/note`),

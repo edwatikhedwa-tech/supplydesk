@@ -3,11 +3,49 @@ document_id: TASK-LOCK-040
 status: CURRENT
 canonical: false
 owner: project-control
-updated_at: 2026-09-11
-based_on_commit: b2c620b2b1c336aab60d45347a032d82bd75275d
+updated_at: 2026-09-15
+based_on_commit: pending-commit-TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915
 ---
 
 # Active Task
+
+Task ID: `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915`
+Agent: `Claude Code`
+Mode: `IMPLEMENTATION`
+Started: `2026-09-15`
+Branch: `feature/followup-contact-intelligence-20260915` (base
+`experiment/frontend-v2-greenfield-20260905`) — never worked directly on
+`ui/external-redesign-shadcn-v2-20260904` or any default/base branch, per
+explicit owner instruction.
+Scope: `needs_followup derived thread state (configurable per-request SLA,
+default 2 business days), «Связаться»/«Напомнить» actions with a historical
+contact-result log, a workspace-scoped immediate preferred-contact
+override, and a cross-tenant (canonical_companies-based) self-updating
+email-contact consensus with hard/soft bounce handling and full
+explainability without cross-workspace identity leaks. Full spec: the
+owner's 10 acceptance criteria (AC-01..AC-10) in the task prompt.`
+Allowed files: `migrations/051_contact_intelligence.sql,
+mail/contact_intelligence.py, mail/repository.py, backend/http_requests.py,
+frontend-v2/src/lib/types.ts, frontend-v2/src/lib/api.ts,
+frontend-v2/src/pages/Messages.tsx,
+frontend-v2/src/components/ContactResultModal.tsx(+.test.tsx),
+frontend-v2/src/components/SupplierCardContent.tsx,
+frontend-v2/package.json, frontend-v2/vitest.config.ts,
+frontend-v2/src/setupTests.ts, tests/test_contact_intelligence.py,
+docs/domain/SUPPLIER_MODEL.md, docs/ui/MESSAGES_SCREEN_SPEC.md,
+ai/CURRENT_STATE.md, ai/ACTIVE_TASK.md, ai/DECISIONS.md,
+ai/DEFERRED_FINDINGS.md.`
+Status: `PARTIAL — backend fully implemented and tested (14/14 new tests,
+full suite 662/662 unchanged); frontend implemented, typechecked, built,
+linted and component-tested (4/4); NOT committed, NOT pushed, NOT merged
+(explicit owner instruction: no merge/deploy without separate
+confirmation). Live authenticated browser verification NOT performed — no
+owner credentials available to this session. See
+ai/DEFERRED_FINDINGS.md FINDING-037 for the complete, honest list of what
+is verified vs. not.`
+Last update: `2026-09-15`
+
+---
 
 Task ID: `TASK-MVP-SHOWREADY-20260911`
 Agent: `Codex` (продолжение по прямому указанию владельца 2026-09-12)
