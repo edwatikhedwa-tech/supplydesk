@@ -9,6 +9,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard').then(({ Dashboard }) =>
 const Help = lazy(() => import('./pages/Help').then(({ Help }) => ({ default: Help })));
 const Login = lazy(() => import('./pages/Login').then(({ Login }) => ({ default: Login })));
 const Messages = lazy(() => import('./pages/Messages').then(({ Messages }) => ({ default: Messages })));
+const NotFound = lazy(() => import('./pages/NotFound').then(({ NotFound }) => ({ default: NotFound })));
 const RequestDetail = lazy(() => import('./pages/RequestDetail').then(({ RequestDetail }) => ({ default: RequestDetail })));
 const Requests = lazy(() => import('./pages/Requests').then(({ Requests }) => ({ default: Requests })));
 const Settings = lazy(() => import('./pages/Settings').then(({ Settings }) => ({ default: Settings })));
@@ -53,6 +54,7 @@ function Gate() {
             <Route path="blacklist" element={<Blacklist />} />
             <Route path="settings" element={<Settings />} />
             <Route path="help" element={<Help />} />
+            <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </HashRouter>

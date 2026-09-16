@@ -92,7 +92,7 @@ function statusRank(t: ThreadSummary): number {
 // The 6 options the owner's spec calls for exactly: system-determined
 // communication state (answered/waiting) plus the 3 manual workflow
 // statuses, plus the neutral "all" -- see docs/ui/MESSAGES_SCREEN_SPEC.md.
-type ThreadFilter = 'all' | 'answered' | 'waiting' | 'in_progress' | 'deferred' | 'rejected';
+type ThreadFilter = 'all' | 'answered' | 'waiting' | 'in_progress' | 'deferred' | 'rejected' | 'needs_followup';
 const THREAD_FILTER_LABELS: Record<ThreadFilter, string> = {
   all: 'Все',
   answered: 'Есть ответ',
@@ -100,6 +100,7 @@ const THREAD_FILTER_LABELS: Record<ThreadFilter, string> = {
   in_progress: 'В работе',
   deferred: 'Отложено',
   rejected: 'Отклонено',
+  needs_followup: 'Требуют внимания',
 };
 const THREAD_FILTER_TONE: Record<ThreadFilter, Tone> = {
   all: 'neutral',
@@ -108,6 +109,7 @@ const THREAD_FILTER_TONE: Record<ThreadFilter, Tone> = {
   in_progress: 'success',
   deferred: 'warning',
   rejected: 'danger',
+  needs_followup: 'warning',
 };
 function matchesThreadFilter(t: ThreadSummary, filter: ThreadFilter): boolean {
   if (filter !== 'rejected' && t.conversation_status === 'rejected') return false;
@@ -122,6 +124,8 @@ function matchesThreadFilter(t: ThreadSummary, filter: ThreadFilter): boolean {
       return t.conversation_status === 'deferred';
     case 'rejected':
       return t.conversation_status === 'rejected';
+    case 'needs_followup':
+      return t.needs_followup === true;
     default:
       return true;
   }
@@ -192,6 +196,7 @@ export function Messages() {
       in_progress: threads.filter((t) => t.conversation_status === 'in_progress').length,
       deferred: threads.filter((t) => t.conversation_status === 'deferred').length,
       rejected: threads.filter((t) => t.conversation_status === 'rejected').length,
+      needs_followup: threads.filter((t) => t.needs_followup === true).length,
     }),
     [threads],
   );
@@ -288,7 +293,21 @@ export function Messages() {
     const target = requested ?? threads.find((t) => t.unread_count > 0) ?? threads[0];
     setSelection({ type: 'thread', id: target.id });
     setSelectionInitialized(true);
-    if (requestedThreadId) setSearchParams({}, { replace: true });
+    if (requestedThreadId) {
+      // Deep-link processed: clean the params so a manual thread switch and
+      // subsequent reload open the actually selected thread, not the stale one.
+      // The filter-effect (line 184-186) does NOT reset to 'answered' when
+      // requestedRequestId becomes undefined — no else-branch there.
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('highlight');
+        next.delete('q');
+        next.delete('request');
+        next.delete('supplier');
+        next.delete('thread');
+        return next;
+      }, { replace: true });
+    }
     // A deep link into a specific conversation should open straight to it on
     // mobile too, not land on the list needing one more tap.
     if (requestedThreadId && isNarrow) setMobileView('conversation');
@@ -326,6 +345,25 @@ export function Messages() {
   const activeThread = selection?.type === 'thread' ? threads.find((t) => t.id === selection.id) ?? null : null;
   const activeDeadline = activeThread ? deadlineByRequestId.get(activeThread.request_id) ?? '' : '';
   const activeUnmatchedId = selection?.type === 'unmatched' ? selection.id : null;
+
+  // Thread-scoped draft & attachments: on switch saves into a Ref map and
+  // restores on return — never leaks between threads.
+  const draftsByThread = useRef<Map<number, string>>(new Map());
+  const attachmentsByThread = useRef<Map<number, MailAttachment[]>>(new Map());
+  const prevThreadRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    const nextId = activeThread?.id;
+    if (nextId === undefined) return;
+    const prevId = prevThreadRef.current;
+    if (prevId !== undefined) {
+      draftsByThread.current.set(prevId, draft);
+      attachmentsByThread.current.set(prevId, attachments);
+    }
+    setDraft(draftsByThread.current.get(nextId) ?? '');
+    setAttachments(attachmentsByThread.current.get(nextId) ?? []);
+    prevThreadRef.current = nextId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeThread?.id]);
 
   const messagesState = useApiData(
     () => (activeThread ? api.threadMessages(activeThread.request_id, activeThread.supplier_id).then((r) => r.items) : Promise.resolve([])),
@@ -419,6 +457,17 @@ export function Messages() {
 
   function selectThread(threadId: number) {
     setSelection({ type: 'thread', id: threadId });
+    // Sync URL so a reload opens the thread the user actually selected,
+    // not a stale deep-link param.
+    const t = threads.find((t) => t.id === threadId);
+    if (t) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('request', String(t.request_id));
+        next.set('supplier', String(t.supplier_id));
+        return next;
+      }, { replace: true });
+    }
     if (isNarrow) setMobileView('conversation');
   }
 
@@ -461,7 +510,6 @@ export function Messages() {
   }
   useEffect(() => setConfirmingIgnore(false), [activeUnmatchedId]);
   useEffect(() => setReplyError(''), [activeThread?.id]);
-  useEffect(() => setAttachments([]), [activeThread?.id]);
 
   async function sendUnmatchedReply() {
     if (!activeUnmatchedId || conversationState.status !== 'ready' || !conversationState.data || !unmatchedDraft.trim()) return;
@@ -485,7 +533,8 @@ export function Messages() {
   async function sendReply() {
     if (!activeThread || !draft.trim() || sendingReplyRef.current) return;
     sendingReplyRef.current = true;
-    const subject = messagesState.status === 'ready' && messagesState.data.length > 0 ? `Re: ${messagesState.data[0].subject}` : activeThread.subject;
+    const firstSubject = messagesState.status === 'ready' && messagesState.data.length > 0 ? messagesState.data[0].subject : null;
+    const subject = firstSubject ? (firstSubject.match(/^re:\s*/i) ? firstSubject : `Re: ${firstSubject}`) : activeThread.subject;
     // Generated once per compose attempt, not once per render -- if the
     // synchronous ref guard above were ever bypassed (e.g. a retry after a
     // network error re-invokes sendReply with the same draft still in
