@@ -4062,6 +4062,17 @@ class MailRepository(
         connection: sqlite3.Connection, global_supplier_id: int, *,
         ogrn: str, status: str, is_active: bool | None, registered_at: str,
     ) -> None:
+        # global_supplier_registry.is_active is declared INTEGER (migration
+        # 008), not BOOLEAN -- SQLite doesn't care (bool and int are the same
+        # storage class there), but psycopg binds a Python bool as Postgres's
+        # native `boolean` type and then refuses to insert it into an
+        # `integer` column (DatatypeMismatch). Never exercised before this
+        # was written, because CHECKO_KEY was never configured in production,
+        # so this call path had never run against Postgres with a real
+        # registry_active value until the local-enrichment backfill migration
+        # hit it. Normalize to int at the one place every caller funnels
+        # through, so both backends get a value their own column type accepts.
+        is_active_int = None if is_active is None else int(bool(is_active))
         connection.execute(
             "INSERT INTO global_supplier_registry(global_supplier_id, ogrn, status, is_active, registered_at, updated_at) "
             "VALUES (?, ?, ?, ?, ?, ?) "
@@ -4071,7 +4082,7 @@ class MailRepository(
             "is_active=COALESCE(excluded.is_active, global_supplier_registry.is_active), "
             "registered_at=CASE WHEN excluded.registered_at<>'' THEN excluded.registered_at ELSE global_supplier_registry.registered_at END, "
             "updated_at=excluded.updated_at",
-            (global_supplier_id, ogrn, status, is_active, registered_at, iso_now()),
+            (global_supplier_id, ogrn, status, is_active_int, registered_at, iso_now()),
         )
 
     @staticmethod
