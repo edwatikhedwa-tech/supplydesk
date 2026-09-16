@@ -72,14 +72,27 @@ this current register. Resolved findings and full chronology are preserved in
      `tests/test_contact_resolution_send_path.py` (12 tests, including a
      direct same-state consistency check across the resolver call,
      preview, and actual send). See `DECISION-024`'s 2026-09-16 follow-up
-     entries and `docs/domain/SUPPLIER_MODEL.md` §7.3. Newly disclosed,
+     entries and `docs/domain/SUPPLIER_MODEL.md` §7.3. ~~Newly disclosed,
      narrow edge case: `preflight_bulk`'s domain/duplicate-recipient
      statistics (`unique_domains`, `duplicate_recipient`) are still
-     computed from the pre-upgrade addresses, not the resolved ones — if
-     two different suppliers in the same campaign happened to resolve to
-     the identical final address, this specific check would not catch it
-     (not observed in practice; not fixed without a separate explicit
-     request, per scope discipline).
+     computed from the pre-upgrade addresses, not the resolved ones~~ —
+     **also RESOLVED 2026-09-16, same task, same day**: `preflight_bulk`
+     now resolves every item's final recipient in one pass (reusing the
+     same single `_select_contact_for_request` + `resolve_contact_priority`
+     calls, never a second copy) BEFORE computing `duplicate_recipient` and
+     `unique_domains`/`many_recipients_same_domain`, so two suppliers whose
+     final address converges after resolution are now correctly flagged as
+     a duplicate and BLOCK the operation — `queue_bulk` is protected
+     automatically (it always runs `preflight_bulk` internally for a new
+     operation and raises `DeliverabilityPreflightError` on `BLOCK`, before
+     it would ever reach `resolve_supplier_for_send`). See `docs/domain/
+     SUPPLIER_MODEL.md` §7.4 for the full audit of which other
+     recipient-dependent checks were reviewed and left untouched (none of
+     them needed a change). Proven by `tests/test_contact_resolution_send_path.py`
+     (grew to 14 tests): two originally-different supplier emails
+     converging to one final address are blocked in preview and refused at
+     send (zero messages created); `unique_domains` counts 1 when two
+     originally-different domains resolve to the same final domain.
   5. **No public-holiday calendar** for the "N business days" SLA — only
      Mon-Fri is excluded.
   6. **Не выполнена** формальная проверка условий использования каких-либо

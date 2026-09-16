@@ -89,6 +89,26 @@ log. Superseded and older decision prose is preserved in
   `tests/test_contact_resolution_send_path.py`, including a direct
   same-state consistency check across the resolver call, the preview, and
   the actual send.
+- Third follow-up (`2026-09-16`, same task, same day — owner caught one
+  more real gap before calling this done): `preflight_bulk`'s
+  `duplicate_recipient` and `unique_domains`/`many_recipients_same_domain`
+  checks had still been computed from pre-resolution addresses, so two
+  suppliers whose contact converged to the same final mailbox after
+  resolution were not caught as duplicates. Fixed by splitting
+  `preflight_bulk` into two passes: pass 1 runs the existing
+  `_select_contact_for_request` and `resolve_contact_priority` once per
+  item (no new/duplicated resolution logic) and records each item's final
+  email; only after every item's final email is known does pass 2 compute
+  duplicate/domain statistics and the rest of the recipient report exactly
+  as before. `queue_bulk` needed no separate change: it already runs
+  `preflight_bulk` internally for a new operation and raises
+  `DeliverabilityPreflightError` on `BLOCK`, so the fixed preview check
+  protects the real send automatically. Audited every other
+  recipient-dependent check in the pipeline (deliverability flags,
+  blacklist/suppression, subject/body quality, provider-policy warning,
+  `queue_bulk`'s own narrower raw-duplicate guard) and left them
+  unchanged — none of them needed final-recipient timing. Test count grew
+  to 14 in `tests/test_contact_resolution_send_path.py`.
 
 ## DECISION-023 — AI chat default model upgraded to Llama 3.3 70B (from 8B)
 

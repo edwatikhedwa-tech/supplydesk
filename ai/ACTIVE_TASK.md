@@ -38,24 +38,30 @@ tests/test_contact_resolution_send_path.py,
 docs/domain/SUPPLIER_MODEL.md, docs/ui/MESSAGES_SCREEN_SPEC.md,
 ai/CURRENT_STATE.md, ai/ACTIVE_TASK.md, ai/DECISIONS.md,
 ai/DEFERRED_FINDINGS.md.`
-Status: `PARTIAL — backend fully implemented and tested (14 + 12 = 26 new
-focused tests across the three rounds; full suite unchanged/clean after
-every round); frontend implemented, typechecked, built, linted and
-component-tested (4/4, re-verified in round 2 though frontend files were
-not touched); NOT pushed, NOT merged (explicit owner instruction: no
+Status: `PARTIAL — backend fully implemented and tested (14 + 12 + 2 = 28
+new focused tests across four rounds of iteration; full suite unchanged/
+clean after every round); frontend implemented, typechecked, built, linted
+and component-tested (4/4, re-verified in round 2 though frontend files
+were not touched); NOT pushed, NOT merged (explicit owner instruction: no
 merge/deploy without separate confirmation). All 10 owner acceptance
 criteria (AC-01..AC-10) now have direct test evidence, including AC-02 at
-the actual send path. Round 3 (2026-09-16, same day) closed a real
-preview/send inconsistency the owner caught: `preflight_bulk`'s campaign
-preview and the real send now call the exact same side-effect-free
-resolver (`mail/contact_intelligence.py::resolve_contact_priority`) at the
-same pipeline point, proven to agree by a direct same-state consistency
-test. Live authenticated browser verification NOT performed — no owner
+the actual send path. Round 3 closed a preview/send inconsistency: both
+now call the exact same side-effect-free resolver
+(`mail/contact_intelligence.py::resolve_contact_priority`) at the same
+pipeline point. Round 4 (2026-09-16, same day) closed the last flagged
+safety gap: `preflight_bulk`'s `duplicate_recipient` and `unique_domains`
+checks now read each item's FINAL (post-resolution) recipient instead of
+the pre-resolution address, via a two-pass restructure that calls the
+existing selection/resolution logic exactly once per item (no duplicated
+logic) — two suppliers whose contact converges to one final mailbox are
+now correctly blocked as a duplicate, and `queue_bulk` is protected
+automatically since it always preflights internally before a new send.
+Live authenticated browser verification NOT performed — no owner
 credentials available to this session; the task is intentionally NOT
-reported as fully closed for this reason, per explicit owner instruction.
-See ai/DEFERRED_FINDINGS.md FINDING-037 for the complete, honest list of
-what is verified vs. not.`
-Last update: `2026-09-15`
+reported as fully closed for this reason, per explicit owner instruction
+— it remains the final acceptance step. See ai/DEFERRED_FINDINGS.md
+FINDING-037 for the complete, honest list of what is verified vs. not.`
+Last update: `2026-09-16`
 
 ---
 

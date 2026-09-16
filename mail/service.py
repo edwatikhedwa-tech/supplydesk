@@ -923,38 +923,25 @@ class MailService:
                 result["recipient_results"].append({"email": email, "status": "excluded", "reasons": ["invalid_email", str(exc)]})
                 result["blocks"].append("invalid_email")
 
-        seen: set[str] = set()
-        duplicate_emails: set[str] = set()
+        # Pass 1: resolve every item's FINAL recipient identity before any
+        # recipient-dependent check runs. "Final recipient" means the same
+        # thing everywhere in this pipeline (DECISION-024): whichever known
+        # contact `_select_contact_for_request` actually picks for that
+        # company card, then workspace-preferred -> global-preferred ->
+        # that contact's own address, via the shared, side-effect-free
+        # `resolve_contact_priority` (mail/contact_intelligence.py) -- the
+        # exact same resolver the real send calls. Checks like
+        # duplicate-recipient and unique-domain detection must reason about
+        # this final address, never the originally-requested one, or they
+        # silently miss two different suppliers whose resolved contact turns
+        # out to be the same mailbox (FINDING-037's remaining gap). An item
+        # `_select_contact_for_request` itself excludes (no chosen contact
+        # at all -- ambiguous identity, already answered, ...) never becomes
+        # a message, so it keeps its own originally-requested email here,
+        # exactly as before this fix -- resolution never ran for it either
+        # way.
+        prepared: list[dict[str, Any]] = []
         for item in normalized:
-            if item["email"] in seen:
-                duplicate_emails.add(item["email"])
-            seen.add(item["email"])
-        if duplicate_emails:
-            result["blocks"].append("duplicate_recipient")
-
-        domains = {email_domain(item["email"]) for item in normalized if email_domain(item["email"])}
-        result["unique_domains"] = len(domains)
-        domain_counts: dict[str, int] = {}
-        for item in normalized:
-            domain = email_domain(item["email"])
-            domain_counts[domain] = domain_counts.get(domain, 0) + 1
-        if planned >= 10 and domain_counts and max(domain_counts.values()) / max(1, len(normalized)) >= 0.5:
-            result["warnings"].append("many_recipients_same_domain")
-        if planned >= 50:
-            result["warnings"].append("large_campaign_review")
-        provider_warning = provider_policy_warning(str(account["provider"]), planned)
-        if provider_warning:
-            result["provider_warning"] = provider_warning
-            result["warnings"].append("provider_policy_warning")
-
-        rendered: list[dict[str, Any]] = []
-        levels: dict[str, int] = {}
-        for item in normalized:
-            reasons: list[str] = []
-            if item["email"] in duplicate_emails:
-                reasons.append("duplicate")
-            if not any(item.get(field) for field in ("name", "contact_name", "category", "website", "city")):
-                result["warnings"].append("missing_supplier_context")
             selection = self._select_contact_for_request(
                 workspace_id=workspace_id,
                 request_id=request_id,
@@ -964,12 +951,68 @@ class MailService:
                 force_requested_contact=allow_manual_resend,
             )
             selection_result = selection["result"]
+            selected_item = selection.get("item")
+            final_email = item["email"]
+            if selected_item is not None:
+                resolution = self.repository.resolve_contact_priority(
+                    workspace_id, selected_item.get("supplier_id"), fallback_email=selected_item["email"],
+                )
+                selected_item["email"] = resolution["email"]
+                final_email = selected_item["email"]
+            prepared.append({
+                "original_item": item,
+                "selection_result": selection_result,
+                "selected_item": selected_item,
+                "final_email": final_email,
+            })
+
+        seen: set[str] = set()
+        duplicate_emails: set[str] = set()
+        for record in prepared:
+            email = record["final_email"]
+            if email in seen:
+                duplicate_emails.add(email)
+            seen.add(email)
+        if duplicate_emails:
+            result["blocks"].append("duplicate_recipient")
+
+        final_emails = [record["final_email"] for record in prepared]
+        domains = {email_domain(email) for email in final_emails if email_domain(email)}
+        result["unique_domains"] = len(domains)
+        domain_counts: dict[str, int] = {}
+        for email in final_emails:
+            domain = email_domain(email)
+            domain_counts[domain] = domain_counts.get(domain, 0) + 1
+        if planned >= 10 and domain_counts and max(domain_counts.values()) / max(1, len(final_emails)) >= 0.5:
+            result["warnings"].append("many_recipients_same_domain")
+        if planned >= 50:
+            result["warnings"].append("large_campaign_review")
+        provider_warning = provider_policy_warning(str(account["provider"]), planned)
+        if provider_warning:
+            result["provider_warning"] = provider_warning
+            result["warnings"].append("provider_policy_warning")
+
+        # Pass 2: same logic as before this fix, just replayed over the
+        # already-resolved `prepared` records instead of re-deriving
+        # selection/resolution inline -- `_select_contact_for_request` and
+        # `resolve_contact_priority` are each still called exactly once per
+        # item, only earlier (pass 1), never duplicated.
+        rendered: list[dict[str, Any]] = []
+        levels: dict[str, int] = {}
+        for record in prepared:
+            item = record["original_item"]
+            selection_result = record["selection_result"]
+            selected_item = record["selected_item"]
+            reasons: list[str] = []
+            if record["final_email"] in duplicate_emails:
+                reasons.append("duplicate")
+            if not any(item.get(field) for field in ("name", "contact_name", "category", "website", "city")):
+                result["warnings"].append("missing_supplier_context")
             if selection_result.get("shared_email_across_companies"):
                 result["warnings"].append("shared_email_across_companies")
             if selection_result.get("ambiguous_identity"):
                 reasons.append("ambiguous_supplier_identity")
                 result["blocks"].append("ambiguous_supplier_identity")
-            selected_item = selection.get("item")
             contact_state = str(selection_result.get("contact_state") or "")
             if selection_result.get("alternate_selected"):
                 result["contact_selection"]["alternate_selected"] += 1
@@ -1014,17 +1057,7 @@ class MailService:
                     if reason in {"suppressed", "hard_bounce", "same_request_already_contacted"}
                 )
                 continue
-            item = selected_item
-            # Same shared, side-effect-free resolver the actual send calls
-            # (mail/repository.py::resolve_supplier_for_send), at the same
-            # relative point in the pipeline (right after the per-company
-            # contact was chosen) -- so the preview reports exactly the
-            # address a real send would use right now, never a separate copy
-            # of this priority logic (FINDING-037).
-            resolution = self.repository.resolve_contact_priority(
-                workspace_id, item.get("supplier_id"), fallback_email=item["email"],
-            )
-            item["email"] = resolution["email"]
+            item = selected_item  # already carries its resolved final email from pass 1
             flags = self.repository.deliverability_flags(
                 workspace_id, request_id, external_key=item["external_key"], email=item["email"],
                 supplier_id=item.get("supplier_id"),

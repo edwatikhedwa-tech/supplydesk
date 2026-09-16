@@ -83,12 +83,47 @@ regression (focused mail-send suite, 108 tests; full suite) re-ran clean
 again — exact current counts in the task's own report/PR for the same
 staleness reason as above. `FINDING-037`'s preview/send-divergence item is
 now closed by this test evidence, not merely by design intent; one
-narrower, disclosed edge case remains (`preflight_bulk`'s domain/duplicate
-statistics still read pre-upgrade addresses — see `docs/domain/
-SUPPLIER_MODEL.md` §7.3 and `FINDING-037`). Still not merged/pushed/
-deployed; live authenticated browser verification remains `NOT VERIFIED`
-for the same reason as before (no owner credentials available to this
-session).
+narrower, disclosed edge case remained (`preflight_bulk`'s domain/duplicate
+statistics still read pre-upgrade addresses).
+
+Same day, third round on the same task — the owner caught exactly that
+remaining edge case before calling this done: `preflight_bulk`'s
+`duplicate_recipient` and `unique_domains`/`many_recipients_same_domain`
+checks were still computed from pre-resolution addresses, so two suppliers
+whose contact converged to the same final mailbox after resolution were not
+caught as duplicates. Fixed by splitting `preflight_bulk` into two passes:
+pass 1 runs the existing `_select_contact_for_request` and
+`resolve_contact_priority` exactly once per item (no duplicated resolution
+logic) and records each item's final email; pass 2 — otherwise byte-for-byte
+the same logic as before — builds the recipient report, now reading
+duplicate/domain statistics computed after every item's final email is
+known. `queue_bulk` needed no separate change: for a new operation it always
+runs `preflight_bulk` internally first and raises
+`DeliverabilityPreflightError` on `BLOCK`, so the fixed preview check
+protects the real send automatically — verified directly, not assumed.
+Audited every other recipient-dependent check in the pipeline
+(`deliverability_flags`, blacklist/suppression, subject/body quality,
+provider-policy warning, `queue_bulk`'s own narrower raw-duplicate guard)
+and left them unchanged, recorded in `docs/domain/SUPPLIER_MODEL.md` §7.4
+with the reasoning for each. `tests/test_contact_resolution_send_path.py`
+grew to 14 tests, adding: two originally-different supplier emails
+converging to one final address are blocked in preview (`duplicate_recipient`
+in blocks, `status="BLOCK"`) and refused at send
+(`DeliverabilityPreflightError`, zero messages created); `unique_domains`
+correctly counts 1 when two originally-different domains resolve to the
+same final domain. Focused regression re-ran clean: `test_mail_deliverability`
++ `test_mail_pacing` + `test_mail_status_semantics` +
+`test_contact_intelligence` + `test_contact_resolution_send_path` together,
+**201 tests, `OK`**, captured directly from this run's own terminal output.
+The full backend suite was also re-run; its own captured result is recorded
+separately rather than guessed here (a prior round's background-task output
+was truncated by the capture mechanism before the summary line — this round
+redirected output straight to a file instead precisely to avoid repeating
+that gap). `FINDING-037`'s edge-case item is now marked resolved.
+Still not merged/pushed/deployed; live authenticated browser verification
+remains `NOT VERIFIED` for the same reason as before (no owner credentials
+available to this session) and remains the acknowledged final acceptance
+step.
 
 `2026-09-15` — `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915` on branch
 `feature/followup-contact-intelligence-20260915` (base

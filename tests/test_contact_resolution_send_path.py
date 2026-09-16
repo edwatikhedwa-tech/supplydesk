@@ -28,6 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from mail.crypto import generate_key
+from mail.deliverability import DeliverabilityPreflightError
 from mail.pacing import PacingSettings
 from mail.repository import MailRepository
 from mail.service import MailService
@@ -535,6 +536,79 @@ class ContactResolutionSendPathTests(unittest.TestCase):
             workspace_id=other_workspace_id, user_id=other_user["id"], request_id=other_request_id,
         )
         self.assertEqual(previewed_email, "b-fallback@preview-shared.example")
+
+    def test_two_suppliers_converging_to_the_same_final_email_are_blocked_as_duplicates(self) -> None:
+        """Two DIFFERENT original supplier emails resolve (both via a
+        workspace-preferred override) to the SAME final recipient -- the
+        preview must catch this as a duplicate (computed from the final,
+        post-resolution address, not the two originally-different ones),
+        and the real send must refuse to silently queue two messages to
+        that one mailbox.
+        """
+        supplier_1, _ = self._add_supplier(external_key="dup-a.example", email="orig1@dup-a.example", inn="7711110013")
+        supplier_2, _ = self._add_supplier(external_key="dup-b.example", email="orig2@dup-b.example", inn="7711110014")
+        for supplier_id in (supplier_1, supplier_2):
+            self.repo.record_contact_result(
+                workspace_id=self.workspace_id, user_id=self.user["id"],
+                request_id=self.request_id, supplier_id=supplier_id,
+                result="new_email_provided", new_email="shared-target@dup-merge.example",
+            )
+        suppliers_payload = [
+            {"id": supplier_1, "name": "Поставщик 1", "email": "orig1@dup-a.example", "host": "dup-a.example"},
+            {"id": supplier_2, "name": "Поставщик 2", "email": "orig2@dup-b.example", "host": "dup-b.example"},
+        ]
+
+        preview = self.service.preflight_bulk(
+            user_id=self.user["id"], workspace_id=self.workspace_id, request_id=self.request_id,
+            suppliers=suppliers_payload, subject="Запрос", body="Текст запроса.",
+        )
+        self.assertIn("duplicate_recipient", preview["blocks"])
+        self.assertEqual(preview["status"], "BLOCK")
+        duplicate_flagged = [r for r in preview["recipient_results"] if "duplicate" in r["reasons"]]
+        self.assertEqual(len(duplicate_flagged), 2)
+        for entry in duplicate_flagged:
+            self.assertEqual(entry["email"], "shared-target@dup-merge.example")
+
+        with self.assertRaises(DeliverabilityPreflightError):
+            self.service.queue_bulk(
+                user_id=self.user["id"], workspace_id=self.workspace_id, request_id=self.request_id,
+                suppliers=suppliers_payload, subject="Запрос", body="Текст запроса.",
+                idempotency_key="dup-block-1",
+            )
+        with self.repo.connect() as connection:
+            count = connection.execute(
+                "SELECT COUNT(*) AS n FROM mail_messages WHERE request_id=? AND direction='outbound'",
+                (self.request_id,),
+            ).fetchone()["n"]
+        self.assertEqual(int(count), 0, "the blocked operation must not have queued any message")
+
+    def test_unique_domains_counted_by_final_recipient_not_original(self) -> None:
+        """Two originally different domains (dup-a.example, dup-b.example)
+        would give unique_domains=2 if counted pre-resolution; both
+        suppliers' workspace-preferred contacts share one real domain, so
+        the correct, final-recipient-based count is 1.
+        """
+        supplier_1, _ = self._add_supplier(external_key="domain-a.example", email="orig1@domain-a.example", inn="7711110015")
+        supplier_2, _ = self._add_supplier(external_key="domain-b.example", email="orig2@domain-b.example", inn="7711110016")
+        for supplier_id in (supplier_1, supplier_2):
+            self.repo.record_contact_result(
+                workspace_id=self.workspace_id, user_id=self.user["id"],
+                request_id=self.request_id, supplier_id=supplier_id,
+                result="new_email_provided", new_email=f"contact-{supplier_id}@shared-domain.example",
+            )
+        preview = self.service.preflight_bulk(
+            user_id=self.user["id"], workspace_id=self.workspace_id, request_id=self.request_id,
+            suppliers=[
+                {"id": supplier_1, "name": "Поставщик 1", "email": "orig1@domain-a.example", "host": "domain-a.example"},
+                {"id": supplier_2, "name": "Поставщик 2", "email": "orig2@domain-b.example", "host": "domain-b.example"},
+            ],
+            subject="Запрос", body="Текст запроса.",
+        )
+        self.assertEqual(preview["unique_domains"], 1)
+        self.assertNotIn("duplicate_recipient", preview["blocks"])
+        for entry in preview["recipient_results"]:
+            self.assertTrue(entry["email"].endswith("@shared-domain.example"), entry["email"])
+            self.assertEqual(entry["domain"], "shared-domain.example")
 
 
 if __name__ == "__main__":
