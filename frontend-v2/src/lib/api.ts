@@ -38,6 +38,8 @@ import type {
   SupportConversationSummary,
   Task,
   TaskReminderInput,
+  ReminderAlert,
+  NotificationSettings,
   WorkspaceMember,
   ThreadSummary,
   ContactResult,
@@ -159,6 +161,18 @@ export const api = {
   setTaskDone: (taskId: number, done: boolean) =>
     request<{ ok: true; id: number; done: boolean }>(`/api/tasks/${taskId}/done`, { method: 'POST', body: JSON.stringify({ done }) }),
   deleteTask: (taskId: number) => request<{ ok: true }>(`/api/tasks/${taskId}`, { method: 'DELETE' }),
+  listDueReminders: () => request<{ server_time: string; items: ReminderAlert[] }>('/api/tasks/reminders/due'),
+  listNotificationFeed: () => request<{ items: ReminderAlert[] }>('/api/tasks/reminders/feed'),
+  dismissReminder: (reminderId: number) =>
+    request<{ ok: true; reminder_id: number; status: string }>(`/api/tasks/reminders/${reminderId}/dismiss`, { method: 'POST', body: JSON.stringify({}) }),
+  snoozeReminder: (reminderId: number, input: { minutes?: number; until?: string; timezone?: string }) =>
+    request<{ ok: true; reminder_id: number; status: string; scheduled_at: string; timezone: string }>(`/api/tasks/reminders/${reminderId}/snooze`, { method: 'POST', body: JSON.stringify(input) }),
+  markReminderRead: (reminderId: number) =>
+    request<{ ok: true; reminder_id: number; read_at: string }>(`/api/tasks/reminders/${reminderId}/read`, { method: 'POST', body: JSON.stringify({}) }),
+  markAllRemindersRead: () => request<{ ok: true }>('/api/tasks/reminders/read-all', { method: 'POST', body: JSON.stringify({}) }),
+  getNotificationSettings: () => request<NotificationSettings>('/api/notification-settings'),
+  setNotificationSettings: (input: NotificationSettings) =>
+    request<NotificationSettings & { ok: true }>('/api/notification-settings', { method: 'POST', body: JSON.stringify(input) }),
   listWorkspaceMembers: () => request<{ items: WorkspaceMember[] }>('/api/workspace/members'),
   listSupportConversations: () => request<{ items: SupportConversationSummary[] }>('/api/support/conversations'),
   getSupportConversation: (conversationId: number) => request<{ conversation: SupportConversation }>(`/api/support/conversations/${conversationId}`),

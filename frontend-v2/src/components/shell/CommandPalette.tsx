@@ -1,9 +1,9 @@
-import { Inbox, ListChecks, MessageSquareText, Search } from 'lucide-react';
+import { Inbox, ListChecks, MessageSquareText, Search, Truck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { formatCompanyName } from '../../lib/format';
-import type { MessageSearchResult, RequestListItem, ThreadSummary } from '../../lib/types';
+import type { MessageSearchResult, RequestListItem, SupplierDirectoryItem, ThreadSummary } from '../../lib/types';
 
 function snippetAround(text: string, needle: string, radius = 60): string {
   const idx = text.toLowerCase().indexOf(needle.toLowerCase());
@@ -18,6 +18,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const [query, setQuery] = useState('');
   const [requests, setRequests] = useState<RequestListItem[] | null>(null);
   const [threads, setThreads] = useState<ThreadSummary[] | null>(null);
+  const [suppliers, setSuppliers] = useState<SupplierDirectoryItem[] | null>(null);
   const [messageResults, setMessageResults] = useState<MessageSearchResult[]>([]);
   const [searchingMessages, setSearchingMessages] = useState(false);
 
@@ -25,14 +26,16 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     if (!open) return;
     setQuery('');
     setMessageResults([]);
-    Promise.all([api.listRequests(), api.listThreads()])
-      .then(([r, t]) => {
+    Promise.all([api.listRequests(), api.listThreads(), api.listSupplierDirectory()])
+      .then(([r, t, s]) => {
         setRequests(r.items);
         setThreads(t.items);
+        setSuppliers(s.items);
       })
       .catch(() => {
         setRequests([]);
         setThreads([]);
+        setSuppliers([]);
       });
   }, [open]);
 
@@ -75,11 +78,22 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       : threads;
     return list.slice(0, 6);
   }, [threads, q]);
+  // Matches Suppliers.tsx's own filter (name/inn/site) so a company findable
+  // there -- including by bare ИНН digits, e.g. "210500746448" -- is
+  // findable from the global search too. The placeholder text already
+  // promised "поставщики" as a searchable category; this was the missing
+  // half of that promise (search only covered requests/threads/message text).
+  const matchedSuppliers = useMemo(() => {
+    if (!suppliers || !q) return [];
+    return suppliers
+      .filter((s) => s.name.toLowerCase().includes(q) || s.inn.includes(q) || s.site.toLowerCase().includes(q) || (s.email ?? '').toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [suppliers, q]);
 
   if (!open) return null;
 
-  const loading = requests === null || threads === null;
-  const nothingFound = !loading && !searchingMessages && matchedRequests.length === 0 && matchedThreads.length === 0 && messageResults.length === 0;
+  const loading = requests === null || threads === null || suppliers === null;
+  const nothingFound = !loading && !searchingMessages && matchedRequests.length === 0 && matchedThreads.length === 0 && matchedSuppliers.length === 0 && messageResults.length === 0;
 
   function goToRequest(name: string) {
     navigate(`/requests?q=${encodeURIComponent(name)}`);
@@ -92,6 +106,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       params.set('q', opts.query);
     }
     navigate(`/messages?${params.toString()}`);
+    onClose();
+  }
+  function goToSupplier(supplier: SupplierDirectoryItem) {
+    if (supplier.global_supplier_id) navigate(`/suppliers/${supplier.global_supplier_id}`);
+    else navigate(`/suppliers?q=${encodeURIComponent(supplier.name || supplier.inn)}`);
     onClose();
   }
 
@@ -155,6 +174,25 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     <p className="truncate text-[11px] text-ink-faint">{t.request_name}</p>
                   </div>
                   {t.unread_count > 0 && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {matchedSuppliers.length > 0 && (
+            <div className="px-2 pb-1.5 pt-1">
+              <p className="px-2 pb-1 text-[10.5px] font-semibold uppercase tracking-wide text-ink-faint">Поставщики</p>
+              {matchedSuppliers.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => goToSupplier(s)}
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left hover:bg-surface-hover"
+                >
+                  <Truck size={14} className="shrink-0 text-ink-faint" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] text-ink">{formatCompanyName(s.name)}</p>
+                    <p className="truncate text-[11px] text-ink-faint">{s.inn ? `ИНН ${s.inn}` : s.site}</p>
+                  </div>
                 </button>
               ))}
             </div>

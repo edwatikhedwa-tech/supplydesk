@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { formatCompanyName } from '../lib/format';
+import { useReminders } from '../lib/RemindersContext';
 import { dueAtInput, formatTaskDeadline, formatTaskReminder } from '../lib/taskSchedule';
 import type { Task, TaskReminderInput } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
@@ -13,12 +14,16 @@ import { ErrorState, LoadingState } from './ui/ErrorState';
 import { TaskSupplierPreview } from './TaskSupplierPreview';
 import { TaskCreatedNotice, type CreatedTaskNotice } from './TaskCreatedNotice';
 
-/** Dashboard's "Мои задачи" block (§2, §12 of the concept doc) -- a
- * deliberately separate entity from the system-detected "Требует внимания"
- * cards above it: those are events SupplyDesk noticed on its own, tasks are
- * things the owner decided to do. */
-export function TasksSection() {
-  const state = useApiData(() => api.listTasks().then((r) => r.items), []);
+/** Dashboard's "Мои задачи" block.
+ *  `onTasksReload` lets the parent refresh its own task+calendar data after
+ *  creating/deleting a task. */
+export function TasksSection({
+  onTasksReload,
+}: {
+  onTasksReload?: () => void;
+}) {
+  const { taskDataVersion } = useReminders();
+  const state = useApiData(() => api.listTasks().then((r) => r.items), [taskDataVersion]);
   const [searchParams] = useSearchParams();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
@@ -27,6 +32,7 @@ export function TasksSection() {
   const [reminderChannel, setReminderChannel] = useState<'' | TaskReminderInput['channel']>('');
   const [reminderPhone, setReminderPhone] = useState('');
   const [phoneReminderMode, setPhoneReminderMode] = useState<'mock' | 'disabled'>('disabled');
+  const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -35,6 +41,9 @@ export function TasksSection() {
   const [createError, setCreateError] = useState('');
   const requestedTaskId = Number(searchParams.get('task'));
   const readyTasks = state.status === 'ready' ? state.data : null;
+
+  // Load suppliers for the picker
+  const suppliersState = useApiData(() => api.listGlobalSuppliers().then((r) => r.items), []);
 
   useEffect(() => {
     void api.listTasks().then((result) => setPhoneReminderMode(result.phone_reminders_mode)).catch(() => undefined);
@@ -84,6 +93,7 @@ export function TasksSection() {
       }
       const created = await api.createTask({
         title: title.trim(), due_date: dueDate || undefined, due_at: schedule.due_at ?? undefined, timezone: schedule.timezone ?? undefined,
+        supplier_id: selectedSupplierId || undefined,
         reminders: reminderChannel && schedule.due_at && schedule.timezone ? [{ channel: reminderChannel, scheduled_at: schedule.due_at, timezone: schedule.timezone, recipient: reminderChannel === 'phone' ? reminderPhone : undefined }] : undefined,
       });
       setCreatedTask({ id: created.task_id, title: title.trim(), dueDate: dueDate || null, dueAt: schedule.due_at, timezone: schedule.timezone });
@@ -92,10 +102,11 @@ export function TasksSection() {
       setDueTime('');
       setReminderChannel('');
       setReminderPhone('');
+      setSelectedSupplierId(null);
       setAdding(false);
       state.reload();
+      onTasksReload?.();
     } catch {
-      // Keep the form and its text intact so the task can be retried safely.
       setCreateError('Не удалось создать задачу. Проверьте соединение и повторите попытку.');
     } finally {
       setSubmitting(false);
@@ -107,6 +118,7 @@ export function TasksSection() {
     try {
       await api.setTaskDone(taskId, done);
       state.reload();
+      onTasksReload?.();
     } finally {
       setBusyId(null);
     }
@@ -117,10 +129,13 @@ export function TasksSection() {
     try {
       await api.deleteTask(taskId);
       state.reload();
+      onTasksReload?.();
     } finally {
       setBusyId(null);
     }
   }
+
+  const suppliers = suppliersState.status === 'ready' ? suppliersState.data : [];
 
   return (
     <section className="flex flex-col rounded-lg border border-border bg-surface">
@@ -145,6 +160,7 @@ export function TasksSection() {
           onUndo={async () => {
             await api.deleteTask(createdTask.id);
             state.reload();
+            onTasksReload?.();
           }}
           onDismiss={() => setCreatedTask(null)}
         />
@@ -157,11 +173,22 @@ export function TasksSection() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void addTask()}
-            placeholder="Например: позвонить поставщику завтра в 11:00"
+            placeholder="Например: позвонить поставщику"
             className="h-8 min-w-0 basis-full flex-1 rounded-md border border-border-strong bg-canvas px-2.5 text-[12.5px] outline-none focus:border-accent focus:ring-1 focus:ring-accent-border lg:basis-auto"
           />
           <DatePicker value={dueDate} onChange={setDueDate} className="w-full md:w-[160px]" />
           <input aria-label="Время задачи" type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} className="h-8 rounded-md border border-border-strong bg-canvas px-2 text-[12.5px] text-ink outline-none focus:border-accent focus:ring-1 focus:ring-accent-border" />
+          <select
+            aria-label="Привязать поставщика"
+            value={selectedSupplierId ?? ''}
+            onChange={(e) => setSelectedSupplierId(e.target.value ? Number(e.target.value) : null)}
+            className="h-8 min-w-0 basis-full flex-1 rounded-md border border-border-strong bg-surface px-2 text-[12px] text-ink outline-none focus:border-accent focus:ring-1 focus:ring-accent-border lg:basis-auto"
+          >
+            <option value="">Без поставщика</option>
+            {suppliers.slice(0, 100).map((s) => (
+              <option key={s.id} value={s.id}>{formatCompanyName(s.name)}</option>
+            ))}
+          </select>
           <select aria-label="Напоминание при создании задачи" value={reminderChannel} onChange={(event) => setReminderChannel(event.target.value as '' | TaskReminderInput['channel'])} className="h-8 rounded-md border border-border-strong bg-canvas px-2 text-[12px] text-ink outline-none focus:border-accent focus:ring-1 focus:ring-accent-border">
             <option value="">Без напоминания</option><option value="in_app">In-app</option><option value="email">Email</option><option value="phone" disabled={phoneReminderMode !== 'mock'}>{phoneReminderMode === 'mock' ? 'Позвонить мне · mock' : 'Позвонить мне · скоро'}</option>
           </select>
@@ -194,7 +221,7 @@ export function TasksSection() {
               editingId={editingId}
               onExpand={setExpandedId}
               onEdit={setEditingId}
-              onReload={state.reload}
+              onReload={() => { state.reload(); onTasksReload?.(); }}
               onToggle={toggleDone}
               onDelete={remove}
               phoneReminderMode={phoneReminderMode}
@@ -210,7 +237,7 @@ export function TasksSection() {
               editingId={editingId}
               onExpand={setExpandedId}
               onEdit={setEditingId}
-              onReload={state.reload}
+              onReload={() => { state.reload(); onTasksReload?.(); }}
               onToggle={toggleDone}
               onDelete={remove}
               phoneReminderMode={phoneReminderMode}
@@ -226,7 +253,7 @@ export function TasksSection() {
               editingId={editingId}
               onExpand={setExpandedId}
               onEdit={setEditingId}
-              onReload={state.reload}
+              onReload={() => { state.reload(); onTasksReload?.(); }}
               onToggle={toggleDone}
               onDelete={remove}
               phoneReminderMode={phoneReminderMode}
@@ -282,7 +309,7 @@ function TaskGroup({
             </button>
             <button
               type="button"
-              disabled={!t.supplier_id}
+              disabled={!t.supplier_id && !t.request_id}
               onClick={() => onExpand(expandedId === t.id ? null : t.id)}
               className="min-w-0 flex-1 text-left disabled:cursor-default"
             >

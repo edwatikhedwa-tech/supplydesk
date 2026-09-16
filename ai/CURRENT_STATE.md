@@ -4,7 +4,7 @@ status: CURRENT
 canonical: true
 owner: project-control
 updated_at: 2026-09-16
-based_on_commit: pending-commit-TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915
+based_on_commit: pending-commit-TASK-CALENDAR-REMINDERS-20260916
 ---
 
 # Current State
@@ -14,6 +14,74 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-16` — `TASK-CALENDAR-REMINDERS-20260916`: replaced the Dashboard's
+calendar widget with a compact shadcn-style month calendar
+(`frontend-v2/src/components/MiniCalendar.tsx`) and implemented a real,
+backend-persisted task-reminder delivery system (not a decorative mock) for
+the pre-existing but previously undelivered `in_app` reminder channel.
+Backend: migration `052_task_reminder_delivery.sql` widens
+`task_reminders.status` to a real state machine
+(`scheduled -> triggered -> dismissed`, with snooze rescheduling back to
+`scheduled`) and adds `read_at` (Notification Center unread) plus a new
+`user_notification_settings` table (sound / browser-notification
+preference, persisted per user, not localStorage). New
+`mail/task_reminder_delivery.py` (`TaskReminderDeliveryMixin`) computes due
+reminders server-side, dismiss/snooze/mark-read, never touching the
+underlying task's own `due_date`/`due_at` on snooze/dismiss. New routes:
+`GET /api/tasks/reminders/due`, `GET /api/tasks/reminders/feed`,
+`POST /api/tasks/reminders/{id}/dismiss|snooze|read`,
+`POST /api/tasks/reminders/read-all`, `GET/POST /api/notification-settings`.
+Frontend: `react-toastify` (persistent, non-auto-closing toast per reminder,
+deduped by `toastId`), a synthesized Web Audio chime (no external asset), a
+`RemindersProvider` context (45s poll + shared state for the toast manager
+and the new header bell `NotificationCenter`), and a `Настройки →
+Уведомления` settings card (sound / browser-notification toggles, browser
+permission requested only on explicit click). All UI/UX acceptance scenarios
+from the owner's spec (persistent toast, one chime per new trigger, X ≠
+complete, snooze presets never touching `due_at`, live task-list/calendar
+update after completing from the toast, Notification Center read/unread,
+settings persistence across reload) were reproduced and verified in a real
+`SAFE_TEST` browser session, not just unit tests.
+
+**A serious bug was found and fixed during this same verification, before
+reporting anything as done**: this repo replays every migration file on
+every local process start; migration 052's rebuild of `task_reminders`
+crashed the whole backend on its *second* startup once real data contained
+the new `status='triggered'`/`dismissed` values, because the earlier
+`044_phone_reminder_mock.sql` rebuild replayed first and tried to force the
+table back to its own narrower CHECK constraint. Fixed with a
+skip-once-applied guard on both 044 and 052 (mirroring the existing
+`050_sent_auto_sync_consent.sql` pattern, generalized to also cover
+Postgres via `information_schema.columns`), proven by two new tests in
+`tests/test_migration_replay_stability.py` that do two real
+`MailRepository(same_path)` constructions with live data in between —
+logged as a generalizable finding for any "replay every migration"
+architecture (task-observer observation `0006`).
+
+A second, smaller live-testing find: completing/snoozing a reminder from
+the toast or Notification Center did not refresh the Dashboard's task list
+or MiniCalendar dot count without a manual page reload (`TasksSection`,
+`Dashboard` and `RequestDetail`'s `TasksOnRequest` each run their own
+independent `useApiData` task fetch, same class of gap PD-001 already fixed
+once for supplier-card contacts). Fixed with a `taskDataVersion` counter on
+`RemindersContext`, threaded into each of those three components'
+`useApiData` dependency arrays — the same `contactsRefreshToken` pattern,
+reused rather than reinvented.
+
+Full backend suite: `693 tests / OK / 2 skipped / exit 0`
+(`tests/test_task_reminder_delivery.py` — 12 new tests,
+`tests/test_migration_replay_stability.py` — 2 new tests). Frontend:
+`tsc --noEmit` clean, `vite build` clean, `vitest` 13/13 passed.
+`LOCAL_CANONICAL`/real-owner-data browser verification was not attempted
+(no owner credentials available this session, as in every prior round);
+`SAFE_TEST` (disposable synthetic-auth runtime) was the live-browser
+evidence, explicitly disclosed as such. Not committed, not pushed, not
+merged — awaiting the owner's separate confirmation per standing
+instruction.
+
+---
+
 
 `2026-09-16` — Fourth round, same task: the owner's real browser acceptance
 session (PD-001) found five genuine UI/UX defects the earlier rounds'

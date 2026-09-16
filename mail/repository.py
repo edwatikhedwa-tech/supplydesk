@@ -23,6 +23,7 @@ from .mail_templates import MailTemplatesMixin
 from .ai_chat_usage import AiChatUsageMixin
 from .ai_conversations import AiConversationsMixin
 from .tasks import TasksMixin
+from .task_reminder_delivery import TaskReminderDeliveryMixin
 from .thread_metadata import ThreadMetadataMixin
 from .thread_notes import ThreadNotesMixin
 from .support import SupportMixin
@@ -155,6 +156,16 @@ def _communication_message_predicate(alias: str = "m") -> str:
     )"""
 
 
+def _table_has_column(connection: Any, table: str, column: str, *, is_postgres: bool) -> bool:
+    if is_postgres:
+        row = connection.execute(
+            "SELECT 1 FROM information_schema.columns WHERE table_name=? AND column_name=?",
+            (table, column),
+        ).fetchone()
+        return bool(row)
+    return column in {str(row["name"]) for row in connection.execute(f"PRAGMA table_info({table})").fetchall()}
+
+
 def _normalized_mail_address(value: Any) -> str:
     return str(value or "").strip().lower()
 
@@ -221,7 +232,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 
 class MailRepository(
     AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, SupportMixin, AiChatUsageMixin, AiConversationsMixin, TasksMixin,
-    CanonicalCompaniesMixin, ContactIntelligenceMixin,
+    CanonicalCompaniesMixin, ContactIntelligenceMixin, TaskReminderDeliveryMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
@@ -274,6 +285,19 @@ class MailRepository(
                     }
                     if "sent_sync_enabled" in columns:
                         continue
+                # 044/052 rebuild task_reminders (SQLite/Postgres both have no
+                # portable "widen this CHECK constraint" statement). Each
+                # rebuild's own target schema replays safely forever, but a
+                # LATER migration's rebuild moves live data past what an
+                # EARLIER one's target CHECK constraint still allows -- once
+                # 052 has run, real rows carry status='triggered'/'dismissed'
+                # and read_at values, which would fail 044's narrower CHECK
+                # and be discarded by re-running either rebuild from scratch.
+                # Skip a rebuild once its own target column already exists.
+                if migration_path.name == "044_phone_reminder_mock.sql" and _table_has_column(connection, "task_reminders", "mock_state", is_postgres=bool(self.database_url)):
+                    continue
+                if migration_path.name == "052_task_reminder_delivery.sql" and _table_has_column(connection, "task_reminders", "read_at", is_postgres=bool(self.database_url)):
+                    continue
                 if self.database_url:
                     migration = _postgres_migration_sql(migration)
                 connection.executescript(migration)
@@ -3390,6 +3414,24 @@ class MailRepository(
             )
             return {"reset_to_host": cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0}
 
+    def list_all_suppliers_with_profiles(self, workspace_id: int) -> list[dict[str, Any]]:
+        """Вернуть ВСЕХ поставщиков workspace с их профилями.
+
+        Используется force_enrich_all_suppliers для полного обогащения.
+        Возвращает flat-список с ключами external_key, host, name, email, inn.
+        """
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT s.external_key, s.host, s.name, s.email,
+                          COALESCE(p.inn, '') AS inn
+                   FROM suppliers s
+                   LEFT JOIN supplier_profiles p ON p.supplier_id = s.id
+                   WHERE s.workspace_id=?
+                   ORDER BY s.id""",
+                (workspace_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     # A `global_suppliers.name` written before the `trusted_name` guard above
     # existed (manual ИНН entry, `backfill_global_suppliers`,
     # `restore_global_supplier_directory` -- see `_get_or_create_global_supplier`)
@@ -4321,7 +4363,16 @@ class MailRepository(
                 "finances": None,
                 "risks": None,
             })
-        return sorted(directory, key=lambda item: (str(item["name"]).casefold(), int(item["id"])))
+        return sorted(directory, key=lambda item: (
+            # Suppliers with registry data (Checko confirmed) first
+            0 if (item.get("verification_status") == "verified" and item.get("registry") is not None)
+            # Verified but without registry (ИНН есть, Checko не нашёл)
+            else 1 if item.get("verification_status") == "verified"
+            # No INN at all
+            else 2,
+            str(item["name"]).casefold(),
+            int(item["id"]),
+        ))
 
     def restore_deleted_suppliers(self, workspace_id: int, items: list[dict[str, Any]]) -> dict[str, int]:
         """One-off restore (TASK-SUPPLIER-CLEANUP-MISCLASSIFICATION-20260910):
@@ -4739,7 +4790,7 @@ class MailRepository(
         return {
             "id": row["id"],
             "inn": row["inn"],
-            "name": row["name"],
+            "name": row["name"] or row.get("site", "") or "",
             "site": row["site"],
             "email": row["email"] or None,
             "phone": row["phone"] or None,

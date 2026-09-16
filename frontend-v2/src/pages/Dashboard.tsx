@@ -1,6 +1,7 @@
 import { AlertTriangle, ArrowRight, Inbox, MessageSquareText, PauseCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { DashboardCalendar } from '../components/DashboardCalendar';
 import { PageHeader } from '../components/shell/PageHeader';
 import { TasksSection } from '../components/TasksSection';
 import { Badge } from '../components/ui/Badge';
@@ -9,6 +10,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { api } from '../lib/api';
 import { now, daysFromToday, deadlineUrgency, formatCompanyName, formatRelativeTime } from '../lib/format';
+import { useReminders } from '../lib/RemindersContext';
 import { useApiData } from '../lib/useApiData';
 
 function SectionCard({
@@ -43,14 +45,16 @@ function SectionCard({
   );
 }
 
-function Row({ children }: { children: ReactNode }) {
-  return <div className="flex items-center gap-3 border-b border-border px-4 py-2.5 last:border-0 hover:bg-surface-hover">{children}</div>;
+function Row({ children, dense = false }: { children: ReactNode; dense?: boolean }) {
+  return <div className={`flex items-center gap-3 border-b border-border px-4 last:border-0 hover:bg-surface-hover ${dense ? 'py-1.5' : 'py-2.5'}`}>{children}</div>;
 }
 
 export function Dashboard() {
   const dashboardState = useApiData(() => api.dashboardSummary(), []);
   const threadsState = useApiData(() => api.listThreads().then((r) => r.items), []);
   const unmatchedState = useApiData(() => api.listInboxPreview().then((r) => r.items), []);
+  const { taskDataVersion } = useReminders();
+  const tasksState = useApiData(() => api.listTasks().then((r) => r.items), [taskDataVersion]);
 
   if (dashboardState.status === 'loading') {
     return (
@@ -72,6 +76,7 @@ export function Dashboard() {
   const { kpis, requests } = dashboardState.data;
   const threads = threadsState.status === 'ready' ? threadsState.data : [];
   const unmatched = unmatchedState.status === 'ready' ? unmatchedState.data : [];
+  const tasks = tasksState.status === 'ready' ? tasksState.data : [];
 
   const activeRequests = requests.filter((r) => r.status !== 'completed');
   const attentionRequests = activeRequests
@@ -98,6 +103,8 @@ export function Dashboard() {
   const showUnmatched = unmatchedState.status !== 'ready' || unmatched.length > 0;
   const hasAttentionContent = attentionRequests.length > 0 || staleRequests.length > 0 || showReplies || showUnmatched;
 
+  const tasksReload = tasksState.reload;
+
   return (
     <div className="flex h-full flex-col overflow-auto">
       <PageHeader title="Дашборд" description="Что сейчас требует внимания" />
@@ -111,93 +118,99 @@ export function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 content-start gap-4 p-4 sm:grid-cols-[repeat(auto-fit,minmax(320px,1fr))] sm:p-6">
-        {attentionRequests.length > 0 && (
-          <SectionCard title="Сроки и просрочки" icon={AlertTriangle} count={attentionRequests.length} viewAllTo="/requests">
-            {attentionRequests.map((r) => (
-              <Row key={r.id}>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12.5px] font-medium text-ink">{r.name}</p>
-                  <p className="truncate text-[11.5px] text-ink-muted">
-                    {r.suppliers_count - r.replies_count > 0 ? `${r.suppliers_count - r.replies_count} поставщиков без ответа` : 'Ответили все поставщики'}
-                  </p>
-                </div>
-                <DeadlineTag deadline={r.deadline} />
-              </Row>
-            ))}
-          </SectionCard>
-        )}
-
-        {staleRequests.length > 0 && (
-          <SectionCard title="Заявки без движения" icon={PauseCircle} count={staleRequests.length} viewAllTo="/requests">
-            {staleRequests.map((r) => (
-              <Row key={r.id}>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12.5px] font-medium text-ink">{r.name}</p>
-                  <p className="truncate text-[11.5px] text-ink-muted">
-                    Отправлено {r.sent_count}, ответов нет · обновлено {formatRelativeTime(r.updated_at)}
-                  </p>
-                </div>
-                <Badge tone="neutral">Без ответов</Badge>
-              </Row>
-            ))}
-          </SectionCard>
-        )}
-
-        {showReplies && (
-          <SectionCard title="Новые ответы" icon={MessageSquareText} count={newReplies.length} viewAllTo="/messages">
-            {threadsState.status === 'loading' ? (
-              <LoadingState />
-            ) : threadsState.status === 'error' ? (
-              <ErrorState message={threadsState.message} onRetry={threadsState.reload} />
-            ) : (
-              newReplies.map((t) => (
-                <Row key={t.id}>
+      <div className="grid grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-2">
+        {/* Left column: attention + letters */}
+        <div className="flex flex-col gap-4">
+          {attentionRequests.length > 0 && (
+            <SectionCard title="Сроки и просрочки" icon={AlertTriangle} count={attentionRequests.length} viewAllTo="/requests">
+              {attentionRequests.map((r) => (
+                <Row key={r.id}>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12.5px] font-medium text-ink">
-                      {formatCompanyName(t.supplier_name)} <span className="text-ink-faint">· {t.request_name}</span>
+                    <p className="truncate text-[12.5px] font-medium text-ink">{r.name}</p>
+                    <p className="truncate text-[11.5px] text-ink-muted">
+                      {r.suppliers_count - r.replies_count > 0 ? `${r.suppliers_count - r.replies_count} поставщиков без ответа` : 'Ответили все поставщики'}
                     </p>
-                    <p className="truncate text-[11.5px] text-ink-muted">{t.subject}</p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Badge tone="accent">{t.unread_count}</Badge>
-                    <span className="w-14 text-right text-[11px] text-ink-faint">{formatRelativeTime(t.last_message_at)}</span>
-                  </div>
+                  <DeadlineTag deadline={r.deadline} />
                 </Row>
-              ))
-            )}
-          </SectionCard>
-        )}
+              ))}
+            </SectionCard>
+          )}
 
-        {showUnmatched && (
-          <SectionCard title="Письма без заявки" icon={Inbox} count={unmatched.length} viewAllTo="/messages">
-            {unmatchedState.status === 'loading' ? (
-              <LoadingState />
-            ) : unmatchedState.status === 'error' ? (
-              <ErrorState message={unmatchedState.message} onRetry={unmatchedState.reload} />
-            ) : (
-              unmatched.slice(0, 4).map((m) => (
-                <Row key={m.id}>
+          {staleRequests.length > 0 && (
+            <SectionCard title="Заявки без движения" icon={PauseCircle} count={staleRequests.length} viewAllTo="/requests">
+              {staleRequests.map((r) => (
+                <Row key={r.id}>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12.5px] font-medium text-ink">{m.subject}</p>
-                    <p className="truncate text-[11.5px] text-ink-muted">{m.from_email}</p>
+                    <p className="truncate text-[12.5px] font-medium text-ink">{r.name}</p>
+                    <p className="truncate text-[11.5px] text-ink-muted">
+                      Отправлено {r.sent_count}, ответов нет · обновлено {formatRelativeTime(r.updated_at)}
+                    </p>
                   </div>
-                  <span className="text-[11px] text-ink-faint">{formatRelativeTime(m.received_at)}</span>
+                  <Badge tone="neutral">Без ответов</Badge>
                 </Row>
-              ))
-            )}
-          </SectionCard>
-        )}
+              ))}
+            </SectionCard>
+          )}
 
-        {!hasAttentionContent && (
-          <section className="rounded-lg border border-border bg-surface">
-            <EmptyState icon={AlertTriangle} title="Срочных дел и новых писем нет" />
-          </section>
-        )}
-      </div>
+          {showReplies && (
+            <SectionCard title="Новые ответы" icon={MessageSquareText} count={newReplies.length} viewAllTo="/messages">
+              {threadsState.status === 'loading' ? (
+                <LoadingState />
+              ) : threadsState.status === 'error' ? (
+                <ErrorState message={threadsState.message} onRetry={threadsState.reload} />
+              ) : (
+                newReplies.map((t) => (
+                  <Row key={t.id}>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[12.5px] font-medium text-ink">
+                        {formatCompanyName(t.supplier_name)} <span className="text-ink-faint">· {t.request_name}</span>
+                      </p>
+                      <p className="truncate text-[11.5px] text-ink-muted">{t.subject}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge tone="accent">{t.unread_count}</Badge>
+                      <span className="w-14 text-right text-[11px] text-ink-faint">{formatRelativeTime(t.last_message_at)}</span>
+                    </div>
+                  </Row>
+                ))
+              )}
+            </SectionCard>
+          )}
 
-      <div className="px-4 sm:px-6 pb-6">
-        <TasksSection />
+          {showUnmatched && (
+            <SectionCard title="Письма без заявки" icon={Inbox} count={unmatched.length} viewAllTo="/messages">
+              {unmatchedState.status === 'loading' ? (
+                <LoadingState />
+              ) : unmatchedState.status === 'error' ? (
+                <ErrorState message={unmatchedState.message} onRetry={unmatchedState.reload} />
+              ) : (
+                unmatched.slice(0, 5).map((m) => (
+                  <Row key={m.id} dense>
+                    <div className="min-w-0 flex-1 truncate text-[12.5px]">
+                      <span className="font-medium text-ink">{m.subject}</span>
+                      <span className="text-ink-faint"> · {m.from_email}</span>
+                    </div>
+                    <span className="shrink-0 text-[11px] text-ink-faint">{formatRelativeTime(m.received_at)}</span>
+                  </Row>
+                ))
+              )}
+            </SectionCard>
+          )}
+
+          {!hasAttentionContent && (
+            <section className="rounded-lg border border-border bg-surface">
+              <EmptyState icon={AlertTriangle} title="Срочных дел и новых писем нет" />
+            </section>
+          )}
+        </div>
+
+        {/* Right column: calendar + tasks -- given real room (up to half
+         * the screen on wide viewports) instead of a cramped 280px widget. */}
+        <div className="flex flex-col gap-4">
+          <DashboardCalendar tasks={tasks} />
+          <TasksSection onTasksReload={tasksReload} />
+        </div>
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 import clsx from 'clsx';
 import {
   Ban,
-  CalendarDays,
   Inbox,
   LayoutGrid,
   ListChecks,
@@ -21,7 +20,6 @@ import { SupportChat } from '../SupportChat';
 
 const nav = [
   { to: '/', label: 'Дашборд', icon: LayoutGrid, end: true },
-  { to: '/calendar', label: 'Календарь', icon: CalendarDays },
   { to: '/requests', label: 'Заявки', icon: ListChecks },
   { to: '/suppliers', label: 'Поставщики', icon: Truck },
   { to: '/messages', label: 'Сообщения', icon: Inbox },

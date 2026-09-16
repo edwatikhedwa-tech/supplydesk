@@ -431,10 +431,35 @@ export interface TaskReminder {
   channel: 'in_app' | 'email' | 'phone';
   scheduled_at: string;
   timezone: string;
-  status: 'scheduled' | 'cancelled' | 'mock_triggered';
+  status: 'scheduled' | 'triggered' | 'dismissed' | 'cancelled' | 'mock_triggered';
   recipient: string | null;
   mock_state?: 'mock' | 'not_connected' | null;
   created_at: string;
+}
+
+/** An `in_app` reminder enriched with its task's context -- the shape
+ * returned by /api/tasks/reminders/due and /api/tasks/reminders/feed. */
+export interface ReminderAlert {
+  reminder_id: number;
+  task_id: number;
+  scheduled_at: string;
+  timezone: string;
+  status: TaskReminder['status'];
+  read_at: string | null;
+  title: string;
+  due_date: string | null;
+  done: boolean;
+  request_id: number | null;
+  supplier_id: number | null;
+  priority: 'low' | 'normal' | 'high';
+  request_name: string | null;
+  supplier_name: string | null;
+}
+
+export interface NotificationSettings {
+  sound_enabled: boolean;
+  browser_notifications_enabled: boolean;
+  default_reminder_offset_minutes: number;
 }
 
 export interface TaskReminderInput {

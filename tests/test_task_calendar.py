@@ -20,10 +20,18 @@ class TaskCalendarTests(unittest.TestCase):
         self.assertIn("Без срока", source)
 
     def test_calendar_is_routed_and_discoverable(self) -> None:
+        # PD-002 (2026-09-16, owner's explicit instruction): the calendar no
+        # longer has its own sidebar nav entry -- a full-page calendar link
+        # "выглядит убого" for the owner's workflow. It stays reachable via
+        # the Dashboard's calendar widget and its route. The widget itself
+        # was later replaced (same round) with `DashboardCalendar`, a real
+        # react-day-picker-based calendar, after the owner asked for a
+        # polished, functional ready-made component instead of the
+        # hand-rolled `MiniCalendar`.
         app = self.read("frontend-v2/src/App.tsx")
-        sidebar = self.read("frontend-v2/src/components/shell/Sidebar.tsx")
         self.assertIn('path="calendar"', app)
-        self.assertIn("label: 'Календарь'", sidebar)
+        dashboard = self.read("frontend-v2/src/pages/Dashboard.tsx")
+        self.assertIn("DashboardCalendar", dashboard)
 
     def test_calendar_has_keyboard_labels_and_task_links(self) -> None:
         source = self.read("frontend-v2/src/pages/Calendar.tsx")
@@ -34,7 +42,11 @@ class TaskCalendarTests(unittest.TestCase):
         self.assertIn("formatCompanyName(task.supplier_name)", source)
         self.assertIn("Показать задачи:", source)
         self.assertIn("Задачи на ${dateLabel(selectedDate)}", source)
-        self.assertIn("lg:hidden", source)
+        # PD-002 (2026-09-16): the selected-day panel is now a persistent
+        # sidebar next to the month grid on desktop too (previously
+        # `lg:hidden` -- mobile-only, matching the shadcn calendar-monthly
+        # reference the owner pointed at), not just a mobile-only panel.
+        self.assertIn("lg:w-[280px]", source)
         self.assertIn("fullContext", source)
         self.assertIn("whitespace-normal break-words", source)
         self.assertIn("focus-visible:ring-2", source)

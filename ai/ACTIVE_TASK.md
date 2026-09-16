@@ -4,10 +4,80 @@ status: CURRENT
 canonical: false
 owner: project-control
 updated_at: 2026-09-16
-based_on_commit: pending-commit-TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915
+based_on_commit: pending-commit-TASK-CALENDAR-REMINDERS-20260916
 ---
 
 # Active Task
+
+Task ID: `TASK-CALENDAR-REMINDERS-20260916`
+Agent: `Claude Code`
+Mode: `IMPLEMENTATION`
+Started: `2026-09-16`
+Branch: `experiment/frontend-v2-greenfield-20260905` (worked directly here;
+this task is UI/feature work on the current base branch, not a
+contact-intelligence-scope change, so it did not need its own feature
+branch per the prior task's branch-isolation instruction, which was scoped
+to that task).
+Scope: `Replace the Dashboard calendar widget with a compact shadcn-style
+month calendar; implement a real (non-mock), backend-persisted in-app
+task-reminder delivery system: persistent toast notification, one sound per
+new trigger, optional browser Notification API, Notification Center with
+read/unread, complete/snooze/dismiss actions with the dismiss≠complete
+invariant, snooze never mutating the task's own due_date/due_at, and
+per-user notification settings persisted server-side. Full owner spec:
+20 numbered requirements plus 8 acceptance scenarios in the task prompt.`
+Allowed files: `migrations/052_task_reminder_delivery.sql,
+mail/task_reminder_delivery.py, mail/repository.py, supplier_app.py,
+frontend-v2/src/lib/types.ts, frontend-v2/src/lib/api.ts,
+frontend-v2/src/lib/RemindersContext.tsx, frontend-v2/src/lib/reminderSound.ts,
+frontend-v2/src/lib/taskSchedule.ts,
+frontend-v2/src/components/TaskReminderToast.tsx,
+frontend-v2/src/components/ReminderToastManager.tsx,
+frontend-v2/src/components/NotificationCenter.tsx,
+frontend-v2/src/components/shell/AppShell.tsx,
+frontend-v2/src/components/shell/Sidebar.tsx,
+frontend-v2/src/components/MiniCalendar.tsx,
+frontend-v2/src/components/TasksSection.tsx,
+frontend-v2/src/components/QuickAddTaskButton.tsx,
+frontend-v2/src/pages/Dashboard.tsx, frontend-v2/src/pages/RequestDetail.tsx,
+frontend-v2/src/pages/Settings.tsx, frontend-v2/src/App.tsx,
+frontend-v2/package.json,
+tests/test_task_reminder_delivery.py, tests/test_migration_replay_stability.py,
+ai/CURRENT_STATE.md, ai/ACTIVE_TASK.md.`
+Status: `PARTIAL — implementation complete and verified: full backend suite
+693 tests/OK/2 skipped/exit 0 (12 new reminder-delivery tests + 2 new
+migration-replay-stability tests), frontend tsc/build/vitest clean (13/13),
+and a real SAFE_TEST browser session reproduced every acceptance scenario
+(persistent toast surviving reload, single chime per new trigger via a
+synthesized Web Audio tone, X-dismiss never completing the task, snooze
+presets rescheduling only the reminder, live task-list/calendar update
+after completing from the toast or Notification Center, Notification
+Center read/unread with a real backend-persisted unread badge, and
+sound/browser-notification settings persisting across a reload). Two real
+bugs were found and fixed during this same verification, not before: (1) a
+pre-existing regression in uncommitted working-tree state from before this
+task started -- the Dashboard's quick-add task row had lost its due-time
+input, silently discarding any selected in-app/email reminder on create;
+restored, with its pre-existing product-invariant test
+(tests/test_task_reminder_ui.py) passing again; (2) this repo's
+"replay every migration on every local start" design meant migration 052's
+task_reminders rebuild crashed the whole backend on its second startup
+once real triggered/dismissed data existed, because the earlier
+044_phone_reminder_mock.sql rebuild replayed first against its own
+narrower CHECK constraint; fixed with a skip-once-applied guard on both
+migrations (generalized to Postgres too), proven by
+tests/test_migration_replay_stability.py. A stray, undocumented
+experimental duplicate page (frontend-v2/src/pages/RequestDetailExperiment.tsx
+and its App.tsx route) found in the working tree at the start of this task
+was removed as dead scratch work -- its real functionality already lived
+correctly in RequestDetail.tsx. LOCAL_CANONICAL/real-owner-data browser
+verification was not attempted (no owner credentials available this
+session); SAFE_TEST (disposable synthetic-auth runtime) is the disclosed
+live-browser evidence. Not committed, not pushed, not merged --
+awaiting the owner's separate confirmation per standing instruction.`
+Last update: `2026-09-16`
+
+---
 
 Task ID: `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915`
 Agent: `Claude Code`

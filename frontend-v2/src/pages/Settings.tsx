@@ -1,5 +1,6 @@
-import { AlertTriangle, Check, ExternalLink, FolderSearch, Loader2, Mail, MailWarning, RefreshCw, Send, ShieldCheck, Trash2 } from 'lucide-react';
+import { AlertTriangle, Bell, Check, ExternalLink, FolderSearch, Loader2, Mail, MailWarning, RefreshCw, Send, ShieldCheck, Trash2, Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
@@ -8,8 +9,96 @@ import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { ApiError, api } from '../lib/api';
 import { useAuth } from '../lib/AuthContext';
 import { formatDateTime, formatRelativeTime } from '../lib/format';
+import { useReminders } from '../lib/RemindersContext';
 import type { MailAccount } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
+
+function ToggleRow({ icon, label, checked, onChange, hint }: { icon: ReactNode; label: string; checked: boolean; onChange: (value: boolean) => void; hint?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <div className="flex min-w-0 items-center gap-2">
+        {icon}
+        <div className="min-w-0">
+          <p className="text-[12.5px] font-medium text-ink">{label}</p>
+          {hint && <p className="truncate text-[11px] text-ink-faint">{hint}</p>}
+        </div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onChange(!checked)}
+        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? 'bg-accent' : 'bg-surface-hover border border-border-strong'}`}
+      >
+        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4' : 'translate-x-0.5'}`} />
+      </button>
+    </div>
+  );
+}
+
+/** §13 of the reminder spec: real, persisted (not localStorage-only) sound
+ * and browser-notification preferences. Browser permission itself is only
+ * requested on an explicit click here -- never automatically. */
+function NotificationSettingsCard() {
+  const { settings, updateSettings } = useReminders();
+  const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(
+    typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
+  );
+  const [error, setError] = useState('');
+
+  async function toggleSound(value: boolean) {
+    setError('');
+    try {
+      await updateSettings({ ...settings, sound_enabled: value });
+    } catch {
+      setError('Не удалось сохранить настройку звука.');
+    }
+  }
+
+  async function toggleBrowserNotifications(value: boolean) {
+    setError('');
+    if (value && permission !== 'granted') {
+      if (permission === 'unsupported') {
+        setError('Браузер не поддерживает системные уведомления.');
+        return;
+      }
+      try {
+        const result = await Notification.requestPermission();
+        setPermission(result);
+        if (result !== 'granted') return;
+      } catch {
+        setError('Не удалось запросить разрешение на уведомления.');
+        return;
+      }
+    }
+    try {
+      await updateSettings({ ...settings, browser_notifications_enabled: value });
+    } catch {
+      setError('Не удалось сохранить настройку уведомлений.');
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="flex items-center gap-2">
+        <Bell size={15} className="text-ink-muted" />
+        <h2 className="text-[13px] font-semibold text-ink">Уведомления</h2>
+      </div>
+      <div className="mt-1 divide-y divide-border">
+        <ToggleRow icon={<Volume2 size={14} className="shrink-0 text-ink-faint" />} label="Звуковые уведомления" checked={settings.sound_enabled} onChange={toggleSound} />
+        <ToggleRow
+          icon={<Bell size={14} className="shrink-0 text-ink-faint" />}
+          label="Системные уведомления"
+          checked={settings.browser_notifications_enabled && permission === 'granted'}
+          onChange={toggleBrowserNotifications}
+          hint={permission === 'denied' ? 'Разрешение заблокировано в настройках браузера' : undefined}
+        />
+      </div>
+      {error && <p className="mt-2 text-[11.5px] text-danger">{error}</p>}
+    </div>
+  );
+}
 
 /** Global kill switch for real outgoing mail (POST /api/mail/runtime/outgoing).
  * Owner-only on the backend (mail/service.py::set_outgoing_enabled) and
@@ -443,6 +532,8 @@ export function Settings() {
             {banner.text}
           </div>
         )}
+
+        <NotificationSettingsCard />
 
         <OutgoingMailControl />
 

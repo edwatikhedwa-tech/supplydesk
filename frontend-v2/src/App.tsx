@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell';
 import { AuthProvider, useAuth } from './lib/AuthContext';
+import { RemindersProvider } from './lib/RemindersContext';
 
 const Blacklist = lazy(() => import('./pages/Blacklist').then(({ Blacklist }) => ({ default: Blacklist })));
 const Calendar = lazy(() => import('./pages/Calendar').then(({ Calendar }) => ({ default: Calendar })));
@@ -42,21 +43,23 @@ function Gate() {
   return (
     <Suspense fallback={<PageFallback />}>
       <HashRouter>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route index element={<Dashboard />} />
-            <Route path="calendar" element={<Calendar />} />
-            <Route path="requests" element={<Requests />} />
-            <Route path="requests/:id" element={<RequestDetail />} />
-            <Route path="suppliers" element={<Suppliers />} />
-            <Route path="suppliers/:id" element={<SupplierDetail />} />
-            <Route path="messages" element={<Messages />} />
-            <Route path="blacklist" element={<Blacklist />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="help" element={<Help />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
+        <RemindersProvider>
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route index element={<Dashboard />} />
+              <Route path="calendar" element={<Calendar />} />
+              <Route path="requests" element={<Requests />} />
+              <Route path="requests/:id" element={<RequestDetail />} />
+              <Route path="suppliers" element={<Suppliers />} />
+              <Route path="suppliers/:id" element={<SupplierDetail />} />
+              <Route path="messages" element={<Messages />} />
+              <Route path="blacklist" element={<Blacklist />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="help" element={<Help />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+        </RemindersProvider>
       </HashRouter>
     </Suspense>
   );

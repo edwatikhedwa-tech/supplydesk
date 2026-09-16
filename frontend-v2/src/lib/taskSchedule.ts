@@ -19,3 +19,20 @@ export function formatTaskReminder(reminder: Pick<TaskReminder, 'channel' | 'sch
   const channel = reminder.channel === 'email' ? 'Email' : reminder.channel === 'phone' ? 'Позвонить мне · mock' : 'In-app';
   return `${channel} · ${reminder.scheduled_at.replace('T', ' ')} (${reminder.timezone})`;
 }
+
+/** "Просрочено 15 мин" / "Просрочено 2 ч" / "Просрочено 1 день" / "Срок: сейчас".
+ * `scheduledAt` is read as browser-local wall time, matching how it was
+ * created (`Intl.DateTimeFormat().resolvedOptions().timeZone`) for the
+ * common single-timezone user -- a disclosed simplification, not a full
+ * per-reminder timezone conversion. */
+export function formatReminderDueLabel(scheduledAt: string): string {
+  const scheduled = new Date(scheduledAt.length === 16 ? `${scheduledAt}:00` : scheduledAt);
+  const diffMs = Date.now() - scheduled.getTime();
+  if (diffMs < 60_000) return 'Срок: сейчас';
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 60) return `Просрочено ${minutes} мин`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Просрочено ${hours} ч`;
+  const days = Math.floor(hours / 24);
+  return `Просрочено ${days} ${days === 1 ? 'день' : 'дн'}`;
+}

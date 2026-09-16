@@ -119,6 +119,21 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
                     "phone_reminders_mode": phone_reminders_mode(self.app.config.environment),
                 })
             return
+        if parsed.path == "/api/tasks/reminders/due":
+            session = self._require_session()
+            if session:
+                self._json(200, self.app.repository.list_due_reminders(session["workspace_id"], session["user_id"]))
+            return
+        if parsed.path == "/api/tasks/reminders/feed":
+            session = self._require_session()
+            if session:
+                self._json(200, {"items": self.app.repository.list_notification_feed(session["workspace_id"], session["user_id"])})
+            return
+        if parsed.path == "/api/notification-settings":
+            session = self._require_session()
+            if session:
+                self._json(200, self.app.repository.get_notification_settings(session["user_id"]))
+            return
         if parsed.path == "/api/workspace/members":
             session = self._require_session()
             if session:
@@ -869,6 +884,35 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             elif parsed.path.startswith("/api/tasks/") and parsed.path.endswith("/done"):
                 task_id = int(parsed.path.split("/")[3])
                 result = self.app.repository.set_task_done(session["workspace_id"], session["user_id"], task_id, bool(body.get("done", True)))
+                self._json(200, {"ok": True, **result})
+            elif parsed.path == "/api/tasks/reminders/read-all":
+                result = self.app.repository.mark_all_reminders_read(session["workspace_id"], session["user_id"])
+                self._json(200, result)
+            elif parsed.path.startswith("/api/tasks/reminders/") and parsed.path.endswith("/dismiss"):
+                reminder_id = int(parsed.path.split("/")[4])
+                result = self.app.repository.dismiss_reminder(session["workspace_id"], session["user_id"], reminder_id)
+                self._json(200, {"ok": True, **result})
+            elif parsed.path.startswith("/api/tasks/reminders/") and parsed.path.endswith("/snooze"):
+                reminder_id = int(parsed.path.split("/")[4])
+                minutes_raw = body.get("minutes")
+                result = self.app.repository.snooze_reminder(
+                    session["workspace_id"], session["user_id"], reminder_id,
+                    minutes=int(minutes_raw) if minutes_raw not in (None, "") else None,
+                    until=str(body["until"]) if body.get("until") else None,
+                    timezone_name=str(body["timezone"]) if body.get("timezone") else None,
+                )
+                self._json(200, {"ok": True, **result})
+            elif parsed.path.startswith("/api/tasks/reminders/") and parsed.path.endswith("/read"):
+                reminder_id = int(parsed.path.split("/")[4])
+                result = self.app.repository.mark_reminder_read(session["workspace_id"], session["user_id"], reminder_id)
+                self._json(200, {"ok": True, **result})
+            elif parsed.path == "/api/notification-settings":
+                result = self.app.repository.set_notification_settings(
+                    session["user_id"],
+                    sound_enabled=bool(body.get("sound_enabled", True)),
+                    browser_notifications_enabled=bool(body.get("browser_notifications_enabled", False)),
+                    default_reminder_offset_minutes=int(body.get("default_reminder_offset_minutes") or 0),
+                )
                 self._json(200, {"ok": True, **result})
             elif parsed.path == "/api/requests":
                 positions = body.get("positions") or []

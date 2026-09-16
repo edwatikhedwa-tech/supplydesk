@@ -6,10 +6,17 @@ from pathlib import Path
 
 class RequestEmailReferenceUiTests(unittest.TestCase):
     def test_request_detail_has_explicit_external_email_copy_actions(self) -> None:
+        # PD-002 UX reorg (2026-09-16, two owner rounds): the full-width
+        # "Первое письмо из вашей почты" card was compacted into a single
+        # utility row, then the redundant "Переписка ·" label itself was
+        # dropped too (the SD-xxxx reference chip alone is self-explanatory)
+        # per the owner's explicit "убери 'Переписка · SD-1059'" instruction.
+        # The copy-subject/copy-ID actions themselves are unchanged, only
+        # their presentation (labeled icon buttons with an aria-label each,
+        # instead of two visually-identical unlabeled icons).
         source = (Path(__file__).resolve().parents[1] / "frontend-v2" / "src" / "pages" / "RequestDetail.tsx").read_text(encoding="utf-8")
-        self.assertIn("Первое письмо из вашей почты", source)
-        self.assertIn("Скопировать тему", source)
-        self.assertIn("Скопировать ID", source)
+        self.assertIn('aria-label="Скопировать тему письма"', source)
+        self.assertIn('aria-label="Скопировать ID заявки"', source)
         self.assertIn("request.email_reference", source)
 
     def test_request_detail_can_preview_then_import_its_own_sent_mail_only(self) -> None:

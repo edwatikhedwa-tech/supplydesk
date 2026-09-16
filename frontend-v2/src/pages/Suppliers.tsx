@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { Ban, ExternalLink, FileSpreadsheet, Search, Star, TrendingDown, TrendingUp, Truck, Upload, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import checkoIcon from '../assets/checko-icon.png';
 import { PageHeader } from '../components/shell/PageHeader';
 import { Badge } from '../components/ui/Badge';
@@ -202,7 +202,8 @@ function matchesFilter(s: SupplierDirectoryItem, filter: FilterKey): boolean {
 
 export function Suppliers() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '');
   const [filter, setFilter] = useState<FilterKey>('all');
   const [importOpen, setImportOpen] = useState(false);
 

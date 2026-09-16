@@ -232,9 +232,14 @@ export function Calendar() {
   if (view === 'month') {
     const selectedTasks = datedTasks.filter((task) => task.due_date === selectedDate);
     content = (
-      <>
-        <MonthView anchor={anchor} tasks={datedTasks} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
-        <section className="mt-3 rounded-lg border border-border bg-surface p-2 lg:hidden" aria-label={`Задачи на ${dateLabel(selectedDate)}`}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1">
+          <MonthView anchor={anchor} tasks={datedTasks} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+        </div>
+        {/* Persistent day-detail sidebar on desktop (matches the shadcn
+         * monthly-view reference: grid + always-visible selected-day event
+         * list), collapsing to a panel below the grid on narrow screens. */}
+        <section className="rounded-lg border border-border bg-surface p-2 lg:w-[280px] lg:shrink-0" aria-label={`Задачи на ${dateLabel(selectedDate)}`}>
           <p className="px-1 pb-2 text-[11.5px] font-semibold capitalize text-ink">{dateLabel(selectedDate)}</p>
           {selectedTasks.length > 0 ? (
             <div className="flex flex-col gap-1.5">{selectedTasks.map((task) => <TaskLink key={task.id} task={task} fullContext />)}</div>
@@ -242,7 +247,7 @@ export function Calendar() {
             <p className="px-1 pb-1 text-[11.5px] text-ink-faint">Задач нет</p>
           )}
         </section>
-      </>
+      </div>
     );
   }
   else if (view === 'week') content = <WeekView anchor={anchor} tasks={datedTasks} />;
@@ -254,7 +259,7 @@ export function Calendar() {
     <div className="flex h-full flex-col overflow-auto">
       <PageHeader
         title="Календарь"
-        description="Только датированные личные задачи. Напоминания появятся здесь после SUP-019."
+        description="Только датированные личные задачи. Настроить напоминание можно при создании задачи."
         actions={<Link to="/" className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-border-strong bg-surface px-3 text-[12px] font-medium text-ink hover:bg-surface-hover"><ListTodo size={13} /> Задачи</Link>}
       />
       <main className="flex flex-col gap-4 px-4 pb-6 sm:px-6">

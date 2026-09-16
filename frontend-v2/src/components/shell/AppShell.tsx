@@ -1,11 +1,16 @@
 import { Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { NotificationCenter } from '../NotificationCenter';
+import { ReminderToastManager } from '../ReminderToastManager';
 import { CommandPalette } from './CommandPalette';
 import { Sidebar } from './Sidebar';
 
 export function AppShell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -22,7 +27,7 @@ export function AppShell() {
     <div className="flex h-screen w-screen overflow-hidden bg-canvas text-ink">
       <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="flex h-14 shrink-0 items-center border-b border-border bg-surface px-3 sm:px-4">
+        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3 sm:px-4">
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
@@ -33,14 +38,21 @@ export function AppShell() {
               <span className="sm:hidden">Поиск…</span>
               <span className="hidden sm:inline">Поиск: заявки, поставщики, переписки, текст письма…</span>
             </span>
-            <kbd className="hidden shrink-0 rounded border border-border-strong px-1.5 py-0.5 text-[10px] text-ink-faint sm:inline">⌘K</kbd>
           </button>
+          <NotificationCenter
+            open={notificationsOpen}
+            onToggle={() => setNotificationsOpen((v) => !v)}
+            onClose={() => setNotificationsOpen(false)}
+            className="ml-auto"
+          />
         </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <Outlet />
         </div>
       </main>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <ReminderToastManager onOpenCenter={() => setNotificationsOpen(true)} />
+      <ToastContainer position="bottom-right" newestOnTop stacked closeButton={false} hideProgressBar toastClassName="!bg-transparent !p-0 !shadow-none" />
     </div>
   );
 }
