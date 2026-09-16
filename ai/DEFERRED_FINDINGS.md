@@ -49,15 +49,21 @@ this current register. Resolved findings and full chronology are preserved in
      for the reasoning. A workspace's own signals update only when that
      workspace's own contact card is read or a contact result is recorded,
      not the instant a reply/bounce arrives.
-  4. **The workspace-scoped preferred-contact override is not wired into
-     outbound campaign composition.** `mail/service.py::queue_bulk` still
-     sends to whatever email the caller supplies in its `suppliers` list;
-     nothing yet resolves through `workspace_supplier_contact_overrides`
-     when building a *new* campaign's recipient list. AC-02's "used in
-     subsequent requests of this workspace" is proven at the data-model
-     level (`tests/test_contact_intelligence.py::
-     test_ac02_new_email_is_used_immediately_only_in_this_workspace`) and
-     exposed on the supplier card, but not yet consulted by the send path.
+  4. ~~The workspace-scoped preferred-contact override is not wired into
+     outbound campaign composition~~ — **RESOLVED 2026-09-16, same task**:
+     `mail/repository.py::resolve_supplier_for_send` now consults
+     `resolve_effective_send_email` (workspace-preferred → global-preferred
+     → existing fallback, hard-bounce-aware) before finalizing any send's
+     recipient for a known `suppliers.id`. Proven by
+     `tests/test_contact_resolution_send_path.py` (7 tests: actual
+     selection, priority order, hard-bounce demotion with an audit-log
+     entry rather than a silent choice, cross-workspace isolation, and
+     unchanged behavior for a brand-new recipient with no stored
+     `supplier_id`). See `DECISION-024`'s 2026-09-16 follow-up entry and
+     `docs/domain/SUPPLIER_MODEL.md` §7.3. Remaining, newly disclosed
+     boundary: `preflight_bulk`'s campaign preview still reports the
+     pre-upgrade address, not the one `queue_bulk` will actually use — the
+     two were never wired together for reporting, only for the final send.
   5. **No public-holiday calendar** for the "N business days" SLA — only
      Mon-Fri is excluded.
   6. **Не выполнена** формальная проверка условий использования каких-либо
@@ -66,16 +72,19 @@ this current register. Resolved findings and full chronology are preserved in
      surface was introduced, but this is noted for completeness alongside
      the pre-existing Checko/DaData ToS gap (`FINDING-023`).
 - Why deferred: None of the above blocks the feature's core, tested
-  correctness (all 9 ACs pass against a real repository); each is a
+  correctness (all 10 ACs now pass against a real repository — an earlier
+  draft of this finding said "9", which undercounted; the owner's spec
+  defines AC-01 through AC-10, all ten covered by test evidence, see the
+  task's AC matrix in session history); each remaining item is a
   disclosed, bounded scope edge rather than a defect, consistent with this
   project's existing PARTIAL-completion pattern (see e.g. `SUP-021`..`029`
   entries in `ai/CURRENT_STATE.md`).
 - Next verification: an owner (or an already-authenticated) session opens
   `/messages` on a real waiting thread aged past its SLA and confirms the
-  badge/actions visually; a follow-up task wires
-  `workspace_supplier_contact_overrides` into `queue_bulk`'s recipient
-  resolution if the owner wants override emails to actually receive new
-  outbound RFQs, not just be visible on the card.
+  badge/actions visually; a follow-up task could additionally surface the
+  resolved recipient in `preflight_bulk`'s campaign-preview report if the
+  owner wants the preview and the actual send to visibly agree before
+  send-time, not only at send-time.
 
 ## FINDING-036 — A second governance validator (`validate_state.py`) had been silently unable to pass since a restructuring commit, masked by the first validator's own failure
 

@@ -3,7 +3,7 @@ document_id: TASK-LOCK-040
 status: CURRENT
 canonical: false
 owner: project-control
-updated_at: 2026-09-15
+updated_at: 2026-09-16
 based_on_commit: pending-commit-TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915
 ---
 
@@ -20,27 +20,36 @@ explicit owner instruction.
 Scope: `needs_followup derived thread state (configurable per-request SLA,
 default 2 business days), «Связаться»/«Напомнить» actions with a historical
 contact-result log, a workspace-scoped immediate preferred-contact
-override, and a cross-tenant (canonical_companies-based) self-updating
-email-contact consensus with hard/soft bounce handling and full
-explainability without cross-workspace identity leaks. Full spec: the
-owner's 10 acceptance criteria (AC-01..AC-10) in the task prompt.`
+override actually consulted at send time, and a cross-tenant
+(canonical_companies-based) self-updating email-contact consensus with
+hard/soft bounce handling and full explainability without cross-workspace
+identity leaks. Full spec: the owner's 10 acceptance criteria (AC-01..AC-10)
+in the task prompt.`
 Allowed files: `migrations/051_contact_intelligence.sql,
-mail/contact_intelligence.py, mail/repository.py, backend/http_requests.py,
+mail/contact_intelligence.py, mail/repository.py, mail/service.py,
+backend/http_requests.py,
 frontend-v2/src/lib/types.ts, frontend-v2/src/lib/api.ts,
 frontend-v2/src/pages/Messages.tsx,
 frontend-v2/src/components/ContactResultModal.tsx(+.test.tsx),
 frontend-v2/src/components/SupplierCardContent.tsx,
 frontend-v2/package.json, frontend-v2/vitest.config.ts,
 frontend-v2/src/setupTests.ts, tests/test_contact_intelligence.py,
+tests/test_contact_resolution_send_path.py,
 docs/domain/SUPPLIER_MODEL.md, docs/ui/MESSAGES_SCREEN_SPEC.md,
 ai/CURRENT_STATE.md, ai/ACTIVE_TASK.md, ai/DECISIONS.md,
 ai/DEFERRED_FINDINGS.md.`
-Status: `PARTIAL — backend fully implemented and tested (14/14 new tests,
-full suite 662/662 unchanged); frontend implemented, typechecked, built,
-linted and component-tested (4/4); NOT committed, NOT pushed, NOT merged
-(explicit owner instruction: no merge/deploy without separate
-confirmation). Live authenticated browser verification NOT performed — no
-owner credentials available to this session. See
+Status: `PARTIAL — backend fully implemented and tested (14 + 7 = 21 new
+focused tests across the two rounds; full suite unchanged/clean after
+both); frontend implemented, typechecked, built, linted and
+component-tested (4/4, re-verified this round though frontend files were
+not touched); NOT committed as of this status line's own edit, NOT pushed,
+NOT merged (explicit owner instruction: no merge/deploy without separate
+confirmation). All 10 owner acceptance criteria (AC-01..AC-10) now have
+direct test evidence, including AC-02 at the actual send path (this
+round's fix, not just the data model). Live authenticated browser
+verification NOT performed — no owner credentials available to this
+session; the task is intentionally NOT reported as fully closed for this
+reason, per explicit owner instruction. See
 ai/DEFERRED_FINDINGS.md FINDING-037 for the complete, honest list of what
 is verified vs. not.`
 Last update: `2026-09-15`

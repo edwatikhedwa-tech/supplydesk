@@ -1337,6 +1337,7 @@ class MailService:
                     name=item["name"],
                     host=item["host"],
                     external_key=item["external_key"],
+                    user_id=user_id,
                 )
                 item.update(resolved)
                 supplier_id = int(resolved["supplier_id"])

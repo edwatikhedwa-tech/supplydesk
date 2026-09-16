@@ -3,7 +3,7 @@ document_id: STATE-001
 status: CURRENT
 canonical: true
 owner: project-control
-updated_at: 2026-09-15
+updated_at: 2026-09-16
 based_on_commit: pending-commit-TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915
 ---
 
@@ -14,6 +14,51 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-16` — Same task, owner-requested closeout of a real functional gap
+flagged after the `2026-09-15` entry below: a workspace's preferred contact
+(set via «Связаться» → «уточнён новый email») was visible on the supplier
+card and provable at the data-model level, but a genuinely NEW outbound
+send/campaign still picked its recipient the old way. Fixed at the one
+existing function that already finalizes a send's recipient for a known
+supplier (`mail/repository.py::resolve_supplier_for_send`, previously only a
+strict "requested email must equal the stored one" guard) — it now
+additionally consults `resolve_effective_send_email` and applies workspace-
+preferred → cross-tenant global-preferred → existing fallback, hard-bounce-
+aware (a bounced candidate is skipped in favor of the next tier and the skip
+is written to `audit_events`, never applied silently; with no safer
+alternative the existing fallback is used rather than blocking the send).
+No new architectural layer was added — the existing
+`_select_contact_for_request` (per-company contact rotation/dedup) and all
+preflight/pacing checks are untouched; only final identity resolution
+changed. `DECISION-024` updated with this follow-up.
+`tests/test_contact_resolution_send_path.py` (7 new tests) proves the actual
+selection at send time: workspace-preferred wins; global-preferred is used
+when no override exists; workspace-preferred outranks global-preferred; a
+hard-bounced workspace-preferred is skipped for a safer alternative; with no
+alternative the old fallback is used instead of blocking; a brand-new
+recipient with no stored `supplier_id` is unaffected; and a second,
+independent workspace with a card for the same real company (same ИНН)
+never sees the first workspace's override before cross-tenant consensus
+promotes anything (still zero registry rows below the 3-workspace
+threshold). Full existing mail-send regression
+(`test_mail_pacing.py`/`test_mail_deliverability.py`/
+`test_mail_status_semantics.py`, 173 tests) and the full backend suite both
+re-ran clean after this change (exact current-run counts recorded in the
+task's own report/PR, since this file does not duplicate a number that a
+later run could immediately make stale). Frontend was not touched this
+round; typecheck/build/lint and the 4 existing component tests were
+re-verified anyway per the owner's explicit request and remain clean (one
+`oxlint` native-binding load failure surfaced transiently during
+verification — an environment-level npm/Windows interaction after
+yesterday's `vitest` install, self-resolved by reinstalling the `oxlint`
+package; not a code regression). Still not merged/pushed/deployed; live
+authenticated browser verification remains `NOT VERIFIED` for the same
+reason as before (no owner credentials available to this session) — see
+`ai/DEFERRED_FINDINGS.md` `FINDING-037` for the fully updated, current list
+of what is and is not verified, including the corrected AC count (the
+owner's spec defines AC-01..AC-10; an earlier session message undercounted
+this as "9").
 
 `2026-09-15` — `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915` on branch
 `feature/followup-contact-intelligence-20260915` (base

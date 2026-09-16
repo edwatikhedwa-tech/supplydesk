@@ -3438,6 +3438,7 @@ class MailRepository(
         name: str,
         host: str,
         external_key: str,
+        user_id: int | None = None,
     ) -> dict[str, Any]:
         """Resolve the durable supplier identity before assembling a send.
 
@@ -3445,6 +3446,21 @@ class MailRepository(
         ownership check.  A manual address may reuse an existing supplier only
         when the exact email identifies one unambiguous workspace identity;
         otherwise it is rejected instead of silently creating or merging data.
+
+        When `supplier_id` identifies a known row and `user_id` is supplied,
+        the caller's requested email is additionally checked against this
+        workspace's contact-intelligence-resolved effective address
+        (`resolve_effective_send_email`: workspace-preferred override ->
+        cross-tenant global preferred contact -> the stored email, in that
+        order -- DECISION-024, mail/contact_intelligence.py). A caller that
+        still requests the plain stored email (the common case: nothing in
+        the calling flow knows about the override) is transparently upgraded
+        to the effective address -- this is what actually makes a workspace's
+        preferred contact take effect for a NEW outbound send, not merely be
+        visible on the supplier card. A caller requesting some third,
+        unrelated address is still rejected exactly as before -- this
+        upgrade only ever substitutes an address the workspace/consensus
+        model itself already trusts, never an arbitrary one.
         """
         normalized_email = str(email or "").strip().lower()
         normalized_host = str(host or "").strip().lower()
@@ -3473,8 +3489,16 @@ class MailRepository(
                 if not row:
                     raise ValueError("Выбранный поставщик не найден в этой заявке.")
                 stored_email = str(row["email"] or "").strip().lower()
-                if stored_email and stored_email != normalized_email:
+                effective_email = stored_email
+                if user_id is not None:
+                    resolution = self.resolve_effective_send_email(
+                        workspace_id, user_id, int(row["id"]), fallback_email=stored_email or normalized_email,
+                    )
+                    effective_email = resolution["email"] or stored_email or normalized_email
+                if stored_email and normalized_email not in {stored_email, effective_email}:
                     raise ValueError("Email не совпадает с выбранным поставщиком.")
+                if effective_email:
+                    normalized_email = effective_email
             else:
                 candidates = connection.execute(
                     """SELECT s.id, s.external_key, s.name, s.email, s.host,

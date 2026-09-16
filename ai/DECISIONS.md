@@ -56,11 +56,22 @@ log. Superseded and older decision prose is preserved in
   Live inbound/bounce signal recording is pull-based (synced from a
   workspace's own stored messages when its own contact card is read or a
   contact result is recorded), not hooked into the live mail-ingestion
-  critical path — see `ai/DEFERRED_FINDINGS.md`. The workspace-scoped
-  preferred-contact override is not yet wired into the outbound
-  campaign-composition recipient list (`mail/service.py::queue_bulk` still
-  reads `suppliers.email` as supplied by the caller).
+  critical path — see `ai/DEFERRED_FINDINGS.md`.
 - Related task: `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915`.
+- Follow-up (`2026-09-16`, same task, not yet merged): `mail/
+  repository.py::resolve_supplier_for_send` — the single place that
+  finalizes a send's recipient for an existing `suppliers.id` — now
+  consults `resolve_effective_send_email` and applies the priority
+  workspace-preferred → global-preferred → existing fallback, so AC-02 is
+  true at the actual send path, not only in the data model. A hard-bounced
+  candidate is skipped in favor of the next tier (never used blindly) and
+  the skip is written to `audit_events`
+  (`mail.contact_resolution.demoted`); if no safer alternative exists, the
+  existing fallback is used rather than blocking the send. Existing
+  dedup/pacing/preflight/`_select_contact_for_request` semantics are
+  untouched — the upgrade happens only at final identity resolution.
+  Proven by `tests/test_contact_resolution_send_path.py` (7 tests) plus the
+  full existing mail-send suite unchanged.
 
 ## DECISION-023 — AI chat default model upgraded to Llama 3.3 70B (from 8B)
 
