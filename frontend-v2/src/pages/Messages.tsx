@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowUpRight,
   Ban,
+  BellRing,
   Check,
   CheckCheck,
   ChevronRight,
@@ -12,6 +13,7 @@ import {
   Link2,
   MessageCircleMore,
   NotebookPen,
+  PhoneCall,
   Send,
   Sparkles,
   Truck,
@@ -21,6 +23,8 @@ import { Group, Panel, Separator } from 'react-resizable-panels';
 import { useSearchParams } from 'react-router-dom';
 import { AiChatPanel } from '../components/AiChatPanel';
 import { AttachmentPicker } from '../components/AttachmentPicker';
+import { ContactResultModal } from '../components/ContactResultModal';
+import { ContactUpdatedNotice } from '../components/ContactUpdatedNotice';
 import { EmailRenderer } from '../components/EmailRenderer';
 import { LogisticsQuoteModal } from '../components/LogisticsQuoteModal';
 import { ManualLinkModal } from '../components/ManualLinkModal';
@@ -199,6 +203,17 @@ export function Messages() {
 
   const threadListScrollRef = useRef<HTMLDivElement>(null);
   const [statusUpdateError, setStatusUpdateError] = useState<string | null>(null);
+
+  async function remindFollowup(t: ThreadSummary) {
+    setReminderState('saving');
+    try {
+      const result = await api.remindSupplierFollowup(t.request_id, t.supplier_id);
+      setReminderState(result.created ? 'idle' : 'exists');
+    } catch {
+      setReminderState('error');
+    }
+  }
+
   async function setConversationStatus(t: ThreadSummary, status: ConversationStatus | null) {
     setStatusUpdateError(null);
     // Captured synchronously, before the network round-trip and before Radix
@@ -287,6 +302,19 @@ export function Messages() {
   const [tasksOpen, setTasksOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiExtraThreadIds, setAiExtraThreadIds] = useState<number[]>([]);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [reminderState, setReminderState] = useState<'idle' | 'saving' | 'error' | 'exists'>('idle');
+  // Bumped after a contact-result save so SupplierCardPanel's own,
+  // independently-fetched data refetches immediately -- it has no other way
+  // to learn a mutation happened elsewhere on the page (see
+  // docs/ui/MESSAGES_SCREEN_SPEC.md §13a).
+  const [contactsRefreshToken, setContactsRefreshToken] = useState(0);
+  const [contactUpdatedEmail, setContactUpdatedEmail] = useState<string | null>(null);
+  useEffect(() => {
+    if (reminderState !== 'exists' && reminderState !== 'error') return;
+    const timer = window.setTimeout(() => setReminderState('idle'), 4000);
+    return () => window.clearTimeout(timer);
+  }, [reminderState]);
   const draftRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     const el = draftRef.current;
@@ -691,6 +719,15 @@ export function Messages() {
                               </p>
                               <p className="truncate text-[11px] text-ink-muted">{formatRelativeTime(t.last_message_at)}</p>
                             </div>
+                            {t.needs_followup && (
+                              <span
+                                className="flex shrink-0 items-center gap-1 rounded-full bg-warning-subtle px-1.5 py-0.5 text-[10px] font-medium text-warning md:max-lg:hidden"
+                                title="Ждём ответа дольше срока — требует внимания"
+                              >
+                                <BellRing size={10} />
+                                Требует внимания
+                              </span>
+                            )}
                             <span
                               className="flex h-6 w-5 shrink-0 items-center justify-center md:max-lg:hidden"
                               title={responseLabel[status]}
@@ -749,6 +786,19 @@ export function Messages() {
           supplierId={activeThread.supplier_id}
           supplierName={formatCompanyName(activeThread.supplier_name)}
           onClose={() => setLogisticsOpen(false)}
+        />
+      )}
+      {contactModalOpen && (
+        <ContactResultModal
+          requestId={activeThread.request_id}
+          supplierId={activeThread.supplier_id}
+          supplierName={formatCompanyName(activeThread.supplier_name)}
+          onClose={() => setContactModalOpen(false)}
+          onSaved={({ overrideCreated, email }) => {
+            threadsState.reload();
+            setContactsRefreshToken((token) => token + 1);
+            if (overrideCreated && email) setContactUpdatedEmail(email);
+          }}
         />
       )}
 
@@ -837,6 +887,21 @@ export function Messages() {
                       ariaLabel="Статус переписки с этим поставщиком"
                     />
                     {activeDeadline && <DeadlineTag deadline={activeDeadline} />}
+                    {activeThread.needs_followup && (
+                      <>
+                        <Button variant="secondary" size="sm" icon={<PhoneCall size={13} />} onClick={() => setContactModalOpen(true)}>
+                          Связаться
+                        </Button>
+                        <Button
+                          variant="secondary" size="sm" icon={<BellRing size={13} />}
+                          disabled={reminderState === 'saving'}
+                          title={reminderState === 'exists' ? 'Напоминание по этому поставщику уже создано и ещё не выполнено' : undefined}
+                          onClick={() => void remindFollowup(activeThread)}
+                        >
+                          {reminderState === 'saving' ? 'Создаём…' : reminderState === 'exists' ? 'Уже напомнили' : 'Напомнить'}
+                        </Button>
+                      </>
+                    )}
                     <Button variant="secondary" size="sm" icon={<Truck size={13} />} onClick={() => setLogisticsOpen(true)}>
                       Доставка
                     </Button>
@@ -1125,6 +1190,7 @@ export function Messages() {
               onClose={() => setNotesOpen(false)}
               onNoteSaved={() => noteState.reload()}
               onSupplierLinked={() => threadsState.reload()}
+              contactsRefreshToken={contactsRefreshToken}
             />
           </div>
         )}
@@ -1136,6 +1202,9 @@ export function Messages() {
         )}
 
       </div>
+      {contactUpdatedEmail && (
+        <ContactUpdatedNotice email={contactUpdatedEmail} onDismiss={() => setContactUpdatedEmail(null)} />
+      )}
     </div>
   );
 }

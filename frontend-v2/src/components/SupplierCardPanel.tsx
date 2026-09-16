@@ -26,6 +26,7 @@ export function SupplierCardPanel({
   onClose,
   onNoteSaved,
   onSupplierLinked,
+  contactsRefreshToken,
 }: {
   requestId: number;
   /** Name of the request that owns this correspondence. */
@@ -41,6 +42,11 @@ export function SupplierCardPanel({
    * global справочник, so the caller can refetch the thread list (updates
    * `globalSupplierId` from the outside, e.g. for the AI-context panel too). */
   onSupplierLinked?: () => void;
+  /** Bump this from the caller (e.g. after a "Связаться" contact-result
+   * save) to force the supplier card's contacts to refetch immediately --
+   * it has its own independent data fetch and does not otherwise know a
+   * contact changed elsewhere on the page. */
+  contactsRefreshToken?: number;
 }) {
   const [threadNotes, setThreadNotes] = useState<ThreadNotes>({ private: null, workspace: null });
   const [threadNoteVisibility, setThreadNoteVisibility] = useState<ThreadNoteVisibility>('private');
@@ -262,7 +268,7 @@ export function SupplierCardPanel({
                 {innMessage}
               </p>
             )}
-            <SupplierCardContent supplierId={effectiveGlobalSupplierId} compact />
+            <SupplierCardContent supplierId={effectiveGlobalSupplierId} compact refreshToken={contactsRefreshToken} />
           </>
         ) : (
           <div className="p-3.5">

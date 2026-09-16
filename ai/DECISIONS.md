@@ -13,6 +13,103 @@ This is the concise current decision register. It is not an infinite event
 log. Superseded and older decision prose is preserved in
 [`ai/history/2026/09/DECISIONS-CHRONICLE-20260901.md`](history/2026/09/DECISIONS-CHRONICLE-20260901.md).
 
+## DECISION-024 — needs_followup contact consensus keyed by canonical_companies (ИНН), not per-workspace global_suppliers.id
+
+- Decision ID: `DECISION-024`
+- Date: `2026-09-15`
+- Status: `ACTIVE`
+- Context: `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915` requires that a
+  candidate email become the global preferred RFQ contact for a supplier
+  only after "3 independent workspaces" confirm it plus at least one strong
+  signal (a real inbound reply or an official-source confirmation), while
+  never revealing one workspace's identity to another. `global_suppliers`
+  (`migrations/007_global_suppliers.sql`) is per-workspace by construction
+  (`UNIQUE(workspace_id, inn)`; a different workspace has a different row/id
+  for the same real company) — this consensus cannot be computed there. The
+  owner was asked to confirm this scope explicitly (it changes architecture
+  and a cross-tenant privacy boundary) before implementation, per the same
+  precedent as `DECISION-022`.
+- Decision: The consensus lives in the existing cross-tenant layer
+  (`canonical_companies`, `DECISION-022`), extended with
+  `canonical_company_contacts` (candidate/preferred/secondary/deprecated per
+  email, keyed by `canonical_company_id`/ИНН), an append-only
+  `canonical_company_contact_signals` log (`workspace_confirmed` — weak;
+  `inbound_reply`/`official_source` — strong; `hard_bounce`/`soft_bounce` —
+  trust-reducing, never deleting), and a `canonical_company_contact_promotions`
+  audit trail. `workspace_id` is stored on each signal only to deduplicate
+  independent confirmations (`COUNT(DISTINCT workspace_id)`) and is never
+  returned to any API caller. A separate, purely additive
+  `workspace_supplier_contact_overrides` table gives each workspace an
+  immediate, workspace-only preferred-contact override, independent of the
+  slower cross-tenant consensus (`mail/contact_intelligence.py`).
+- Reason: Matches the existing cross-tenant boundary this project already
+  drew for `canonical_companies` instead of inventing a second, inconsistent
+  one; keeps the fast/local (workspace override) and slow/global (consensus)
+  paths cleanly separable and independently testable.
+- Consequences: A supplier's contact list is now a merge of two sources —
+  see `docs/domain/SUPPLIER_MODEL.md` §7. `needs_followup` itself is a
+  purely derived, never-stored field on `list_threads` (same pattern as
+  `frontend-v2/src/lib/derive.ts::threadResponseStatus`), computed from the
+  request's configurable SLA (`request_followup_settings`, default 2
+  business days) — it never replaces `waiting`/`conversation_status`.
+- Non-goals: No public-holiday calendar (weekday-only business-day math).
+  Live inbound/bounce signal recording is pull-based (synced from a
+  workspace's own stored messages when its own contact card is read or a
+  contact result is recorded), not hooked into the live mail-ingestion
+  critical path — see `ai/DEFERRED_FINDINGS.md`.
+- Related task: `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915`.
+- Follow-up (`2026-09-16`, same task, not yet merged): `mail/
+  repository.py::resolve_supplier_for_send` — the single place that
+  finalizes a send's recipient for an existing `suppliers.id` — now
+  consults `resolve_contact_priority` and applies the priority
+  workspace-preferred → global-preferred → existing fallback, so AC-02 is
+  true at the actual send path, not only in the data model. A hard-bounced
+  candidate is skipped in favor of the next tier (never used blindly) and
+  the skip is written to `audit_events`
+  (`mail.contact_resolution.demoted`); if no safer alternative exists, the
+  existing fallback is used rather than blocking the send. Existing
+  dedup/pacing/preflight/`_select_contact_for_request` semantics are
+  untouched — the upgrade happens only at final identity resolution.
+  Proven by `tests/test_contact_resolution_send_path.py` (7 tests) plus the
+  full existing mail-send suite unchanged.
+- Second follow-up (`2026-09-16`, same task, same day — owner flagged a
+  preview/send inconsistency before this could be called done): the
+  resolver above was extracted into `mail/contact_intelligence.py::
+  resolve_contact_priority`, made genuinely side-effect-free (no writes,
+  no audit-log entries — only `resolve_supplier_for_send` logs a demotion,
+  once, at the moment a real send commits), and `mail/service.py::
+  preflight_bulk`'s campaign preview now calls that exact same function at
+  the same relative pipeline position (right after
+  `_select_contact_for_request`). Preview and the real send it precedes can
+  therefore never disagree while the underlying data hasn't changed, and
+  neither ever caches a resolution across calls — both re-resolve fresh
+  every time, so a real send re-resolves current data even if a preview
+  looked different earlier. Priority order and hard-bounce handling are
+  unchanged from the first follow-up. Test count grew to 12 in
+  `tests/test_contact_resolution_send_path.py`, including a direct
+  same-state consistency check across the resolver call, the preview, and
+  the actual send.
+- Third follow-up (`2026-09-16`, same task, same day — owner caught one
+  more real gap before calling this done): `preflight_bulk`'s
+  `duplicate_recipient` and `unique_domains`/`many_recipients_same_domain`
+  checks had still been computed from pre-resolution addresses, so two
+  suppliers whose contact converged to the same final mailbox after
+  resolution were not caught as duplicates. Fixed by splitting
+  `preflight_bulk` into two passes: pass 1 runs the existing
+  `_select_contact_for_request` and `resolve_contact_priority` once per
+  item (no new/duplicated resolution logic) and records each item's final
+  email; only after every item's final email is known does pass 2 compute
+  duplicate/domain statistics and the rest of the recipient report exactly
+  as before. `queue_bulk` needed no separate change: it already runs
+  `preflight_bulk` internally for a new operation and raises
+  `DeliverabilityPreflightError` on `BLOCK`, so the fixed preview check
+  protects the real send automatically. Audited every other
+  recipient-dependent check in the pipeline (deliverability flags,
+  blacklist/suppression, subject/body quality, provider-policy warning,
+  `queue_bulk`'s own narrower raw-duplicate guard) and left them
+  unchanged — none of them needed final-recipient timing. Test count grew
+  to 14 in `tests/test_contact_resolution_send_path.py`.
+
 ## DECISION-023 — AI chat default model upgraded to Llama 3.3 70B (from 8B)
 
 - Decision ID: `DECISION-023`

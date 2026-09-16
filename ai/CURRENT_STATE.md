@@ -3,8 +3,8 @@ document_id: STATE-001
 status: CURRENT
 canonical: true
 owner: project-control
-updated_at: 2026-09-14
-based_on_commit: pending-commit-TASK-MESSAGES-LINKS-STATUS-SEND-AI-20260910
+updated_at: 2026-09-16
+based_on_commit: pending-commit-TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915
 ---
 
 # Current State
@@ -14,6 +14,207 @@ short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
 ## Last update
+
+`2026-09-16` — Fourth round, same task: the owner's real browser acceptance
+session (PD-001) found five genuine UI/UX defects the earlier rounds'
+backend-only verification could not catch. Diagnosed each root cause before
+fixing (no guessing): (1) a saved workspace-preferred email never appeared
+on the supplier card without a manual reload -- `SupplierCardContent`'s own
+independent data fetch had no invalidation link to the "Связаться" save;
+fixed with a `contactsRefreshToken` prop threaded from `Messages.tsx`
+through `SupplierCardPanel`, included in `useApiData`'s dependency array.
+(2) The contacts section leaked internal vocabulary
+(preferred/candidate/secondary/deprecated); redesigned to exactly one
+"Основной" row (whichever address this workspace's own
+`resolve_contact_priority` would pick right now) plus plain
+Дополнительный/Требует проверки labels, still never naming which other
+workspace confirmed anything. (3) No feedback after a contact update; added
+`ContactUpdatedNotice`, shown only when the backend actually confirmed
+`override_created: true` (never assumed from the chosen radio option). (4)
+Repeated "Напомнить" clicks created duplicate active tasks; fixed with
+`mail/tasks.py::create_or_refresh_followup_task` (idempotent by exact title
++ request/supplier match on an active task only -- a user's own
+differently-named task and any completed follow-up are never touched,
+proven by 3 new tests in `tests/test_followup_task_dedup.py`). (5) Long
+task/request names in `ActivityTimeline` were cut with a single-line
+ellipsis; now wrap onto 2-3 lines with the task action and its заявка on
+separate lines, zero new horizontal overflow.
+
+All five fixes were reproduced and then re-verified in a real, authenticated
+browser session against the project's own `SAFE_TEST` runtime (disposable
+SQLite, the synthetic `test.user@example.invalid` login already defined in
+`scripts/start_test_runtime.ps1` -- not a real credential) with seeded
+fixture data, including a long supplier/request name to stress the text-wrap
+fix: the new contact appeared immediately with no reload and the exact
+confirmation text, survived a real full-page reload, and the database was
+checked directly (not just the UI) to confirm repeated "Напомнить" clicks
+left exactly one active task with a refreshed `updated_at`. The one item
+NOT exercised via an actual live click was the campaign-preview
+final-recipient display (AC-UI-08) -- a `SAFE_TEST` mail-account fixture
+limitation unrelated to the fix itself, disclosed in
+`ai/DEFERRED_FINDINGS.md` `FINDING-037`; it remains covered by 5 dedicated
+backend tests plus a TypeScript-clean frontend change. Focused frontend
+(typecheck/build/lint/vitest, 5/5) and backend regression (219 focused
+tests; full suite 679 tests, `OK`, 2 skipped, exit code 0 -- captured
+directly to a file, not assumed) all re-ran clean. Still not
+merged/pushed/deployed. `LOCAL_CANONICAL`/real-owner-data browser
+verification specifically remains open (no owner credentials for that
+runtime existed at any point in this task).
+
+`2026-09-16` — Same task, owner-requested closeout of a real functional gap
+flagged after the `2026-09-15` entry below: a workspace's preferred contact
+(set via «Связаться» → «уточнён новый email») was visible on the supplier
+card and provable at the data-model level, but a genuinely NEW outbound
+send/campaign still picked its recipient the old way. Fixed at the one
+existing function that already finalizes a send's recipient for a known
+supplier (`mail/repository.py::resolve_supplier_for_send`, previously only a
+strict "requested email must equal the stored one" guard) — it now
+additionally consults `resolve_effective_send_email` and applies workspace-
+preferred → cross-tenant global-preferred → existing fallback, hard-bounce-
+aware (a bounced candidate is skipped in favor of the next tier and the skip
+is written to `audit_events`, never applied silently; with no safer
+alternative the existing fallback is used rather than blocking the send).
+No new architectural layer was added — the existing
+`_select_contact_for_request` (per-company contact rotation/dedup) and all
+preflight/pacing checks are untouched; only final identity resolution
+changed. `DECISION-024` updated with this follow-up.
+`tests/test_contact_resolution_send_path.py` (7 new tests) proves the actual
+selection at send time: workspace-preferred wins; global-preferred is used
+when no override exists; workspace-preferred outranks global-preferred; a
+hard-bounced workspace-preferred is skipped for a safer alternative; with no
+alternative the old fallback is used instead of blocking; a brand-new
+recipient with no stored `supplier_id` is unaffected; and a second,
+independent workspace with a card for the same real company (same ИНН)
+never sees the first workspace's override before cross-tenant consensus
+promotes anything (still zero registry rows below the 3-workspace
+threshold). Full existing mail-send regression
+(`test_mail_pacing.py`/`test_mail_deliverability.py`/
+`test_mail_status_semantics.py`, 173 tests) and the full backend suite both
+re-ran clean after this change (exact current-run counts recorded in the
+task's own report/PR, since this file does not duplicate a number that a
+later run could immediately make stale). Frontend was not touched this
+round; typecheck/build/lint and the 4 existing component tests were
+re-verified anyway per the owner's explicit request and remain clean (one
+`oxlint` native-binding load failure surfaced transiently during
+verification — an environment-level npm/Windows interaction after
+yesterday's `vitest` install, self-resolved by reinstalling the `oxlint`
+package; not a code regression).
+
+Same day, same task — the owner correctly flagged that the fix above still
+left a blocking inconsistency: `preflight_bulk`'s campaign preview could
+show a different (pre-upgrade) address than the one the real send would
+actually use, since only `resolve_supplier_for_send` had been taught the
+new priority. Fixed by extracting the priority logic into one genuinely
+side-effect-free shared function, `mail/contact_intelligence.py::
+resolve_contact_priority` (no writes, no audit-log entries — renamed from
+the first follow-up's `resolve_effective_send_email`), called from BOTH
+`preflight_bulk` (preview) and `resolve_supplier_for_send` (real send) at
+the identical relative pipeline position, right after
+`_select_contact_for_request` picks a company's contact. Neither caches a
+result across calls, so a real send always re-resolves current data even
+if a preview looked different earlier (data may have changed in between);
+only the real send logs a hard-bounce demotion to `audit_events`, once, at
+the moment it commits — the read-only preview never writes anything, no
+matter how many times it is rendered.
+`tests/test_contact_resolution_send_path.py` grew to 12 tests, adding:
+workspace-preferred and global-preferred are each shown correctly in
+preview and then actually used at send; a hard-bounced preferred contact
+never appears as the final preview address when a safer alternative
+exists, and the preview writes zero audit entries while the subsequent
+real send writes exactly one; a second workspace's preview for the same
+real company never leaks the first workspace's override; and a direct
+call to the resolver, the preview, and the actual send all agree on the
+same address while nothing in the data changes in between. Full backend
+regression (focused mail-send suite, 108 tests; full suite) re-ran clean
+again — exact current counts in the task's own report/PR for the same
+staleness reason as above. `FINDING-037`'s preview/send-divergence item is
+now closed by this test evidence, not merely by design intent; one
+narrower, disclosed edge case remained (`preflight_bulk`'s domain/duplicate
+statistics still read pre-upgrade addresses).
+
+Same day, third round on the same task — the owner caught exactly that
+remaining edge case before calling this done: `preflight_bulk`'s
+`duplicate_recipient` and `unique_domains`/`many_recipients_same_domain`
+checks were still computed from pre-resolution addresses, so two suppliers
+whose contact converged to the same final mailbox after resolution were not
+caught as duplicates. Fixed by splitting `preflight_bulk` into two passes:
+pass 1 runs the existing `_select_contact_for_request` and
+`resolve_contact_priority` exactly once per item (no duplicated resolution
+logic) and records each item's final email; pass 2 — otherwise byte-for-byte
+the same logic as before — builds the recipient report, now reading
+duplicate/domain statistics computed after every item's final email is
+known. `queue_bulk` needed no separate change: for a new operation it always
+runs `preflight_bulk` internally first and raises
+`DeliverabilityPreflightError` on `BLOCK`, so the fixed preview check
+protects the real send automatically — verified directly, not assumed.
+Audited every other recipient-dependent check in the pipeline
+(`deliverability_flags`, blacklist/suppression, subject/body quality,
+provider-policy warning, `queue_bulk`'s own narrower raw-duplicate guard)
+and left them unchanged, recorded in `docs/domain/SUPPLIER_MODEL.md` §7.4
+with the reasoning for each. `tests/test_contact_resolution_send_path.py`
+grew to 14 tests, adding: two originally-different supplier emails
+converging to one final address are blocked in preview (`duplicate_recipient`
+in blocks, `status="BLOCK"`) and refused at send
+(`DeliverabilityPreflightError`, zero messages created); `unique_domains`
+correctly counts 1 when two originally-different domains resolve to the
+same final domain. Focused regression re-ran clean: `test_mail_deliverability`
++ `test_mail_pacing` + `test_mail_status_semantics` +
+`test_contact_intelligence` + `test_contact_resolution_send_path` together,
+**201 tests, `OK`**, captured directly from this run's own terminal output.
+The full backend suite was also re-run; its own captured result is recorded
+separately rather than guessed here (a prior round's background-task output
+was truncated by the capture mechanism before the summary line — this round
+redirected output straight to a file instead precisely to avoid repeating
+that gap). `FINDING-037`'s edge-case item is now marked resolved.
+Still not merged/pushed/deployed; live authenticated browser verification
+remains `NOT VERIFIED` for the same reason as before (no owner credentials
+available to this session) and remains the acknowledged final acceptance
+step.
+
+`2026-09-15` — `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915` on branch
+`feature/followup-contact-intelligence-20260915` (base
+`experiment/frontend-v2-greenfield-20260905`), not merged, not pushed. Adds
+`needs_followup` as a third, purely derived thread state (a "Ждём ответа"
+thread with a genuinely sent outbound, no reply, past the request's
+configurable SLA — default 2 business days, `request_followup_settings`) —
+it never replaces `waiting`/`conversation_status`
+(`docs/ui/MESSAGES_SCREEN_SPEC.md` §13a). Messages now shows a "Требует
+внимания" badge and «Связаться»/«Напомнить» actions for such threads;
+«Связаться» records a historical event (`workspace_supplier_contact_events`)
+and, on «уточнён новый email», sets an immediate workspace-only preferred-
+contact override without touching the global card (AC-02/AC-03, both proven
+by test). «Напомнить» reuses the existing `create_task`, not a new entity.
+Separately, extended the cross-tenant `canonical_companies` layer
+(DECISION-022) with a candidate/preferred/secondary/deprecated email
+registry per company (`canonical_company_contacts`/`_signals`/
+`_promotions`, DECISION-024) — an owner-confirmed architecture decision,
+since consensus across "3 independent workspaces" cannot be computed on the
+per-workspace `global_suppliers.id`. Promotion requires 3 independent
+confirming workspaces (same-workspace users dedup to 1, AC-04) plus a
+strong signal (real inbound reply or an official-source confirmation,
+AC-05/AC-06); a hard bounce demotes a preferred contact without ever
+deleting it, a soft bounce never does (AC-08); no API response ever exposes
+which workspaces confirmed a contact, only counts (AC-09, tested).
+`migrations/051_contact_intelligence.sql` (companion tables only, per this
+repo's re-run-every-migration constraint). Full contract:
+`docs/domain/SUPPLIER_MODEL.md` §7. Backend: 14 new focused tests
+(`tests/test_contact_intelligence.py`, all 9 ACs + needs_followup
+mechanics), full existing suite unchanged at `662 tests, 0 failures, 0
+errors, 2 skipped` (`python -m unittest discover`). Frontend: this task
+also added `vitest`/`@testing-library/react` to frontend-v2 (previously no
+unit-test runner existed there at all) with 4 new component tests for the
+new `ContactResultModal`; `typecheck`/`build`/`oxlint` clean, no new
+warnings. The restarted `LOCAL_CANONICAL` runtime applied the new migration
+cleanly (no startup errors) and was confirmed healthy without
+authentication (`/` 200, `/api/auth/me` 200, `/api/mail/threads` 401, the
+new `/api/requests/{id}/followup-settings` 401 — proving the route exists
+and the auth gate runs before any DB query). **NOT VERIFIED**: no owner
+credentials were available to this session to open an authenticated
+`/messages` session and visually confirm the new UI — see
+`ai/DEFERRED_FINDINGS.md` `FINDING-037` for this and the other disclosed
+scope boundaries (`official_source` signals unwired, bounce/reply sync is
+pull-based not live-hooked, the workspace override is not yet consulted by
+`queue_bulk` for new outbound campaigns, no public-holiday calendar).
 
 `2026-09-14` — локально добавлен ручной `SUP-029B.1`: на странице заявок
 «Импортировать переписку» ищет одну введённую пользователем тему во `Входящих`

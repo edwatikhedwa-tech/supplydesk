@@ -273,6 +273,20 @@ export function BulkComposeModal({
               Будет отправлено: {preflight.eligible} из {preflight.planned}
               {preflight.excluded > 0 && <span className="text-warning"> · исключено: {preflight.excluded}</span>}
             </p>
+            {preflight.recipient_results.some((r) => r.status === 'eligible' && r.requested_email && r.requested_email !== r.email) && (
+              <div className="mt-1.5 rounded border border-accent-border bg-accent-subtle px-2 py-1.5 text-[11px] text-ink">
+                <p className="font-medium text-accent">Будет использован предпочтительный контакт:</p>
+                <ul className="mt-0.5 space-y-0.5">
+                  {preflight.recipient_results
+                    .filter((r) => r.status === 'eligible' && r.requested_email && r.requested_email !== r.email)
+                    .map((r) => (
+                      <li key={r.email} className="break-words">
+                        {r.requested_email} → <span className="font-medium">{r.email}</span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
             {preflight.recipient_results.some((r) => r.status === 'excluded') && (
               <ul className="mt-1.5 space-y-0.5 text-[11px] text-ink-faint">
                 {preflight.recipient_results

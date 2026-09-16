@@ -115,6 +115,57 @@ class TasksMixin:
             connection.commit()
         return task_id
 
+    def create_or_refresh_followup_task(
+        self, workspace_id: int, user_id: int, *, request_id: int, supplier_id: int | None,
+        title: str, due_date: str | None = None,
+    ) -> dict[str, Any]:
+        """Idempotent counterpart to `create_task` for the "Напомнить"
+        follow-up action. At most one ACTIVE (`done=0`) task with this exact
+        `title` may exist for one `(request_id, supplier_id)` pair at a
+        time -- a second "Напомнить" click on the same conversation refreshes
+        the existing task's due date instead of creating a duplicate.
+
+        The exact-title match is the only "is this a follow-up task, not an
+        unrelated one the user created by hand" signal available without a
+        new column: `title` here is always the fixed follow-up default
+        (never freely typed by a user through this action), so a genuinely
+        different manually-created task for the same request/supplier (a
+        different title) is never matched or touched -- and a completed
+        follow-up task (`done=1`) is never matched either, so a new
+        follow-up after the old one was finished creates a fresh task, not a
+        silent no-op.
+
+        `COALESCE(supplier_id, -1) = COALESCE(?, -1)` is used instead of a
+        raw `IS`/`= ` comparison so a NULL `supplier_id` (thread not yet
+        linked to the global directory) still matches NULL-to-NULL
+        consistently on both SQLite and Postgres, which this repository
+        supports interchangeably.
+        """
+        now = iso_now()
+        with self.connect() as connection:
+            existing = connection.execute(
+                """SELECT id FROM tasks
+                   WHERE workspace_id=? AND request_id=? AND COALESCE(supplier_id, -1) = COALESCE(?, -1)
+                     AND title=? AND done=0
+                   ORDER BY id DESC LIMIT 1""",
+                (workspace_id, request_id, supplier_id, title),
+            ).fetchone()
+            if existing:
+                task_id = int(existing["id"])
+                connection.execute(
+                    "UPDATE tasks SET due_date=COALESCE(?, due_date), updated_at=? WHERE id=?",
+                    (due_date or None, now, task_id),
+                )
+                self._audit_connection(
+                    connection, workspace_id, user_id, "task.followup_refreshed", "task", str(task_id), {"title": title},
+                )
+                connection.commit()
+                return {"task_id": task_id, "created": False}
+        task_id = self.create_task(
+            workspace_id, user_id, title=title, due_date=due_date, request_id=request_id, supplier_id=supplier_id,
+        )
+        return {"task_id": task_id, "created": True}
+
     @staticmethod
     def _validate_due_at(due_at: str | None, timezone: str | None) -> str | None:
         if not due_at:

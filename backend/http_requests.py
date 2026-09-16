@@ -66,6 +66,14 @@ class RequestRouteMixin:
             notes = self.app.repository.get_thread_notes(session["workspace_id"], session["user_id"], request_id, supplier_id)
             self._json(200, {"note": (notes["private"] or {}).get("note", ""), "notes": notes})
             return
+        if len(parts) == 4 and parts[3] == "followup-settings":
+            try:
+                settings = self.app.repository.get_followup_settings(session["workspace_id"], request_id)
+            except ValueError as exc:
+                self._json(404, {"error": str(exc)})
+                return
+            self._json(200, settings)
+            return
         self._json(404, {"error": "Маршрут заявки не найден."})
 
     def _request_action(self, session: dict, path: str, body: dict) -> None:
@@ -199,5 +207,59 @@ class RequestRouteMixin:
                 return
             self.app.repository.set_irrelevant(session["workspace_id"], session["user_id"], request_id, supplier_id, True)
             self._json(200, {"ok": True})
+            return
+        if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "contact-result":
+            try:
+                supplier_id = int(parts[4])
+            except ValueError:
+                self._json(400, {"error": "Некорректный идентификатор поставщика."})
+                return
+            try:
+                result = self.app.repository.record_contact_result(
+                    workspace_id=session["workspace_id"], user_id=session["user_id"],
+                    request_id=request_id, supplier_id=supplier_id,
+                    result=str(body.get("result") or ""), comment=str(body.get("comment") or ""),
+                    new_email=body.get("new_email"),
+                )
+            except ValueError as exc:
+                self._json(400, {"error": str(exc)})
+                return
+            self._json(201, {"ok": True, **result})
+            return
+        if len(parts) == 6 and parts[3] == "suppliers" and parts[5] == "remind":
+            try:
+                supplier_id = int(parts[4])
+            except ValueError:
+                self._json(400, {"error": "Некорректный идентификатор поставщика."})
+                return
+            request_row = self.app.repository.get_request(session["workspace_id"], request_id)
+            if not request_row:
+                self._json(404, {"error": "Заявка не найдена."})
+                return
+            global_supplier_id = self.app.repository.resolve_global_supplier_id_for_thread(
+                session["workspace_id"], request_id, supplier_id,
+            )
+            due_date = str(body.get("due_date") or "")
+            try:
+                result = self.app.repository.create_or_refresh_followup_task(
+                    session["workspace_id"], session["user_id"],
+                    request_id=request_id, supplier_id=global_supplier_id,
+                    title=str(body.get("title") or "Связаться с поставщиком"),
+                    due_date=due_date or None,
+                )
+            except ValueError as exc:
+                self._json(400, {"error": str(exc)})
+                return
+            self._json(201 if result["created"] else 200, {"ok": True, **result})
+            return
+        if len(parts) == 4 and parts[3] == "followup-settings":
+            try:
+                settings = self.app.repository.set_followup_settings(
+                    session["workspace_id"], session["user_id"], request_id, body.get("sla_business_days"),
+                )
+            except ValueError as exc:
+                self._json(400, {"error": str(exc)})
+                return
+            self._json(200, {"ok": True, **settings})
             return
         self._json(404, {"error": "Действие заявки не найдено."})

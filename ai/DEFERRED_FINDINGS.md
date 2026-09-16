@@ -13,6 +13,153 @@ Only unresolved, accepted-risk, or explicitly superseded findings belong in
 this current register. Resolved findings and full chronology are preserved in
 [`ai/history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md`](history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md).
 
+## FINDING-037 — needs_followup/contact-intelligence: disclosed scope boundaries and NOT VERIFIED items
+
+- ID: `FINDING-037`
+- Severity: `LOW`
+- Status: `OPEN`
+- Context: `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915` (`mail/
+  contact_intelligence.py`, `migrations/051_contact_intelligence.sql`).
+  Backend proven across three focused test modules covering all 10 owner
+  acceptance criteria, needs_followup mechanics, and preview/send
+  resolution parity (`tests/test_contact_intelligence.py`,
+  `tests/test_contact_resolution_send_path.py`, all pass), plus the full
+  existing suite re-run clean after every round of this task (exact counts
+  in `ai/CURRENT_STATE.md`'s dated entries, since a number recorded here
+  would go stale the next time either suite grows). Frontend: typecheck/
+  build/lint clean, 4 new component tests pass
+  (`frontend-v2/src/components/ContactResultModal.test.tsx` — this task
+  also added `vitest`/`@testing-library/react` to frontend-v2, which
+  previously had no unit-test runner at all, only typecheck/lint/build/
+  Playwright-on-legacy-v1).
+- Evidence of what is NOT done, honestly:
+  1. ~~No live authenticated browser verification~~ — **DONE 2026-09-16,
+     PD-001 browser-acceptance round**: no owner Yandex/password
+     credentials were ever available to this session for `LOCAL_CANONICAL`
+     (`:8000`), but the project's own `SAFE_TEST` runtime (disposable
+     SQLite, synthetic `test.user@example.invalid` login — both defined in
+     `scripts/start_test_runtime.ps1`, not a real credential) was used for
+     a genuine, real, authenticated browser session with seeded fixture
+     data: "Требует внимания" badge confirmed live; «Связаться» → «Уточнён
+     новый email» → «Сохранить» showed the new contact in the «Контакты»
+     section immediately with no reload and the exact confirmation-toast
+     text, then survived a real full-page reload; repeated «Напомнить»
+     clicks produced exactly one active task in the database (checked
+     directly, not just via UI) with its `updated_at` refreshed; the
+     Activity block rendered long task/request names on separate, wrapped,
+     non-overflowing lines (`scrollWidth === clientWidth` confirmed via a
+     JS check, not only a screenshot). AC-UI-08 (campaign preview shows the
+     resolved final recipient) was **not** exercised through an actual live
+     click in this SAFE_TEST session — the synthetic fixture's mail-account
+     "outgoing enabled" wiring needed ad-hoc `mail_account_profiles` setup
+     this session could not fully complete in the time available, an
+     environment/fixture gap unrelated to the fix itself — but it is proven
+     by 5 dedicated backend tests
+     (`test_workspace_preferred_is_shown_in_preview_and_used_at_send` and
+     siblings in `tests/test_contact_resolution_send_path.py`) plus a
+     TypeScript-clean, low-risk frontend change that only renders
+     already-tested `recipient_results` fields. `LOCAL_CANONICAL`/real-
+     owner-data verification specifically remains open (no owner
+     credentials for that runtime existed at any point in this task).
+  2. **`official_source` signals are never produced by any pipeline** —
+     the signal type exists in the schema/CHECK constraint and is handled
+     identically to `inbound_reply` wherever "strong signal" is checked,
+     but nothing currently calls it; only a real inbound reply can supply
+     the strong signal today.
+  3. **Bounce/reply signal sync is pull-based**, not hooked into live mail
+     ingestion — see `docs/domain/SUPPLIER_MODEL.md` §7 and `DECISION-024`
+     for the reasoning. A workspace's own signals update only when that
+     workspace's own contact card is read or a contact result is recorded,
+     not the instant a reply/bounce arrives.
+  4. ~~The workspace-scoped preferred-contact override is not wired into
+     outbound campaign composition~~ — **RESOLVED 2026-09-16, same task**:
+     `mail/repository.py::resolve_supplier_for_send` consults
+     `mail/contact_intelligence.py::resolve_contact_priority`
+     (workspace-preferred → global-preferred → existing fallback,
+     hard-bounce-aware) before finalizing any send's recipient for a known
+     `suppliers.id`. ~~`preflight_bulk`'s campaign preview still reports
+     the pre-upgrade address~~ — **also RESOLVED 2026-09-16, same task**:
+     `preflight_bulk` now calls the exact same `resolve_contact_priority`
+     at the same relative pipeline point (right after
+     `_select_contact_for_request` picks the company's contact), so the
+     preview and the real send it precedes can never disagree while the
+     underlying data hasn't changed. The resolver itself is genuinely
+     side-effect-free (no writes, no audit-log entries) so it is safe to
+     call on every preview render; only `resolve_supplier_for_send` (the
+     real send) logs a hard-bounce demotion to `audit_events`, once, at
+     the moment it actually commits. Proven by
+     `tests/test_contact_resolution_send_path.py` (12 tests, including a
+     direct same-state consistency check across the resolver call,
+     preview, and actual send). See `DECISION-024`'s 2026-09-16 follow-up
+     entries and `docs/domain/SUPPLIER_MODEL.md` §7.3. ~~Newly disclosed,
+     narrow edge case: `preflight_bulk`'s domain/duplicate-recipient
+     statistics (`unique_domains`, `duplicate_recipient`) are still
+     computed from the pre-upgrade addresses, not the resolved ones~~ —
+     **also RESOLVED 2026-09-16, same task, same day**: `preflight_bulk`
+     now resolves every item's final recipient in one pass (reusing the
+     same single `_select_contact_for_request` + `resolve_contact_priority`
+     calls, never a second copy) BEFORE computing `duplicate_recipient` and
+     `unique_domains`/`many_recipients_same_domain`, so two suppliers whose
+     final address converges after resolution are now correctly flagged as
+     a duplicate and BLOCK the operation — `queue_bulk` is protected
+     automatically (it always runs `preflight_bulk` internally for a new
+     operation and raises `DeliverabilityPreflightError` on `BLOCK`, before
+     it would ever reach `resolve_supplier_for_send`). See `docs/domain/
+     SUPPLIER_MODEL.md` §7.4 for the full audit of which other
+     recipient-dependent checks were reviewed and left untouched (none of
+     them needed a change). Proven by `tests/test_contact_resolution_send_path.py`
+     (grew to 14 tests): two originally-different supplier emails
+     converging to one final address are blocked in preview and refused at
+     send (zero messages created); `unique_domains` counts 1 when two
+     originally-different domains resolve to the same final domain.
+  5. **No public-holiday calendar** for the "N business days" SLA — only
+     Mon-Fri is excluded.
+  6. **Не выполнена** формальная проверка условий использования каких-либо
+     сторонних API для контактных сигналов — this feature reads only the
+     project's own stored `mail_messages`, so no new third-party ToS
+     surface was introduced, but this is noted for completeness alongside
+     the pre-existing Checko/DaData ToS gap (`FINDING-023`).
+  7. **PD-001 browser-acceptance round (2026-09-16), RESOLVED**: the owner's
+     real browser session found five genuine UI/UX defects the earlier
+     rounds' backend-only verification could not have caught: (a) a new
+     workspace-preferred email never appeared on the supplier card without
+     a manual page reload -- root-caused (not guessed) to
+     `SupplierCardContent`'s own independent `useApiData` fetch having no
+     invalidation link to `ContactResultModal`'s save, fixed with a
+     `contactsRefreshToken` prop threaded down from `Messages.tsx`; (b) the
+     contacts section leaked internal vocabulary
+     (preferred/candidate/secondary/deprecated) instead of plain labels
+     (Основной/Дополнительный/Требует проверки), fixed by collapsing to
+     exactly one "Основной" row (whichever this workspace's own
+     `resolve_contact_priority` would actually pick right now) and simple
+     labels for the rest, never revealing which other workspace confirmed
+     anything; (c) no confirmation was shown after a successful contact
+     update, fixed with a new `ContactUpdatedNotice`, mounted only when the
+     backend's own response confirmed `override_created: true`; (d) every
+     "Напомнить" click created a new duplicate active task, fixed with
+     `mail/tasks.py::create_or_refresh_followup_task` (exact-title +
+     request/supplier match on an active task refreshes it instead of
+     duplicating; a user's own differently-titled task and any completed
+     follow-up task are never touched); (e) long task/request names in
+     `ActivityTimeline` were cut with a single-line ellipsis, fixed with
+     wrapped, `line-clamp`-ed text on separate lines for the task action and
+     its заявка, confirmed to introduce zero horizontal overflow. All five
+     were reproduced and then re-verified fixed in a real, authenticated
+     `SAFE_TEST` browser session with seeded fixture data -- see item 1
+     above for exactly what was and was not exercised live.
+- Why deferred: None of the above blocks the feature's core, tested
+  correctness (all 10 ACs now pass against a real repository — an earlier
+  draft of this finding said "9", which undercounted; the owner's spec
+  defines AC-01 through AC-10, all ten covered by test evidence, see the
+  task's AC matrix in session history); each remaining item is a
+  disclosed, bounded scope edge rather than a defect, consistent with this
+  project's existing PARTIAL-completion pattern (see e.g. `SUP-021`..`029`
+  entries in `ai/CURRENT_STATE.md`).
+- Next verification: an owner (or an already-authenticated) session opens
+  `/messages` on a real waiting thread aged past its SLA and confirms the
+  badge/actions visually. Preview/send resolution parity (item 4) is now
+  closed by test evidence, not merely by design intent.
+
 ## FINDING-036 — A second governance validator (`validate_state.py`) had been silently unable to pass since a restructuring commit, masked by the first validator's own failure
 
 - ID: `FINDING-036`
