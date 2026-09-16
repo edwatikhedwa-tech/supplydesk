@@ -274,17 +274,20 @@ class MailRepository(
                 is_postgres_only = migration.lstrip().startswith("-- postgres-only")
                 if is_postgres_only and not self.database_url:
                     continue  # SQLite has no ALTER COLUMN TYPE; not needed there anyway (no fixed-width ints)
-                # Migrations are intentionally replayed at every local start.
-                # SQLite has no portable `ADD COLUMN IF NOT EXISTS`, so this
-                # additive migration must be skipped once an older runtime has
-                # already added the column to the canonical database.
-                if not self.database_url and migration_path.name == "050_sent_auto_sync_consent.sql":
-                    columns = {
-                        str(row["name"])
-                        for row in connection.execute("PRAGMA table_info(mail_account_profiles)").fetchall()
-                    }
-                    if "sent_sync_enabled" in columns:
-                        continue
+                # Migrations are intentionally replayed at every local start
+                # (and at every serverless cold start in production). Neither
+                # SQLite nor this migration's plain `ADD COLUMN` (no
+                # `IF NOT EXISTS`) is safe to replay once an earlier cold
+                # start already added the column -- this guard was
+                # previously SQLite-only (`not self.database_url`), which
+                # left every Postgres cold start after the first successful
+                # one crashing the whole function on
+                # psycopg.errors.DuplicateColumn (found live: a fresh
+                # production deploy's new containers all failed to import
+                # api/index.py on this exact error, since the column had
+                # already been added by an earlier warm container).
+                if migration_path.name == "050_sent_auto_sync_consent.sql" and _table_has_column(connection, "mail_account_profiles", "sent_sync_enabled", is_postgres=bool(self.database_url)):
+                    continue
                 # 044/052 rebuild task_reminders (SQLite/Postgres both have no
                 # portable "widen this CHECK constraint" statement). Each
                 # rebuild's own target schema replays safely forever, but a

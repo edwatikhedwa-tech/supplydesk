@@ -71,6 +71,27 @@ class MigrationReplayStabilityTests(unittest.TestCase):
         feed_again = again.list_notification_feed(workspace_id, user["id"])
         self.assertIsNotNone(feed_again[0]["read_at"])
 
+    def test_migration_050_add_column_guard_covers_both_backends_not_just_sqlite(self) -> None:
+        # Live production bug (found the hard way, right after a deploy): this
+        # guard was `if not self.database_url and migration_path.name == ...`,
+        # i.e. SQLite-only. Migration 050 is a plain `ALTER TABLE ... ADD
+        # COLUMN` with no `IF NOT EXISTS` on either backend, so every Postgres
+        # cold start after the first successful one crashed the whole
+        # function on psycopg.errors.DuplicateColumn -- `api/index.py`
+        # couldn't even be imported. Three repeated constructions here is the
+        # sqlite-side proof the guard fires unconditionally now (the
+        # Postgres-specific `information_schema.columns` branch has no local
+        # Postgres test harness in this repo, so it's covered by source
+        # inspection instead, immediately below).
+        repo = MailRepository(self.db_path)
+        MailRepository(self.db_path)
+        MailRepository(self.db_path)
+
+    def test_migration_050_guard_is_not_gated_to_sqlite_only(self) -> None:
+        source = Path("mail/repository.py").read_text(encoding="utf-8")
+        self.assertNotIn('if not self.database_url and migration_path.name == "050_sent_auto_sync_consent.sql"', source)
+        self.assertIn('migration_path.name == "050_sent_auto_sync_consent.sql" and _table_has_column(', source)
+
     def test_a_dismissed_reminder_survives_restart_too(self) -> None:
         repo = MailRepository(self.db_path)
         user = repo.seed_user("replay-owner-2@example.com", "correct-horse")
