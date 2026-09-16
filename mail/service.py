@@ -1015,6 +1015,16 @@ class MailService:
                 )
                 continue
             item = selected_item
+            # Same shared, side-effect-free resolver the actual send calls
+            # (mail/repository.py::resolve_supplier_for_send), at the same
+            # relative point in the pipeline (right after the per-company
+            # contact was chosen) -- so the preview reports exactly the
+            # address a real send would use right now, never a separate copy
+            # of this priority logic (FINDING-037).
+            resolution = self.repository.resolve_contact_priority(
+                workspace_id, item.get("supplier_id"), fallback_email=item["email"],
+            )
+            item["email"] = resolution["email"]
             flags = self.repository.deliverability_flags(
                 workspace_id, request_id, external_key=item["external_key"], email=item["email"],
                 supplier_id=item.get("supplier_id"),

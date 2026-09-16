@@ -186,6 +186,27 @@ class ContactIntelligenceMixin:
         existing = connection.execute("SELECT id FROM canonical_companies WHERE inn=?", (inn,)).fetchone()
         return int(existing["id"]) if existing else None
 
+    def _lookup_canonical_company_id(self, connection: Any, workspace_id: int, global_supplier_id: int) -> int | None:
+        """Read-only counterpart to `_ensure_canonical_company_id` -- never
+        creates a `canonical_companies` row. Used by `resolve_contact_priority`
+        so that function stays genuinely side-effect-free (callable from a
+        read-only preview on every keystroke without writing anything): if no
+        row exists yet for this ИНН, no workspace has ever recorded a contact
+        signal for this company, so there is certainly no global-preferred
+        contact to find either way -- "not found" is already the correct,
+        complete answer, and creating an empty placeholder row would not
+        change it.
+        """
+        row = connection.execute(
+            "SELECT inn FROM global_suppliers WHERE workspace_id=? AND id=?",
+            (workspace_id, global_supplier_id),
+        ).fetchone()
+        inn = str(row["inn"] or "").strip() if row else ""
+        if not inn:
+            return None
+        existing = connection.execute("SELECT id FROM canonical_companies WHERE inn=?", (inn,)).fetchone()
+        return int(existing["id"]) if existing else None
+
     def _insert_contact_signal(
         self, connection: Any, *, canonical_company_id: int, email: str, signal_type: str,
         strength: str, workspace_id: int, source: str, basis: str, created_at: str,
@@ -204,7 +225,7 @@ class ContactIntelligenceMixin:
     def _unresolved_hard_bounce(self, connection: Any, canonical_company_id: int, email: str) -> bool:
         """True when this email's most recent hard bounce is not yet
         superseded by a later positive signal. Shared by `_recompute_contact_status`
-        (promotion/demotion) and `resolve_effective_send_email` (choosing who
+        (promotion/demotion) and `resolve_contact_priority` (choosing who
         to send to) so the two never disagree about whether a contact is
         currently trusted.
         """
@@ -223,16 +244,30 @@ class ContactIntelligenceMixin:
         ).fetchone()["ts"]
         return not last_positive or str(last_hard) > str(last_positive)
 
-    def resolve_effective_send_email(
-        self, workspace_id: int, user_id: int, supplier_id: int, *, fallback_email: str, purpose: str = "rfq",
+    def resolve_contact_priority(
+        self, workspace_id: int, supplier_id: int | None, *, fallback_email: str, purpose: str = "rfq",
     ) -> dict[str, Any]:
-        """The single source of truth for "which address do we actually send
-        this workspace's next outbound message to" -- called from
-        `resolve_supplier_for_send` (mail/repository.py), the existing
-        function that already finalizes a send's recipient identity for a
-        known `suppliers.id`. NOT called from `preflight_bulk`'s campaign
-        preview -- that still reports the pre-upgrade address (disclosed
-        boundary, see docs/domain/SUPPLIER_MODEL.md §7.3).
+        """THE single shared, side-effect-free resolver for "which address
+        would we send this workspace's next outbound message to" -- callable
+        from anywhere that needs the answer: `preflight_bulk`'s campaign
+        preview, `resolve_supplier_for_send`'s actual send finalization
+        (mail/repository.py), and any future place that displays the
+        eventual recipient. Preview and send call this exact same function
+        at the exact same relative point in each flow (right after
+        `_select_contact_for_request` has picked which known contact to use
+        for a company card) -- there is no separate, parallel copy of this
+        priority logic anywhere, so the two can never disagree while the
+        underlying data hasn't changed (FINDING-037).
+
+        Performs no writes and no audit logging -- safe to call on every
+        preview render. (The one read it does, `_lookup_canonical_company_id`,
+        never creates a `canonical_companies` row -- see its docstring for
+        why that is still a complete, correct answer.) A caller that acts on
+        the result for a REAL send (`resolve_supplier_for_send`) is
+        responsible for logging any reported `demotions` to the audit trail
+        itself, once, at the moment it commits to actually sending -- never
+        this function, which does not know or care whether its caller is
+        a preview or a real send.
 
         Priority, per the product spec: (1) this workspace's own preferred
         override, unless it has an unresolved hard bounce; (2) the
@@ -242,16 +277,22 @@ class ContactIntelligenceMixin:
         untouched, so a supplier with no override and no global preferred
         behaves exactly as before this feature existed). A hard-bounced
         candidate is never silently used: it is skipped in favor of the next
-        tier and the skip is written to the audit log
-        (`mail.contact_resolution.demoted`), never applied blindly.
+        tier and recorded in the returned `demotions` list, never applied
+        blindly and never dropped without a trace.
 
         `supplier_id` is `suppliers.id` (request-scoped); resolution is
         strictly scoped to `workspace_id` -- a supplier id belonging to
         another workspace can never leak that workspace's override or be
         used to probe it (AC-05-equivalent isolation for send resolution).
+        Always resolves fresh from current data -- nothing here is cached
+        across calls, so a real send always re-resolves against whatever is
+        true at that moment, even if a preview looked different earlier.
         """
         fallback_email = _normalized_email(fallback_email)
-        result: dict[str, Any] = {"email": fallback_email, "source": "fallback", "demoted": None}
+        result: dict[str, Any] = {
+            "email": fallback_email, "source": "fallback",
+            "global_supplier_id": None, "demotions": [],
+        }
         if not supplier_id:
             return result
         with self.connect() as connection:
@@ -264,7 +305,8 @@ class ContactIntelligenceMixin:
             if not link or link["global_supplier_id"] is None:
                 return result
             global_supplier_id = int(link["global_supplier_id"])
-            canonical_company_id = self._ensure_canonical_company_id(connection, workspace_id, global_supplier_id)
+            result["global_supplier_id"] = global_supplier_id
+            canonical_company_id = self._lookup_canonical_company_id(connection, workspace_id, global_supplier_id)
 
             override_row = connection.execute(
                 """SELECT email FROM workspace_supplier_contact_overrides
@@ -275,12 +317,7 @@ class ContactIntelligenceMixin:
             if override_row:
                 override_email = _normalized_email(override_row["email"])
                 if canonical_company_id is not None and self._unresolved_hard_bounce(connection, canonical_company_id, override_email):
-                    result["demoted"] = {"email": override_email, "source": "workspace_preferred", "reason": "hard_bounce"}
-                    self._audit_connection(
-                        connection, workspace_id, user_id, "mail.contact_resolution.demoted",
-                        "global_supplier", str(global_supplier_id),
-                        {"email": override_email, "source": "workspace_preferred", "reason": "hard_bounce"},
-                    )
+                    result["demotions"].append({"email": override_email, "source": "workspace_preferred", "reason": "hard_bounce"})
                 else:
                     result.update(email=override_email, source="workspace_preferred")
                     return result
@@ -295,13 +332,7 @@ class ContactIntelligenceMixin:
                 if preferred_row:
                     preferred_email = _normalized_email(preferred_row["email"])
                     if self._unresolved_hard_bounce(connection, canonical_company_id, preferred_email):
-                        if result["demoted"] is None:
-                            result["demoted"] = {"email": preferred_email, "source": "global_preferred", "reason": "hard_bounce"}
-                            self._audit_connection(
-                                connection, workspace_id, user_id, "mail.contact_resolution.demoted",
-                                "global_supplier", str(global_supplier_id),
-                                {"email": preferred_email, "source": "global_preferred", "reason": "hard_bounce"},
-                            )
+                        result["demotions"].append({"email": preferred_email, "source": "global_preferred", "reason": "hard_bounce"})
                     else:
                         result.update(email=preferred_email, source="global_preferred")
                         return result

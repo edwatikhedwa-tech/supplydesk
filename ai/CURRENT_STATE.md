@@ -52,13 +52,43 @@ re-verified anyway per the owner's explicit request and remain clean (one
 `oxlint` native-binding load failure surfaced transiently during
 verification — an environment-level npm/Windows interaction after
 yesterday's `vitest` install, self-resolved by reinstalling the `oxlint`
-package; not a code regression). Still not merged/pushed/deployed; live
-authenticated browser verification remains `NOT VERIFIED` for the same
-reason as before (no owner credentials available to this session) — see
-`ai/DEFERRED_FINDINGS.md` `FINDING-037` for the fully updated, current list
-of what is and is not verified, including the corrected AC count (the
-owner's spec defines AC-01..AC-10; an earlier session message undercounted
-this as "9").
+package; not a code regression).
+
+Same day, same task — the owner correctly flagged that the fix above still
+left a blocking inconsistency: `preflight_bulk`'s campaign preview could
+show a different (pre-upgrade) address than the one the real send would
+actually use, since only `resolve_supplier_for_send` had been taught the
+new priority. Fixed by extracting the priority logic into one genuinely
+side-effect-free shared function, `mail/contact_intelligence.py::
+resolve_contact_priority` (no writes, no audit-log entries — renamed from
+the first follow-up's `resolve_effective_send_email`), called from BOTH
+`preflight_bulk` (preview) and `resolve_supplier_for_send` (real send) at
+the identical relative pipeline position, right after
+`_select_contact_for_request` picks a company's contact. Neither caches a
+result across calls, so a real send always re-resolves current data even
+if a preview looked different earlier (data may have changed in between);
+only the real send logs a hard-bounce demotion to `audit_events`, once, at
+the moment it commits — the read-only preview never writes anything, no
+matter how many times it is rendered.
+`tests/test_contact_resolution_send_path.py` grew to 12 tests, adding:
+workspace-preferred and global-preferred are each shown correctly in
+preview and then actually used at send; a hard-bounced preferred contact
+never appears as the final preview address when a safer alternative
+exists, and the preview writes zero audit entries while the subsequent
+real send writes exactly one; a second workspace's preview for the same
+real company never leaks the first workspace's override; and a direct
+call to the resolver, the preview, and the actual send all agree on the
+same address while nothing in the data changes in between. Full backend
+regression (focused mail-send suite, 108 tests; full suite) re-ran clean
+again — exact current counts in the task's own report/PR for the same
+staleness reason as above. `FINDING-037`'s preview/send-divergence item is
+now closed by this test evidence, not merely by design intent; one
+narrower, disclosed edge case remains (`preflight_bulk`'s domain/duplicate
+statistics still read pre-upgrade addresses — see `docs/domain/
+SUPPLIER_MODEL.md` §7.3 and `FINDING-037`). Still not merged/pushed/
+deployed; live authenticated browser verification remains `NOT VERIFIED`
+for the same reason as before (no owner credentials available to this
+session).
 
 `2026-09-15` — `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915` on branch
 `feature/followup-contact-intelligence-20260915` (base

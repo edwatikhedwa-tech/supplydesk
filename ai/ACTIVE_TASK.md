@@ -38,20 +38,23 @@ tests/test_contact_resolution_send_path.py,
 docs/domain/SUPPLIER_MODEL.md, docs/ui/MESSAGES_SCREEN_SPEC.md,
 ai/CURRENT_STATE.md, ai/ACTIVE_TASK.md, ai/DECISIONS.md,
 ai/DEFERRED_FINDINGS.md.`
-Status: `PARTIAL — backend fully implemented and tested (14 + 7 = 21 new
-focused tests across the two rounds; full suite unchanged/clean after
-both); frontend implemented, typechecked, built, linted and
-component-tested (4/4, re-verified this round though frontend files were
-not touched); NOT committed as of this status line's own edit, NOT pushed,
-NOT merged (explicit owner instruction: no merge/deploy without separate
-confirmation). All 10 owner acceptance criteria (AC-01..AC-10) now have
-direct test evidence, including AC-02 at the actual send path (this
-round's fix, not just the data model). Live authenticated browser
-verification NOT performed — no owner credentials available to this
-session; the task is intentionally NOT reported as fully closed for this
-reason, per explicit owner instruction. See
-ai/DEFERRED_FINDINGS.md FINDING-037 for the complete, honest list of what
-is verified vs. not.`
+Status: `PARTIAL — backend fully implemented and tested (14 + 12 = 26 new
+focused tests across the three rounds; full suite unchanged/clean after
+every round); frontend implemented, typechecked, built, linted and
+component-tested (4/4, re-verified in round 2 though frontend files were
+not touched); NOT pushed, NOT merged (explicit owner instruction: no
+merge/deploy without separate confirmation). All 10 owner acceptance
+criteria (AC-01..AC-10) now have direct test evidence, including AC-02 at
+the actual send path. Round 3 (2026-09-16, same day) closed a real
+preview/send inconsistency the owner caught: `preflight_bulk`'s campaign
+preview and the real send now call the exact same side-effect-free
+resolver (`mail/contact_intelligence.py::resolve_contact_priority`) at the
+same pipeline point, proven to agree by a direct same-state consistency
+test. Live authenticated browser verification NOT performed — no owner
+credentials available to this session; the task is intentionally NOT
+reported as fully closed for this reason, per explicit owner instruction.
+See ai/DEFERRED_FINDINGS.md FINDING-037 for the complete, honest list of
+what is verified vs. not.`
 Last update: `2026-09-15`
 
 ---

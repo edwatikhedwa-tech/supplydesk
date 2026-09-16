@@ -61,7 +61,7 @@ log. Superseded and older decision prose is preserved in
 - Follow-up (`2026-09-16`, same task, not yet merged): `mail/
   repository.py::resolve_supplier_for_send` — the single place that
   finalizes a send's recipient for an existing `suppliers.id` — now
-  consults `resolve_effective_send_email` and applies the priority
+  consults `resolve_contact_priority` and applies the priority
   workspace-preferred → global-preferred → existing fallback, so AC-02 is
   true at the actual send path, not only in the data model. A hard-bounced
   candidate is skipped in favor of the next tier (never used blindly) and
@@ -72,6 +72,23 @@ log. Superseded and older decision prose is preserved in
   untouched — the upgrade happens only at final identity resolution.
   Proven by `tests/test_contact_resolution_send_path.py` (7 tests) plus the
   full existing mail-send suite unchanged.
+- Second follow-up (`2026-09-16`, same task, same day — owner flagged a
+  preview/send inconsistency before this could be called done): the
+  resolver above was extracted into `mail/contact_intelligence.py::
+  resolve_contact_priority`, made genuinely side-effect-free (no writes,
+  no audit-log entries — only `resolve_supplier_for_send` logs a demotion,
+  once, at the moment a real send commits), and `mail/service.py::
+  preflight_bulk`'s campaign preview now calls that exact same function at
+  the same relative pipeline position (right after
+  `_select_contact_for_request`). Preview and the real send it precedes can
+  therefore never disagree while the underlying data hasn't changed, and
+  neither ever caches a resolution across calls — both re-resolve fresh
+  every time, so a real send re-resolves current data even if a preview
+  looked different earlier. Priority order and hard-bounce handling are
+  unchanged from the first follow-up. Test count grew to 12 in
+  `tests/test_contact_resolution_send_path.py`, including a direct
+  same-state consistency check across the resolver call, the preview, and
+  the actual send.
 
 ## DECISION-023 — AI chat default model upgraded to Llama 3.3 70B (from 8B)
 

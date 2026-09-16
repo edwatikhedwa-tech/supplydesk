@@ -3447,20 +3447,31 @@ class MailRepository(
         when the exact email identifies one unambiguous workspace identity;
         otherwise it is rejected instead of silently creating or merging data.
 
-        When `supplier_id` identifies a known row and `user_id` is supplied,
-        the caller's requested email is additionally checked against this
-        workspace's contact-intelligence-resolved effective address
-        (`resolve_effective_send_email`: workspace-preferred override ->
-        cross-tenant global preferred contact -> the stored email, in that
-        order -- DECISION-024, mail/contact_intelligence.py). A caller that
-        still requests the plain stored email (the common case: nothing in
-        the calling flow knows about the override) is transparently upgraded
-        to the effective address -- this is what actually makes a workspace's
-        preferred contact take effect for a NEW outbound send, not merely be
-        visible on the supplier card. A caller requesting some third,
-        unrelated address is still rejected exactly as before -- this
-        upgrade only ever substitutes an address the workspace/consensus
-        model itself already trusts, never an arbitrary one.
+        When `supplier_id` identifies a known row, the caller's requested
+        email is additionally checked against this workspace's contact-
+        intelligence-resolved effective address (`resolve_contact_priority`:
+        workspace-preferred override -> cross-tenant global preferred
+        contact -> the stored email, in that order -- DECISION-024,
+        mail/contact_intelligence.py). `resolve_contact_priority` is the
+        SAME shared resolver `preflight_bulk`'s campaign preview calls
+        (via `_select_contact_for_request`'s output, mail/service.py), so a
+        preview and the real send it previews can never disagree while the
+        underlying data hasn't changed (FINDING-037) -- and because this
+        method always calls it fresh, a real send re-resolves current data
+        rather than trusting anything a preview may have shown earlier. A
+        caller that still requests the plain stored email (the common case:
+        nothing in the calling flow knows about the override) is
+        transparently upgraded to the effective address -- this is what
+        actually makes a workspace's preferred contact take effect for a NEW
+        outbound send, not merely be visible on the supplier card. A caller
+        requesting some third, unrelated address is still rejected exactly
+        as before -- this upgrade only ever substitutes an address the
+        workspace/consensus model itself already trusts, never an arbitrary
+        one. Any hard-bounce-driven demotion the resolver reports is logged
+        to the audit trail here, once, at the point this method actually
+        commits to a send -- `user_id` is required for that log entry; pass
+        `None` only for a caller that cannot attribute the action to a user
+        (falls back to the plain stored email, no resolution/upgrade).
         """
         normalized_email = str(email or "").strip().lower()
         normalized_host = str(host or "").strip().lower()
@@ -3489,12 +3500,17 @@ class MailRepository(
                 if not row:
                     raise ValueError("Выбранный поставщик не найден в этой заявке.")
                 stored_email = str(row["email"] or "").strip().lower()
-                effective_email = stored_email
+                resolution = self.resolve_contact_priority(
+                    workspace_id, int(row["id"]), fallback_email=stored_email or normalized_email,
+                )
+                effective_email = resolution["email"] or stored_email or normalized_email
                 if user_id is not None:
-                    resolution = self.resolve_effective_send_email(
-                        workspace_id, user_id, int(row["id"]), fallback_email=stored_email or normalized_email,
-                    )
-                    effective_email = resolution["email"] or stored_email or normalized_email
+                    for demotion in resolution.get("demotions", []):
+                        self._audit_connection(
+                            connection, workspace_id, user_id, "mail.contact_resolution.demoted",
+                            "global_supplier", str(resolution.get("global_supplier_id") or ""),
+                            demotion,
+                        )
                 if stored_email and normalized_email not in {stored_email, effective_email}:
                     raise ValueError("Email не совпадает с выбранным поставщиком.")
                 if effective_email:

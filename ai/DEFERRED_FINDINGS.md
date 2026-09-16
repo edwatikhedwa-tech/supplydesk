@@ -20,11 +20,14 @@ this current register. Resolved findings and full chronology are preserved in
 - Status: `OPEN`
 - Context: `TASK-FOLLOWUP-CONTACT-INTELLIGENCE-20260915` (`mail/
   contact_intelligence.py`, `migrations/051_contact_intelligence.sql`).
-  Backend proven by 14 focused tests covering all 9 owner acceptance
-  criteria plus needs_followup mechanics (`tests/
-  test_contact_intelligence.py`, all pass) and the full existing suite (662
-  tests, 0 failures/errors, 2 skipped, unchanged from before this task).
-  Frontend: typecheck/build/lint clean, 4 new component tests pass
+  Backend proven across three focused test modules covering all 10 owner
+  acceptance criteria, needs_followup mechanics, and preview/send
+  resolution parity (`tests/test_contact_intelligence.py`,
+  `tests/test_contact_resolution_send_path.py`, all pass), plus the full
+  existing suite re-run clean after every round of this task (exact counts
+  in `ai/CURRENT_STATE.md`'s dated entries, since a number recorded here
+  would go stale the next time either suite grows). Frontend: typecheck/
+  build/lint clean, 4 new component tests pass
   (`frontend-v2/src/components/ContactResultModal.test.tsx` — this task
   also added `vitest`/`@testing-library/react` to frontend-v2, which
   previously had no unit-test runner at all, only typecheck/lint/build/
@@ -51,19 +54,32 @@ this current register. Resolved findings and full chronology are preserved in
      not the instant a reply/bounce arrives.
   4. ~~The workspace-scoped preferred-contact override is not wired into
      outbound campaign composition~~ — **RESOLVED 2026-09-16, same task**:
-     `mail/repository.py::resolve_supplier_for_send` now consults
-     `resolve_effective_send_email` (workspace-preferred → global-preferred
-     → existing fallback, hard-bounce-aware) before finalizing any send's
-     recipient for a known `suppliers.id`. Proven by
-     `tests/test_contact_resolution_send_path.py` (7 tests: actual
-     selection, priority order, hard-bounce demotion with an audit-log
-     entry rather than a silent choice, cross-workspace isolation, and
-     unchanged behavior for a brand-new recipient with no stored
-     `supplier_id`). See `DECISION-024`'s 2026-09-16 follow-up entry and
-     `docs/domain/SUPPLIER_MODEL.md` §7.3. Remaining, newly disclosed
-     boundary: `preflight_bulk`'s campaign preview still reports the
-     pre-upgrade address, not the one `queue_bulk` will actually use — the
-     two were never wired together for reporting, only for the final send.
+     `mail/repository.py::resolve_supplier_for_send` consults
+     `mail/contact_intelligence.py::resolve_contact_priority`
+     (workspace-preferred → global-preferred → existing fallback,
+     hard-bounce-aware) before finalizing any send's recipient for a known
+     `suppliers.id`. ~~`preflight_bulk`'s campaign preview still reports
+     the pre-upgrade address~~ — **also RESOLVED 2026-09-16, same task**:
+     `preflight_bulk` now calls the exact same `resolve_contact_priority`
+     at the same relative pipeline point (right after
+     `_select_contact_for_request` picks the company's contact), so the
+     preview and the real send it precedes can never disagree while the
+     underlying data hasn't changed. The resolver itself is genuinely
+     side-effect-free (no writes, no audit-log entries) so it is safe to
+     call on every preview render; only `resolve_supplier_for_send` (the
+     real send) logs a hard-bounce demotion to `audit_events`, once, at
+     the moment it actually commits. Proven by
+     `tests/test_contact_resolution_send_path.py` (12 tests, including a
+     direct same-state consistency check across the resolver call,
+     preview, and actual send). See `DECISION-024`'s 2026-09-16 follow-up
+     entries and `docs/domain/SUPPLIER_MODEL.md` §7.3. Newly disclosed,
+     narrow edge case: `preflight_bulk`'s domain/duplicate-recipient
+     statistics (`unique_domains`, `duplicate_recipient`) are still
+     computed from the pre-upgrade addresses, not the resolved ones — if
+     two different suppliers in the same campaign happened to resolve to
+     the identical final address, this specific check would not catch it
+     (not observed in practice; not fixed without a separate explicit
+     request, per scope discipline).
   5. **No public-holiday calendar** for the "N business days" SLA — only
      Mon-Fri is excluded.
   6. **Не выполнена** формальная проверка условий использования каких-либо
@@ -81,10 +97,8 @@ this current register. Resolved findings and full chronology are preserved in
   entries in `ai/CURRENT_STATE.md`).
 - Next verification: an owner (or an already-authenticated) session opens
   `/messages` on a real waiting thread aged past its SLA and confirms the
-  badge/actions visually; a follow-up task could additionally surface the
-  resolved recipient in `preflight_bulk`'s campaign-preview report if the
-  owner wants the preview and the actual send to visibly agree before
-  send-time, not only at send-time.
+  badge/actions visually. Preview/send resolution parity (item 4) is now
+  closed by test evidence, not merely by design intent.
 
 ## FINDING-036 — A second governance validator (`validate_state.py`) had been silently unable to pass since a restructuring commit, masked by the first validator's own failure
 
