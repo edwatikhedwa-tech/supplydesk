@@ -15,6 +15,52 @@ preserved under [`ai/history/`](history/).
 
 ## Last update
 
+`2026-09-16` — Fourth round, same task: the owner's real browser acceptance
+session (PD-001) found five genuine UI/UX defects the earlier rounds'
+backend-only verification could not catch. Diagnosed each root cause before
+fixing (no guessing): (1) a saved workspace-preferred email never appeared
+on the supplier card without a manual reload -- `SupplierCardContent`'s own
+independent data fetch had no invalidation link to the "Связаться" save;
+fixed with a `contactsRefreshToken` prop threaded from `Messages.tsx`
+through `SupplierCardPanel`, included in `useApiData`'s dependency array.
+(2) The contacts section leaked internal vocabulary
+(preferred/candidate/secondary/deprecated); redesigned to exactly one
+"Основной" row (whichever address this workspace's own
+`resolve_contact_priority` would pick right now) plus plain
+Дополнительный/Требует проверки labels, still never naming which other
+workspace confirmed anything. (3) No feedback after a contact update; added
+`ContactUpdatedNotice`, shown only when the backend actually confirmed
+`override_created: true` (never assumed from the chosen radio option). (4)
+Repeated "Напомнить" clicks created duplicate active tasks; fixed with
+`mail/tasks.py::create_or_refresh_followup_task` (idempotent by exact title
++ request/supplier match on an active task only -- a user's own
+differently-named task and any completed follow-up are never touched,
+proven by 3 new tests in `tests/test_followup_task_dedup.py`). (5) Long
+task/request names in `ActivityTimeline` were cut with a single-line
+ellipsis; now wrap onto 2-3 lines with the task action and its заявка on
+separate lines, zero new horizontal overflow.
+
+All five fixes were reproduced and then re-verified in a real, authenticated
+browser session against the project's own `SAFE_TEST` runtime (disposable
+SQLite, the synthetic `test.user@example.invalid` login already defined in
+`scripts/start_test_runtime.ps1` -- not a real credential) with seeded
+fixture data, including a long supplier/request name to stress the text-wrap
+fix: the new contact appeared immediately with no reload and the exact
+confirmation text, survived a real full-page reload, and the database was
+checked directly (not just the UI) to confirm repeated "Напомнить" clicks
+left exactly one active task with a refreshed `updated_at`. The one item
+NOT exercised via an actual live click was the campaign-preview
+final-recipient display (AC-UI-08) -- a `SAFE_TEST` mail-account fixture
+limitation unrelated to the fix itself, disclosed in
+`ai/DEFERRED_FINDINGS.md` `FINDING-037`; it remains covered by 5 dedicated
+backend tests plus a TypeScript-clean frontend change. Focused frontend
+(typecheck/build/lint/vitest, 5/5) and backend regression (219 focused
+tests; full suite 679 tests, `OK`, 2 skipped, exit code 0 -- captured
+directly to a file, not assumed) all re-ran clean. Still not
+merged/pushed/deployed. `LOCAL_CANONICAL`/real-owner-data browser
+verification specifically remains open (no owner credentials for that
+runtime existed at any point in this task).
+
 `2026-09-16` — Same task, owner-requested closeout of a real functional gap
 flagged after the `2026-09-15` entry below: a workspace's preferred contact
 (set via «Связаться» → «уточнён новый email») was visible on the supplier

@@ -27,40 +27,47 @@ identity leaks. Full spec: the owner's 10 acceptance criteria (AC-01..AC-10)
 in the task prompt.`
 Allowed files: `migrations/051_contact_intelligence.sql,
 mail/contact_intelligence.py, mail/repository.py, mail/service.py,
-backend/http_requests.py,
+mail/tasks.py, backend/http_requests.py,
 frontend-v2/src/lib/types.ts, frontend-v2/src/lib/api.ts,
 frontend-v2/src/pages/Messages.tsx,
 frontend-v2/src/components/ContactResultModal.tsx(+.test.tsx),
+frontend-v2/src/components/ContactUpdatedNotice.tsx,
+frontend-v2/src/components/SupplierCardPanel.tsx,
 frontend-v2/src/components/SupplierCardContent.tsx,
+frontend-v2/src/components/ActivityTimeline.tsx,
+frontend-v2/src/components/BulkComposeModal.tsx,
 frontend-v2/package.json, frontend-v2/vitest.config.ts,
 frontend-v2/src/setupTests.ts, tests/test_contact_intelligence.py,
 tests/test_contact_resolution_send_path.py,
+tests/test_followup_task_dedup.py,
 docs/domain/SUPPLIER_MODEL.md, docs/ui/MESSAGES_SCREEN_SPEC.md,
 ai/CURRENT_STATE.md, ai/ACTIVE_TASK.md, ai/DECISIONS.md,
 ai/DEFERRED_FINDINGS.md.`
-Status: `PARTIAL — backend fully implemented and tested (14 + 12 + 2 = 28
+Status: `PARTIAL — backend fully implemented and tested (14 + 12 + 2 + 3 = 31
 new focused tests across four rounds of iteration; full suite unchanged/
-clean after every round); frontend implemented, typechecked, built, linted
-and component-tested (4/4, re-verified in round 2 though frontend files
-were not touched); NOT pushed, NOT merged (explicit owner instruction: no
-merge/deploy without separate confirmation). All 10 owner acceptance
-criteria (AC-01..AC-10) now have direct test evidence, including AC-02 at
-the actual send path. Round 3 closed a preview/send inconsistency: both
-now call the exact same side-effect-free resolver
-(`mail/contact_intelligence.py::resolve_contact_priority`) at the same
-pipeline point. Round 4 (2026-09-16, same day) closed the last flagged
-safety gap: `preflight_bulk`'s `duplicate_recipient` and `unique_domains`
-checks now read each item's FINAL (post-resolution) recipient instead of
-the pre-resolution address, via a two-pass restructure that calls the
-existing selection/resolution logic exactly once per item (no duplicated
-logic) — two suppliers whose contact converges to one final mailbox are
-now correctly blocked as a duplicate, and `queue_bulk` is protected
-automatically since it always preflights internally before a new send.
-Live authenticated browser verification NOT performed — no owner
-credentials available to this session; the task is intentionally NOT
-reported as fully closed for this reason, per explicit owner instruction
-— it remains the final acceptance step. See ai/DEFERRED_FINDINGS.md
-FINDING-037 for the complete, honest list of what is verified vs. not.`
+clean after every round, most recently 679 tests/OK/2 skipped/exit 0);
+frontend implemented, typechecked, built, linted and component-tested
+(5/5); NOT pushed, NOT merged (explicit owner instruction: no merge/deploy
+without separate confirmation). All 10 owner acceptance criteria
+(AC-01..AC-10) have direct test evidence, including AC-02 at the actual
+send path (round 2) and preview/send parity (round 3). Round 4 closed the
+last backend safety gap (`duplicate_recipient`/`unique_domains` computed
+from the final, post-resolution recipient). This round (PD-001,
+2026-09-16) fixed 5 real UI/UX defects the owner's own browser session
+found and diagnosed each one's actual root cause first: stale
+supplier-card contacts (no refetch link to the "Связаться" save), leaked
+internal contact-status vocabulary, no save confirmation, duplicate
+"Напомнить" tasks, and unreadable truncated task/request text. All five
+were reproduced and re-verified fixed in a real, authenticated `SAFE_TEST`
+browser session (disposable data, the project's own synthetic test login —
+not a real credential). The one item not exercised via an actual live
+click, AC-UI-08 (campaign-preview final recipient), is covered by 5
+dedicated backend tests instead — a `SAFE_TEST` mail-account fixture
+limitation, not a code gap; see `ai/DEFERRED_FINDINGS.md` FINDING-037 for
+the complete, itemized, honest list of what is verified vs. not, including
+that `LOCAL_CANONICAL`/real-owner-data browser verification specifically
+remains open (no owner credentials for that runtime existed at any point
+in this task) and is intentionally not claimed as done.`
 Last update: `2026-09-16`
 
 ---

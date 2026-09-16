@@ -50,7 +50,8 @@ describe('ContactResultModal', () => {
     expect(api.recordContactResult).not.toHaveBeenCalled();
   });
 
-  it('submits the new email once provided', async () => {
+  it('submits the new email once provided and reports the confirmed override to the caller', async () => {
+    vi.mocked(api.recordContactResult).mockResolvedValue({ ok: true, event_id: 2, result: 'new_email_provided', override_created: true });
     setup();
     fireEvent.click(screen.getByLabelText('Уточнён новый email'));
     fireEvent.change(screen.getByPlaceholderText('new-contact@example.com'), { target: { value: 'sales@newmail.example' } });
@@ -61,6 +62,19 @@ describe('ContactResultModal', () => {
       comment: undefined,
       new_email: 'sales@newmail.example',
     });
+    // The confirmation callback must reflect what the backend actually
+    // confirmed, not merely which radio option was selected.
+    expect(onSaved).toHaveBeenCalledWith({ overrideCreated: true, email: 'sales@newmail.example' });
+  });
+
+  it('never reports an override as created when the backend did not confirm one', async () => {
+    vi.mocked(api.recordContactResult).mockResolvedValue({ ok: true, event_id: 3, result: 'new_email_provided', override_created: false });
+    setup();
+    fireEvent.click(screen.getByLabelText('Уточнён новый email'));
+    fireEvent.change(screen.getByPlaceholderText('new-contact@example.com'), { target: { value: 'sales@newmail.example' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await vi.waitFor(() => expect(api.recordContactResult).toHaveBeenCalledTimes(1));
+    expect(onSaved).toHaveBeenCalledWith({ overrideCreated: false, email: null });
   });
 
   it('shows every required result option', () => {

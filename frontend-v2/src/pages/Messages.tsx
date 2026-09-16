@@ -24,6 +24,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AiChatPanel } from '../components/AiChatPanel';
 import { AttachmentPicker } from '../components/AttachmentPicker';
 import { ContactResultModal } from '../components/ContactResultModal';
+import { ContactUpdatedNotice } from '../components/ContactUpdatedNotice';
 import { EmailRenderer } from '../components/EmailRenderer';
 import { LogisticsQuoteModal } from '../components/LogisticsQuoteModal';
 import { ManualLinkModal } from '../components/ManualLinkModal';
@@ -206,8 +207,8 @@ export function Messages() {
   async function remindFollowup(t: ThreadSummary) {
     setReminderState('saving');
     try {
-      await api.remindSupplierFollowup(t.request_id, t.supplier_id);
-      setReminderState('idle');
+      const result = await api.remindSupplierFollowup(t.request_id, t.supplier_id);
+      setReminderState(result.created ? 'idle' : 'exists');
     } catch {
       setReminderState('error');
     }
@@ -302,7 +303,18 @@ export function Messages() {
   const [aiOpen, setAiOpen] = useState(false);
   const [aiExtraThreadIds, setAiExtraThreadIds] = useState<number[]>([]);
   const [contactModalOpen, setContactModalOpen] = useState(false);
-  const [reminderState, setReminderState] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [reminderState, setReminderState] = useState<'idle' | 'saving' | 'error' | 'exists'>('idle');
+  // Bumped after a contact-result save so SupplierCardPanel's own,
+  // independently-fetched data refetches immediately -- it has no other way
+  // to learn a mutation happened elsewhere on the page (see
+  // docs/ui/MESSAGES_SCREEN_SPEC.md §13a).
+  const [contactsRefreshToken, setContactsRefreshToken] = useState(0);
+  const [contactUpdatedEmail, setContactUpdatedEmail] = useState<string | null>(null);
+  useEffect(() => {
+    if (reminderState !== 'exists' && reminderState !== 'error') return;
+    const timer = window.setTimeout(() => setReminderState('idle'), 4000);
+    return () => window.clearTimeout(timer);
+  }, [reminderState]);
   const draftRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     const el = draftRef.current;
@@ -782,7 +794,11 @@ export function Messages() {
           supplierId={activeThread.supplier_id}
           supplierName={formatCompanyName(activeThread.supplier_name)}
           onClose={() => setContactModalOpen(false)}
-          onSaved={() => threadsState.reload()}
+          onSaved={({ overrideCreated, email }) => {
+            threadsState.reload();
+            setContactsRefreshToken((token) => token + 1);
+            if (overrideCreated && email) setContactUpdatedEmail(email);
+          }}
         />
       )}
 
@@ -879,9 +895,10 @@ export function Messages() {
                         <Button
                           variant="secondary" size="sm" icon={<BellRing size={13} />}
                           disabled={reminderState === 'saving'}
+                          title={reminderState === 'exists' ? 'Напоминание по этому поставщику уже создано и ещё не выполнено' : undefined}
                           onClick={() => void remindFollowup(activeThread)}
                         >
-                          {reminderState === 'saving' ? 'Создаём…' : 'Напомнить'}
+                          {reminderState === 'saving' ? 'Создаём…' : reminderState === 'exists' ? 'Уже напомнили' : 'Напомнить'}
                         </Button>
                       </>
                     )}
@@ -1173,6 +1190,7 @@ export function Messages() {
               onClose={() => setNotesOpen(false)}
               onNoteSaved={() => noteState.reload()}
               onSupplierLinked={() => threadsState.reload()}
+              contactsRefreshToken={contactsRefreshToken}
             />
           </div>
         )}
@@ -1184,6 +1202,9 @@ export function Messages() {
         )}
 
       </div>
+      {contactUpdatedEmail && (
+        <ContactUpdatedNotice email={contactUpdatedEmail} onDismiss={() => setContactUpdatedEmail(null)} />
+      )}
     </div>
   );
 }

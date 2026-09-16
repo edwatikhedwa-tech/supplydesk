@@ -115,6 +115,11 @@ export type PreflightStatus = 'PASS' | 'WARNING' | 'BLOCK';
 
 export interface PreflightRecipientResult {
   email: string;
+  /** What the caller originally selected, before the final-recipient
+   * resolver (workspace preferred -> global preferred -> legacy fallback)
+   * ran -- differs from `email` exactly when a preferred contact was
+   * substituted for this send. */
+  requested_email?: string;
   status: 'eligible' | 'excluded';
   reasons: string[];
   domain?: string;

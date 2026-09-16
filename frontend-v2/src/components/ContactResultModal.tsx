@@ -28,7 +28,11 @@ export function ContactResultModal({
   supplierId: number;
   supplierName: string;
   onClose: () => void;
-  onSaved: () => void;
+  /** Fired only after the backend has actually confirmed the write --
+   * `overrideCreated`/`email` reflect the real API response, never an
+   * assumption from which radio option was selected, so a caller can show
+   * a "contact updated" confirmation only when it is actually true. */
+  onSaved: (info: { overrideCreated: boolean; email: string | null }) => void;
 }) {
   const [result, setResult] = useState<ContactResult>('contact_confirmed');
   const [comment, setComment] = useState('');
@@ -44,12 +48,13 @@ export function ContactResultModal({
     }
     setSaving(true);
     try {
-      await api.recordContactResult(requestId, supplierId, {
+      const trimmedEmail = newEmail.trim();
+      const response = await api.recordContactResult(requestId, supplierId, {
         result,
         comment: comment.trim() || undefined,
-        new_email: result === 'new_email_provided' ? newEmail.trim() : undefined,
+        new_email: result === 'new_email_provided' ? trimmedEmail : undefined,
       });
-      onSaved();
+      onSaved({ overrideCreated: response.override_created, email: response.override_created ? trimmedEmail : null });
       onClose();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Не удалось сохранить результат контакта.');

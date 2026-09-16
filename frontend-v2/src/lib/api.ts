@@ -328,7 +328,7 @@ export const api = {
     ),
 
   remindSupplierFollowup: (requestId: number, supplierId: number, input: { title?: string; due_date?: string } = {}) =>
-    request<{ ok: true; task_id: number }>(`/api/requests/${requestId}/suppliers/${supplierId}/remind`, {
+    request<{ ok: true; task_id: number; created: boolean }>(`/api/requests/${requestId}/suppliers/${supplierId}/remind`, {
       method: 'POST',
       body: JSON.stringify(input),
     }),

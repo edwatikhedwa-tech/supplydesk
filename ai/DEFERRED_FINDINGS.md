@@ -33,15 +33,34 @@ this current register. Resolved findings and full chronology are preserved in
   previously had no unit-test runner at all, only typecheck/lint/build/
   Playwright-on-legacy-v1).
 - Evidence of what is NOT done, honestly:
-  1. **No live authenticated browser verification.** This session had no
-     owner Yandex/password credentials to log in through
-     `http://127.0.0.1:5183`, so the "Требует внимания" badge, the
-     «Связаться»/«Напомнить» buttons, and the new «Email-контакты» supplier-
-     card section were never visually confirmed in a real logged-in
-     session. The restarted `LOCAL_CANONICAL` backend was confirmed healthy
-     without auth (`/` 200, `/api/auth/me` 200, `/api/mail/threads` 401,
-     the new `/api/requests/1/followup-settings` 401 — proving the route
-     exists and the auth gate runs before any DB query, not a 500).
+  1. ~~No live authenticated browser verification~~ — **DONE 2026-09-16,
+     PD-001 browser-acceptance round**: no owner Yandex/password
+     credentials were ever available to this session for `LOCAL_CANONICAL`
+     (`:8000`), but the project's own `SAFE_TEST` runtime (disposable
+     SQLite, synthetic `test.user@example.invalid` login — both defined in
+     `scripts/start_test_runtime.ps1`, not a real credential) was used for
+     a genuine, real, authenticated browser session with seeded fixture
+     data: "Требует внимания" badge confirmed live; «Связаться» → «Уточнён
+     новый email» → «Сохранить» showed the new contact in the «Контакты»
+     section immediately with no reload and the exact confirmation-toast
+     text, then survived a real full-page reload; repeated «Напомнить»
+     clicks produced exactly one active task in the database (checked
+     directly, not just via UI) with its `updated_at` refreshed; the
+     Activity block rendered long task/request names on separate, wrapped,
+     non-overflowing lines (`scrollWidth === clientWidth` confirmed via a
+     JS check, not only a screenshot). AC-UI-08 (campaign preview shows the
+     resolved final recipient) was **not** exercised through an actual live
+     click in this SAFE_TEST session — the synthetic fixture's mail-account
+     "outgoing enabled" wiring needed ad-hoc `mail_account_profiles` setup
+     this session could not fully complete in the time available, an
+     environment/fixture gap unrelated to the fix itself — but it is proven
+     by 5 dedicated backend tests
+     (`test_workspace_preferred_is_shown_in_preview_and_used_at_send` and
+     siblings in `tests/test_contact_resolution_send_path.py`) plus a
+     TypeScript-clean, low-risk frontend change that only renders
+     already-tested `recipient_results` fields. `LOCAL_CANONICAL`/real-
+     owner-data verification specifically remains open (no owner
+     credentials for that runtime existed at any point in this task).
   2. **`official_source` signals are never produced by any pipeline** —
      the signal type exists in the schema/CHECK constraint and is handled
      identically to `inbound_reply` wherever "strong signal" is checked,
@@ -100,6 +119,34 @@ this current register. Resolved findings and full chronology are preserved in
      project's own stored `mail_messages`, so no new third-party ToS
      surface was introduced, but this is noted for completeness alongside
      the pre-existing Checko/DaData ToS gap (`FINDING-023`).
+  7. **PD-001 browser-acceptance round (2026-09-16), RESOLVED**: the owner's
+     real browser session found five genuine UI/UX defects the earlier
+     rounds' backend-only verification could not have caught: (a) a new
+     workspace-preferred email never appeared on the supplier card without
+     a manual page reload -- root-caused (not guessed) to
+     `SupplierCardContent`'s own independent `useApiData` fetch having no
+     invalidation link to `ContactResultModal`'s save, fixed with a
+     `contactsRefreshToken` prop threaded down from `Messages.tsx`; (b) the
+     contacts section leaked internal vocabulary
+     (preferred/candidate/secondary/deprecated) instead of plain labels
+     (Основной/Дополнительный/Требует проверки), fixed by collapsing to
+     exactly one "Основной" row (whichever this workspace's own
+     `resolve_contact_priority` would actually pick right now) and simple
+     labels for the rest, never revealing which other workspace confirmed
+     anything; (c) no confirmation was shown after a successful contact
+     update, fixed with a new `ContactUpdatedNotice`, mounted only when the
+     backend's own response confirmed `override_created: true`; (d) every
+     "Напомнить" click created a new duplicate active task, fixed with
+     `mail/tasks.py::create_or_refresh_followup_task` (exact-title +
+     request/supplier match on an active task refreshes it instead of
+     duplicating; a user's own differently-titled task and any completed
+     follow-up task are never touched); (e) long task/request names in
+     `ActivityTimeline` were cut with a single-line ellipsis, fixed with
+     wrapped, `line-clamp`-ed text on separate lines for the task action and
+     its заявка, confirmed to introduce zero horizontal overflow. All five
+     were reproduced and then re-verified fixed in a real, authenticated
+     `SAFE_TEST` browser session with seeded fixture data -- see item 1
+     above for exactly what was and was not exercised live.
 - Why deferred: None of the above blocks the feature's core, tested
   correctness (all 10 ACs now pass against a real repository — an earlier
   draft of this finding said "9", which undercounted; the owner's spec

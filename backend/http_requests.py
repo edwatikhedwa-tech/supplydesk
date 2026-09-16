@@ -241,16 +241,16 @@ class RequestRouteMixin:
             )
             due_date = str(body.get("due_date") or "")
             try:
-                task_id = self.app.repository.create_task(
+                result = self.app.repository.create_or_refresh_followup_task(
                     session["workspace_id"], session["user_id"],
-                    title=str(body.get("title") or f"Связаться с поставщиком по заявке «{request_row['name']}»"),
-                    due_date=due_date or None,
                     request_id=request_id, supplier_id=global_supplier_id,
+                    title=str(body.get("title") or "Связаться с поставщиком"),
+                    due_date=due_date or None,
                 )
             except ValueError as exc:
                 self._json(400, {"error": str(exc)})
                 return
-            self._json(201, {"ok": True, "task_id": task_id})
+            self._json(201 if result["created"] else 200, {"ok": True, **result})
             return
         if len(parts) == 4 and parts[3] == "followup-settings":
             try:

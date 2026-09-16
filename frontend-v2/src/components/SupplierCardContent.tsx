@@ -56,9 +56,19 @@ function StatCard({ label, value, sub, tone }: { label: string; value: string; s
  * `compact` drops the page's wide 3-column layout down to a single stacked
  * column that fits a ~400px side panel regardless of viewport width (the
  * page's `lg:grid-cols-3` only reacts to viewport, not container, width). */
-export function SupplierCardContent({ supplierId, compact = false }: { supplierId: number; compact?: boolean }) {
+export function SupplierCardContent({
+  supplierId, compact = false, refreshToken,
+}: {
+  supplierId: number;
+  compact?: boolean;
+  /** Bump this (e.g. after a "Связаться" contact-result save elsewhere on
+   * the page) to force an immediate refetch of this card's data -- the
+   * card has its own independent fetch, so nothing else refreshes it
+   * automatically. See docs/ui/MESSAGES_SCREEN_SPEC.md §13a. */
+  refreshToken?: number;
+}) {
   const navigate = useNavigate();
-  const state = useApiData(() => api.getGlobalSupplierDetail(supplierId), [supplierId]);
+  const state = useApiData(() => api.getGlobalSupplierDetail(supplierId), [supplierId, refreshToken]);
 
   const [note, setNote] = useState('');
   const [noteLoaded, setNoteLoaded] = useState(false);
@@ -421,52 +431,71 @@ export function SupplierCardContent({ supplierId, compact = false }: { supplierI
   );
 }
 
-const emailContactStatusTone = { preferred: 'success', secondary: 'neutral', candidate: 'accent', deprecated: 'neutral' } as const;
-const emailContactStatusLabel = { preferred: 'Предпочтительный', secondary: 'Дополнительный', candidate: 'Кандидат', deprecated: 'Устарел' } as const;
-const emailContactPurposeLabel = { rfq: 'Запросы (RFQ)', sales: 'Продажи', tender: 'Тендеры', general: 'Общий', personal: 'Личный', unknown: 'Не указано' } as const;
+const emailContactPurposeLabel = { rfq: 'Для запросов', sales: 'Продажи', tender: 'Тендеры', general: 'Общий', personal: 'Личный', unknown: 'Другое' } as const;
+
+type DisplayContactStatus = 'Основной' | 'Дополнительный' | 'Требует проверки';
+const displayStatusTone: Record<DisplayContactStatus, Tone> = {
+  'Основной': 'success',
+  'Дополнительный': 'neutral',
+  'Требует проверки': 'warning',
+};
 
 /** Read-only -- this list is system-derived (workspace override + cross-tenant
- * consensus, mail/contact_intelligence.py), never hand-edited here. Never
- * shows which other workspaces confirmed a contact, only the count and
- * whether a strong signal exists (docs/domain/SUPPLIER_MODEL.md §7, AC-09). */
+ * consensus, mail/contact_intelligence.py), never hand-edited here. Shows
+ * only what a user needs to act on -- email, purpose, plain-language status,
+ * last confirmed date -- never the internal preferred/candidate/workspace/
+ * strong_signal vocabulary, and never which other workspace confirmed a
+ * contact (docs/domain/SUPPLIER_MODEL.md §7, AC-09). Exactly one contact is
+ * ever labelled "Основной": the address this workspace's own new requests
+ * will actually use (workspace-preferred override, or -- absent one -- the
+ * cross-tenant preferred contact), matching mail/contact_intelligence.py::
+ * resolve_contact_priority exactly so the card never disagrees with what
+ * a real send does. */
 function SupplierEmailContacts({ emailContacts }: { emailContacts: import('../lib/types').SupplierEmailContacts }) {
   const { workspace_override, global_contacts } = emailContacts;
   if (!workspace_override && global_contacts.length === 0) return null;
+
+  const effectiveEmail = workspace_override?.email ?? global_contacts.find((c) => c.status === 'preferred')?.email ?? null;
+
+  type Row = { email: string; purpose: keyof typeof emailContactPurposeLabel; lastVerifiedAt: string | null };
+  const rows: Row[] = global_contacts.map((c) => ({ email: c.email, purpose: c.purpose, lastVerifiedAt: c.last_verified_at }));
+  if (workspace_override && !rows.some((r) => r.email === workspace_override.email)) {
+    rows.unshift({ email: workspace_override.email, purpose: workspace_override.purpose, lastVerifiedAt: null });
+  }
+  // The effective (workspace-actionable) contact always leads the list.
+  rows.sort((a, b) => (a.email === effectiveEmail ? -1 : b.email === effectiveEmail ? 1 : 0));
+
   return (
-    <section aria-label="Email-контакты" className="rounded-lg border border-border bg-surface">
+    <section aria-label="Контакты" className="rounded-lg border border-border bg-surface">
       <header className="border-b border-border px-4 py-2.5">
-        <h2 className="text-[12.5px] font-semibold text-ink">Email-контакты</h2>
-        <p className="text-[10.5px] text-ink-faint">Определяются автоматически по переписке всех клиентов SupplyDesk с этой компанией.</p>
+        <h2 className="text-[12.5px] font-semibold text-ink">Контакты</h2>
+        <p className="text-[10.5px] text-ink-faint">Email-адреса для связи с этим поставщиком.</p>
       </header>
       <div className="divide-y divide-border">
-        {workspace_override && (
-          <div className="flex items-start gap-3 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <a href={`mailto:${workspace_override.email}`} className="font-medium text-[12.5px] text-ink hover:text-accent">{workspace_override.email}</a>
-                <Badge tone="accent">Только в этом workspace</Badge>
+        {rows.map((row) => {
+          const isEffective = row.email === effectiveEmail;
+          const status: DisplayContactStatus = isEffective ? 'Основной' : global_contacts.find((c) => c.email === row.email)?.status === 'candidate' ? 'Требует проверки' : 'Дополнительный';
+          return (
+            <div key={row.email} className="flex items-start gap-3 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <a href={`mailto:${row.email}`} className="min-w-0 truncate font-medium text-[12.5px] text-ink hover:text-accent" title={row.email}>
+                    {row.email}
+                  </a>
+                  <Badge tone={displayStatusTone[status]}>{status}</Badge>
+                  <Badge tone="neutral">{emailContactPurposeLabel[row.purpose]}</Badge>
+                </div>
+                <p className="mt-1 text-[10.5px] text-ink-faint">
+                  {isEffective
+                    ? 'Используется для новых запросов этому поставщику'
+                    : row.lastVerifiedAt
+                      ? `Последнее подтверждение: ${new Date(row.lastVerifiedAt).toLocaleDateString('ru-RU')}`
+                      : 'Подтверждение пока не получено'}
+                </p>
               </div>
-              <p className="mt-0.5 text-[11px] text-ink-faint">Используется для новых запросов этого workspace, не меняет глобальную карточку.</p>
             </div>
-          </div>
-        )}
-        {global_contacts.map((contact) => (
-          <div key={contact.email} className="flex items-start gap-3 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <a href={`mailto:${contact.email}`} className="font-medium text-[12.5px] text-ink hover:text-accent">{contact.email}</a>
-                <Badge tone={emailContactStatusTone[contact.status]}>{emailContactStatusLabel[contact.status]}</Badge>
-                <Badge tone="neutral">{emailContactPurposeLabel[contact.purpose]}</Badge>
-              </div>
-              <p className="mt-1 text-[10.5px] text-ink-faint">
-                Подтверждено {contact.confirming_workspace_count} независимыми клиентами
-                {contact.has_strong_signal ? ' · есть надёжное подтверждение (ответ или официальный источник)' : ''}
-                {contact.last_verified_at ? ` · проверено ${new Date(contact.last_verified_at).toLocaleDateString('ru-RU')}` : ''}
-                {contact.hard_bounce_count > 0 ? ` · жёстких отказов доставки: ${contact.hard_bounce_count}` : ''}
-              </p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
