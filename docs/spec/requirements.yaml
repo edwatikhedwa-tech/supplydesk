@@ -1,0 +1,200 @@
+# SupplyDesk requirements catalog — produced by the 2026-09-17 full audit.
+# Distinct from docs/requirements/requirements.yaml (older, capability-level, coarser schema —
+# kept as-is, not superseded, just a different granularity). This file uses the field-level
+# schema requested for this audit: implementation_status and verification_status are reported
+# separately on purpose — "implemented" is never treated as "verified working" without evidence.
+#
+# implementation_status: implemented | partial | mock | not_implemented | unknown
+# verification_status: unit_tested | integration_tested | live_verified | not_tested | unknown
+
+schema_version: 2
+document_id: audit-requirements-catalog-2026-09-17
+
+requirements:
+  - id: REQ-AUTH-001
+    area: auth
+    title: Email+password and Yandex OAuth login
+    expected: A user can authenticate via email/password (single seeded account) or Yandex OAuth
+    implementation_status: implemented
+    verification_status: unit_tested
+    validation: {type: unittest, ref: tests/test_mail_integrity.py}
+
+  - id: REQ-AUTH-002
+    area: auth
+    title: Session CSRF protection
+    expected: Every mutating request is rejected without a valid derived CSRF token
+    implementation_status: implemented
+    verification_status: unit_tested
+    validation: {type: unittest}
+
+  - id: REQ-REQUEST-001
+    area: requests
+    title: Durable, resumable request search
+    expected: A search survives a serverless restart mid-search and resumes from its cursor
+    implementation_status: implemented
+    verification_status: unit_tested
+    validation: {type: unittest, ref: tests/test_request_search_cursor_survives_step_release}
+
+  - id: REQ-REQUEST-002
+    area: requests
+    title: Bulk-send campaign monitoring (pause/resume/stop)
+    expected: A user can view and control an in-flight bulk-send campaign from the live UI
+    implementation_status: not_implemented
+    verification_status: not_tested
+    validation: {type: none}
+    note: "Exists only in frontend/ (v1, not deployed). GAP-001."
+
+  - id: REQ-SUPPLIER-001
+    area: suppliers
+    title: One supplier identity per real company per workspace
+    expected: A real-world supplier occupies exactly one suppliers row per workspace regardless of how it was discovered/contacted
+    implementation_status: partial
+    verification_status: live_verified
+    validation: {type: manual_db_query, ref: "local sqlite, 2026-09-17: 28/243 rows violate this"}
+    note: "INV-SUP-002 violated. GAP-003, P0."
+
+  - id: REQ-SUPPLIER-002
+    area: suppliers
+    title: Cross-tenant company resolution cache
+    expected: A company's ИНН resolved by one workspace is reused by another without a repeat Checko call
+    implementation_status: partial
+    verification_status: unit_tested
+    validation: {type: unittest, ref: tests/test_canonical_companies_cache_reuse.py}
+    note: "Only _resolve_missing_inn reads the cache; the main enrich pipeline does not yet."
+
+  - id: REQ-SUPPLIER-003
+    area: suppliers
+    title: force_enrich_all_suppliers maintenance route
+    expected: Owner can force-refresh every supplier's Checko data with a bounded, safe operation
+    implementation_status: mock
+    verification_status: not_tested
+    validation: {type: none}
+    note: "Exists only on branch state/current-20260917-2119, not merged. As written: GET (should be POST), no CSRF, no rate limit, no per-call budget cap. GAP-002."
+
+  - id: REQ-MESSAGE-001
+    area: messages
+    title: Inbound mail matched to request/supplier thread
+    expected: An inbound reply is threaded onto its request/supplier by header or subject+email match
+    implementation_status: implemented
+    verification_status: unit_tested
+    validation: {type: unittest, ref: tests/test_mail_integration.py}
+
+  - id: REQ-MESSAGE-002
+    area: messages
+    title: Unmatched mail preserved, never dropped
+    expected: A message that cannot be auto-matched stays visible until a human resolves it
+    implementation_status: implemented
+    verification_status: unit_tested
+    validation: {type: unittest, ref: tests/test_messages_visibility.py}
+
+  - id: REQ-MESSAGE-003
+    area: messages
+    title: No physical deletion of messages/threads
+    expected: No user action ever removes a message/thread row from the database
+    implementation_status: implemented
+    verification_status: unit_tested
+    validation: {type: source_audit, ref: "only DELETE is in an offline script with no route"}
+
+  - id: REQ-MESSAGE-004
+    area: messages
+    title: Clickable links in rendered email
+    expected: Links in a rendered email can be opened by the user
+    implementation_status: implemented
+    verification_status: not_tested
+    validation: {type: playwright}
+    note: "Sanitizer forces target=_blank + safe rel, but no browser test proves the rendered result is actually clickable."
+
+  - id: REQ-MESSAGE-005
+    area: messages
+    title: CID inline images render correctly
+    expected: An email with inline (CID) images shows them without broken-image icons
+    implementation_status: implemented
+    verification_status: not_tested
+    validation: {type: playwright}
+
+  - id: REQ-MESSAGE-006
+    area: messages
+    title: Received attachments are visible/downloadable in the thread view
+    expected: A user can see and download an attachment on an already-received or sent message
+    implementation_status: not_implemented
+    verification_status: not_tested
+    validation: {type: none}
+    note: "Backend stores attachments correctly; frontend never renders them for non-draft messages. GAP-004."
+
+  - id: REQ-AI-001
+    area: ai
+    title: AI context scoped to real communication only
+    expected: A supplier never enters AI context solely because it is linked to a request
+    implementation_status: implemented
+    verification_status: unit_tested
+    validation: {type: unittest, ref: tests/test_ai_context_scoping.py}
+
+  - id: REQ-AI-002
+    area: ai
+    title: Daily AI spend cap enforced
+    expected: AI usage cannot exceed the configured daily ruble cap
+    implementation_status: implemented
+    verification_status: unknown
+    validation: {type: unittest}
+    note: "Code path confirmed; specific test coverage for the cap boundary not confirmed this pass."
+
+  - id: REQ-TASK-001
+    area: tasks
+    title: Task CRUD
+    expected: A user can create/read/update/delete/complete a task
+    implementation_status: implemented
+    verification_status: unit_tested
+    validation: {type: unittest}
+
+  - id: REQ-TASK-002
+    area: tasks
+    title: In-app reminder delivery
+    expected: A due reminder shows a toast/notification while the app tab is open
+    implementation_status: implemented
+    verification_status: not_tested
+    validation: {type: playwright}
+    note: "Polling confirmed in source (45s); no browser test proves the toast actually appears."
+
+  - id: REQ-TASK-003
+    area: tasks
+    title: Email reminder delivery
+    expected: A due reminder set to the email channel sends an actual email
+    implementation_status: mock
+    verification_status: not_tested
+    validation: {type: none}
+    note: "Row is recorded and validated; no send path exists anywhere."
+
+  - id: REQ-TASK-004
+    area: tasks
+    title: Phone reminder delivery
+    expected: A due reminder set to the phone channel places an actual call
+    implementation_status: mock
+    verification_status: not_tested
+    validation: {type: none}
+    note: "Explicitly labeled a local mock in the UI copy itself."
+
+  - id: REQ-TASK-005
+    area: tasks
+    title: Push reminder delivery when tab is closed
+    expected: A due reminder notifies the user even if no browser tab is open
+    implementation_status: not_implemented
+    verification_status: not_tested
+    validation: {type: none}
+
+  - id: REQ-UI-001
+    area: ui
+    title: Shared Input/Checkbox/Card/Table/Tabs primitives
+    expected: A single, reused implementation exists for each common UI primitive
+    implementation_status: not_implemented
+    verification_status: live_verified
+    validation: {type: manual_code_audit, ref: docs/frontend/UI_INVENTORY.md}
+    note: "GAP-005 through GAP-009."
+
+  - id: REQ-DATA-001
+    area: data
+    title: Postgres/SQLite dialect compatibility layer is complete
+    expected: Every SQL query the repository issues runs correctly on both SQLite and Postgres
+    implementation_status: partial
+    verification_status: live_verified
+    validation: {type: production_incident, ref: "two real prod incidents this session: COLLATE NOCASE, is_active bool binding"}
+    note: "Pattern (SQLite-only construct never exercised against Postgres) may recur elsewhere; not exhaustively re-audited."

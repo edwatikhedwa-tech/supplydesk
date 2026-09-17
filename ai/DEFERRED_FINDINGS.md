@@ -3,8 +3,8 @@ document_id: DEFERRED-FINDINGS-001
 status: CURRENT
 canonical: false
 owner: project-control
-updated_at: 2026-09-11
-source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
+updated_at: 2026-09-17
+source_commit: dc66b0b
 ---
 
 # Deferred Findings
@@ -12,6 +12,55 @@ source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 Only unresolved, accepted-risk, or explicitly superseded findings belong in
 this current register. Resolved findings and full chronology are preserved in
 [`ai/history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md`](history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md).
+
+## FINDING-038 — Live supplier-identity duplication via email-degraded external_key
+
+- ID: `FINDING-038`
+- Severity: `HIGH` (docs/system/KNOWN_GAPS.md: `GAP-003`, `P0`)
+- Status: `OPEN`
+- Context: Full-system audit, 2026-09-17 (`docs/product/SUPPLIERS.md`,
+  `docs/spec/PRODUCT_INVARIANTS.md` `INV-SUP-002`). `resolve_supplier_for_send`
+  (`mail/repository.py`) falls back to the raw sender/recipient email as the
+  `suppliers.external_key` when no host is known at write time, so a supplier
+  discovered via search (host known) and the same real company replying from a
+  personal Gmail/Yandex/Mail.ru address end up as two separate `suppliers`
+  rows in the same workspace — the enrichment/registry data stays on the
+  first row while the actual conversation lives on the duplicate. Confirmed
+  live in the local database: 28 of 243 supplier rows (11.5%) carry this
+  exact signature (`external_key == email`); 12 of those are specifically
+  the personal-webmail-vs-company-domain case. Originally reported by the
+  owner as "поставщик не определён / карточка не открывается" for request
+  #1059 (`sfera.termo@yandex.ru`, suppliers.id 2837 vs 3315).
+- Not fixed this pass: investigation-and-documentation-only audit, explicit
+  owner instruction. A fix requires re-pointing `mail_threads`/`mail_messages`/
+  `request_supplier_states` from the duplicate onto the canonical row (or
+  vice versa) without losing either side's data — for the one pair checked,
+  no tasks/notes/contact-overrides exist on either row, but a general fix
+  must not assume that holds for all 28 pairs.
+
+## FINDING-039 — force_enrich_all_suppliers not merged, and unsafe as written
+
+- ID: `FINDING-039`
+- Severity: `MEDIUM` (docs/system/KNOWN_GAPS.md: `GAP-002`, `P2`)
+- Status: `OPEN`
+- Context: Full-system audit, 2026-09-17. The owner-only maintenance route
+  `/maintenance/force-enrich-all-suppliers` and its backing
+  `EnrichmentOrchestratorMixin.force_enrich_all_suppliers` method exist only
+  on branch `state/current-20260917-2119` (this session's git-snapshot
+  branch, commit `dcb0576`) — they were never merged into
+  `experiment/frontend-v2-greenfield-20260905` and are therefore not part of
+  the running application today. As written, the route is a **GET** (should
+  be POST — a GET that spends budget/mutates data is forgeable via a plain
+  `<img>` tag), has no CSRF check, no rate limit, and no per-call budget cap
+  (its sibling `refresh_bad_global_supplier_names` has `budget=10`; this one
+  has none) — worst case `2×N` live Checko calls in one synchronous HTTP
+  request for N suppliers with an existing ИНН, re-spent in full on every
+  call regardless of whether anything actually changed.
+- Not fixed this pass. If this feature is wanted, it should be rebuilt
+  following the existing durable step-queue pattern
+  (`supplier_enrichment_jobs`) instead of running to completion inline, and
+  converted to POST+CSRF+budget-capped before being merged anywhere near a
+  branch that deploys.
 
 ## FINDING-037 — needs_followup/contact-intelligence: disclosed scope boundaries and NOT VERIFIED items
 
