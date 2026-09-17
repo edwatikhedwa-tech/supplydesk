@@ -8,7 +8,7 @@ import { CopyButton } from '../components/ui/CopyButton';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { api } from '../lib/api';
-import { checkoUrl, companyAge, formatCompanyName, formatDateTime, formatMoney } from '../lib/format';
+import { checkoUrl, companyAge, formatCompanyName, formatDateTime, formatMoney, pluralRu } from '../lib/format';
 import type { BlacklistEntry, GlobalSupplierSummary } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
 
@@ -94,7 +94,11 @@ export function Blacklist() {
     <div className="flex h-full flex-col overflow-hidden">
       <PageHeader
         title="Чёрный список"
-        description={loading ? 'Загружаем…' : `${suppliers.length} поставщиков · ${domains.length} доменов`}
+        description={
+          loading
+            ? 'Загружаем…'
+            : `${suppliers.length} ${pluralRu(suppliers.length, 'поставщик', 'поставщика', 'поставщиков')} · ${domains.length} ${pluralRu(domains.length, 'домен', 'домена', 'доменов')}`
+        }
       />
 
       <div className="mx-6 mb-3 flex items-start gap-2 rounded-md border border-warning-border bg-warning-subtle px-3 py-2 text-[12px] text-warning">

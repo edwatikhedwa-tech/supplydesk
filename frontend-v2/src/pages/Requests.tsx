@@ -19,7 +19,7 @@ import { DeadlineTag } from '../components/ui/DeadlineTag';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { api } from '../lib/api';
-import { formatRelativeTime } from '../lib/format';
+import { formatRelativeTime, pluralRu } from '../lib/format';
 import { requestStatusMeta } from '../lib/statusMeta';
 import type { RequestListItem, RequestStatus } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
@@ -164,7 +164,11 @@ export function Requests() {
     <div className="flex h-full flex-col overflow-hidden">
       <PageHeader
         title="Заявки"
-        description={state.status === 'ready' ? `${requests.length} заявок в работе` : 'Загружаем заявки…'}
+        description={
+          state.status === 'ready'
+            ? `${requests.length} ${pluralRu(requests.length, 'заявка', 'заявки', 'заявок')} в работе`
+            : 'Загружаем заявки…'
+        }
         actions={
           <div className="flex items-center gap-2">
             <Button variant="secondary" icon={<FolderSearch size={14} />} onClick={() => setImportingTopic(true)}>

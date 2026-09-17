@@ -14,7 +14,6 @@ PAGE_HEADER = FRONTEND / "components" / "shell" / "PageHeader.tsx"
 STATUS_SELECT = FRONTEND / "components" / "ui" / "ConversationStatusSelect.tsx"
 CORE_PAGES = (
     "Dashboard.tsx",
-    "Calendar.tsx",
     "Requests.tsx",
     "Suppliers.tsx",
     "Messages.tsx",

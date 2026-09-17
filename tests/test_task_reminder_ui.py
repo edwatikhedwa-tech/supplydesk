@@ -29,12 +29,9 @@ class TaskReminderUiTests(unittest.TestCase):
         self.assertIn("Телефонные напоминания скоро будут доступны.", source)
         self.assertIn("Телефонный канал работает только как local mock: звонка не будет.", source)
 
-    def test_saved_reminder_is_visible_in_task_list_and_calendar(self) -> None:
+    def test_saved_reminder_is_visible_in_task_list(self) -> None:
         tasks = self.read("frontend-v2/src/components/TasksSection.tsx")
-        calendar = self.read("frontend-v2/src/pages/Calendar.tsx")
         self.assertIn("formatTaskReminder(t.reminders[0])", tasks)
-        self.assertIn("formatTaskReminder(task.reminders[0])", calendar)
-        self.assertIn("Напоминание:", calendar)
 
 
 if __name__ == "__main__":  # pragma: no cover

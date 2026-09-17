@@ -437,12 +437,14 @@ explicit and its manual collapse preference persists locally. The exact
   retaining date-only compatibility. Assignees can update content and status,
   but cannot reassign or delete a task they do not author. Desktop, 768px and
   390px forms rendered without horizontal overflow, so SUP-017 is `DONE`.
-  SUP-018 is `DONE`: the new `/calendar` route exposes month, week, agenda,
-  upcoming and today views over active dated tasks only. It uses no added
-  calendar dependency, keeps date-less tasks out of calendar events, and links
-  a calendar item back to the original task. Real owner data plus the empty
-  today state rendered at 1440, 768 and 390px; at every checked width,
-  `scrollWidth === clientWidth` and no inspected control exited the viewport.
+  SUP-018 was `DONE`: the `/calendar` route exposed month, week, agenda,
+  upcoming and today views over active dated tasks only. Superseded
+  2026-09-17: once the sidebar nav entry was removed (owner's explicit
+  instruction) and the Dashboard got its own real calendar widget
+  (`DashboardCalendar`, react-day-picker-based), nothing in the app linked to
+  `/calendar` any more. The owner asked for it to be deleted as dead code
+  rather than kept reachable only by typing the URL; the route and
+  `pages/Calendar.tsx` are removed.
   SUP-019 is `DONE`: migration 043 introduced provider-neutral in-app/email
   reminder persistence, edit/delete semantics and list/calendar presentation;
   it intentionally schedules no external delivery. SUP-020 is `DONE`:

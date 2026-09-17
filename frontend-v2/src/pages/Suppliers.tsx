@@ -9,7 +9,7 @@ import { CopyButton } from '../components/ui/CopyButton';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { api } from '../lib/api';
-import { now, checkoUrl, companyAge, formatCompanyName, formatMoney, formatPercent, formatRelativeTime } from '../lib/format';
+import { now, checkoUrl, companyAge, formatCompanyName, formatMoney, formatPercent, formatRelativeTime, pluralRu } from '../lib/format';
 import type { SupplierDirectoryItem, SupplierImportApplyResult, SupplierImportPreview, SupplierImportTargetField } from '../lib/types';
 import { useApiData } from '../lib/useApiData';
 
@@ -243,7 +243,7 @@ export function Suppliers() {
         title="Поставщики"
         description={
           state.status === 'ready'
-            ? `${suppliers.length} поставщиков · ${verifiedCount} с подтверждённым ИНН`
+            ? `${suppliers.length} ${pluralRu(suppliers.length, 'поставщик', 'поставщика', 'поставщиков')} · ${verifiedCount} с подтверждённым ИНН`
             : 'Загружаем поставщиков…'
         }
         actions={<button type="button" onClick={() => setImportOpen((open) => !open)} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border-strong bg-surface px-3 text-[12.5px] font-medium text-ink-soft hover:bg-surface-hover"><Upload size={14} /> Импорт CSV</button>}
