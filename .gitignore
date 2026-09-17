@@ -33,6 +33,7 @@ tmp/
 runtime/*.json
 runtime/*.log
 runtime/test-data/
+runtime/sessions/
 *.live-mail.lock
 .vercel
 .env*

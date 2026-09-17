@@ -699,6 +699,114 @@ class EnrichmentOrchestratorMixin:
             except Exception as exc:  # noqa: BLE001 — один сайт не должен ронять проход
                 log.warning("%s: поиск ИНН в реестре не выполнен: %s", host, exc)
 
+    def force_enrich_all_suppliers(self, workspace_id: int) -> dict[str, int]:
+        """Принудительно обогатить ВСЕХ поставщиков workspace через Checko.
+
+        Отличается от обычного enrichment тем, что:
+        1. Не пропускает поставщиков, у которых уже есть какие-то данные
+        2. Для каждого ИНН делает lookup в Checko и финансы (даже если registry уже есть)
+        3. Принудительно обновляет название компании именем из реестра
+        4. Пытается найти ИНН через реестр для поставщиков только с email
+
+        Owner-только, бюджет ~ (suppliers_with_inn * 2 + missing_inn * 6) запросов Checko.
+        """
+        if not os.getenv("CHECKO_KEY"):
+            return {"total": 0, "looked_up": 0, "updated": 0, "registry": 0, "finances": 0, "error": "CHECKO_KEY не настроен"}
+        try:
+            checko = CheckoClient()
+        except ValueError as exc:
+            return {"total": 0, "looked_up": 0, "updated": 0, "registry": 0, "finances": 0, "error": str(exc)}
+
+        all_suppliers = self.repository.list_all_suppliers_with_profiles(workspace_id)
+        if not all_suppliers:
+            return {"total": 0, "looked_up": 0, "updated": 0, "registry": 0, "finances": 0, "error": "Нет поставщиков"}
+
+        log.info("Принудительное обогащение: %d поставщиков workspace_id=%s", len(all_suppliers), workspace_id)
+
+        looked_up = 0
+        updated = 0
+        reg_updates = 0
+        fin_updates = 0
+
+        for supplier in all_suppliers:
+            host = str(supplier.get("external_key") or supplier.get("host") or "").strip().lower()
+            inn = str(supplier.get("inn") or "")
+            email = str(supplier.get("email") or "")
+
+            if not host:
+                continue
+
+            if inn and validate_inn_checksum(inn):
+                looked_up += 1
+                try:
+                    company = checko.lookup(inn)
+                    if company and company.found:
+                        reg_updates += 1
+                        finances = checko.finances(inn)
+                        if finances and finances.found:
+                            fin_updates += 1
+
+                        self.repository.apply_supplier_enrichment(
+                            workspace_id, host, inn=inn,
+                            company_name=(company.name_full or company.name),
+                            phone=(company.phones[0] if company.phones else ""),
+                            region=company.region, role=company.role,
+                            registry_ogrn=company.ogrn, registry_status=company.status,
+                            registry_active=company.active, registry_registered_at=company.registered,
+                            finance_report_year=(finances.report_year if finances and finances.found else None),
+                            finance_revenue=(finances.revenue if finances and finances.found else None),
+                            finance_profit=(finances.profit if finances and finances.found else None),
+                            finance_history=(finances.history if finances and finances.found else None),
+                            risks=company.risks,
+                        )
+                        updated += 1
+                        log.info("Обогащён %s (ИНН %s): %s", host, inn, (company.name_full or company.name)[:60])
+                    else:
+                        log.info("Checko не нашёл ИНН %s для %s: %s", inn, host, company.error if company else "неизвестно")
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("Checko lookup %s (ИНН %s): %s", host, inn, exc)
+                    continue
+
+            elif email:
+                try:
+                    resolved = resolve_inn_by_registry(host, checko, known_email=email)
+                    if resolved is not None:
+                        looked_up += 1
+                        company = checko.lookup(resolved.inn)
+                        if company and company.found:
+                            reg_updates += 1
+                            finances = checko.finances(resolved.inn)
+                            if finances and finances.found:
+                                fin_updates += 1
+                            self.repository.apply_supplier_enrichment(
+                                workspace_id, host, inn=resolved.inn, email=email,
+                                company_name=(company.name_full or company.name),
+                                phone=(company.phones[0] if company.phones else ""),
+                                region=company.region, role=company.role,
+                                registry_ogrn=company.ogrn, registry_status=company.status,
+                                registry_active=company.active, registry_registered_at=company.registered,
+                                finance_report_year=(finances.report_year if finances and finances.found else None),
+                                finance_revenue=(finances.revenue if finances and finances.found else None),
+                                finance_profit=(finances.profit if finances and finances.found else None),
+                                finance_history=(finances.history if finances and finances.found else None),
+                                risks=company.risks,
+                            )
+                            updated += 1
+                            log.info("Найден ИНН для %s через реестр: %s (%s)", host, resolved.inn, (company.name_full or company.name)[:60])
+                        else:
+                            log.info("Checko не подтвердил ИНН %s для %s", resolved.inn, host)
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("resolve_inn %s: %s", host, exc)
+                    continue
+
+        return {
+            "total": len(all_suppliers),
+            "looked_up": looked_up,
+            "updated": updated,
+            "registry": reg_updates,
+            "finances": fin_updates,
+        }
+
     def refresh_bad_global_supplier_names(self, workspace_id: int, *, budget: int = 10) -> dict[str, int]:
         """Re-resolve global-card names that still look like a raw SERP title.
 

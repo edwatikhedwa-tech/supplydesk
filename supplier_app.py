@@ -182,6 +182,15 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             if session:
                 self._json(200, {"items": self.app.repository.list_supplier_directory(session["workspace_id"])})
             return
+        if parsed.path == "/maintenance/force-enrich-all-suppliers":
+            session = self._require_session()
+            if session:
+                if not self.app.repository.is_workspace_owner(session["user_id"], session["workspace_id"]):
+                    self._json(403, {"error": "Обогащение может выполнить только владелец."})
+                    return
+                result = self.app.force_enrich_all_suppliers(session["workspace_id"])
+                self._json(200, {"ok": True, **result})
+            return
         if parsed.path.startswith("/api/global-suppliers/"):
             session = self._require_session()
             if session:
