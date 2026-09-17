@@ -1235,6 +1235,7 @@ export function Messages() {
               requestName={activeThread.request_name}
               supplierId={activeThread.supplier_id}
               globalSupplierId={activeThread.global_supplier_id}
+              supplierHost={activeThread.supplier_host}
               lastMessageAt={activeThread.last_message_at}
               onClose={() => setNotesOpen(false)}
               onNoteSaved={() => noteState.reload()}

@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Inbox, MessageSquareText, PauseCircle } from 'lucide-react';
+import { AlertTriangle, ArrowRight, History, Inbox, MessageSquareText, PauseCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardCalendar } from '../components/DashboardCalendar';
@@ -9,7 +9,8 @@ import { DeadlineTag } from '../components/ui/DeadlineTag';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState, LoadingState } from '../components/ui/ErrorState';
 import { api } from '../lib/api';
-import { now, daysFromToday, deadlineUrgency, formatCompanyName, formatRelativeTime } from '../lib/format';
+import { now, daysFromToday, deadlineUrgency, formatCompanyName, formatRelativeTime, pluralRu } from '../lib/format';
+import { requestStatusMeta } from '../lib/statusMeta';
 import { useReminders } from '../lib/RemindersContext';
 import { useApiData } from '../lib/useApiData';
 
@@ -94,14 +95,17 @@ export function Dashboard() {
     .sort((a, b) => new Date(a.updated_at ?? 0).getTime() - new Date(b.updated_at ?? 0).getTime());
 
   const chips = [
-    { label: 'Активных заявок', value: kpis.active_requests },
-    { label: 'Требуют внимания', value: kpis.attention, tone: kpis.attention > 0 },
-    { label: 'Новых ответов', value: kpis.new_replies, tone: kpis.new_replies > 0 },
-    { label: 'Без привязки', value: kpis.unmatched_mail, tone: kpis.unmatched_mail > 0 },
+    { label: pluralRu(kpis.active_requests, 'активная заявка', 'активные заявки', 'активных заявок'), value: kpis.active_requests },
+    { label: pluralRu(kpis.attention, 'требует внимания', 'требуют внимания', 'требуют внимания'), value: kpis.attention, tone: kpis.attention > 0 },
+    { label: pluralRu(kpis.new_replies, 'новый ответ', 'новых ответа', 'новых ответов'), value: kpis.new_replies, tone: kpis.new_replies > 0 },
   ];
   const showReplies = threadsState.status !== 'ready' || newReplies.length > 0;
   const showUnmatched = unmatchedState.status !== 'ready' || unmatched.length > 0;
   const hasAttentionContent = attentionRequests.length > 0 || staleRequests.length > 0 || showReplies || showUnmatched;
+
+  const recentRequests = [...requests]
+    .sort((a, b) => new Date(b.updated_at ?? b.created_at).getTime() - new Date(a.updated_at ?? a.created_at).getTime())
+    .slice(0, 5);
 
   const tasksReload = tasksState.reload;
 
@@ -116,6 +120,21 @@ export function Dashboard() {
             <span className="text-ink-muted">{c.label}</span>
           </div>
         ))}
+        {kpis.unmatched_mail > 0 ? (
+          <Link
+            to="/messages"
+            className="flex items-center gap-1.5 rounded-md border border-accent-border bg-accent-subtle px-2.5 py-1 text-[12px] font-medium text-accent transition-colors hover:bg-accent-subtle/70"
+          >
+            <span className="font-semibold tabular-nums">{kpis.unmatched_mail}</span>
+            <span>{pluralRu(kpis.unmatched_mail, 'письмо без привязки', 'письма без привязки', 'писем без привязки')} — разобрать</span>
+            <ArrowRight size={11} />
+          </Link>
+        ) : (
+          <div className="flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1 text-[12px]">
+            <span className="font-semibold tabular-nums text-ink-soft">0</span>
+            <span className="text-ink-muted">Без привязки</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-2">
@@ -202,6 +221,31 @@ export function Dashboard() {
             <section className="rounded-lg border border-border bg-surface">
               <EmptyState icon={AlertTriangle} title="Срочных дел и новых писем нет" />
             </section>
+          )}
+
+          {/* Always shown, unlike the sections above: when nothing needs
+           * urgent attention this is the only content in the left column,
+           * so it also keeps the column from trailing off into dead space
+           * next to the taller calendar+tasks column on the right. */}
+          {recentRequests.length > 0 && (
+            <SectionCard title="Недавняя активность" icon={History} count={recentRequests.length} viewAllTo="/requests">
+              {recentRequests.map((r) => {
+                const meta = requestStatusMeta[r.status];
+                return (
+                  <Row key={r.id}>
+                    <div className="min-w-0 flex-1">
+                      <Link to={`/requests/${r.id}`} className="block truncate text-[12.5px] font-medium text-ink hover:text-accent">
+                        {r.name}
+                      </Link>
+                      <p className="truncate text-[11.5px] text-ink-muted">
+                        {r.suppliers_count} поставщиков · обновлено {formatRelativeTime(r.updated_at ?? r.created_at)}
+                      </p>
+                    </div>
+                    <Badge tone={meta.tone}>{meta.label}</Badge>
+                  </Row>
+                );
+              })}
+            </SectionCard>
           )}
         </div>
 

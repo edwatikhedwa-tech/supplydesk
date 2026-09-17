@@ -1,4 +1,4 @@
-import { Check, ExternalLink, FileText, Loader2, Search, StickyNote, TriangleAlert, X } from 'lucide-react';
+import { Check, ExternalLink, FileText, Globe, Loader2, Search, StickyNote, TriangleAlert, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError, type ThreadNoteVisibility, type ThreadNotes } from '../lib/api';
@@ -22,6 +22,7 @@ export function SupplierCardPanel({
   requestName,
   supplierId,
   globalSupplierId,
+  supplierHost,
   lastMessageAt,
   onClose,
   onNoteSaved,
@@ -35,6 +36,11 @@ export function SupplierCardPanel({
   supplierId: number;
   /** Global картотека id -- null until this thread's supplier is confirmed/linked. */
   globalSupplierId: number | null;
+  /** The site this thread's supplier was found on -- known from the moment
+   * the thread exists, well before any ИНН lookup. Lets the "Найти по ИНН"
+   * dead-end (no card, no way out) still offer the one thing already known:
+   * a link to the company's own site. */
+  supplierHost?: string;
   lastMessageAt: string | null;
   onClose: () => void;
   onNoteSaved?: () => void;
@@ -272,6 +278,20 @@ export function SupplierCardPanel({
           </>
         ) : (
           <div className="p-3.5">
+            {supplierHost && (
+              <a
+                href={supplierHost.startsWith('http') ? supplierHost : `https://${supplierHost}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mb-3 flex items-center justify-between gap-2 rounded-md border border-border bg-canvas px-3 py-2 text-[12.5px] text-ink transition-colors hover:border-accent-border hover:bg-accent-subtle hover:text-accent"
+              >
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <Globe size={13} className="shrink-0 text-ink-faint" />
+                  <span className="truncate">{supplierHost}</span>
+                </span>
+                <ExternalLink size={12} className="shrink-0" />
+              </a>
+            )}
             <h2 className="mb-2 flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
               <Search size={13} />
               Найти по ИНН

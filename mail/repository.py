@@ -214,6 +214,27 @@ def _is_valid_company_inn(value: Any) -> bool:
         return False
 
 
+_BULK_SENDER_LOCAL_PARTS = frozenset(
+    {"hello", "welcome", "care", "content", "news", "newsletter", "newsletters", "marketing", "digest"}
+)
+
+
+def _is_bulk_sender(from_email: str | None) -> bool:
+    """A narrow, deliberately conservative newsletter/onboarding-mail heuristic.
+
+    Only used to keep the dashboard's "Письма без заявки" preview and count
+    from drowning in obvious bulk mail (book-club digests, "welcome to X"
+    onboarding notes) that is never a supplier reply. Excludes "no-reply@"/
+    "noreply@" on purpose: those addresses also carry real operational
+    alerts this app depends on (e.g. Checko's own "API balance is low"
+    notice), which must stay visible rather than be silently hidden.
+    Applies only to dashboard surfacing -- the full unmatched-inbox list
+    (Messages screen) is never filtered, so nothing is actually lost.
+    """
+    local_part = (from_email or "").strip().lower().split("@", 1)[0]
+    return local_part in _BULK_SENDER_LOCAL_PARTS
+
+
 def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
     """Attach both renderings of a message: sanitized HTML and a plain-text fallback.
 
@@ -970,10 +991,11 @@ class MailRepository(
             # это ответ, который система не смогла отнести к заявке, и он
             # требует действия человека. Без счётчика такое письмо тихо лежало
             # во вкладке «Без привязки», и его легко было не заметить.
-            unmatched = connection.execute(
-                "SELECT COUNT(*) FROM mail_inbox_messages WHERE workspace_id=? AND status='unmatched'",
+            unmatched_senders = connection.execute(
+                "SELECT from_email FROM mail_inbox_messages WHERE workspace_id=? AND status='unmatched'",
                 (workspace_id,),
-            ).fetchone()[0]
+            ).fetchall()
+            unmatched = sum(1 for row in unmatched_senders if not _is_bulk_sender(row["from_email"]))
         return {
             "kpis": {
                 "active_requests": active, "searching_requests": searching,
@@ -2573,6 +2595,11 @@ class MailRepository(
         нескольких карточек на дашборде.
         """
         limit = max(1, min(int(limit), 20))
+        # Fetch a wider window than requested: bulk senders get filtered out
+        # below, and without slack a page full of newsletters at the top of
+        # the inbox would starve this preview down to fewer than `limit`
+        # real items even though more exist just past the cutoff.
+        fetch_limit = min(limit * 4, 100)
         with self.connect() as connection:
             rows = connection.execute(
                 """SELECT id, from_email, subject, received_at,
@@ -2582,9 +2609,10 @@ class MailRepository(
                    FROM mail_inbox_messages
                    WHERE workspace_id=? AND status='unmatched'
                    ORDER BY received_at DESC, id DESC LIMIT ?""",
-                (workspace_id, limit),
+                (workspace_id, fetch_limit),
             ).fetchall()
-        return [{**dict(row), "unread": bool(row["unread"])} for row in rows]
+        filtered = [row for row in rows if not _is_bulk_sender(row["from_email"])]
+        return [{**dict(row), "unread": bool(row["unread"])} for row in filtered[:limit]]
 
     def list_unmatched_incoming(self, workspace_id: int, *, limit: int = 100) -> list[dict[str, Any]]:
         limit = max(1, min(int(limit), 500))
