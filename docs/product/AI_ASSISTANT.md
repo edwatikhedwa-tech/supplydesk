@@ -7,61 +7,71 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# AI Assistant
+# AI-ассистент
 
-## CURRENT (verified in code, 2026-09-17)
+## Текущее состояние (проверено по коду, 17.09.2026)
 
-**Real feature, not a mock.** Calls RouterAI (`https://routerai.ru/api/v1`, OpenAI-SDK-compatible)
-via `backend/integrations/llm/routerai_client.py`. `ROUTERAI_CHAT_KEY` env var; if unset,
-`send_message` returns a real "not configured" status rather than a fake answer.
+**Реальная функция, не заглушка.** Обращается к RouterAI
+(`https://routerai.ru/api/v1`, совместим по API с OpenAI SDK) через
+`backend/integrations/llm/routerai_client.py`. Переменная окружения `ROUTERAI_CHAT_KEY`; если
+не задана, `send_message` возвращает честный статус «не настроено», а не выдуманный ответ.
 
-**Route:** `POST /api/ai/chat` → `backend/domain/ai_agent/chat_service.py::AiChatService`.
+**Маршрут:** `POST /api/ai/chat` → `backend/domain/ai_agent/chat_service.py::AiChatService`.
 
-**Context assembly** (`chat_service._build_context`):
-- Frontend sends `thread_ids` (the active thread plus any user-picked extras).
-- Extras are UX-filtered client-side to threads with `threadResponseStatus === 'answered'` —
-  but this is presentation only.
-- **The real security/correctness boundary is server-side**: every thread id is re-validated via
-  `get_thread_owned(workspace_id, request_id, thread_id)`, which silently drops anything that
-  doesn't actually belong to this workspace+request. A forged or stale thread id cannot smuggle
-  another workspace's data in.
-- Per surviving thread: supplier name/email + up to 10 most-recent *communication* messages
-  (inbound, or outbound past a transport marker — failed pre-send attempts excluded), each
-  trimmed to 4500 chars (head+tail kept). Whole context hard-capped at 40,000 chars.
-- Daily spend cap (`ai_chat_usage`, default 10₽/workspace/user/day) checked **before** calling
-  the model; over the cap returns `status="limit_reached"` without spending a token.
+**Сборка контекста** (`chat_service._build_context`):
+- Frontend отправляет `thread_ids` (текущая переписка плюс любые дополнительные, выбранные
+  пользователем).
+- Дополнительные переписки на клиенте отфильтрованы до тех, где
+  `threadResponseStatus === 'answered'` («есть ответ») — но это только оформление интерфейса.
+- **Настоящая граница безопасности и корректности — на сервере**: каждый id переписки заново
+  проверяется через `get_thread_owned(workspace_id, request_id, thread_id)`, который молча
+  отбрасывает всё, что реально не принадлежит этому рабочему пространству и заявке. Подделанный
+  или устаревший id не может протащить чужие данные.
+- Для каждой подтверждённой переписки: имя/email поставщика + до 10 последних сообщений
+  *реальной коммуникации* (входящие, либо исходящие после отметки о фактической отправке —
+  неудавшиеся попытки отправки исключены), каждое обрезано до 4500 символов (сохраняются начало
+  и конец). Весь контекст жёстко ограничен 40 000 символами.
+- Дневной лимит расходов (`ai_chat_usage`, по умолчанию 10₽ на пользователя рабочего
+  пространства в день) проверяется **до** вызова модели; при превышении возвращается статус
+  `limit_reached` без единого потраченного токена.
 
-## The historical "all suppliers leak into context" bug — VERIFIED FIXED
+## Историческая проблема «в контекст попадают все поставщики заявки» — ПОДТВЕРЖДЕНО ИСПРАВЛЕНА
 
-The exact concern named in the audit brief ("раньше в AI могли попадать все поставщики заявки
-вместо поставщиков, с которыми была коммуникация") is a real, documented, already-fixed bug —
-**not a currently-active one**:
+Именно та проблема, которая упоминалась в задании на аудит («раньше в AI могли попадать все
+поставщики заявки вместо поставщиков, с которыми была коммуникация»), — это реальная,
+задокументированная и **уже исправленная** проблема, а не действующая сейчас:
 
-- Commit `0d16945` (2026-09-10): *"siblingThreads and the per-thread 'add to AI context'
-  checkbox now require `messages_count > 0` — a supplier merely matched/found for a request,
-  never actually emailed, must never appear as an AI-context source."*
-- Current frontend filter is stricter still: only *replied* threads (`'answered'`) are offered as
-  extra context, not merely emailed ones.
-- Backend enforcement doesn't depend on the frontend at all: a `mail_threads` row only exists
-  once real communication occurred (`list_threads`'s `_communication_message_predicate`), so a
-  supplier merely linked to a request but never emailed has no thread to leak in the first place.
+- Коммит `0d16945` (10.09.2026): «siblingThreads и чекбокс "добавить в AI-контекст" для каждой
+  переписки теперь требуют `messages_count > 0` — поставщик, просто найденный/сопоставленный с
+  заявкой, но которому реально никогда не писали, никогда не должен становиться источником
+  AI-контекста».
+- Текущий фильтр на фронтенде даже строже: в качестве дополнительного контекста предлагаются
+  только переписки, где *уже есть ответ* (`'answered'`), а не просто те, кому отправили письмо.
+- Проверка на backend не зависит от фронтенда вообще: запись в `mail_threads` появляется только
+  после реальной коммуникации (`_communication_message_predicate` в `list_threads`), поэтому у
+  поставщика, просто привязанного к заявке, но без единого письма, попросту нет переписки,
+  которая могла бы «утечь» в контекст.
 
-**CURRENT = EXPECTED here.** No gap to record for this specific concern.
+**Текущее поведение здесь = ожидаемое поведение.** По этой конкретной проблеме исправлять
+нечего.
 
-## Gaps found (not the one asked about, but real)
+## Найденные пробелы (не тот, о котором спрашивали, но реальные)
 
-- `GAP-013` (P3): the 40,000-char context budget is a blunt suffix cut of the whole assembled
-  string — could drop the most-recently-added supplier's messages rather than budgeting per
-  supplier. The inbox-conversation-mode path (single unmatched-mail thread, not request-scoped)
-  has no message-count cap at all, only per-message char trimming.
-- No per-minute/burst rate limit — only the cumulative daily ruble cap. A user could still burst
-  many calls quickly until the cap trips.
-- Character-based, not token-based, budgeting — a token-dense script (non-Latin text, code,
-  tables) could produce a larger real token count than the char budget assumes.
+- `GAP-013` (P3): ограничение контекста в 40 000 символов — это грубая обрезка всей собранной
+  строки с конца, что может отрезать сообщения самого недавно добавленного (часто самого
+  релевантного) поставщика, вместо распределения бюджета по каждому поставщику отдельно. У
+  режима «переписка из папки непривязанных писем» (не привязанная к заявке) вообще нет
+  ограничения по числу сообщений — только обрезка каждого отдельного сообщения по символам.
+- Нет ограничения по частоте запросов (в минуту/пакетами) — есть только суммарный дневной лимит
+  в рублях. Пользователь всё ещё может сделать много запросов подряд быстро, пока не упрётся в
+  дневной лимит.
+- Ограничение по символам, а не по токенам — текст с высокой «плотностью» токенов (не
+  латиница, код, таблицы) может дать реальное число токенов больше, чем предполагает лимит по
+  символам.
 
-## Product invariant
+## Инвариант продукта
 
-`INV-AI-001` (see [`../spec/PRODUCT_INVARIANTS.md`](../spec/PRODUCT_INVARIANTS.md)): a supplier
-must never enter AI context solely because it is linked to a request — only because real
-communication (a `mail_threads` row backed by an actual message) exists. **Status: HELD**,
-verified by both the frontend filter and the server-side `get_thread_owned` boundary.
+`INV-AI-001` (см. [`../spec/PRODUCT_INVARIANTS.md`](../spec/PRODUCT_INVARIANTS.md)): поставщик
+никогда не должен попадать в AI-контекст только потому, что он привязан к заявке — только из-за
+реальной коммуникации (запись в `mail_threads`, подкреплённая реальным сообщением). **Статус:
+СОБЛЮДАЕТСЯ**, подтверждено и клиентским фильтром, и серверной проверкой `get_thread_owned`.

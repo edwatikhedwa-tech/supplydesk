@@ -13,54 +13,57 @@ Only unresolved, accepted-risk, or explicitly superseded findings belong in
 this current register. Resolved findings and full chronology are preserved in
 [`ai/history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md`](history/2026/09/DEFERRED_FINDINGS-CHRONICLE-20260901.md).
 
-## FINDING-038 — Live supplier-identity duplication via email-degraded external_key
+## FINDING-038 — Живое дублирование идентичности поставщика через деградацию external_key до email
 
 - ID: `FINDING-038`
-- Severity: `HIGH` (docs/system/KNOWN_GAPS.md: `GAP-003`, `P0`)
-- Status: `OPEN`
-- Context: Full-system audit, 2026-09-17 (`docs/product/SUPPLIERS.md`,
+- Критичность: `ВЫСОКАЯ` (`docs/system/KNOWN_GAPS.md`: `GAP-003`, приоритет `P0`)
+- Статус: `ОТКРЫТО`
+- Контекст: полный аудит системы, 17.09.2026 (`docs/product/SUPPLIERS.md`,
   `docs/spec/PRODUCT_INVARIANTS.md` `INV-SUP-002`). `resolve_supplier_for_send`
-  (`mail/repository.py`) falls back to the raw sender/recipient email as the
-  `suppliers.external_key` when no host is known at write time, so a supplier
-  discovered via search (host known) and the same real company replying from a
-  personal Gmail/Yandex/Mail.ru address end up as two separate `suppliers`
-  rows in the same workspace — the enrichment/registry data stays on the
-  first row while the actual conversation lives on the duplicate. Confirmed
-  live in the local database: 28 of 243 supplier rows (11.5%) carry this
-  exact signature (`external_key == email`); 12 of those are specifically
-  the personal-webmail-vs-company-domain case. Originally reported by the
-  owner as "поставщик не определён / карточка не открывается" for request
-  #1059 (`sfera.termo@yandex.ru`, suppliers.id 2837 vs 3315).
-- Not fixed this pass: investigation-and-documentation-only audit, explicit
-  owner instruction. A fix requires re-pointing `mail_threads`/`mail_messages`/
-  `request_supplier_states` from the duplicate onto the canonical row (or
-  vice versa) without losing either side's data — for the one pair checked,
-  no tasks/notes/contact-overrides exist on either row, but a general fix
-  must not assume that holds for all 28 pairs.
+  (`mail/repository.py`) откатывается на сырой email отправителя/получателя как
+  `suppliers.external_key`, когда хост неизвестен на момент записи — поэтому
+  поставщик, найденный поиском (хост известен), и та же реальная компания,
+  ответившая с личного адреса Gmail/Яндекс/Mail.ru, оказываются двумя разными
+  записями `suppliers` в одном рабочем пространстве: данные обогащения/реестра
+  остаются на первой записи, а реальная переписка живёт на дубликате.
+  Подтверждено на живой локальной базе данных: 28 из 243 записей поставщиков
+  (11.5%) несут этот точный признак (`external_key == email`); 12 из них — это
+  именно случай «личная почта против домена компании». Изначально сообщено
+  владельцем как «поставщик не определён / карточка не открывается» для
+  заявки №1059 (`sfera.termo@yandex.ru`, suppliers.id 2837 против 3315).
+- Не исправлено в этом проходе: аудит был явно только исследованием и
+  документированием, по прямому указанию владельца. Исправление потребует
+  перенаправить `mail_threads`/`mail_messages`/`request_supplier_states` с
+  дубликата на каноническую запись (или наоборот), не потеряв данные ни с
+  одной из сторон — для проверенной пары задач/заметок/переопределений
+  контактов не найдено ни у одной из двух записей, но общее исправление не
+  должно считать, что это верно для всех 28 пар.
 
-## FINDING-039 — force_enrich_all_suppliers not merged, and unsafe as written
+## FINDING-039 — force_enrich_all_suppliers не влит в рабочую ветку и небезопасен в текущем виде
 
 - ID: `FINDING-039`
-- Severity: `MEDIUM` (docs/system/KNOWN_GAPS.md: `GAP-002`, `P2`)
-- Status: `OPEN`
-- Context: Full-system audit, 2026-09-17. The owner-only maintenance route
-  `/maintenance/force-enrich-all-suppliers` and its backing
-  `EnrichmentOrchestratorMixin.force_enrich_all_suppliers` method exist only
-  on branch `state/current-20260917-2119` (this session's git-snapshot
-  branch, commit `dcb0576`) — they were never merged into
-  `experiment/frontend-v2-greenfield-20260905` and are therefore not part of
-  the running application today. As written, the route is a **GET** (should
-  be POST — a GET that spends budget/mutates data is forgeable via a plain
-  `<img>` tag), has no CSRF check, no rate limit, and no per-call budget cap
-  (its sibling `refresh_bad_global_supplier_names` has `budget=10`; this one
-  has none) — worst case `2×N` live Checko calls in one synchronous HTTP
-  request for N suppliers with an existing ИНН, re-spent in full on every
-  call regardless of whether anything actually changed.
-- Not fixed this pass. If this feature is wanted, it should be rebuilt
-  following the existing durable step-queue pattern
-  (`supplier_enrichment_jobs`) instead of running to completion inline, and
-  converted to POST+CSRF+budget-capped before being merged anywhere near a
-  branch that deploys.
+- Критичность: `СРЕДНЯЯ` (`docs/system/KNOWN_GAPS.md`: `GAP-002`, приоритет `P2`)
+- Статус: `ОТКРЫТО`
+- Контекст: полный аудит системы, 17.09.2026. Служебный (только для владельца)
+  маршрут `/maintenance/force-enrich-all-suppliers` и его метод
+  `EnrichmentOrchestratorMixin.force_enrich_all_suppliers` существуют только
+  на ветке `state/current-20260917-2119` (git-снапшот этой сессии, коммит
+  `dcb0576`) — они никогда не были влиты в
+  `experiment/frontend-v2-greenfield-20260905` и поэтому сегодня не являются
+  частью работающего приложения. Как написан, маршрут — это **GET**-запрос
+  (должен быть POST — GET, который тратит бюджет/меняет данные, можно
+  подделать через обычный тег `<img>`), без проверки CSRF, без ограничения
+  частоты запросов и без лимита на один вызов (у похожего метода
+  `refresh_bad_global_supplier_names` есть `budget=10`; у этого — нет) —
+  в худшем случае `2×N` реальных запросов к Checko за один синхронный
+  HTTP-запрос при N поставщиках с уже известным ИНН, и это будет полностью
+  повторяться при каждом вызове независимо от того, изменилось ли что-то на
+  самом деле.
+- Не исправлено в этом проходе. Если эта функция нужна, её стоит
+  пересобрать по образцу уже существующего устойчивого пошагового механизма
+  очереди (`supplier_enrichment_jobs`) вместо выполнения целиком внутри
+  одного запроса, и перевести на POST+CSRF+лимит бюджета до того, как она
+  будет влита в ветку, с которой идёт деплой.
 
 ## FINDING-037 — needs_followup/contact-intelligence: disclosed scope boundaries and NOT VERIFIED items
 

@@ -7,164 +7,167 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# Database Map
+# Карта базы данных
 
-Final schema state after all 53 migration files (`migrations/001_mail_integration.sql` through
-`migrations/052_task_reminder_delivery.sql`), reconstructed by reading every migration — not
-migration history, the resulting table set. Supersedes `docs/data/README.md`, which is a
-directory-purpose stub with no table content at all (not stale exactly — it simply never had
-this content).
+Итоговая схема после всех 53 файлов миграций (`migrations/001_mail_integration.sql` —
+`migrations/052_task_reminder_delivery.sql`), восстановлена чтением всех миграций — это не
+история миграций, а результирующий набор таблиц. Заменяет `docs/data/README.md`, который
+является заглушкой про назначение каталога без реального содержания схемы.
 
-**Known migration-numbering issue:** two files both claim `026` (`026_mail_account_profiles.sql`
-and `026_request_email_send_guards.sql`). Both apply (alphabetical glob order), both are
-idempotent, neither is broken — flagged as `GAP-012`.
+**Известная проблема нумерации миграций:** два файла претендуют на номер `026`
+(`026_mail_account_profiles.sql` и `026_request_email_send_guards.sql`). Оба применяются
+(порядок по алфавиту), оба идемпотентны, ничего не сломано — отмечено как `GAP-012`.
 
-## Runtime: SQLite (dev) vs Postgres (production)
+## Среда выполнения: SQLite (разработка) vs Postgres (прод)
 
-Confirmed: production sets `DATABASE_URL` → `mail/repository.py` connects via `psycopg`
-(Postgres); local dev has no `DATABASE_URL` → SQLite file at `mail-data/supplier.sqlite3`.
-`mail/db_compat.py` translates the SQLite-dialect SQL the repository is written in (row factory,
-`BEGIN IMMEDIATE`→`BEGIN`, `last_insert_rowid()`→`LASTVAL()`, `COLLATE NOCASE`→`LOWER()`,
-`INSERT OR IGNORE`→`ON CONFLICT DO NOTHING`). This layer has already caused two real production
-incidents this session (a SQLite-only migration guard, and the `COLLATE NOCASE` crash) — both
-fixed, both were latent since the day they were written because Postgres had never actually been
-exercised with a real `CHECKO_KEY` before. `vercel.json` excludes `*.db`/`*.sqlite3` from the
-deployed bundle, consistent with Postgres being the only viable production store.
+Подтверждено: на проде задаётся `DATABASE_URL` → `mail/repository.py` подключается через
+`psycopg` (Postgres); локально `DATABASE_URL` не задана → используется файл SQLite
+`mail-data/supplier.sqlite3`. `mail/db_compat.py` переводит SQL, написанный в диалекте SQLite, на
+диалект Postgres (фабрика строк, `BEGIN IMMEDIATE`→`BEGIN`, `last_insert_rowid()`→`LASTVAL()`,
+`COLLATE NOCASE`→`LOWER()`, `INSERT OR IGNORE`→`ON CONFLICT DO NOTHING`). Этот слой уже вызвал
+два реальных инцидента на проде в этой сессии (guard миграции, работавший только для SQLite, и
+падение на `COLLATE NOCASE`) — оба исправлены, и оба были скрытой проблемой с самого дня
+написания кода, потому что Postgres ни разу по-настоящему не нагружался реальными данными до
+того, как на нём настроили `CHECKO_KEY`. `vercel.json` исключает `*.db`/`*.sqlite3` из
+задеплоенной сборки — это согласуется с тем, что Postgres является единственным реальным
+хранилищем на проде.
 
-## Auth / workspace
+## Авторизация / рабочее пространство
 
-| Table | Introduced | Purpose |
+| Таблица | Введена в | Назначение |
 |---|---|---|
-| `users`, `workspaces`, `workspace_members`, `sessions` | 001 | Core identity |
-| `oauth_states` | 001 | OAuth CSRF-state tracking |
-| `oauth_login_states` | 005 | Login-specific OAuth state |
+| `users`, `workspaces`, `workspace_members`, `sessions` | 001 | Базовая идентичность |
+| `oauth_states` | 001 | Отслеживание CSRF-состояния OAuth |
+| `oauth_login_states` | 005 | Состояние OAuth конкретно для входа |
 
-## Requests / dashboard
+## Заявки / дашборд
 
-| Table | Introduced | Purpose |
+| Таблица | Введена в | Назначение |
 |---|---|---|
-| `requests` | 001 | The заявка itself |
-| `request_meta` | 002 | Status/progress/error |
-| `request_positions` | 002 | Line items |
-| `request_details` | 012 | Deadline |
-| `request_search_jobs` | 017 | Durable lease/claim search queue |
-| `request_search_options` | 018 | **Legacy, superseded but still read** (LEFT JOIN alongside its successor) |
-| `request_search_config` | 020 | Current search-depth config |
-| `request_email_references` | 048 | Public `SD-xxxx` email reference marker |
-| `request_followup_settings` | 051 | Per-request SLA override |
+| `requests` | 001 | Сама заявка |
+| `request_meta` | 002 | Статус/прогресс/ошибка |
+| `request_positions` | 002 | Позиции (товарные строки) |
+| `request_details` | 012 | Дедлайн |
+| `request_search_jobs` | 017 | Устойчивая очередь поиска с lease/claim |
+| `request_search_options` | 018 | **Устарела, заменена, но всё ещё читается** (LEFT JOIN вместе с преемником) |
+| `request_search_config` | 020 | Текущая настройка глубины поиска |
+| `request_email_references` | 048 | Публичный идентификатор письма вида `SD-xxxx` |
+| `request_followup_settings` | 051 | Переопределение SLA follow-up для конкретной заявки |
 
-## Suppliers — workspace-scoped identity
+## Поставщики — идентичность в рамках workspace
 
-| Table | Introduced | Purpose |
+| Таблица | Введена в | Назначение |
 |---|---|---|
-| `suppliers` | 001 | Host/crawl identity, key `(workspace_id, external_key)` |
-| `supplier_profiles` | 002 | ИНН/enrichment profile |
-| `request_suppliers` | 002 | Request↔supplier match (positions, source, reason) |
-| `blacklist_entries` | 002 | Per-workspace blacklist |
-| `supplier_evidence` | 019 | Field-level evidence graph (currently only used for ИНН candidates) |
-| `supplier_enrichment_jobs` | 019 | Durable per-stage retry queue |
-| `supplier_inn_sources` | 021 | ИНН provenance |
+| `suppliers` | 001 | Идентичность по хосту/краулингу, ключ `(workspace_id, external_key)` |
+| `supplier_profiles` | 002 | Профиль ИНН/обогащения |
+| `request_suppliers` | 002 | Совпадение заявка↔поставщик (позиции, источник, причина) |
+| `blacklist_entries` | 002 | Чёрный список в рамках workspace |
+| `supplier_evidence` | 019 | Граф доказательств на уровне полей (сейчас применяется только к кандидатам ИНН) |
+| `supplier_enrichment_jobs` | 019 | Устойчивая очередь повторных попыток обогащения |
+| `supplier_inn_sources` | 021 | Происхождение ИНН |
 
-## Suppliers — global card (ИНН-deduped, still workspace-scoped)
+## Поставщики — карточка компании (дедупликация по ИНН, всё ещё в рамках workspace)
 
-| Table | Introduced | Purpose |
+| Таблица | Введена в | Назначение |
 |---|---|---|
-| `global_suppliers` | 007 | ИНН-unique company card, `UNIQUE(workspace_id, inn)` |
-| `global_supplier_links` | 007 | 1:1 `suppliers.id` → `global_suppliers.id` |
-| `global_supplier_issues`, `request_supplier_ratings` | 007 | User feedback |
-| `global_supplier_registry` | 008 | Registry facts (ОГРН, status, active, registered_at) |
-| `global_supplier_finances` | 009 | Latest-year finance |
-| `global_supplier_finance_history` | 014 | Historical finance |
-| `global_supplier_risks` | 015 | Registry risk flags |
-| `global_supplier_blacklist` | 010 | Global-card blacklist state |
+| `global_suppliers` | 007 | Карточка компании, уникальна по ИНН, `UNIQUE(workspace_id, inn)` |
+| `global_supplier_links` | 007 | Связь 1:1 `suppliers.id` → `global_suppliers.id` |
+| `global_supplier_issues`, `request_supplier_ratings` | 007 | Обратная связь пользователя |
+| `global_supplier_registry` | 008 | Факты из реестра (ОГРН, статус, активность, дата регистрации) |
+| `global_supplier_finances` | 009 | Финансы за последний год |
+| `global_supplier_finance_history` | 014 | История финансов |
+| `global_supplier_risks` | 015 | Реестровые риск-флаги |
+| `global_supplier_blacklist` | 010 | Статус чёрного списка на уровне карточки компании |
 
-## Suppliers — cross-tenant canonical (no `workspace_id`)
+## Поставщики — кросс-tenant слой (без `workspace_id`)
 
-| Table | Introduced | Purpose |
+| Таблица | Введена в | Назначение |
 |---|---|---|
-| `canonical_companies` | 038 | ИНН-unique public facts, shared across all workspaces (DECISION-022) |
-| `canonical_company_finance_history`, `canonical_company_risks` | 038 | Shared history/risk |
-| `canonical_company_contacts` | 051 | Company email directory with assignment/status |
-| `canonical_company_contact_signals` | 051 | Append-only trust signals (`workspace_confirmed`, `inbound_reply`, `official_source`, bounces) |
-| `canonical_company_contact_promotions` | 051 | Append-only audit of preferred-status changes |
+| `canonical_companies` | 038 | Публичные факты, уникально по ИНН, общие для всех рабочих пространств (DECISION-022) |
+| `canonical_company_finance_history`, `canonical_company_risks` | 038 | Общая история/риски |
+| `canonical_company_contacts` | 051 | Справочник email компании с назначением/статусом |
+| `canonical_company_contact_signals` | 051 | Накопительные сигналы доверия (`workspace_confirmed`, `inbound_reply`, `official_source`, отказы доставки) |
+| `canonical_company_contact_promotions` | 051 | Накопительный журнал изменений «предпочтительного» статуса |
 
-## Suppliers — workspace-private contact/classification layer
+## Поставщики — приватный слой контактов/классификаций workspace
 
-| Table | Introduced | Purpose |
+| Таблица | Введена в | Назначение |
 |---|---|---|
-| `workspace_supplier_contacts` | 045 | Manual contact persons, private/workspace visibility |
-| `workspace_supplier_classifications` | 046 | Manual/registry/AI category labels, provenance kept distinct |
-| `workspace_supplier_contact_events` | 051 | "Связаться" call-result history |
-| `workspace_supplier_contact_overrides` | 051 | Workspace-preferred email override, append-only (superseded, not deleted) |
+| `workspace_supplier_contacts` | 045 | Вручную добавленные контактные лица, видимость приватная/для команды |
+| `workspace_supplier_classifications` | 046 | Метки категорий вручную/из реестра/от AI, происхождение хранится отдельно |
+| `workspace_supplier_contact_events` | 051 | История результатов действия «Связаться» |
+| `workspace_supplier_contact_overrides` | 051 | Предпочтительный email на уровне workspace, накопительная запись (не удаляется, заменяется) |
 
-## Mail transport
+## Почта — транспорт
 
-`mail_accounts`(001) · `mail_threads`(001, unique `(workspace_id, request_id, supplier_id)`) ·
-`mail_messages`(001) · `mail_attachments`(001) · `mail_jobs`(001) ·
-`request_supplier_states`(001, per-request/supplier **delivery status**, distinct from
-`request_suppliers`'s match metadata) · `mail_sync_states`(003) · `mail_inbox_messages`(004,
-unmatched inbound, no request/supplier FK) · `mail_inbox_threads`/`mail_inbox_replies`(006) ·
-`mail_message_reads`/`mail_inbox_message_reads`(011/032) · `mail_inbox_request_links`(031,
-manual-link resolution) · `mail_account_profiles`(026, `+sent_sync_enabled` added by 050) ·
+`mail_accounts`(001) · `mail_threads`(001, уникальность `(workspace_id, request_id,
+supplier_id)`) · `mail_messages`(001) · `mail_attachments`(001) · `mail_jobs`(001) ·
+`request_supplier_states`(001, **статус доставки** по паре заявка/поставщик, отдельно от
+метаданных совпадения в `request_suppliers`) · `mail_sync_states`(003) ·
+`mail_inbox_messages`(004, непривязанные входящие, без связи с заявкой/поставщиком) ·
+`mail_inbox_threads`/`mail_inbox_replies`(006) · `mail_message_reads`/
+`mail_inbox_message_reads`(011/032) · `mail_inbox_request_links`(031, результат ручной
+привязки) · `mail_account_profiles`(026, `+sent_sync_enabled` добавлено в 050) ·
 `mail_folder_sync_states`(049) · `mail_sent_messages`(049).
 
-## Mail outgoing integrity / pacing / campaigns
+## Почта — целостность отправки / пейсинг / рассылки
 
 `mail_send_operations`/`_targets`(022) · `mail_job_integrity`/`mail_message_integrity`/
 `mail_reply_integrity`(022) · `mail_delivery_resolutions`(022) · `mail_runtime_controls`(022) ·
 `mail_request_email_guards`(026) · `mail_account_outbound_state`/`mail_send_reservations`/
 `mail_send_attempts`(023) · `mail_send_attempt_evidence`(025) · `mail_campaigns`/
-`mail_campaign_targets`(024, **backing the campaign monitor page that has no v2 UI — GAP-001**) ·
-`mail_database_identity`/`mail_runtime_sessions`/`mail_send_attempt_runtime`(027) ·
-`mail_reconciled_outbound_events`(028) · `mail_continuation_plans`(029) ·
-`mail_cross_provider_retries`(030).
+`mail_campaign_targets`(024, **обслуживают страницу мониторинга рассылок, у которой нет
+интерфейса в v2 — GAP-001**) · `mail_database_identity`/`mail_runtime_sessions`/
+`mail_send_attempt_runtime`(027) · `mail_reconciled_outbound_events`(028) ·
+`mail_continuation_plans`(029) · `mail_cross_provider_retries`(030).
 
-## Mail UI metadata
+## Почта — метаданные интерфейса
 
-`mail_thread_user_metadata`(034) · `mail_thread_notes`(035, per-user) ·
-`mail_thread_workspace_notes`(041, shared) · `mail_thread_status`(039, the `conversation_status`
-label) · `workspace_mail_templates`/`_attachments`(020).
+`mail_thread_user_metadata`(034) · `mail_thread_notes`(035, персональные) ·
+`mail_thread_workspace_notes`(041, общие для команды) · `mail_thread_status`(039, метка
+`conversation_status`) · `workspace_mail_templates`/`_attachments`(020).
 
-## Tasks
+## Задачи
 
-`tasks`(037) · `task_details`(042) · `task_reminders`(043, rebuilt by 044/052) ·
-`user_notification_settings`(052). **`tasks.supplier_id` FK points to `global_suppliers(id)`,
-not `suppliers(id)`** — an easy misread worth calling out explicitly.
+`tasks`(037) · `task_details`(042) · `task_reminders`(043, пересобрана миграциями 044/052) ·
+`user_notification_settings`(052). **Внешний ключ `tasks.supplier_id` указывает на
+`global_suppliers(id)`, а не на `suppliers(id)`** — легко ошибиться при чтении кода, стоит
+запомнить отдельно.
 
-## AI / Logistics / Misc
+## AI / Логистика / Прочее
 
 `ai_chat_usage`(036) · `ai_conversations`/`ai_messages`(040) · `logistics_quotes`(033) ·
 `audit_events`(002) · `search_result_sources`(013) · `support_conversations`/
 `support_messages`(047).
 
-## Postgres-only DDL
+## DDL только для Postgres
 
-`016_finance_bigint.sql` widens finance columns to BIGINT — skipped on SQLite via an explicit
-`-- postgres-only` marker `ensure_schema()` checks for.
+`016_finance_bigint.sql` расширяет финансовые колонки до BIGINT — пропускается на SQLite по
+явной метке `-- postgres-only`, которую проверяет `ensure_schema()`.
 
-## Key relationships to remember
+## Ключевые связи, которые важно помнить
 
-- `suppliers` →(1:1 via `global_supplier_links`)→ `global_suppliers`. A `suppliers` row belongs
-  to at most one global card.
-- `global_suppliers` ↔ `canonical_companies`: **no FK** — joined implicitly by matching `inn`
-  value only.
-- `request_suppliers` (match metadata: positions, source, reason) vs `request_supplier_states`
-  (delivery status, `last_message_id`) — two different concerns on the same composite key,
-  deliberately split since migration 001 vs 002.
-- `mail_inbox_messages` has no request/supplier FK by definition (that's what "unmatched" means)
-  — linked later via `mail_inbox_request_links`.
-- `workspace_supplier_contacts`/`_classifications`/`_contact_overrides` key off
-  `global_supplier_id` (workspace-private); `canonical_company_contacts` keys off
-  `canonical_company_id` (cross-tenant) — parallel, not FK-linked. See
-  `docs/domain/SUPPLIER_MODEL.md` §6-7 for the full boundary rationale.
+- `suppliers` →(1:1 через `global_supplier_links`)→ `global_suppliers`. Одна запись `suppliers`
+  принадлежит максимум одной карточке компании.
+- `global_suppliers` ↔ `canonical_companies`: **внешнего ключа нет** — связь только по
+  совпадению значения `inn`.
+- `request_suppliers` (метаданные совпадения: позиции, источник, причина) vs
+  `request_supplier_states` (статус доставки, `last_message_id`) — два разных смысла на одном и
+  том же составном ключе, специально разделены ещё с миграций 001/002.
+- У `mail_inbox_messages` по определению нет внешнего ключа на заявку/поставщика (это и значит
+  «непривязанное») — связывается позже через `mail_inbox_request_links`.
+- `workspace_supplier_contacts`/`_classifications`/`_contact_overrides` используют
+  `global_supplier_id` (приватный слой workspace); `canonical_company_contacts` использует
+  `canonical_company_id` (кросс-tenant слой) — эти два слоя существуют параллельно, без внешнего
+  ключа между собой. Полное обоснование границы — `docs/domain/SUPPLIER_MODEL.md` §6-7.
 
-## Orphan check
+## Проверка на «осиротевшие» таблицы
 
-Spot-checked less-obvious tables (`audit_events`, `request_supplier_ratings`,
+Проверены выборочно менее очевидные таблицы (`audit_events`, `request_supplier_ratings`,
 `mail_thread_workspace_notes`, `global_supplier_issues`, `search_result_sources`,
 `mail_reconciled_outbound_events`, `workspace_supplier_contact_overrides`,
 `canonical_company_contact_promotions/signals`, `support_conversations/messages`,
-`logistics_quotes`, `mail_database_identity`, `mail_runtime_sessions`) — **no confirmed orphans**,
-all have live call sites. The only "superseded but not removed" table is
-`request_search_options` (018), whose data was copied forward into `request_search_config` (020)
-in the same migration; `mail/repository.py` still reads both.
+`logistics_quotes`, `mail_database_identity`, `mail_runtime_sessions`) — **подтверждённых
+осиротевших таблиц не найдено**, у всех есть реальные обращения в коде. Единственная «заменённая,
+но не удалённая» таблица — `request_search_options` (018): её данные были перенесены в
+`request_search_config` (020) в той же миграции; `mail/repository.py` до сих пор читает обе.

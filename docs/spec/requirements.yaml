@@ -1,11 +1,19 @@
-# SupplyDesk requirements catalog — produced by the 2026-09-17 full audit.
-# Distinct from docs/requirements/requirements.yaml (older, capability-level, coarser schema —
-# kept as-is, not superseded, just a different granularity). This file uses the field-level
-# schema requested for this audit: implementation_status and verification_status are reported
-# separately on purpose — "implemented" is never treated as "verified working" without evidence.
+# Каталог требований SupplyDesk — создан полным аудитом 2026-09-17.
+# Отдельно от docs/requirements/requirements.yaml (старый, более грубый, на уровне capability —
+# сохранён как есть, не заменяется, просто другая степень детализации). Здесь используется
+# формат на уровне отдельного требования: implementation_status и verification_status указаны
+# раздельно намеренно — "реализовано" никогда не приравнивается к "проверено и работает" без
+# доказательства.
 #
-# implementation_status: implemented | partial | mock | not_implemented | unknown
-# verification_status: unit_tested | integration_tested | live_verified | not_tested | unknown
+# Системные ключи (не переводить, используются программно):
+#   id, area, title, expected, implementation_status, verification_status, validation, type,
+#   ref, note
+#
+# implementation_status: implemented (реализовано) | partial (частично) | mock (заглушка) |
+#                         not_implemented (не реализовано) | unknown (неизвестно)
+# verification_status: unit_tested (юнит-тест) | integration_tested (интеграционный тест) |
+#                       live_verified (проверено вживую) | not_tested (не проверено) |
+#                       unknown (неизвестно)
 
 schema_version: 2
 document_id: audit-requirements-catalog-2026-09-17
@@ -13,188 +21,188 @@ document_id: audit-requirements-catalog-2026-09-17
 requirements:
   - id: REQ-AUTH-001
     area: auth
-    title: Email+password and Yandex OAuth login
-    expected: A user can authenticate via email/password (single seeded account) or Yandex OAuth
+    title: Вход по email+паролю и через Яндекс OAuth
+    expected: Пользователь может авторизоваться через email/пароль (один заранее заведённый аккаунт) или через Яндекс OAuth
     implementation_status: implemented
     verification_status: unit_tested
     validation: {type: unittest, ref: tests/test_mail_integrity.py}
 
   - id: REQ-AUTH-002
     area: auth
-    title: Session CSRF protection
-    expected: Every mutating request is rejected without a valid derived CSRF token
+    title: Защита сессии от CSRF
+    expected: Любой изменяющий запрос отклоняется без корректного производного CSRF-токена
     implementation_status: implemented
     verification_status: unit_tested
     validation: {type: unittest}
 
   - id: REQ-REQUEST-001
     area: requests
-    title: Durable, resumable request search
-    expected: A search survives a serverless restart mid-search and resumes from its cursor
+    title: Устойчивый, возобновляемый поиск по заявке
+    expected: Поиск переживает перезапуск serverless посреди работы и возобновляется с сохранённого места
     implementation_status: implemented
     verification_status: unit_tested
     validation: {type: unittest, ref: tests/test_request_search_cursor_survives_step_release}
 
   - id: REQ-REQUEST-002
     area: requests
-    title: Bulk-send campaign monitoring (pause/resume/stop)
-    expected: A user can view and control an in-flight bulk-send campaign from the live UI
+    title: Мониторинг массовой рассылки (пауза/возобновление/стоп)
+    expected: Пользователь может видеть и управлять запущенной массовой рассылкой из рабочего интерфейса
     implementation_status: not_implemented
     verification_status: not_tested
     validation: {type: none}
-    note: "Exists only in frontend/ (v1, not deployed). GAP-001."
+    note: "Существует только в frontend/ (старая версия, не задеплоена). GAP-001."
 
   - id: REQ-SUPPLIER-001
     area: suppliers
-    title: One supplier identity per real company per workspace
-    expected: A real-world supplier occupies exactly one suppliers row per workspace regardless of how it was discovered/contacted
+    title: Одна идентичность поставщика на одну реальную компанию в рамках workspace
+    expected: Реальный поставщик занимает ровно одну запись в suppliers на одно рабочее пространство, независимо от способа обнаружения/контакта
     implementation_status: partial
     verification_status: live_verified
-    validation: {type: manual_db_query, ref: "local sqlite, 2026-09-17: 28/243 rows violate this"}
-    note: "INV-SUP-002 violated. GAP-003, P0."
+    validation: {type: manual_db_query, ref: "локальная sqlite, 2026-09-17: 28/243 строк нарушают правило"}
+    note: "Нарушен INV-SUP-002. GAP-003, приоритет P0."
 
   - id: REQ-SUPPLIER-002
     area: suppliers
-    title: Cross-tenant company resolution cache
-    expected: A company's ИНН resolved by one workspace is reused by another without a repeat Checko call
+    title: Кросс-tenant кэш резолюции компаний
+    expected: ИНН компании, резолвленный одним рабочим пространством, переиспользуется другим без повторного запроса к Checko
     implementation_status: partial
     verification_status: unit_tested
     validation: {type: unittest, ref: tests/test_canonical_companies_cache_reuse.py}
-    note: "Only _resolve_missing_inn reads the cache; the main enrich pipeline does not yet."
+    note: "Кэш читает только _resolve_missing_inn; основной пайплайн обогащения — ещё нет."
 
   - id: REQ-SUPPLIER-003
     area: suppliers
-    title: force_enrich_all_suppliers maintenance route
-    expected: Owner can force-refresh every supplier's Checko data with a bounded, safe operation
+    title: Служебный маршрут force_enrich_all_suppliers
+    expected: Владелец может принудительно обновить данные Checko по всем поставщикам безопасной, ограниченной операцией
     implementation_status: mock
     verification_status: not_tested
     validation: {type: none}
-    note: "Exists only on branch state/current-20260917-2119, not merged. As written: GET (should be POST), no CSRF, no rate limit, no per-call budget cap. GAP-002."
+    note: "Существует только на ветке state/current-20260917-2119, не влит. Как написан: GET (должен быть POST), нет CSRF, нет ограничения частоты, нет лимита на вызов. GAP-002."
 
   - id: REQ-MESSAGE-001
     area: messages
-    title: Inbound mail matched to request/supplier thread
-    expected: An inbound reply is threaded onto its request/supplier by header or subject+email match
+    title: Входящее письмо привязывается к переписке заявки/поставщика
+    expected: Входящий ответ привязывается к переписке своей заявки/поставщика по заголовкам или по теме+email
     implementation_status: implemented
     verification_status: unit_tested
     validation: {type: unittest, ref: tests/test_mail_integration.py}
 
   - id: REQ-MESSAGE-002
     area: messages
-    title: Unmatched mail preserved, never dropped
-    expected: A message that cannot be auto-matched stays visible until a human resolves it
+    title: Непривязанная почта сохраняется, никогда не теряется
+    expected: Письмо, которое не удалось привязать автоматически, остаётся видимым до разрешения человеком
     implementation_status: implemented
     verification_status: unit_tested
     validation: {type: unittest, ref: tests/test_messages_visibility.py}
 
   - id: REQ-MESSAGE-003
     area: messages
-    title: No physical deletion of messages/threads
-    expected: No user action ever removes a message/thread row from the database
+    title: Нет физического удаления писем/переписок
+    expected: Ни одно действие пользователя никогда не удаляет строку письма/переписки из базы данных
     implementation_status: implemented
     verification_status: unit_tested
-    validation: {type: source_audit, ref: "only DELETE is in an offline script with no route"}
+    validation: {type: source_audit, ref: "единственный DELETE находится в офлайн-скрипте без маршрута"}
 
   - id: REQ-MESSAGE-004
     area: messages
-    title: Clickable links in rendered email
-    expected: Links in a rendered email can be opened by the user
+    title: Кликабельность ссылок в отображаемом письме
+    expected: Пользователь может открыть ссылку прямо из отображаемого письма
     implementation_status: implemented
     verification_status: not_tested
     validation: {type: playwright}
-    note: "Sanitizer forces target=_blank + safe rel, but no browser test proves the rendered result is actually clickable."
+    note: "Санитайзер принудительно ставит target=_blank и безопасный rel, но нет браузерного теста, доказывающего, что отрендеренный результат реально кликабелен."
 
   - id: REQ-MESSAGE-005
     area: messages
-    title: CID inline images render correctly
-    expected: An email with inline (CID) images shows them without broken-image icons
+    title: Корректное отображение встроенных (CID) изображений
+    expected: Письмо со встроенными изображениями показывает их без иконки «битой» картинки
     implementation_status: implemented
     verification_status: not_tested
     validation: {type: playwright}
 
   - id: REQ-MESSAGE-006
     area: messages
-    title: Received attachments are visible/downloadable in the thread view
-    expected: A user can see and download an attachment on an already-received or sent message
+    title: Полученные вложения видны и доступны для скачивания в переписке
+    expected: Пользователь может увидеть и скачать вложение уже полученного или отправленного письма
     implementation_status: not_implemented
     verification_status: not_tested
     validation: {type: none}
-    note: "Backend stores attachments correctly; frontend never renders them for non-draft messages. GAP-004."
+    note: "Backend хранит вложения корректно; frontend никогда не отображает их для не-черновиков. GAP-004."
 
   - id: REQ-AI-001
     area: ai
-    title: AI context scoped to real communication only
-    expected: A supplier never enters AI context solely because it is linked to a request
+    title: AI-контекст ограничен только реальной коммуникацией
+    expected: Поставщик никогда не попадает в AI-контекст только потому, что привязан к заявке
     implementation_status: implemented
     verification_status: unit_tested
     validation: {type: unittest, ref: tests/test_ai_context_scoping.py}
 
   - id: REQ-AI-002
     area: ai
-    title: Daily AI spend cap enforced
-    expected: AI usage cannot exceed the configured daily ruble cap
+    title: Соблюдение дневного лимита расходов на AI
+    expected: Использование AI не может превысить настроенный дневной лимит в рублях
     implementation_status: implemented
     verification_status: unknown
     validation: {type: unittest}
-    note: "Code path confirmed; specific test coverage for the cap boundary not confirmed this pass."
+    note: "Путь в коде подтверждён; отдельное тестовое покрытие именно границы лимита в этом проходе не подтверждено."
 
   - id: REQ-TASK-001
     area: tasks
-    title: Task CRUD
-    expected: A user can create/read/update/delete/complete a task
+    title: CRUD задач
+    expected: Пользователь может создать/прочитать/изменить/удалить/завершить задачу
     implementation_status: implemented
     verification_status: unit_tested
     validation: {type: unittest}
 
   - id: REQ-TASK-002
     area: tasks
-    title: In-app reminder delivery
-    expected: A due reminder shows a toast/notification while the app tab is open
+    title: Доставка напоминания внутри интерфейса
+    expected: Наступившее напоминание показывает тост/уведомление, пока вкладка приложения открыта
     implementation_status: implemented
     verification_status: not_tested
     validation: {type: playwright}
-    note: "Polling confirmed in source (45s); no browser test proves the toast actually appears."
+    note: "Опрос подтверждён по исходному коду (раз в 45 сек); нет браузерного теста, доказывающего, что тост реально появляется."
 
   - id: REQ-TASK-003
     area: tasks
-    title: Email reminder delivery
-    expected: A due reminder set to the email channel sends an actual email
+    title: Доставка напоминания по email
+    expected: Напоминание с выбранным email-каналом отправляет настоящее письмо
     implementation_status: mock
     verification_status: not_tested
     validation: {type: none}
-    note: "Row is recorded and validated; no send path exists anywhere."
+    note: "Запись создаётся и проходит валидацию; пути отправки не существует вообще."
 
   - id: REQ-TASK-004
     area: tasks
-    title: Phone reminder delivery
-    expected: A due reminder set to the phone channel places an actual call
+    title: Доставка напоминания по телефону
+    expected: Напоминание с выбранным телефонным каналом совершает настоящий звонок
     implementation_status: mock
     verification_status: not_tested
     validation: {type: none}
-    note: "Explicitly labeled a local mock in the UI copy itself."
+    note: "Прямо помечено как локальная заглушка в самом тексте интерфейса."
 
   - id: REQ-TASK-005
     area: tasks
-    title: Push reminder delivery when tab is closed
-    expected: A due reminder notifies the user even if no browser tab is open
+    title: Push-напоминание при закрытой вкладке
+    expected: Наступившее напоминание уведомляет пользователя, даже если ни одна вкладка браузера не открыта
     implementation_status: not_implemented
     verification_status: not_tested
     validation: {type: none}
 
   - id: REQ-UI-001
     area: ui
-    title: Shared Input/Checkbox/Card/Table/Tabs primitives
-    expected: A single, reused implementation exists for each common UI primitive
+    title: Общие примитивы Input/Checkbox/Card/Table/Tabs
+    expected: Для каждого распространённого UI-элемента существует одна переиспользуемая реализация
     implementation_status: not_implemented
     verification_status: live_verified
     validation: {type: manual_code_audit, ref: docs/frontend/UI_INVENTORY.md}
-    note: "GAP-005 through GAP-009."
+    note: "GAP-005 — GAP-009."
 
   - id: REQ-DATA-001
     area: data
-    title: Postgres/SQLite dialect compatibility layer is complete
-    expected: Every SQL query the repository issues runs correctly on both SQLite and Postgres
+    title: Полнота слоя совместимости Postgres/SQLite
+    expected: Каждый SQL-запрос репозитория корректно выполняется и на SQLite, и на Postgres
     implementation_status: partial
     verification_status: live_verified
-    validation: {type: production_incident, ref: "two real prod incidents this session: COLLATE NOCASE, is_active bool binding"}
-    note: "Pattern (SQLite-only construct never exercised against Postgres) may recur elsewhere; not exhaustively re-audited."
+    validation: {type: production_incident, ref: "два реальных инцидента на проде в этой сессии: COLLATE NOCASE, привязка булева значения is_active"}
+    note: "Паттерн (конструкция, работающая только в SQLite и ни разу не проверенная на Postgres) может повторяться и в других местах; исчерпывающая повторная проверка не проводилась."

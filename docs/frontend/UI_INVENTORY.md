@@ -7,49 +7,55 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# UI Component Inventory
+# Инвентарь UI-компонентов
 
-Evidence-based inventory of 13 UI primitive categories in `frontend-v2/src`, produced to explain
-(not guess at) the "Frankenstein" complaint. Nothing here was changed.
+Инвентаризация 13 категорий UI-элементов в `frontend-v2/src`, основанная на доказательствах, а
+не на впечатлении, чтобы объяснить (а не просто повторить) жалобу «выглядит как франкенштейн».
+Ничего здесь не менялось.
 
-| Component | Implementations | Used in | Differences | Recommended target | Migration risk |
+| Компонент | Реализации | Где используется | Различия | Рекомендуемая цель | Риск переноса |
 |---|---|---|---|---|---|
-| Button | 1 shared (`ui/Button.tsx`, variants primary/secondary/ghost) | Widely reused | None significant | Keep | Low |
-| Input | **None shared** — raw `<input>` with copy-pasted Tailwind strings | `Blacklist.tsx`, `Suppliers.tsx`, `RequestDetail.tsx`, `Settings.tsx` (×2), `Requests.tsx`, `BulkComposeModal.tsx`, `LogisticsQuoteModal.tsx` (×7 in one file), `ContactResultModal.tsx`, `ManualLinkModal.tsx`, `TasksPanel.tsx` — 18+ occurrences | Small drifts: `h-8` vs `h-9`, `pl-7` vs `pl-8`, font sizes 12/12.5/13px. `Login.tsx` uses a **completely different palette** (`slate-950`, `blue-400`) not the app's design tokens at all | Extract `ui/Input.tsx`; fix Login to use tokens | Low-Med (mechanical, high count) |
-| Select/Dropdown | Two unrelated systems: Radix-based `ui/select.tsx` (only used by `ConversationStatusSelect`) vs raw native `<select>` everywhere else | Native: `RequestDetail.tsx`, `Suppliers.tsx`, `SupplierCardContent.tsx`, `TasksSection.tsx` (×4) | Radix gives keyboard nav/portal/animation; native selects don't | Migrate native selects onto the Radix `Select`, or explicitly document native as a deliberate lightweight variant | Med (behavioral) |
-| Checkbox | **None shared** — raw `<input type="checkbox">` | `Suppliers.tsx`, `RequestDetail.tsx` (×3), `Messages.tsx`, `Blacklist.tsx` (×2) | Inconsistent styling (`accent-accent` in some, unstyled in others) | Extract `ui/Checkbox.tsx` | Low |
-| Card/panel | Two parallel patterns: `ui/Frame.tsx` (real component, used **only** in `Messages.tsx`) vs the hand-copied recipe `"rounded-lg border border-border bg-surface p-4"` | `Settings.tsx` (×6), `Help.tsx`, `Dashboard.tsx`, `Blacklist.tsx`, `Suppliers.tsx` | Drift: `p-4` vs `p-4 sm:p-5`, `rounded-lg` vs `rounded-xl` | Promote `FramePanel` (or a new `Card`) to a genuinely shared primitive | Low-Med |
-| Table | **None shared** — 6 different `<table>` class strings | Suppliers (×2), Requests (uses `@tanstack/react-table`), RequestDetail, Blacklist, AiChatPanel | `@tanstack/react-table` is a real dependency used in exactly 1 of 6 — adopted mid-project, never backfilled | Standardize on one styled `<Table>` wrapper; decide tanstack's role | Med (layouts differ per table) |
-| Tabs | 1 ad-hoc implementation (`SupplierCardPanel.tsx`, hand-built `role="tablist"`) | Only that one panel | Not yet a consistency problem — but no primitive exists if a second tabbed UI appears | Extract `ui/Tabs.tsx` pre-emptively | Low |
-| Dialog/Modal | 1 shared (`ui/Modal.tsx`), genuinely reused | `NewRequestModal`, `ImportMailTopicModal`, `LogisticsQuoteModal`, `ContactResultModal`, `ManualLinkModal`, `BulkComposeModal` | **More consistent than assumed.** One real duplicate: `CommandPalette.tsx` re-implements ~15 lines of overlay shell instead of composing `Modal` | Keep `Modal` as standard; refactor `CommandPalette` to compose it | Low |
-| Drawer | 1 ad-hoc mobile slide-over pattern (`Messages.tsx`) | Messages mobile layout only | Single bespoke usage | Not urgent | Low |
-| Toast | 1 centralized system (`react-toastify`, single `<ToastContainer>` in `AppShell.tsx`) | App-wide reminders | **Consistent** | Keep | Low |
-| Badge/status pill | `ui/Badge.tsx` (`Tone` system) **plus** a second, parallel hand-rolled `StatusPill` in `ConversationStatusSelect.tsx` re-typing the same tone→class mapping independently | Badge: broad. StatusPill: only conversation status | Confirms the owner's specific suspicion — a duplicate status-rendering path exists | Have `StatusPill` render `<Badge tone=... variant="outline">` instead | Low |
-| Loading state | `LoadingState` (exported from `ErrorState.tsx` — odd co-location) | 12 files broadly adopt it | Adoption is good; organization is the only issue | Move to its own file or a combined `states.ts` | Low |
-| Empty state | `ui/EmptyState.tsx`, shared | Same 12-file set | Consistent | Keep | Low |
-| Error state | `ui/ErrorState.tsx`, shared, uses `Button` for retry | Same 12-file set | Consistent | Keep | Low |
+| Button (кнопка) | 1 общая (`ui/Button.tsx`, варианты primary/secondary/ghost) | Широко переиспользуется | Значимых различий нет | Оставить как есть | Низкий |
+| Input (текстовое поле) | **Общего компонента нет** — сырой `<input>` со скопированными строками Tailwind-классов | `Blacklist.tsx`, `Suppliers.tsx`, `RequestDetail.tsx`, `Settings.tsx` (×2), `Requests.tsx`, `BulkComposeModal.tsx`, `LogisticsQuoteModal.tsx` (×7 в одном файле), `ContactResultModal.tsx`, `ManualLinkModal.tsx`, `TasksPanel.tsx` — 18+ мест | Мелкие расхождения: `h-8` вместо `h-9`, разные внутренние отступы, размеры шрифта 12/12.5/13px. `Login.tsx` использует **совершенно другую цветовую палитру** (`slate-950`, `blue-400`), не дизайн-токены приложения вообще | Выделить `ui/Input.tsx`; исправить Login на использование токенов | Низкий-средний (механическая правка, но много мест) |
+| Select/Dropdown (выпадающий список) | Две несвязанные системы: `ui/select.tsx` на Radix (используется только в `ConversationStatusSelect`) против сырых нативных `<select>` везде остальных | Нативные: `RequestDetail.tsx`, `Suppliers.tsx`, `SupplierCardContent.tsx`, `TasksSection.tsx` (×4) | Radix даёт навигацию с клавиатуры/портал/анимацию; нативные — нет | Перевести нативные `<select>` на Radix `Select`, либо явно задокументировать нативные как осознанный облегчённый вариант | Средний (влияет на поведение) |
+| Checkbox (флажок) | **Общего компонента нет** — сырой `<input type="checkbox">` | `Suppliers.tsx`, `RequestDetail.tsx` (×3), `Messages.tsx`, `Blacklist.tsx` (×2) | Несогласованные стили (`accent-accent` в одних местах, без стилей в других) | Выделить `ui/Checkbox.tsx` | Низкий |
+| Card/панель (карточка) | Два параллельных подхода: `ui/Frame.tsx` (реальный компонент, используется **только** в `Messages.tsx`) против скопированного вручную рецепта `"rounded-lg border border-border bg-surface p-4"` | `Settings.tsx` (×6), `Help.tsx`, `Dashboard.tsx`, `Blacklist.tsx`, `Suppliers.tsx` | Расхождения: `p-4` против `p-4 sm:p-5`, `rounded-lg` против `rounded-xl` | Сделать `FramePanel` (или новый `Card`) настоящим общим компонентом | Низкий-средний |
+| Table (таблица) | **Общего компонента нет** — 6 разных наборов классов для `<table>` | Поставщики (×2), Заявки (использует `@tanstack/react-table`), Заявка (детали), Чёрный список, AiChatPanel | `@tanstack/react-table` — реальная зависимость, используется только в 1 из 6 — похоже на библиотеку, принятую в середине проекта без переноса остальных таблиц | Стандартизировать на одном компоненте `<Table>`; решить роль tanstack | Средний (у таблиц разная структура строк/колонок) |
+| Tabs (вкладки) | 1 реализация вручную (`SupplierCardPanel.tsx`, самодельный `role="tablist"`) | Только эта одна панель | Пока не проблема согласованности — но нет готового компонента, если появится вторая вкладочная разметка | Заранее выделить `ui/Tabs.tsx` | Низкий |
+| Dialog/Modal (модальное окно) | 1 общий (`ui/Modal.tsx`), реально переиспользуется | `NewRequestModal`, `ImportMailTopicModal`, `LogisticsQuoteModal`, `ContactResultModal`, `ManualLinkModal`, `BulkComposeModal` | **Согласованность лучше, чем предполагалось.** Одно реальное исключение: `CommandPalette.tsx` заново реализует ~15 строк оболочки окна вместо использования `Modal` | Оставить `Modal` как стандарт; переделать `CommandPalette` на его использование | Низкий |
+| Drawer (выезжающая панель) | 1 самодельный мобильный паттерн (`Messages.tsx`) | Только мобильная раскладка «Сообщений» | Единичное использование | Не срочно | Низкий |
+| Toast (всплывающее уведомление) | 1 централизованная система (`react-toastify`, единый `<ToastContainer>` в `AppShell.tsx`) | Напоминания по всему приложению | **Согласованно** | Оставить как есть | Низкий |
+| Badge/статус-пилюля | `ui/Badge.tsx` (система `Tone`) **плюс** второй, отдельный самодельный `StatusPill` в `ConversationStatusSelect.tsx`, независимо повторяющий ту же логику «тон → CSS-класс» | Badge: широко. StatusPill: только статус переписки | Подтверждает конкретное подозрение владельца — существует дублирующий путь отображения статуса | `StatusPill` должен вызывать `<Badge tone=... variant="outline">` вместо своей логики | Низкий |
+| Loading state (состояние загрузки) | `LoadingState` (экспортируется из `ErrorState.tsx` — странное соседство файлов) | Широко используется в 12 файлах | Само использование — хорошее; проблема только в организации файлов | Перенести в отдельный файл или общий `states.ts` | Низкий |
+| Empty state (пустое состояние) | `ui/EmptyState.tsx`, общий | Те же 12 файлов | Согласованно | Оставить | Низкий |
+| Error state (состояние ошибки) | `ui/ErrorState.tsx`, общий, использует `Button` для повтора | Те же 12 файлов | Согласованно | Оставить | Низкий |
 
-## Cross-cutting findings
+## Сквозные наблюдения
 
-- **Icons:** `lucide-react` exclusively, 41 files, no competing icon source. Not a Frankenstein
-  symptom.
-- **Styling:** ~100% Tailwind utility classes. The one real outlier is `MagicRings.tsx`
-  (Three.js/GLSL shader, `MagicRings.css`) used exclusively by `Login.tsx` — pulls the entire
-  `three` package for one decorative background.
-- **`Login.tsx`** uses literal colors (`slate-950`, `blue-400`, `white/20`) instead of the app's
-  design tokens (`bg-surface`, `text-ink`, `accent-*`) used everywhere else — combined with the
-  shader background, it reads as imported from a different design source than the rest of
-  `frontend-v2`.
-- **A second, independent legacy UI system still exists** in `frontend/src/components/ui/`
-  (`Button.tsx`, `StatusBadge.tsx`, `MailStatusBadges.tsx`) — not live, but its continued presence
-  is itself Frankenstein evidence if anyone edits it by mistake.
+- **Иконки:** `lucide-react` используется исключительно (41 файл), других источников иконок нет.
+  Не является признаком «франкенштейна».
+- **Стили:** ~100% через утилитарные классы Tailwind. Единственное реальное исключение —
+  `MagicRings.tsx` (шейдерная анимация на Three.js/GLSL, `MagicRings.css`), используемая
+  исключительно на `Login.tsx` — ради одного декоративного фона подключается вся библиотека
+  `three`.
+- **`Login.tsx`** использует прямые цвета (`slate-950`, `blue-400`, `white/20`) вместо
+  дизайн-токенов приложения (`bg-surface`, `text-ink`, `accent-*`), используемых везде на других
+  страницах — вместе с шейдерным фоном создаёт впечатление, что взято из другого источника
+  дизайна, чем остальной `frontend-v2`.
+- **Отдельно всё ещё существует вторая, независимая устаревшая UI-система** в
+  `frontend/src/components/ui/` (`Button.tsx`, `StatusBadge.tsx`, `MailStatusBadges.tsx`) — не
+  используется в проде, но сам факт её присутствия в репозитории — тоже признак
+  «франкенштейна», если кто-то случайно начнёт её редактировать.
 
-## Honest counterpoint
+## Честная оговорка
 
-Button, Badge (mostly), Modal, the Loading/Empty/Error trio, the toast system, and icon usage are
-each genuinely centralized and broadly reused — better than "everything is duplicated" implies.
-The real, narrow pattern: **no shared primitive exists yet for Input, Checkbox, Card, Table, or
-Tabs**, so every page reinvents those five independently, plus two concrete duplicate-instead-of-
-compose cases (`StatusPill`, `CommandPalette`'s overlay) and one visually foreign page (`Login`).
+Button, Badge (в основном), Modal, тройка Loading/Empty/Error, система тостов и использование
+иконок — каждый из них реально централизован и широко переиспользуется — лучше, чем
+подразумевает формулировка «дублируется абсолютно всё». Реальный, узкий паттерн: **общего
+компонента пока нет для Input, Checkbox, Card, Table и Tabs**, поэтому каждая страница заново
+изобретает эти пять элементов независимо, плюс два конкретных случая дублирования вместо
+переиспользования (`StatusPill`, оболочка окна в `CommandPalette`) и одна визуально инородная
+страница (`Login`).
 
-Recorded gaps: `GAP-005` through `GAP-009` in [`../system/KNOWN_GAPS.md`](../system/KNOWN_GAPS.md).
+Зафиксированные проблемы: `GAP-005`–`GAP-009` в
+[`../system/KNOWN_GAPS.md`](../system/KNOWN_GAPS.md).

@@ -7,63 +7,67 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# Data Flow
+# Поток данных
 
-Technical (function/route-level) trace of the flows described narratively in
-[`../product/USER_FLOWS.md`](../product/USER_FLOWS.md). This file is the "how", that one is the
-"what a user experiences."
+Техническое (на уровне функций/маршрутов) описание сценариев, изложенных по-человечески в
+[`../product/USER_FLOWS.md`](../product/USER_FLOWS.md). Этот файл отвечает на вопрос «как это
+работает изнутри», тот — «что видит пользователь».
 
-## Auth → session → API
+## Авторизация → сессия → API
 
-`Login.tsx` → `POST /api/auth/login` (or Yandex OAuth round-trip) → `backend/http_auth.py` →
-`repository.authenticate()`/`_finish_login_callback` → session row created, cookie set → every
-subsequent request carries the cookie + `X-CSRF-Token` header (derived, not stored) →
-`_require_session()`/`_require_csrf()` gate every route.
+`Login.tsx` → `POST /api/auth/login` (или полный цикл Яндекс OAuth) → `backend/http_auth.py` →
+`repository.authenticate()`/`_finish_login_callback` → создаётся сессия, ставится cookie →
+каждый следующий запрос несёт cookie + заголовок `X-CSRF-Token` (производный, не хранится
+отдельно) → `_require_session()`/`_require_csrf()` проверяют каждый маршрут.
 
-## Request → positions → suppliers → communication
+## Заявка → позиции → поставщики → коммуникация
 
-`POST /api/requests` (create) → `POST /api/requests/<id>` search-start action → enqueues
-`request_search_jobs` row → client polls a search-step action → `process_search_step`
-(`orchestrator.py`) does one SERP position or one enrichment batch per call, persisting a cursor
-→ on completion, `request.status = 'completed'`, suppliers now exist in `suppliers`/
-`request_suppliers` → composing/sending mail resolves the actual recipient via
-`resolve_supplier_for_send` (host match → email match → **create-new-row fallback**, see
-`GAP-003`) → `mail_threads`/`mail_messages` created → `request_supplier_states` updated on
-reply/bounce.
+`POST /api/requests` (создание) → действие «начать поиск» на `POST /api/requests/<id>` →
+создаётся запись в `request_search_jobs` → клиент опрашивает шаг поиска → `process_search_step`
+(`orchestrator.py`) выполняет одну позицию SERP или одну пачку обогащения за вызов, сохраняя
+курсор → по завершении `request.status = 'completed'`, поставщики уже существуют в
+`suppliers`/`request_suppliers` → при составлении/отправке письма реальный получатель
+определяется через `resolve_supplier_for_send` (совпадение по хосту → совпадение по email →
+**запасной вариант — создание новой записи**, см. `GAP-003`) → создаются `mail_threads`/
+`mail_messages` → `request_supplier_states` обновляется при ответе/отказе доставки.
 
-## Suppliers: discovery → enrichment → contacts → request association
+## Поставщики: поиск → обогащение → контакты → привязка к заявке
 
-SERP hit → `upsert_search_result` (name defaults to host, never raw SERP title) →
-`supplier_enrichment_jobs` enqueued (crawl → registry ИНН guess → web fallback → finance) →
-`apply_supplier_enrichment` is the single write-through point: updates `suppliers`,
-`global_suppliers` (via `_get_or_create_global_supplier`), `global_supplier_registry`/
-`_finances`, and `canonical_companies` (cross-tenant cache) in one call → `_resolve_missing_inn`
-checks `canonical_companies` by ИНН **before** a live Checko call, so a second workspace resolving
-the same company makes zero Checko calls.
+Найдено в SERP → `upsert_search_result` (имя по умолчанию — хост, никогда сырой заголовок из
+выдачи) → ставится в очередь `supplier_enrichment_jobs` (краулинг → предположение ИНН по реестру
+→ запасной веб-поиск → финансы) → `apply_supplier_enrichment` — единая точка записи: обновляет
+`suppliers`, `global_suppliers` (через `_get_or_create_global_supplier`),
+`global_supplier_registry`/`_finances` и `canonical_companies` (кросс-tenant кэш) за один вызов →
+`_resolve_missing_inn` проверяет `canonical_companies` по ИНН **до** реального запроса к Checko,
+поэтому второе рабочее пространство, резолвящее ту же компанию, не делает ни одного запроса к
+Checko.
 
-## Messages: mail account → sync → message → correspondence → request/supplier
+## Сообщения: почтовый ящик → синхронизация → сообщение → переписка → заявка/поставщик
 
-Background/on-view sync (`maybe_sync_incoming`, throttled) or manual `POST /api/mail/sync` →
-IMAP pull (`mail/providers/*.py`) → `import_incoming_messages` → `_find_incoming_thread` (header
-match → subject+email match) → matched: appended to `mail_messages`, thread's
-`last_message_at` bumped; unmatched: parked in `mail_inbox_messages` (`status='unmatched'`,
-never deleted) → human resolves via `attach_inbox_message`/`manually_link_inbox_message` →
-`GET /api/correspondence` renders threads, `thread_messages()` marks read as a side effect of
-opening.
+Фоновая или по просмотру синхронизация (`maybe_sync_incoming`, с ограничением частоты) либо
+ручной `POST /api/mail/sync` → забор по IMAP (`mail/providers/*.py`) → `import_incoming_messages`
+→ `_find_incoming_thread` (совпадение по заголовкам → совпадение по теме+email) → совпало:
+добавляется в `mail_messages`, у переписки обновляется `last_message_at`; не совпало: попадает в
+`mail_inbox_messages` (`status='unmatched'`, никогда не удаляется) → человек разрешает через
+`attach_inbox_message`/`manually_link_inbox_message` → `GET /api/correspondence` отображает
+переписки, `thread_messages()` помечает как прочитанное побочным эффектом открытия.
 
-## AI Assistant: selection → context building → LLM call
+## AI-ассистент: выбор → сборка контекста → вызов LLM
 
-User opens "ИИ-помощник" on a thread → frontend offers only sibling threads with
-`threadResponseStatus === 'answered'` as extra context (UX filter) → `POST /api/ai/chat` with
-`thread_ids` → `chat_service._build_context` **re-validates every id server-side**
-(`get_thread_owned`, silently drops anything not belonging to this workspace+request — this is
-the real security boundary, not the frontend filter) → per surviving thread, up to 10 most-recent
-communication messages, each trimmed to 4500 chars → whole context capped at 40,000 chars → daily
-spend check (`ai_chat_usage`) → RouterAI call → response + spend recorded.
+Пользователь открывает «ИИ-помощника» в переписке → интерфейс предлагает в качестве
+дополнительного контекста только те переписки, где `threadResponseStatus === 'answered'`
+(это фильтр только для удобства интерфейса) → `POST /api/ai/chat` с `thread_ids` →
+`chat_service._build_context` **заново проверяет каждый id на сервере**
+(`get_thread_owned`, молча отбрасывает всё, что не принадлежит этому рабочему пространству и
+заявке — это и есть настоящая граница безопасности, а не клиентский фильтр) → для каждой
+подтверждённой переписки — до 10 последних сообщений реальной коммуникации, каждое обрезано до
+4500 символов → весь контекст ограничен 40 000 символами → проверка дневного лимита расходов
+(`ai_chat_usage`) → вызов RouterAI → ответ и расход записываются.
 
-## Tasks / reminders
+## Задачи / напоминания
 
-`POST /api/tasks` → `task_reminders` row (channel `in_app`/`email`/`phone`) → **only `in_app`
-actually delivers**: `RemindersContext.tsx` polls `GET /api/tasks/reminders/due` every 45s while
-a tab is open, renders a toast + calls the browser `Notification` API. `email`/`phone` reminders
-are recorded and validated but never dispatched — see `docs/system/CURRENT_STATE.md`.
+`POST /api/tasks` → запись в `task_reminders` (канал `in_app`/`email`/`phone`) → **реально
+доставляется только `in_app`**: `RemindersContext.tsx` опрашивает
+`GET /api/tasks/reminders/due` каждые 45 секунд, пока открыта вкладка, показывает тост и
+вызывает системное уведомление браузера. Напоминания `email`/`phone` записываются и проходят
+валидацию, но никогда не отправляются — см. `docs/system/CURRENT_STATE.md`.

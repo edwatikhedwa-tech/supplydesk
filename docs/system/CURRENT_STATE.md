@@ -7,111 +7,121 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# Current State — Feature Status Matrix
+# Текущее состояние — таблица статусов по функциям
 
-Statuses: `IMPLEMENTED` (works, has been exercised/tested) · `IMPLEMENTED / NOT VERIFIED` (code
-exists, no test or live evidence) · `PARTIAL` · `BROKEN` · `MOCK` · `NOT_IMPLEMENTED` ·
-`UNKNOWN`. `IMPLEMENTED` never means "bug-free" — it means the described behavior exists and has
-evidence.
+Статусы (системные значения оставлены на английском, с русским пояснением):
 
-This is a **new, audit-produced** document, distinct from `ai/CURRENT_STATE.md` (living
-session-state tracker, updated continuously) and `docs/CURRENT_STATE.md` (root-level, marked
-`HISTORICAL`, frozen 2026-08-30). Where they conflict, trust this file for 2026-09-17 and `ai/`
-for anything after.
+| Статус | Значение |
+|---|---|
+| `IMPLEMENTED` | Реализовано и подтверждено (есть тест или живое доказательство) |
+| `IMPLEMENTED / NOT VERIFIED` | Код есть, но нет ни теста, ни живого доказательства |
+| `PARTIAL` | Реализовано частично — не все случаи покрыты |
+| `BROKEN` | Реализовано, но работает некорректно |
+| `MOCK` | Заглушка — выглядит как рабочая функция, но ничего реально не делает |
+| `NOT_IMPLEMENTED` | Функции нет вообще |
+| `UNKNOWN` | Недостаточно данных, чтобы дать оценку |
 
-## Auth
+`IMPLEMENTED` никогда не означает «без единого бага» — это значит, что описанное поведение
+существует и у него есть подтверждение.
 
-| Feature | Status | Evidence |
+Это **новый документ**, созданный этим аудитом, отдельно от `ai/CURRENT_STATE.md` (живой трекер
+состояния сессии, обновляется непрерывно) и `docs/CURRENT_STATE.md` (в корне `docs/`, помечен
+как `HISTORICAL`, заморожен 30.08.2026). При расхождениях доверять этому файлу для состояния на
+17.09.2026, а `ai/` — для всего, что произошло позже.
+
+## Авторизация
+
+| Функция | Статус | Доказательство |
 |---|---|---|
-| Email+password login | IMPLEMENTED | Single seeded app user (`APP_USER_EMAIL`/`APP_USER_PASSWORD`), PBKDF2-SHA256 240k iterations — `mail/auth.py`, `backend/http_auth.py:32` |
-| Yandex OAuth login | IMPLEMENTED | PKCE flow, `backend/http_auth.py:142` |
-| Google / Mail.ru OAuth login | NOT_IMPLEMENTED | `frontend-v2/src/pages/Login.tsx:49-53` — buttons explicitly `enabled: false`, labeled "Скоро" in the UI itself, not a hidden stub |
-| Session management | IMPLEMENTED | Sliding-expiration server-side token, `HttpOnly`/`SameSite=Lax` cookie |
-| CSRF protection | IMPLEMENTED | Derived double-submit token, checked on every mutating route |
-| Workspace isolation | IMPLEMENTED | `tests/test_supplier_workspace_isolation.py`; `global_supplier_detail` scoped by `(workspace_id, id)` |
-| Multi-tenant signup | NOT_IMPLEMENTED | Single-seeded-user model, not general registration |
+| Вход по email+паролю | IMPLEMENTED | Один заранее заведённый пользователь (`APP_USER_EMAIL`/`APP_USER_PASSWORD`), PBKDF2-SHA256, 240 тыс. итераций — `mail/auth.py`, `backend/http_auth.py:32` |
+| Вход через Яндекс OAuth | IMPLEMENTED | PKCE-схема, `backend/http_auth.py:142` |
+| Вход через Google / Mail.ru OAuth | NOT_IMPLEMENTED | `frontend-v2/src/pages/Login.tsx:49-53` — кнопки честно помечены `enabled: false` и подписаны «Скоро» прямо в интерфейсе, а не скрытая заглушка |
+| Управление сессией | IMPLEMENTED | Скользящее продление, cookie `HttpOnly`/`SameSite=Lax` |
+| Защита CSRF | IMPLEMENTED | Проверяется на каждом изменяющем маршруте |
+| Изоляция рабочих пространств (workspace) | IMPLEMENTED | `tests/test_supplier_workspace_isolation.py`; `global_supplier_detail` проверяет пару `(workspace_id, id)` |
+| Регистрация нескольких организаций (multi-tenant) | NOT_IMPLEMENTED | Модель с одним заранее заведённым пользователем, не общая регистрация |
 
-## Requests
+## Заявки
 
-| Feature | Status | Evidence |
+| Функция | Статус | Доказательство |
 |---|---|---|
-| Request/position CRUD | IMPLEMENTED | `backend/http_requests.py`, `tests/test_dashboard.py` |
-| Durable, resumable search (SERP → enrich) | IMPLEMENTED | `request_search_jobs` lease/claim queue, `tests/test_request_search_cursor_survives_step_release` |
-| Deadline / followup SLA per request | IMPLEMENTED | `request_followup_settings`, `docs/domain/SUPPLIER_MODEL.md` §7.1 (verified accurate this audit) |
-| CSV supplier import (preview/apply) | IMPLEMENTED | `backend/domain/supplier_import/`, `/api/supplier-import/{preview,apply}` |
-| Logistics quote (Dellin, one request/one supplier) | IMPLEMENTED | `docs/product/CAPABILITY_CATALOG.md` CAP-LOGISTICS-001, live-verified 2026-09-04 against real Dellin API |
-| Campaign monitor/control UI (pause/resume/stop, continuation dry-run) | **NOT_IMPLEMENTED in frontend-v2** | Full page exists in `frontend/src/pages/CampaignPage.tsx` (v1) with no v2 route or equivalent — real regression, see `GAP-001` |
+| CRUD заявок/позиций | IMPLEMENTED | `backend/http_requests.py`, `tests/test_dashboard.py` |
+| Устойчивый, возобновляемый поиск (SERP → обогащение) | IMPLEMENTED | Очередь `request_search_jobs` с lease/claim, `tests/test_request_search_cursor_survives_step_release` |
+| Дедлайн / SLA на follow-up по заявке | IMPLEMENTED | `request_followup_settings`, `docs/domain/SUPPLIER_MODEL.md` §7.1 (проверено, актуально) |
+| Импорт поставщиков из CSV (предпросмотр/применение) | IMPLEMENTED | `backend/domain/supplier_import/`, `/api/supplier-import/{preview,apply}` |
+| Расчёт стоимости доставки (Dellin, одна заявка/один поставщик) | IMPLEMENTED | `docs/product/CAPABILITY_CATALOG.md` CAP-LOGISTICS-001, проверено вживую 04.09.2026 на реальном API Dellin |
+| Мониторинг/управление массовой рассылкой (пауза/возобновление/стоп) в новом интерфейсе | **NOT_IMPLEMENTED в frontend-v2** | Полноценная страница есть в `frontend/src/pages/CampaignPage.tsx` (старая версия), в v2 нет ни маршрута, ни аналога — реальная потеря функциональности, см. `GAP-001` |
 
-## Suppliers
+## Поставщики
 
-| Feature | Status | Evidence |
+| Функция | Статус | Доказательство |
 |---|---|---|
-| Three-tier identity (suppliers/global_suppliers/canonical_companies) | IMPLEMENTED | `docs/domain/SUPPLIER_MODEL.md` (verified current) |
-| ИНН-based dedup within workspace | IMPLEMENTED | `global_suppliers UNIQUE(workspace_id, inn)` |
-| Cross-tenant company cache | IMPLEMENTED | `canonical_companies`, `tests/test_canonical_companies_cache_reuse.py` |
-| Host-based supplier identity, one row per domain | **PARTIAL — confirmed live gap** | Silently degrades to the raw email address as key when no host is known at write time (`resolve_supplier_for_send` fallback, `mail/repository.py:3551`) — 28/243 supplier rows in the local DB currently carry this exact signature (11.5%). See `GAP-003`, `INV-SUP-002` |
-| Checko enrichment (registry + finance) | IMPLEMENTED | `backend/integrations/registry/checko_client.py`; requires `CHECKO_KEY` (not set in production as of this audit) |
-| `force_enrich_all_suppliers` maintenance route | **NOT ON THIS BRANCH** | Exists only on `state/current-20260917-2119` (this session's git snapshot), not merged into `experiment/frontend-v2-greenfield-20260905`. See `GAP-002` |
-| Manual ИНН entry + protection from auto-overwrite | IMPLEMENTED | `tests/test_manual_inn_is_visible_and_wins_over_later_auto_candidate` |
+| Трёхуровневая идентичность (suppliers/global_suppliers/canonical_companies) | IMPLEMENTED | `docs/domain/SUPPLIER_MODEL.md` (проверено, актуально) |
+| Дедупликация по ИНН внутри workspace | IMPLEMENTED | `global_suppliers UNIQUE(workspace_id, inn)` |
+| Кросс-tenant кэш компаний | IMPLEMENTED | `canonical_companies`, `tests/test_canonical_companies_cache_reuse.py` |
+| Идентичность поставщика по хосту (один сайт — одна запись) | **PARTIAL — подтверждён живой пробел** | Незаметно откатывается на использование email-адреса как ключа, если хост неизвестен на момент записи (`resolve_supplier_for_send`, `mail/repository.py:3551`) — 28 из 243 строк поставщиков в локальной базе несут этот признак (11.5%). См. `GAP-003`, `INV-SUP-002` |
+| Обогащение через Checko (реестр + финансы) | IMPLEMENTED | `backend/integrations/registry/checko_client.py`; требует `CHECKO_KEY` (на момент аудита на проде не настроен) |
+| Служебный маршрут `force_enrich_all_suppliers` (принудительное обогащение всех поставщиков) | **ОТСУТСТВУЕТ В ЭТОЙ ВЕТКЕ** | Существует только на ветке `state/current-20260917-2119` (снапшот этой сессии), не влит в `experiment/frontend-v2-greenfield-20260905`. См. `GAP-002` |
+| Ручной ввод ИНН + защита от автоматической перезаписи | IMPLEMENTED | `tests/test_manual_inn_is_visible_and_wins_over_later_auto_candidate` |
 
-## Messages / Mail
+## Сообщения / Почта
 
-| Feature | Status | Evidence |
+| Функция | Статус | Доказательство |
 |---|---|---|
-| Inbound thread matching (headers, then subject+email) | IMPLEMENTED | `mail/repository.py:2638-2660` |
-| Unmatched-mail inbox (never silently dropped) | IMPLEMENTED | `mail_inbox_messages`, verified: no user-facing DELETE exists anywhere for messages/threads |
-| Attachments — outbound (compose) | IMPLEMENTED | Size limits enforced, stored as BLOB |
-| Attachments — inbound, rendered in thread view | **PARTIAL** | Parsed and stored (`mail_attachments`), but `frontend-v2/src/pages/Messages.tsx` never renders/downloads them for already-sent or received messages — real unrendered capability, not documented as a limitation anywhere before this audit. `GAP-004` |
-| HTML sanitization (nh3/Ammonia allowlist) | IMPLEMENTED | `mail/content.py::sanitize_email_html`, matches `docs/ui/MESSAGES_SCREEN_SPEC.md` §9 |
-| Links clickable in rendered email | **IMPLEMENTED / NOT VERIFIED** | Sanitizer forces `target="_blank"` + safe `rel`, but no Playwright/browser test asserts the rendered result is actually clickable — assumption, not proof |
-| CID inline images | IMPLEMENTED | Resolved to `data:` URLs at parse time; any residual `cid:` src stripped at render time as defense in depth |
-| Unread/read tracking | IMPLEMENTED | Read is a side effect of opening a thread (`mail_message_reads` row insert); no "mark unread" path exists |
-| `needs_followup` derived flag | IMPLEMENTED | Confirmed matches `docs/domain/SUPPLIER_MODEL.md` §7.1 exactly |
-| Physical message/thread deletion | NOT_IMPLEMENTED (by design) | Only one DELETE statement exists in the whole repo (`scripts/supplier_identity_audit.py`, an offline script, no HTTP route) — matches the stated invariant that status changes, not deletion, represent user actions |
-| Contact-priority resolution (workspace override → cross-tenant consensus → fallback) | IMPLEMENTED | `mail/contact_intelligence.py::resolve_contact_priority`, 14 tests in `tests/test_contact_resolution_send_path.py` |
+| Привязка входящего письма к переписке (по заголовкам, затем по теме+email) | IMPLEMENTED | `mail/repository.py:2638-2660` |
+| Папка непривязанных писем (никогда не теряются молча) | IMPLEMENTED | `mail_inbox_messages`, подтверждено: нигде нет пользовательского удаления писем/переписок |
+| Вложения — исходящие (при составлении письма) | IMPLEMENTED | Ограничения по размеру соблюдаются, хранится как BLOB |
+| Вложения — входящие, отображаются в переписке | **PARTIAL** | Разбираются и сохраняются (`mail_attachments`), но `frontend-v2/src/pages/Messages.tsx` никогда не отображает и не даёт скачать их для уже отправленных или полученных писем — реальная возможность backend без интерфейса, нигде ранее не задокументированная как ограничение. `GAP-004` |
+| Санитизация HTML (allowlist через nh3/Ammonia) | IMPLEMENTED | `mail/content.py::sanitize_email_html`, соответствует `docs/ui/MESSAGES_SCREEN_SPEC.md` §9 |
+| Ссылки в письме кликабельны при отображении | **IMPLEMENTED / NOT VERIFIED** | Санитайзер принудительно ставит `target="_blank"` и безопасный `rel`, но нет ни одного браузерного/Playwright-теста, доказывающего, что результат реально кликабелен — предположение, не доказательство |
+| Inline-картинки (CID) | IMPLEMENTED | Преобразуются в `data:`-ссылки при разборе письма; любой оставшийся `cid:`-адрес дополнительно вырезается при отображении |
+| Учёт прочитанных/непрочитанных | IMPLEMENTED | Прочтение — побочный эффект открытия переписки (добавляется строка в `mail_message_reads`); пути «пометить непрочитанным» нет |
+| Производный признак `needs_followup` («требует follow-up») | IMPLEMENTED | Подтверждено: полностью соответствует `docs/domain/SUPPLIER_MODEL.md` §7.1 |
+| Физическое удаление письма/переписки | NOT_IMPLEMENTED (так и задумано) | Во всём репозитории есть только один DELETE-запрос к этим таблицам (офлайн-скрипт `scripts/supplier_identity_audit.py`, без HTTP-маршрута) — соответствует заявленному правилу «меняется статус, а не удаляются данные» |
+| Приоритизация контакта при отправке (workspace-override → кросс-tenant консенсус → запасной вариант) | IMPLEMENTED | `mail/contact_intelligence.py::resolve_contact_priority`, 14 тестов в `tests/test_contact_resolution_send_path.py` |
 
-## AI Assistant
+## AI-ассистент
 
-| Feature | Status | Evidence |
+| Функция | Статус | Доказательство |
 |---|---|---|
-| Real LLM call (not mock) | IMPLEMENTED | RouterAI, `backend/integrations/llm/routerai_client.py` |
-| Context scoped to suppliers with real communication only | IMPLEMENTED | Fixed 2026-09-10 (`0d16945`), server-re-validated (`get_thread_owned`), confirmed still correct this audit |
-| Daily spend cap | IMPLEMENTED | `ai_chat_usage` table, default 10₽/day, checked before calling the model |
-| Per-minute/burst rate limiting | NOT_IMPLEMENTED | Only the daily cumulative cap exists |
-| Context size/token accounting | **PARTIAL** | Character-based truncation only (40,000-char budget, blunt suffix cut); no real token counting |
+| Реальный вызов LLM (не заглушка) | IMPLEMENTED | RouterAI, `backend/integrations/llm/routerai_client.py` |
+| Контекст ограничен только поставщиками с реальной коммуникацией | IMPLEMENTED | Исправлено 10.09.2026 (`0d16945`), проверяется на сервере (`get_thread_owned`), подтверждено этим аудитом как всё ещё верное |
+| Дневной лимит расходов | IMPLEMENTED | Таблица `ai_chat_usage`, по умолчанию 10₽/день, проверяется до вызова модели |
+| Лимит по частоте запросов (в минуту/пакетами) | NOT_IMPLEMENTED | Есть только суммарный дневной лимит |
+| Учёт размера/токенов контекста | **PARTIAL** | Только обрезка по числу символов (лимит 40 000 символов, грубая обрезка с конца); реального подсчёта токенов нет |
 
-## Tasks / Calendar
+## Задачи / Календарь
 
-| Feature | Status | Evidence |
+| Функция | Статус | Доказательство |
 |---|---|---|
-| Task CRUD + completion | IMPLEMENTED | Full route set, real tables |
-| Task reminders — in-app (toast, tab open) | IMPLEMENTED | 45s poll, `RemindersContext.tsx` |
-| Task reminders — browser push (tab closed) | NOT_IMPLEMENTED | No Service Worker/Push API/server scheduler |
-| Task reminders — email | **MOCK** (recorded, never sent) | No send path exists anywhere for `channel='email'` reminders despite the form accepting/validating it |
-| Task reminders — phone | MOCK (explicitly labeled in UI) | "Телефонный канал работает только как local mock: звонка не будет." |
-| Calendar display | IMPLEMENTED | `DashboardCalendar.tsx`, real task data, not fixture |
-| Full-page `/calendar` | REMOVED 2026-09-17 | Was dead/unreachable code after nav entry removal; deleted this session |
+| CRUD задач + завершение | IMPLEMENTED | Полный набор маршрутов, реальные таблицы |
+| Напоминания о задачах — в интерфейсе (тост, вкладка открыта) | IMPLEMENTED | Опрос раз в 45 сек, `RemindersContext.tsx` |
+| Напоминания о задачах — push-уведомление браузера (вкладка закрыта) | NOT_IMPLEMENTED | Нет Service Worker/Push API/серверного планировщика |
+| Напоминания о задачах — email | **MOCK** (записывается, но никогда не отправляется) | Нет пути отправки нигде для канала `channel='email'`, хотя форма принимает и валидирует такой выбор |
+| Напоминания о задачах — телефон | MOCK (прямо помечено в интерфейсе) | «Телефонный канал работает только как local mock: звонка не будет.» |
+| Отображение календаря | IMPLEMENTED | `DashboardCalendar.tsx`, реальные данные задач, не тестовые |
+| Полноэкранный `/calendar` | УДАЛЁН 17.09.2026 | Был мёртвым/недостижимым кодом после удаления пункта меню; удалён в этой сессии |
 
 ## Frontend
 
-| Feature | Status | Evidence |
+| Функция | Статус | Доказательство |
 |---|---|---|
-| frontend-v2 is the deployed UI | IMPLEMENTED (confirmed) | `vercel.json` builds only `frontend-v2` |
-| frontend (v1) still deployed anywhere | NOT_IMPLEMENTED | Zero commits in ~2 weeks, explicitly excluded from the Vercel bundle |
-| Shared UI primitives: Button, Modal, Toast, Loading/Empty/Error states | IMPLEMENTED, consistently reused | See `../frontend/UI_INVENTORY.md` |
-| Shared UI primitives: Input, Checkbox, Card, Table, Tabs | **NOT_IMPLEMENTED as shared components** — each page reinvents its own | Root cause of the "Frankenstein" visual effect, see `../frontend/UI_INVENTORY.md` |
-| Frontend-v2 browser/e2e/visual test coverage | NOT_IMPLEMENTED | v1 has Playwright+axe+Storybook+Applitools; none of it ported to v2. CI's `frontend_v2` job only runs lint+build, no runtime checks |
+| `frontend-v2` — реально задеплоенный интерфейс | IMPLEMENTED (подтверждено) | `vercel.json` собирает только `frontend-v2` |
+| `frontend` (старая версия) где-либо задеплоен | NOT_IMPLEMENTED | Ноль коммитов ~2 недели, явно исключён из сборки Vercel |
+| Общие UI-примитивы: Button, Modal, Toast, состояния загрузки/пусто/ошибка | IMPLEMENTED, используются последовательно | См. `../frontend/UI_INVENTORY.md` |
+| Общие UI-примитивы: Input, Checkbox, Card, Table, Tabs | **NOT_IMPLEMENTED как общие компоненты** — каждая страница делает свою версию | Основная причина эффекта «франкенштейна», см. `../frontend/UI_INVENTORY.md` |
+| Браузерное/e2e/визуальное тестирование frontend-v2 | NOT_IMPLEMENTED | В старой версии есть Playwright+axe+Storybook+Applitools; ничего не перенесено в v2. CI-джоб `frontend_v2` запускает только lint+build, без реальных проверок в браузере |
 
-## QA infrastructure
+## QA-инфраструктура
 
-| Tool | frontend-v2 | frontend (v1) |
+| Инструмент | frontend-v2 | frontend (старая версия) |
 |---|---|---|
 | TypeScript | ✅ | ✅ |
-| Linter | oxlint (not ESLint) | ESLint |
-| Unit tests | Vitest + Testing Library (4 files only) | — |
-| E2E/browser | ❌ none | ✅ Playwright |
-| Accessibility | ❌ none | ✅ axe-core |
-| Visual regression | ❌ none | ✅ Applitools Eyes |
-| Component catalog | ❌ none | ✅ Storybook |
-| Backend tests | unittest, ~90 files, `tests/run-tests.ps1` | (shared) |
-| CI | `.github/workflows/ci.yml` — `frontend_v2` job is lint+build only | `frontend`/`browser_smoke`/`browser_full` jobs run real Playwright |
+| Линтер | oxlint (не ESLint) | ESLint |
+| Юнит-тесты | Vitest + Testing Library (всего 4 файла) | — |
+| E2E/браузерные тесты | ❌ нет | ✅ Playwright |
+| Проверка доступности (accessibility) | ❌ нет | ✅ axe-core |
+| Визуальное регрессионное тестирование | ❌ нет | ✅ Applitools Eyes |
+| Каталог компонентов | ❌ нет | ✅ Storybook |
+| Backend-тесты | unittest, ~90 файлов, `tests/run-tests.ps1` | (общее) |
+| CI | `.github/workflows/ci.yml` — джоб `frontend_v2` только lint+build | джобы `frontend`/`browser_smoke`/`browser_full` реально гоняют Playwright |

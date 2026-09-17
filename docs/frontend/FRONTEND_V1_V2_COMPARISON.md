@@ -7,61 +7,64 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# Frontend v1 vs v2 Comparison
+# Сравнение Frontend v1 и v2
 
-See [`FRONTEND_ARCHITECTURE.md`](FRONTEND_ARCHITECTURE.md) for which one is live and why the
-combination causes visual inconsistency. This file is the detailed page/library diff.
+См. [`FRONTEND_ARCHITECTURE.md`](FRONTEND_ARCHITECTURE.md) о том, какая версия реально работает
+и почему их сочетание создаёт визуальную несогласованность. Этот файл — детальное сравнение
+страниц и библиотек.
 
-## Pages/routes
+## Страницы/маршруты
 
-| v1 route | v1 file | v2 route | v2 file | Status |
+| Маршрут в v1 | Файл в v1 | Маршрут в v2 | Файл в v2 | Статус |
 |---|---|---|---|---|
-| `/` | `Dashboard.tsx` | `/` | `Dashboard.tsx` | Both |
-| `/requests` | `RequestsList.tsx` | `requests` | `Requests.tsx` | Both (renamed) |
-| `/requests/new` | `NewRequest.tsx` (own page) | — | `NewRequestModal` (modal in `Requests.tsx`) | UX pattern change, not a real regression |
-| `/requests/:id` | `RequestPage` | `requests/:id` | `RequestDetail.tsx` | Both |
-| `/messages` | `Messages.tsx` | `messages` | `Messages.tsx` | Both |
-| `/mail/campaigns/:id` | `CampaignPage.tsx` | — | — | **v1-only — real regression, `GAP-001`** |
-| `/suppliers` | `Suppliers.tsx` | `suppliers` | `Suppliers.tsx` | Both |
-| — | — | `suppliers/:id` | `SupplierDetail.tsx` | v2-only (v1 uses an overlay panel instead) |
-| `/blacklist` | `Blacklist.tsx` | `blacklist` | `Blacklist.tsx` | Both |
-| `/settings` | `Settings.tsx` | `settings` | `Settings.tsx` | Both |
-| `/login` | `Login.tsx` | (gated) | `Login.tsx` | Both |
-| `*` | `NotFound.tsx` | `*` | `NotFound.tsx` | Both |
-| — | — | `help` | `Help.tsx` | v2-only |
+| `/` | `Dashboard.tsx` | `/` | `Dashboard.tsx` | Есть в обеих |
+| `/requests` | `RequestsList.tsx` | `requests` | `Requests.tsx` | Есть в обеих (переименован) |
+| `/requests/new` | `NewRequest.tsx` (отдельная страница) | — | `NewRequestModal` (модальное окно внутри `Requests.tsx`) | Изменение UX-паттерна, не реальная потеря функциональности |
+| `/requests/:id` | `RequestPage` | `requests/:id` | `RequestDetail.tsx` | Есть в обеих |
+| `/messages` | `Messages.tsx` | `messages` | `Messages.tsx` | Есть в обеих |
+| `/mail/campaigns/:id` | `CampaignPage.tsx` | — | — | **Только в v1 — реальная потеря функциональности, `GAP-001`** |
+| `/suppliers` | `Suppliers.tsx` | `suppliers` | `Suppliers.tsx` | Есть в обеих |
+| — | — | `suppliers/:id` | `SupplierDetail.tsx` | Только в v2 (в v1 вместо этого — всплывающая панель) |
+| `/blacklist` | `Blacklist.tsx` | `blacklist` | `Blacklist.tsx` | Есть в обеих |
+| `/settings` | `Settings.tsx` | `settings` | `Settings.tsx` | Есть в обеих |
+| `/login` | `Login.tsx` | (закрыт для неавторизованных) | `Login.tsx` | Есть в обеих |
+| `*` | `NotFound.tsx` | `*` | `NotFound.tsx` | Есть в обеих |
+| — | — | `help` | `Help.tsx` | Только в v2 |
 
-No other v1-only pages found beyond the campaign monitor.
+Других страниц, существующих только в v1, кроме мониторинга рассылок, не найдено.
 
-## Library/tooling diff
+## Различия в библиотеках/инструментах
 
-| Aspect | v1 (`frontend/`) | v2 (`frontend-v2/`) |
+| Параметр | v1 (`frontend/`) | v2 (`frontend-v2/`) |
 |---|---|---|
 | React | 18.3.1 | 19.2.8 |
-| Router | react-router-dom ^6, `BrowserRouter` | react-router-dom ^7, `HashRouter` |
-| Icons | lucide-react ^0.446 | lucide-react ^1.41 (major jump) |
-| Styling | Tailwind ^3.4 + PostCSS | Tailwind ^4.3 via Vite plugin |
-| Component primitives | hand-rolled | Radix UI (headless) |
-| Tables | ad hoc | `@tanstack/react-table` (1 of 6 tables) |
-| Toasts | none | `react-toastify` |
-| Lint | ESLint 9 | oxlint |
-| E2E/visual/a11y | Playwright + Storybook + Applitools Eyes + axe-core + Lighthouse CI | none |
+| Роутер | react-router-dom ^6, `BrowserRouter` | react-router-dom ^7, `HashRouter` |
+| Иконки | lucide-react ^0.446 | lucide-react ^1.41 (переход через мажорную версию) |
+| Стили | Tailwind ^3.4 + PostCSS | Tailwind ^4.3 через плагин Vite |
+| Компонентные примитивы | написаны вручную | Radix UI (headless) |
+| Таблицы | вручную | `@tanstack/react-table` (только в 1 из 6 таблиц) |
+| Тосты (всплывающие уведомления) | нет | `react-toastify` |
+| Линтер | ESLint 9 | oxlint |
+| E2E/визуальное/accessibility-тестирование | Playwright + Storybook + Applitools Eyes + axe-core + Lighthouse CI | ничего из этого нет |
 
-## `RequestDetailExperiment.tsx` — already resolved, no action needed
+## `RequestDetailExperiment.tsx` — вопрос уже решён, действий не требуется
 
-Existed only transiently in the working tree (never on `experiment/frontend-v2-greenfield-20260905`'s
-history until captured on the separate `state/current-20260917-2119` snapshot branch, commit
-`dcb0576`). Structural diff against the live `RequestDetail.tsx`:
+Существовал только временно в рабочей директории (никогда не попадал в историю ветки
+`experiment/frontend-v2-greenfield-20260905` — зафиксирован только на отдельной ветке-снапшоте
+`state/current-20260917-2119`, коммит `dcb0576`). Структурное сравнение с рабочей страницей
+`RequestDetail.tsx`:
 
-- **Experiment (577 lines):** one monolithic function, all logic inline (tasks, positions,
-  table rows) — no sub-components beyond shared pure helpers.
-- **Live `RequestDetail.tsx` (~840 lines):** the more evolved version — decomposed into
-  `PositionsRow`, `CommunicationCell`, `PrimaryAction`, `OverflowMenu`, `CompanyCell`,
+- **Экспериментальная версия (577 строк):** одна монолитная функция, вся логика внутри (задачи,
+  позиции, строки таблицы) — нет отдельных вложенных компонентов, кроме нескольких чистых
+  вспомогательных функций.
+- **Рабочая `RequestDetail.tsx` (~840 строк):** более развитая версия — логика разделена на
+  компоненты `PositionsRow`, `CommunicationCell`, `PrimaryAction`, `OverflowMenu`, `CompanyCell`,
   `AgeCell`/`RevenueCell`/`ProfitCell`/`RegistryCell`, `SupplierTableRow`/`SupplierMobileRow`,
-  `TasksOnRequest`. Also has `RemindersContext` integration, a shared `PageHeader`, trend-arrow
-  icons on finance cells, and a dedicated mobile row renderer — none of which exist in the
-  Experiment file.
+  `TasksOnRequest`. Также есть интеграция с `RemindersContext`, общий компонент `PageHeader`,
+  стрелки-индикаторы тренда на финансовых ячейках и отдельный рендер строки для мобильных
+  экранов — ничего этого нет в экспериментальном файле.
 
-**No UI idea in the Experiment file is missing from the live page.** It reads as an earlier,
-less-refactored draft of the same screen, already correctly identified and removed as redundant
-scratch work per `ai/ACTIVE_TASK.md`: *"its real functionality already lived correctly in
-RequestDetail.tsx."* No migration or salvage action is needed.
+**Ни одна идея из экспериментального файла не отсутствует на рабочей странице.** Он читается как
+более ранний, менее отрефакторенный черновик того же экрана — уже корректно определён как
+избыточный и удалён, согласно записи в `ai/ACTIVE_TASK.md`: «его реальная функциональность уже
+корректно жила в `RequestDetail.tsx`». Переноса или спасения каких-либо идей не требуется.

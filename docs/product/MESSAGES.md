@@ -7,79 +7,88 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# Messages / Mail — Business Rules
+# Сообщения / Почта — бизнес-правила
 
-Verified 2026-09-17 against `docs/ui/MESSAGES_SCREEN_SPEC.md` (updated 2026-09-11, confirmed
-still accurate for everything it covers), `docs/api/messages.md` (accurate but narrow — metadata
-routes only), and `docs/domain/SUPPLIER_MODEL.md` §7 (confirmed accurate). This file covers what
-those three don't, and states clearly which parts are newly confirmed vs newly found wrong.
+Проверено 17.09.2026 по `docs/ui/MESSAGES_SCREEN_SPEC.md` (обновлён 11.09.2026, подтверждено —
+всё ещё актуален), `docs/api/messages.md` (точен, но узок — только маршруты метаданных) и
+`docs/domain/SUPPLIER_MODEL.md` §7 (подтверждено — актуален). Этот документ покрывает то, что не
+покрывают те три, и честно указывает, что подтверждено, а что оказалось неверным.
 
-## Thread matching (inbound → request/supplier)
+## Привязка переписки (входящее письмо → заявка/поставщик)
 
-`_find_incoming_thread` (`mail/repository.py:2638`): first tries RFC `In-Reply-To`/`References`
-header-token overlap against the account's own prior `mail_messages`; falls back to
-normalized-subject + exact supplier-email match on `mail_threads`. Bounces are matched
-separately (`_find_thread_for_bounce`) by extracting the failed recipient from the bounce body —
-never by the bounce's own `From` (mailer-daemon), since that would never match a supplier.
+`_find_incoming_thread` (`mail/repository.py:2638`): сначала пробует совпадение по служебным
+заголовкам письма `In-Reply-To`/`References` относительно предыдущих писем этого же почтового
+ящика; если не вышло — совпадение по нормализованной теме + точному email поставщика в
+`mail_threads`. Отказы доставки (bounce) матчатся отдельно (`_find_thread_for_bounce`) — адрес
+получателя, которому не удалось доставить письмо, извлекается из тела письма-отказа, а не из
+поля «От кого» (это всегда technical-адрес почтового сервера, а не поставщик).
 
-**If neither matches:** the message is inserted into `mail_inbox_messages` with
-`status='unmatched'` and stays there — visible in "Письма без заявки" — until a human resolves it
-via `attach_inbox_message` (link to an existing supplier) or `manually_link_inbox_message`
-(link with no supplier). **Nothing here creates a new `suppliers` row** — that only happens on
-the *send* path (see [`SUPPLIERS.md`](SUPPLIERS.md) / `GAP-003`).
+**Если совпадения нет:** письмо добавляется в `mail_inbox_messages` со статусом `unmatched`
+(непривязано) и остаётся там — видно в «Письмах без заявки» — пока человек не разрешит это через
+`attach_inbox_message` (привязать к существующему поставщику) или
+`manually_link_inbox_message` (привязать без поставщика). **Ничто в этом процессе не создаёт
+новую запись в `suppliers`** — это происходит только на пути *отправки* письма (см.
+[`SUPPLIERS.md`](SUPPLIERS.md) / `GAP-003`).
 
-## Statuses (all of them)
+## Статусы (все существующие)
 
-| Layer | Table/field | Values |
+| Уровень | Таблица/поле | Значения |
 |---|---|---|
-| Transport (UI-facing) | `request_supplier_states.status`, mapped | `not_sent`, `sent`, `waiting`, `answered`, `error`, `delivery_unknown` |
-| Per-message pipeline | `mail_messages.status` | `queued`, `sending`, `sent`, `failed`, `delivery_unknown`, `received`, `cancelled` |
-| Conversation label (per-user) | `mail_thread_status` | `in_progress`, `deferred`, `rejected`, or none |
-| Derived, never stored | `needs_followup` | boolean — SLA-elapsed with no reply |
-| Unmatched inbox | `mail_inbox_messages.status` | `unmatched`, `matched`, `ignored` |
+| Транспортный (виден в интерфейсе) | `request_supplier_states.status`, приводится к виду | `не отправлено`, `отправлено`, `ожидание`, `есть ответ`, `ошибка`, `статус доставки неизвестен` |
+| Пайплайн одного сообщения | `mail_messages.status` | `в очереди`, `отправляется`, `отправлено`, `не удалось`, `статус неизвестен`, `получено`, `отменено` |
+| Личная рабочая метка переписки | `mail_thread_status` | `в работе`, `отложено`, `отклонено` либо не задана |
+| Производный, никогда не хранится | `needs_followup` | булево значение — истёк срок SLA, ответа нет |
+| Папка непривязанных писем | `mail_inbox_messages.status` | `непривязано`, `привязано`, `проигнорировано` |
 
-`conversation_status` never touches sending or blacklist status — confirmed, matches spec.
+Подтверждено: `conversation_status` (личная метка) никогда не влияет на отправку писем или
+статус чёрного списка — совпадает со спецификацией.
 
-## Attachments
+## Вложения
 
-Outbound: enforced 10 MB/attachment, 20 MB total, stored as BLOB, returned inline in
-message-detail API responses. Inbound: parsed the same way (`mail/providers/yandex.py`), stored
-in `mail_attachments`. **Gap:** the frontend never reads `message.attachments` for an
-already-sent or received message — `MailAttachment[]` is wired only to the composer's own draft.
-Real backend capability with no UI surface (`GAP-004`).
+Исходящие: соблюдаются лимиты 10 МБ на файл, 20 МБ суммарно, хранится как BLOB, возвращается
+целиком в ответе API с деталями письма. Входящие: разбираются точно так же
+(`mail/providers/yandex.py`), хранятся в `mail_attachments`. **Пробел:** интерфейс никогда не
+читает `message.attachments` для уже отправленного или полученного письма — тип
+`MailAttachment[]` привязан только к собственным вложениям черновика в композере. Реальная
+возможность backend без интерфейса (`GAP-004`).
 
-## HTML / links / CID
+## HTML / ссылки / встроенные изображения (CID)
 
-Confirmed matches spec §9: `nh3` (Rust Ammonia) allowlist, `data:` scheme allowed for `<img>`
-but stripped from `<a href>`, forced `target="_blank"` + safe `rel` on every link, CSS
-property-allowlisted with a regex block on `url()`/`expression()`/`javascript:`/`@import`.
-CID inline images are resolved to `data:` URLs at parse time; any residual `cid:` src is stripped
-at sanitize time as defense in depth (there is no trusted mailbox base URL to resolve it against
-otherwise).
+Подтверждено соответствие спецификации §9: allowlist через `nh3` (Rust Ammonia), схема `data:`
+разрешена для `<img>`, но вырезается из `<a href>`, у каждой ссылки принудительно ставится
+`target="_blank"` и безопасный `rel`, CSS-свойства ограничены белым списком с regex-блокировкой
+`url()`/`expression()`/`javascript:`/`@import`. Встроенные изображения (CID) преобразуются в
+`data:`-ссылки при разборе письма; любой оставшийся `cid:`-адрес дополнительно вырезается при
+отображении как дополнительная защита (доверенного базового URL почтового ящика для такого
+случая нет).
 
-**Not verified:** "links are actually clickable in the rendered UI" is asserted by the sanitizer's
-own design but has no Playwright/browser test proving the rendered result — unlike the AI-context
-scoping invariant, which does have a dedicated backend test. Flagged as
-`IMPLEMENTED / NOT VERIFIED`.
+**Не проверено:** утверждение «ссылки реально кликабельны в отображаемом интерфейсе» следует из
+самого дизайна санитайзера, но нет ни одного браузерного/Playwright-теста, доказывающего именно
+отрендеренный результат — в отличие от инварианта про AI-контекст, у которого есть отдельный
+backend-тест. Помечено как `IMPLEMENTED / NOT VERIFIED` (реализовано, но не проверено).
 
-## Unread
+## Прочитано/непрочитано
 
-No explicit "mark read" endpoint — reading is a side effect of `thread_messages()`/
-`inbox_conversation()`, which insert a `mail_message_reads`/`mail_inbox_message_reads` row for
-every inbound message the moment the thread is opened. No "mark unread" path exists.
+Отдельного маршрута «пометить прочитанным» нет — прочтение является побочным эффектом вызовов
+`thread_messages()`/`inbox_conversation()`, которые добавляют строку в `mail_message_reads`/
+`mail_inbox_message_reads` для каждого входящего сообщения в момент открытия переписки. Пути
+«пометить непрочитанным» не существует.
 
-## Physical deletion
+## Физическое удаление
 
-**Confirmed: none exists.** The only `DELETE FROM mail_messages`/`mail_threads` statement in the
-entire repository is in `scripts/supplier_identity_audit.py` — an offline maintenance script with
-no HTTP route. Every user-visible "removal" action (ignore, reject, clear status) is a status or
-visibility change, never a row deletion. This matches `INV-MSG-001` below.
+**Подтверждено: отсутствует.** Единственный оператор `DELETE FROM mail_messages`/`mail_threads`
+во всём репозитории находится в `scripts/supplier_identity_audit.py` — офлайн-скрипте
+обслуживания, без HTTP-маршрута. Каждое видимое пользователю действие «удаления»
+(проигнорировать, отклонить, снять метку) — это изменение статуса или видимости, никогда не
+удаление строки. Соответствует `INV-MSG-001` ниже.
 
-## needs_followup and contact resolution
+## needs_followup и приоритизация контакта
 
-Confirmed exactly matches `docs/domain/SUPPLIER_MODEL.md` §7 — not re-explained here to avoid
-duplication. Key facts worth surfacing in this index: default SLA 2 business days (Mon–Fri, no
-holiday calendar), per-request override available; contact-priority resolution
-(workspace-preferred → cross-tenant preferred → stored fallback) runs through one single
-side-effect-free resolver used identically by preview and real send, so what a buyer sees in
-preview is guaranteed to be what actually gets used.
+Подтверждено: полностью соответствует `docs/domain/SUPPLIER_MODEL.md` §7 — не повторяется здесь
+во избежание дублирования. Ключевые факты, важные для этого индекса: SLA по умолчанию — 2
+рабочих дня (пн–пт, без учёта праздников), есть переопределение для конкретной заявки;
+приоритизация контакта при отправке (переопределение workspace → кросс-tenant предпочтительный
+контакт → сохранённый запасной вариант) выполняется через один и тот же, не имеющий побочных
+эффектов резолвер, одинаково используемый и предпросмотром, и реальной отправкой — то, что
+покупатель видит в предпросмотре, гарантированно совпадает с тем, что реально будет
+использовано при отправке.

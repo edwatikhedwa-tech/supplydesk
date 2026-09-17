@@ -7,63 +7,81 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# Frontend Architecture
+# Архитектура Frontend
 
-Supersedes `docs/architecture/COMPONENT_MAP.md`'s `COMP-FRONTEND` row (dated 2026-09-04, only
-knows about `frontend/`, doesn't mention `frontend-v2` at all — confirmed stale, see `GAP-011`).
+Заменяет строку `COMP-FRONTEND` в `docs/architecture/COMPONENT_MAP.md` (от 04.09.2026, написана
+до появления `frontend-v2`, о нём вообще не упоминает — подтверждено как устаревшее) как
+источник понимания того, что реально работает сегодня.
 
-## Which frontend is live (verified, not assumed)
+## Какой frontend является production (проверено, а не предположено)
 
-**`frontend-v2/` is the only deployed frontend.** Evidence:
+**`frontend-v2/` — единственный задеплоенный frontend.** Доказательства:
 - `vercel.json`: `buildCommand: cd frontend-v2 && npm run build`, `outputDirectory:
-  frontend-v2/dist`, and `frontend/**` is explicitly excluded from the serverless bundle.
-- No root-level `package.json` — all build orchestration points at `frontend-v2` (both
-  `vercel.json` and the local dev launcher `scripts/start_server_and_open.ps1`, whose own code
-  comment states frontend-v2 "теперь основной UI, а не... frontend/dist").
-- `git log -- frontend/` bottoms out ~2026-09-04; `git log -- frontend-v2/` has near-daily
-  commits through today. `frontend/` is frozen, not actively maintained in parallel — it is dead
-  code still sitting in the repo, not a live alternative.
+  frontend-v2/dist`, и `frontend/**` явно исключён из serverless-сборки.
+- В корне репозитория нет `package.json` — вся сборка ориентирована на `frontend-v2` (и в
+  `vercel.json`, и в локальном скрипте запуска `scripts/start_server_and_open.ps1`, чей
+  собственный комментарий в коде подтверждает: frontend-v2 «теперь основной UI, а не...
+  frontend/dist»).
+- `git log -- frontend/` заканчивается примерно на 04.09.2026; `git log -- frontend-v2/` содержит
+  коммиты почти каждый день вплоть до сегодняшнего дня. `frontend/` заморожен, это не
+  параллельно поддерживаемая альтернатива — это мёртвый код, всё ещё лежащий в репозитории, а не
+  живая альтернатива.
 
-## Stack (frontend-v2)
+## `frontend` (старая версия) — что это такое
 
-React 19.2.8 + Vite 7.3.6 + Tailwind v4 (via `@tailwindcss/vite`, no PostCSS config needed) +
-react-router-dom v7.18.3 (`HashRouter`) + TypeScript ~6.0.2. Component primitives: `radix-ui`
-(headless) + `clsx`/`tailwind-merge`. Tables: `@tanstack/react-table` (used in exactly 1 of 6
-table implementations — see `UI_INVENTORY.md`). Icons: `lucide-react`, exclusively (41 files,
-no competing icon source). Toasts: `react-toastify`. Dates: `date-fns` + `react-day-picker`.
-Linter: `oxlint` (not ESLint). Tests: `vitest` + Testing Library (4 unit-test files only, no
-e2e/browser/visual coverage — see `GAP-010`).
+`frontend/` (без `-v2`) — это старая, отключённая версия интерфейса. Физически ещё лежит в
+репозитории (не удалена), но не собирается и не деплоится никуда, и не получает новых коммитов
+последние ~2 недели. Отдельно важно: именно в ней остался богатый набор инструментов
+тестирования (Playwright, axe-core, Storybook, Applitools Eyes) — этот набор так и не был
+перенесён на новую версию `frontend-v2`.
 
-## Routing (`frontend-v2/src/App.tsx`)
+## `frontend-v2` — что это такое и на чём построено
 
-`/` (Dashboard), `/requests`, `/requests/:id`, `/suppliers`, `/suppliers/:id`, `/messages`,
-`/blacklist`, `/settings`, `/help`, `*` (404). `/calendar` existed transiently, removed
-2026-09-17 as dead/unreachable code (commit `85d7f31`) once its sidebar nav entry had already
-been dropped and the Dashboard gained its own real calendar widget.
+React 19.2.8 + Vite 7.3.6 + Tailwind v4 (через плагин `@tailwindcss/vite`, конфиг PostCSS не
+нужен) + react-router-dom v7.18.3 (роутинг через `HashRouter`, то есть адреса вида `#/requests`)
++ TypeScript ~6.0.2. Компонентные примитивы: `radix-ui` (headless, «безголовые» компоненты без
+готового вида) + `clsx`/`tailwind-merge` для сборки классов. Таблицы: `@tanstack/react-table`
+(используется только в 1 из 6 реализаций таблиц — см. `UI_INVENTORY.md`). Иконки:
+исключительно `lucide-react` (41 файл, нет конкурирующего источника иконок). Тосты (всплывающие
+уведомления): `react-toastify`. Даты: `date-fns` + `react-day-picker`. Линтер: `oxlint` (не
+ESLint). Тесты: `vitest` + Testing Library (всего 4 файла юнит-тестов, нет e2e/браузерного/
+визуального покрытия — см. `GAP-010`).
 
-## Why the app looks inconsistent ("Frankenstein") — root cause, evidence-based
+## Маршрутизация (`frontend-v2/src/App.tsx`)
 
-Not a vague impression — three concrete, distinct causes, in order of impact:
+`/` (Дашборд), `/requests` (Заявки), `/requests/:id`, `/suppliers` (Поставщики),
+`/suppliers/:id`, `/messages` (Сообщения), `/blacklist` (Чёрный список), `/settings`
+(Настройки), `/help` (Помощь), `*` (страница 404). Маршрут `/calendar` существовал временно,
+удалён 17.09.2026 как мёртвый/недостижимый код (коммит `85d7f31`) — после того как пункт меню на
+него был убран ранее, а дашборд получил собственный реальный виджет календаря.
 
-1. **Missing shared primitives for 5 of 13 audited UI categories** (Input, Checkbox, Card, Table,
-   Tabs) — every page reinvents its own version of each, with visible drift between copies. See
-   [`UI_INVENTORY.md`](UI_INVENTORY.md) for the full evidence table. This is the largest
-   contributor.
-2. **Two frontends with materially different tech stacks coexist in the repo** — React 18 vs 19,
-   router v6 vs v7, a full major-version jump on the icon library, Tailwind v3 vs v4 with a
-   different theming model, and v2 adding a headless component library (Radix) v1 never had. Any
-   code or visual pattern carried over between them would need re-theming, not copy-paste — see
-   [`FRONTEND_V1_V2_COMPARISON.md`](FRONTEND_V1_V2_COMPARISON.md).
-3. **One screen (`Login.tsx`) is visually foreign to the rest of the app** — literal Tailwind
-   colors instead of the shared design tokens, plus a Three.js shader background
-   (`MagicRings.tsx`) pulling in the entire `three` package for one decorative element. Reads as
-   imported from a different design source (`GAP-008`).
+## Почему интерфейс выглядит несогласованным («франкенштейн») — конкретная причина, с доказательствами
 
-Counterpoint, also evidence-based: `Button`, `Modal`, the toast system, and the
-`LoadingState`/`EmptyState`/`ErrorState` trio *are* genuinely centralized and consistently reused
-across the app — the inconsistency is real but narrower than "everything is duplicated."
+Это не смутное впечатление, а три конкретных, различных причины, в порядке влияния:
 
-## Known regression vs v1
+1. **Отсутствуют общие компоненты для 5 из 13 проверенных категорий UI-элементов** (Input,
+   Checkbox, Card, Table, Tabs) — каждая страница заново придумывает свою версию каждого из них,
+   с заметными расхождениями между копиями. Полная таблица доказательств —
+   [`UI_INVENTORY.md`](UI_INVENTORY.md). Это самый большой вклад в проблему.
+2. **В репозитории одновременно существуют два frontend с существенно разным техническим
+   стеком** — React 18 против 19, роутер v6 против v7, полный переход на мажорную версию выше у
+   библиотеки иконок, Tailwind v3 против v4 с другой моделью тем, плюс v2 добавляет
+   headless-библиотеку компонентов (Radix), которой у v1 никогда не было. Любой код или
+   визуальный паттерн, перенесённый между ними, потребовал бы повторной перерисовки темы, а не
+   простого копирования — см. [`FRONTEND_V1_V2_COMPARISON.md`](FRONTEND_V1_V2_COMPARISON.md).
+3. **Один экран (`Login.tsx`, страница входа) визуально инороден остальному приложению** —
+   прямые цвета Tailwind вместо общих дизайн-токенов, плюс шейдерная анимация на Three.js
+   (`MagicRings.tsx`), из-за которой в приложение подключается вся библиотека `three` ради
+   одного декоративного элемента. Выглядит так, будто взято из другого источника дизайна
+   (`GAP-008`).
 
-Campaign monitoring/control (pause/resume/stop an in-flight bulk send, continuation dry-run) —
-`frontend/src/pages/CampaignPage.tsx` — has no v2 route or page at all. See `GAP-001`.
+Встречный, тоже основанный на доказательствах довод: `Button`, `Modal`, система тостов и тройка
+«загрузка/пусто/ошибка» (`LoadingState`/`EmptyState`/`ErrorState`) — реально централизованы и
+последовательно переиспользуются по всему приложению. Несогласованность реальна, но она
+охватывает более узкий круг элементов, чем формулировка «дублируется абсолютно всё».
+
+## Известная потеря функциональности по сравнению с v1
+
+Мониторинг и управление массовой рассылкой (пауза/возобновление/стоп запущенной рассылки,
+предпросмотр продолжения) — `frontend/src/pages/CampaignPage.tsx` — не имеет ни маршрута, ни
+страницы в v2. См. `GAP-001`.

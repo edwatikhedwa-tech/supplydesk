@@ -7,17 +7,18 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# Decisions
+# Решения (Decisions)
 
-This directory is for architecture/product decisions made **as a result of** the findings in
-`docs/system/`, `docs/product/`, `docs/frontend/`, `docs/technical/`, `docs/spec/` — e.g. "we will
-fix `INV-SUP-002` by X" or "we will unify the Input/Checkbox/Card/Table/Tabs primitives via Y."
+Эта директория предназначена для архитектурных/продуктовых решений (ADR — Architecture
+Decision Record), принятых **как следствие** находок в `docs/system/`, `docs/product/`,
+`docs/frontend/`, `docs/technical/`, `docs/spec/` — например, «мы исправим `INV-SUP-002` через
+X» или «мы унифицируем примитивы Input/Checkbox/Card/Table/Tabs через Y».
 
-**No decisions were made during the 2026-09-17 audit itself** — that pass was explicitly
-investigation-and-documentation only, per owner instruction ("не пытайся одновременно
-переделать... сначала нужно получить надёжную модель существующей системы"). This directory is
-intentionally empty until the owner decides which gap to act on next.
+**В ходе аудита 17.09.2026 никаких решений не принималось** — этот проход был явно только
+исследованием и документированием, согласно указанию владельца («не пытайся одновременно
+переделать... сначала нужно получить надёжную модель существующей системы»). Эта директория
+намеренно пуста, пока владелец не решит, за какую находку браться дальше.
 
-For decisions already made and recorded before this audit, see the living
-[`../../ai/DECISIONS.md`](../../ai/DECISIONS.md) (current) and the frozen
-[`../DECISIONS.md`](../DECISIONS.md) (historical, pre-2026-08-30).
+Решения, принятые до этого аудита, зафиксированы в живом
+[`../../ai/DECISIONS.md`](../../ai/DECISIONS.md) (актуален) и в замороженном
+[`../DECISIONS.md`](../DECISIONS.md) (историческая версия, до 30.08.2026).

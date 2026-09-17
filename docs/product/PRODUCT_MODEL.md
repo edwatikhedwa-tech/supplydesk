@@ -7,44 +7,47 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# Product Model
+# Модель продукта
 
-What SupplyDesk actually is, as verified by this audit — not the aspirational pitch.
+Чем SupplyDesk является на самом деле, по данным этого аудита — а не рекламная формулировка.
 
-## Core loop
+## Основной цикл
 
-1. A buyer creates a **заявка** (request): a name, description, and one or more **positions**
-   (line items — e.g. "печь-камин с варочной плитой").
-2. The system searches the web for candidate suppliers per position, crawls/enriches them
-   (company registry + finance via Checko when configured), and produces a supplier list.
-3. The buyer emails suppliers (individually or in bulk) asking for a quote.
-4. Replies land as **correspondence**, threaded per request+supplier, and are surfaced in
-   Messages. An `AI assistant` can answer questions using that history.
-5. The buyer tracks status per supplier (sent/waiting/answered/error), can flag a thread for
-   follow-up, create tasks/reminders, and — separately — get a one-off Dellin shipping quote for
-   a specific request+supplier.
+1. Покупатель создаёт **заявку** (request): название, описание и одну или несколько
+   **позиций** (position — товарная строка, например «печь-камин с варочной плитой»).
+2. Система ищет в интернете поставщиков-кандидатов по каждой позиции, обходит их сайты и
+   обогащает данными (реестр юрлиц + финансы через Checko, когда настроен), формирует список
+   поставщиков.
+3. Покупатель отправляет поставщикам письма (по одному или массово) с запросом предложения.
+4. Ответы попадают в **переписку**, привязанную к паре «заявка + поставщик», и отображаются в
+   разделе «Сообщения». **AI-ассистент** может отвечать на вопросы, используя реальную историю
+   этой переписки.
+5. Покупатель отслеживает статус по каждому поставщику (отправлено/ожидание/ответ/ошибка), может
+   пометить переписку для follow-up, создать задачи/напоминания и отдельно получить разовый
+   расчёт стоимости доставки через Dellin.
 
-## Feature areas and their real maturity
+## Направления продукта и их реальная зрелость
 
-| Area | Maturity | Detail |
+| Направление | Зрелость | Подробности |
 |---|---|---|
-| Requests/positions/search | Mature, durable (survives serverless restarts mid-search) | [`../technical/DATA_FLOW.md`](../technical/DATA_FLOW.md) |
-| Suppliers (identity/enrichment) | Mature model, one confirmed live data-integrity gap | [`SUPPLIERS.md`](SUPPLIERS.md) |
-| Messages/mail | Mature, careful safety invariants (no physical deletion, hard-bounce suppression, dedup-by-final-recipient) | [`MESSAGES.md`](MESSAGES.md) |
-| AI assistant | Real, working, budget-capped, context-scoped correctly | [`AI_ASSISTANT.md`](AI_ASSISTANT.md) |
-| Tasks | Real CRUD | in-app reminders work; email/phone reminders are recorded but never delivered |
-| Calendar | A Dashboard widget only (full-page version deleted 2026-09-17 as dead code) | real task data, not fixture |
-| Campaign monitoring (pause/resume/stop a bulk send) | **Missing from the live UI** — exists only in the retired `frontend/` (v1) | `GAP-001` |
-| Logistics quote | Small, real, single-purpose (one request/one supplier, Dellin only) | live-verified against the real API |
+| Заявки/позиции/поиск | Зрелое, устойчивое (переживает перезапуск serverless посреди поиска) | [`../technical/DATA_FLOW.md`](../technical/DATA_FLOW.md) |
+| Поставщики (идентичность/обогащение) | Зрелая модель, один подтверждённый живой пробел в целостности данных | [`SUPPLIERS.md`](SUPPLIERS.md) |
+| Сообщения/почта | Зрелое, тщательные правила безопасности (нет физического удаления, подавление после отказа доставки, дедупликация по итоговому получателю) | [`MESSAGES.md`](MESSAGES.md) |
+| AI-ассистент | Реальный, рабочий, с ограничением бюджета, контекст собирается корректно | [`AI_ASSISTANT.md`](AI_ASSISTANT.md) |
+| Задачи | Реальный CRUD | напоминания в интерфейсе работают; email- и телефон-напоминания записываются, но никогда не доставляются |
+| Календарь | Только виджет на дашборде (полноэкранная версия удалена 17.09.2026 как мёртвый код) | реальные данные задач, не тестовые |
+| Мониторинг рассылки (пауза/возобновление/стоп) | **Отсутствует в рабочем интерфейсе** — есть только в отключённом `frontend/` (старая версия) | `GAP-001` |
+| Расчёт стоимости доставки | Небольшой, реальный, для одной цели (одна заявка/один поставщик, только Dellin) | проверен вживую на реальном API |
 
-## What is explicitly NOT a product invariant yet
+## Что намеренно ещё не является правилом продукта
 
-- No multi-tenant self-signup — single seeded owner account per deployment.
-- No push notifications when the app tab is closed (reminders only fire while a tab is open and
-  polling).
-- No general file/attachment browsing for received mail (attachments are stored but not surfaced
-  in the UI — `GAP-004`).
+- Нет самостоятельной регистрации нескольких организаций — один заранее заведённый
+  владелец-аккаунт на один деплой.
+- Нет push-уведомлений при закрытой вкладке приложения (напоминания срабатывают только пока
+  вкладка открыта и идёт опрос).
+- Нет общего просмотра файлов/вложений для полученной почты (вложения хранятся, но не
+  отображаются в интерфейсе — `GAP-004`).
 
-See [`USER_FLOWS.md`](USER_FLOWS.md) for narrative walkthroughs of each area, and
-[`../system/CURRENT_STATE.md`](../system/CURRENT_STATE.md) for the full IMPLEMENTED/PARTIAL/
-MOCK/NOT_IMPLEMENTED matrix.
+См. [`USER_FLOWS.md`](USER_FLOWS.md) для пошаговых сценариев по каждому направлению и
+[`../system/CURRENT_STATE.md`](../system/CURRENT_STATE.md) для полной таблицы статусов
+IMPLEMENTED/PARTIAL/MOCK/NOT_IMPLEMENTED.

@@ -7,122 +7,135 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# System Map
+# Карта системы
 
-Full-repository audit produced 2026-09-17 on branch `experiment/frontend-v2-greenfield-20260905`
-@ `dc66b0b`. This is the entry point for the new `docs/system|product|frontend|technical|spec|
-testing|validation|decisions` documentation tree created by that audit. It **supersedes**
-`docs/architecture/COMPONENT_MAP.md` (dated 2026-09-04, predates `frontend-v2` entirely — kept
-for history, not for current facts) as the map of what actually runs today.
+Полный аудит репозитория проведён 2026-09-17 на ветке `experiment/frontend-v2-greenfield-20260905`
+@ `dc66b0b`. Это точка входа в новое дерево документации `docs/system|product|frontend|
+technical|spec|testing|validation|decisions`, созданное этим аудитом. Документ **заменяет**
+`docs/architecture/COMPONENT_MAP.md` (от 2026-09-04, написан до появления `frontend-v2` —
+сохранён ради истории, но не как источник текущих фактов) в роли карты того, что реально
+работает сегодня.
 
-Older docs are not discarded: where they were verified accurate during this audit they are
-cited directly instead of being re-written. See [`KNOWN_GAPS.md`](KNOWN_GAPS.md) for the exact
-list of what was confirmed stale.
+Старые документы не отбрасываются: там, где они были проверены и подтвердились в ходе этого
+аудита, на них просто даётся ссылка вместо переписывания. См.
+[`KNOWN_GAPS.md`](KNOWN_GAPS.md) — там точный список того, что оказалось устаревшим.
 
-## What SupplyDesk is
+## Что такое SupplyDesk
 
-A single-tenant-per-workspace B2B procurement tool: a buyer creates a "заявка" (request) with
-one or more line-item positions, the system searches the web for candidate suppliers, enriches
-them (company registry + finance data via Checko), emails them, and tracks replies as
-correspondence tied back to the request. A per-workspace AI assistant can answer questions using
-that request's actual email history. Tasks/reminders and a small logistics-quote calculator
-round out the MVP.
+B2B-инструмент для отдела снабжения одного рабочего пространства (workspace): покупатель
+создаёт **заявку** (request) с одной или несколькими **позициями** (position — товар, который
+нужно найти), система ищет в интернете кандидатов-поставщиков, обогащает их (данные из реестра
+юрлиц и финансовая отчётность через Checko), покупатель рассылает им письма с запросом
+предложения, а ответы попадают в **переписку** (correspondence), привязанную к заявке и
+поставщику. Отдельный AI-ассистент отвечает на вопросы, используя реальную историю переписки по
+конкретной заявке. Задачи/напоминания и небольшой калькулятор стоимости доставки (Dellin)
+дополняют MVP.
 
-## Repository layout (top level)
+## Структура репозитория (верхний уровень)
 
-| Path | Role |
+| Путь | Роль |
 |---|---|
-| `supplier_app.py` | Main HTTP handler — all route dispatch (GET/POST/PUT/DELETE), auth/CSRF/rate-limit enforcement, background-thread startup |
-| `api/index.py` | Thin Vercel serverless adapter wrapping `supplier_app.py` |
-| `mail/` | Persistence + business-logic layer: `MailRepository` (mixin-composed God-object, ~9000+ lines) plus focused modules (`service.py`, `content.py`, `bounce.py`, `pacing.py`, `queue.py`, `runtime.py`, `db_compat.py`, `tasks.py`, `task_reminder_delivery.py`, `contact_intelligence.py`, `canonical_companies.py`, `ai_chat_usage.py`, `ai_conversations.py`, `auth.py`, `auth_accounts.py`, `providers/`) |
-| `backend/` | Newer, better-separated domain services: `http_*.py` (route mixins), `domain/{supplier_enrichment,supplier_identity,supplier_import,logistics,ai_agent}/`, `integrations/{llm,logistics,registry,search}/` |
-| `migrations/` | 53 versioned `.sql` files, replayed on every process start (`MailRepository.ensure_schema()`) — see [`../technical/DATABASE_MAP.md`](../technical/DATABASE_MAP.md) |
-| `frontend-v2/` | **The live, deployed frontend** (React 19 + Vite + Tailwind v4 + react-router-dom v7, hash routing) |
-| `frontend/` | **Dead code, not deployed.** Frozen since ~2026-09-04; richer QA tooling (Playwright/Storybook/axe/Applitools) never ported to v2. See [`../frontend/FRONTEND_ARCHITECTURE.md`](../frontend/FRONTEND_ARCHITECTURE.md) |
-| `supplier_discovery_v2/` | Query planning / read-only HTTP discovery adapters |
-| `scripts/` | PowerShell operator tooling: workspace guard, canonical-runtime launcher, diagnostics |
-| `tests/` | ~90 Python `unittest` files (backend regression) + a "source-inspection" pattern (`test_*_ui.py` asserts on `.tsx` source text, does not render anything) |
-| `ai/` | Living session/task-state tracker (`CURRENT_STATE.md`, `ACTIVE_TASK.md`, `DEFERRED_FINDINGS.md`, governance rules) — the canonical "what's true right now" source, distinct from this static `docs/` tree |
-| `docs/` | Structural/architecture/requirements documentation (this tree) — a pre-existing, disciplined system (status/owner/updated_at/source_commit front-matter) that predates and partially overlaps this audit's new files |
+| `supplier_app.py` | Главный HTTP-обработчик — маршрутизация всех запросов (GET/POST/PUT/DELETE), проверка авторизации/CSRF/лимита запросов, запуск фоновых потоков |
+| `api/index.py` | Тонкая обёртка-адаптер для Vercel serverless поверх `supplier_app.py` |
+| `mail/` | Слой хранения данных и бизнес-логики: `MailRepository` (составной из миксинов класс на ~9000+ строк) плюс отдельные модули (`service.py`, `content.py`, `bounce.py`, `pacing.py`, `queue.py`, `runtime.py`, `db_compat.py`, `tasks.py`, `task_reminder_delivery.py`, `contact_intelligence.py`, `canonical_companies.py`, `ai_chat_usage.py`, `ai_conversations.py`, `auth.py`, `auth_accounts.py`, `providers/`) |
+| `backend/` | Более новые, лучше разделённые доменные сервисы: `http_*.py` (миксины маршрутов), `domain/{supplier_enrichment,supplier_identity,supplier_import,logistics,ai_agent}/`, `integrations/{llm,logistics,registry,search}/` |
+| `migrations/` | 53 версионированных `.sql`-файла, применяются заново при каждом запуске процесса (`MailRepository.ensure_schema()`) — см. [`../technical/DATABASE_MAP.md`](../technical/DATABASE_MAP.md) |
+| `frontend-v2/` | **Реально работающий (задеплоенный) интерфейс** (React 19 + Vite + Tailwind v4 + react-router-dom v7, hash-роутинг) |
+| `frontend/` | **Мёртвый код, не деплоится.** Заморожен с ~2026-09-04; более богатый набор QA-инструментов (Playwright/Storybook/axe/Applitools) так и не был перенесён в v2. См. [`../frontend/FRONTEND_ARCHITECTURE.md`](../frontend/FRONTEND_ARCHITECTURE.md) |
+| `supplier_discovery_v2/` | Планирование поисковых запросов / read-only HTTP-адаптеры для поиска поставщиков |
+| `scripts/` | PowerShell-инструменты оператора: защита рабочей директории, запуск canonical-рантайма, диагностика |
+| `tests/` | ~90 файлов на Python `unittest` (backend-регрессия) + паттерн «проверки по исходному тексту» (`test_*_ui.py` проверяет наличие строк в `.tsx`-файлах, ничего реально не рендерит) |
+| `ai/` | Живой трекер состояния сессии/задач (`CURRENT_STATE.md`, `ACTIVE_TASK.md`, `DEFERRED_FINDINGS.md`, правила governance) — канонический источник «что верно прямо сейчас», отдельно от этого статического дерева `docs/` |
+| `docs/` | Структурная/архитектурная/требования-документация (это дерево) — уже существовавшая, дисциплинированная система (метаданные status/owner/updated_at/source_commit), частично пересекающаяся с этим аудитом |
 
-## Which frontend is real (verified, not assumed)
+## Какой frontend реальный (проверено, а не предположено)
 
-`vercel.json` builds `frontend-v2` only (`buildCommand: cd frontend-v2 && npm run build`,
-`outputDirectory: frontend-v2/dist`, and explicitly excludes `frontend/**` from the serverless
-bundle). `frontend/` has had zero commits in ~2 weeks while `frontend-v2/` has near-daily
-activity. Full detail: [`../frontend/FRONTEND_ARCHITECTURE.md`](../frontend/FRONTEND_ARCHITECTURE.md).
+`vercel.json` собирает только `frontend-v2` (`buildCommand: cd frontend-v2 && npm run build`,
+`outputDirectory: frontend-v2/dist`, и явно исключает `frontend/**` из serverless-сборки).
+`frontend/` не получал коммитов ~2 недели, пока `frontend-v2/` обновляется почти ежедневно.
+Подробности: [`../frontend/FRONTEND_ARCHITECTURE.md`](../frontend/FRONTEND_ARCHITECTURE.md).
 
-## Production vs local runtime
+## Прод vs локальная разработка
 
-- **Production (Vercel):** Postgres via `DATABASE_URL` (`mail/repository.py` branches on this;
-  `mail/db_compat.py` translates the SQLite-dialect SQL the repository is written in).
-- **Local dev:** SQLite only, file at `mail-data/supplier.sqlite3`, no `DATABASE_URL` set.
-- Both run the *same* migrations and the *same* `MailRepository` code — the compat layer is the
-  only place dialect differences are handled, and it has already had two real production
-  incidents (SQLite-only migration guard, `COLLATE NOCASE`) fixed this session precisely because
-  Postgres had never been exercised with real data before `CHECKO_KEY` was configured there.
+- **Прод (Vercel):** Postgres через `DATABASE_URL` (`mail/repository.py` определяет режим по
+  этой переменной; `mail/db_compat.py` переводит SQL, написанный в диалекте SQLite, на диалект
+  Postgres).
+- **Локальная разработка:** только SQLite, файл `mail-data/supplier.sqlite3`,
+  `DATABASE_URL` не задана.
+- В обоих случаях выполняются одни и те же миграции и один и тот же код `MailRepository` —
+  слой совместимости (`db_compat.py`) единственное место, где различия диалектов обрабатываются
+  явно, и он уже приводил к двум реальным инцидентам на проде (guard миграции, работавший только
+  для SQLite; несовместимость `COLLATE NOCASE`) — оба исправлены в этой сессии именно потому, что
+  Postgres впервые был по-настоящему нагружен реальными данными только после того, как на проде
+  настроили `CHECKO_KEY`.
 
-## Background execution model
+## Модель фоновых процессов
 
-No cron. Two durable, lease-based job queues (`request_search_jobs`, `supplier_enrichment_jobs`)
-designed to survive a serverless function freezing mid-request:
-- Locally: a background daemon thread polls due jobs every 15s (`orchestrator.py`).
-- On Vercel (`VERCEL` env var set): the daemon is disabled; the frontend instead calls
-  `POST /api/enrichment/step` as a heartbeat, advancing exactly one step per invocation.
+Cron не используется. Две устойчивые очереди задач с механизмом lease/claim
+(`request_search_jobs`, `supplier_enrichment_jobs`), спроектированные так, чтобы переживать
+«заморозку» serverless-функции посреди выполнения:
+- Локально: фоновый поток опрашивает очередь каждые 15 секунд (`orchestrator.py`).
+- На Vercel (задана переменная `VERCEL`): фоновый поток отключён; вместо этого frontend вызывает
+  `POST /api/enrichment/step` как «пульс» — за один вызов продвигается ровно один шаг очереди.
 
-A separate mail-sync thread pulls IMAP every 300s locally, plus a per-view-throttled sync
-(`maybe_sync_incoming`, 45s) triggered by opening Messages.
+Отдельный поток синхронизации почты опрашивает IMAP каждые 300 секунд локально, плюс
+синхронизация при открытии экрана (`maybe_sync_incoming`, не чаще раза в 45 секунд на
+пользователя).
 
-## Three-tier supplier identity model (verified against `docs/domain/SUPPLIER_MODEL.md`)
+## Трёхуровневая модель идентичности поставщика (проверено по `docs/domain/SUPPLIER_MODEL.md`)
 
-1. `suppliers` — per-workspace, keyed by `(workspace_id, external_key=host)`. Holds the
-   crawl/mail identity.
-2. `global_suppliers` — per-workspace, ИНН-deduped "company card."
-3. `canonical_companies` — cross-tenant (no `workspace_id`), ИНН-keyed, public facts only.
+1. `suppliers` — в рамках одного workspace, ключ `(workspace_id, external_key=host)`. Хранит
+   идентичность для краулинга и почты.
+2. `global_suppliers` — в рамках одного workspace, дедупликация по ИНН («карточка компании»).
+3. `canonical_companies` — кросс-tenant (без `workspace_id`), ключ по ИНН, только публичные
+   факты о компании.
 
-This model is real and mostly enforced — but has one confirmed, live gap (not historical): see
-[`INV-SUP-002` in `../spec/PRODUCT_INVARIANTS.md`](../spec/PRODUCT_INVARIANTS.md) and
-[`GAP-003` in `KNOWN_GAPS.md`](KNOWN_GAPS.md).
+Модель реальная и в целом соблюдается — но есть один подтверждённый, **живой** (а не
+исторический) пробел: см. [`INV-SUP-002` в `../spec/PRODUCT_INVARIANTS.md`](../spec/PRODUCT_INVARIANTS.md)
+и [`GAP-003` в `KNOWN_GAPS.md`](KNOWN_GAPS.md).
 
-## AI assistant (verified real, not mock)
+## AI-ассистент (подтверждено: реальный, не заглушка)
 
-Calls a live LLM via RouterAI (`ROUTERAI_CHAT_KEY` env var, default model
-`meta-llama/llama-3.3-70b-instruct`). Context assembly is server-validated (`get_thread_owned`
-re-checks every client-supplied thread id against workspace+request) and explicitly limited to
-suppliers with real communication — the historical "all suppliers of a request leak into AI
-context" bug was found and fixed 2026-09-10 (commit `0d16945`) and is confirmed still fixed. Full
-detail: [`../product/AI_ASSISTANT.md`](../product/AI_ASSISTANT.md).
+Обращается к настоящей LLM через RouterAI (переменная окружения `ROUTERAI_CHAT_KEY`, модель по
+умолчанию — `meta-llama/llama-3.3-70b-instruct`). Сборка контекста проверяется на сервере
+(`get_thread_owned` заново сверяет каждый переданный клиентом id переписки с рабочим
+пространством и заявкой) и явно ограничена поставщиками с реальной коммуникацией — историческая
+проблема «в AI-контекст попадали все поставщики заявки» была найдена и исправлена 10.09.2026
+(коммит `0d16945`) и подтверждённо остаётся исправленной. Подробности:
+[`../product/AI_ASSISTANT.md`](../product/AI_ASSISTANT.md).
 
-## Tasks/Calendar (verified: CRUD real, delivery mostly not)
+## Задачи/Календарь (проверено: сами задачи реальны, доставка напоминаний — по большей части нет)
 
-Task CRUD and completion are real, DB-backed, wired to routes. The `/calendar` full-page route
-was deleted 2026-09-17 as dead code (its nav entry was already removed) — the Dashboard's
-`DashboardCalendar` widget is the only calendar UI now, and it renders real task data. Reminder
-*delivery* is honest about its limits: in-app (foreground toast + Notification API while a tab is
-open, 45s poll) is the only channel that actually fires anything; email reminders are recorded
-but never sent (no send path exists); phone reminders are explicitly labeled a local mock in the
-UI copy itself. Full detail: [`../product/PRODUCT_MODEL.md`](../product/PRODUCT_MODEL.md).
+CRUD задач и их завершение — реальные, хранятся в БД, привязаны к маршрутам API. Полноэкранный
+роут `/calendar` удалён 17.09.2026 как мёртвый код (пункт меню на него уже был убран ранее) —
+единственный интерфейс календаря теперь — виджет `DashboardCalendar` на дашборде, и он
+отображает реальные данные задач. Про доставку напоминаний документация честна: только
+in-app-канал (тост в интерфейсе + системное уведомление браузера, пока вкладка открыта, опрос
+раз в 45 секунд) реально что-то делает; напоминания по email записываются, но никогда не
+отправляются (нет пути отправки вообще); напоминания по телефону прямо в интерфейсе помечены
+как локальная заглушка. Подробности: [`../product/PRODUCT_MODEL.md`](../product/PRODUCT_MODEL.md).
 
-## Auth
+## Авторизация
 
-Two login methods: email+password (single seeded app user via `APP_USER_EMAIL`/
-`APP_USER_PASSWORD` — not general signup) and Yandex OAuth (PKCE). Sessions are opaque
-server-side tokens in an `HttpOnly`/`SameSite=Lax` cookie. CSRF is a derived
-(`sha256(session+":csrf")`) double-submit token, not a stored random value. Authorization is
-workspace-implicit (trusts `session["workspace_id"]`) plus a single owner-only role gate for
-maintenance routes. Full detail: [`../technical/API_MAP.md`](../technical/API_MAP.md).
+Два способа входа: email+пароль (единственный заранее заведённый пользователь через переменные
+`APP_USER_EMAIL`/`APP_USER_PASSWORD` — не общая регистрация) и вход через Яндекс OAuth (PKCE).
+Сессии — непрозрачные токены на стороне сервера в cookie с флагами `HttpOnly`/`SameSite=Lax`.
+Защита CSRF — производный токен (`sha256(session+":csrf")`), а не случайное сохранённое
+значение. Авторизация доступа — неявно по workspace (доверяет `session["workspace_id"]`) плюс
+одна роль «владелец» для служебных (maintenance) маршрутов. Подробности:
+[`../technical/API_MAP.md`](../technical/API_MAP.md).
 
-## Cross-reference index
+## Указатель по темам
 
-| Topic | Document |
+| Тема | Документ |
 |---|---|
-| Feature-by-feature status (IMPLEMENTED/PARTIAL/BROKEN/MOCK/NOT_IMPLEMENTED) | [`CURRENT_STATE.md`](CURRENT_STATE.md) |
-| Everything found wrong, not fixed | [`KNOWN_GAPS.md`](KNOWN_GAPS.md) |
-| Product invariants (durable rules, each with an ID) | [`../spec/PRODUCT_INVARIANTS.md`](../spec/PRODUCT_INVARIANTS.md) |
-| Full API route inventory | [`../technical/API_MAP.md`](../technical/API_MAP.md) |
-| Full database schema | [`../technical/DATABASE_MAP.md`](../technical/DATABASE_MAP.md) |
-| Frontend v1 vs v2, UI component inventory | [`../frontend/`](../frontend/FRONTEND_ARCHITECTURE.md) |
-| Messages/mail business rules | [`../product/MESSAGES.md`](../product/MESSAGES.md) |
-| Supplier identity model + the duplicate-identity gap | [`../product/SUPPLIERS.md`](../product/SUPPLIERS.md) |
-| AI assistant context rules | [`../product/AI_ASSISTANT.md`](../product/AI_ASSISTANT.md) |
-| requirements.yaml, test cases, traceability | [`../spec/`](../spec/requirements.yaml), [`../testing/`](../testing/TEST_CASES.md), [`../validation/TRACEABILITY_MATRIX.md`](../validation/TRACEABILITY_MATRIX.md) |
+| Статус по каждой функции (реализовано/частично/сломано/заглушка/не реализовано) | [`CURRENT_STATE.md`](CURRENT_STATE.md) |
+| Всё найденное, что не так, но не исправлено | [`KNOWN_GAPS.md`](KNOWN_GAPS.md) |
+| Инварианты продукта (устойчивые правила, у каждого свой ID) | [`../spec/PRODUCT_INVARIANTS.md`](../spec/PRODUCT_INVARIANTS.md) |
+| Полный список маршрутов API | [`../technical/API_MAP.md`](../technical/API_MAP.md) |
+| Полная схема базы данных | [`../technical/DATABASE_MAP.md`](../technical/DATABASE_MAP.md) |
+| Frontend v1 vs v2, инвентарь UI-компонентов | [`../frontend/`](../frontend/FRONTEND_ARCHITECTURE.md) |
+| Бизнес-правила почты/переписки | [`../product/MESSAGES.md`](../product/MESSAGES.md) |
+| Модель идентичности поставщиков + проблема дублирования | [`../product/SUPPLIERS.md`](../product/SUPPLIERS.md) |
+| Правила формирования AI-контекста | [`../product/AI_ASSISTANT.md`](../product/AI_ASSISTANT.md) |
+| requirements.yaml, тест-кейсы, трассировка | [`../spec/`](../spec/requirements.yaml), [`../testing/`](../testing/TEST_CASES.md), [`../validation/TRACEABILITY_MATRIX.md`](../validation/TRACEABILITY_MATRIX.md) |

@@ -7,91 +7,97 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# Test Strategy
+# Стратегия тестирования
 
-## Gates
+## Контрольные точки (Gates)
 
-1. Documentation: `validate_docs.py`, `validate_state.py`, and the
-   traceability validator.
-2. Diagnostic unit tests: standard-library tests for status classification,
-   HTTP expectations, read-only SQLite and machine output.
-3. Backend regression: historical control baseline `373 passed, 1 skipped`;
-   the reproducible official runner now executes the current combined suite
-   and records its actual totals. Existing tests are classified in
-   `TEST_CATALOG.yaml`; they are not rewritten.
-4. Frontend: `npm ci`, typecheck, lint, build and public-shell browser test;
-   clean dependency setup is required before claiming current parity.
-5. Doctor: `-Plan` and profile-aware `-DryRun`; `-Apply` remains blocked.
+1. Документация: `validate_docs.py`, `validate_state.py` и валидатор трассировки.
+2. Диагностические юнит-тесты: стандартные тесты на классификацию статусов, HTTP-ожидания,
+   read-only-доступ к SQLite и машиночитаемый вывод.
+3. Backend-регрессия: исторический контрольный базовый уровень «373 пройдено, 1 пропущено»;
+   переиспользуемый официальный раннер теперь выполняет текущий объединённый набор тестов и
+   фиксирует его реальные итоги. Существующие тесты классифицированы в `TEST_CATALOG.yaml`; они
+   не переписываются заново.
+4. Frontend: `npm ci`, проверка типов, линтер, сборка и браузерный тест публичной оболочки;
+   перед заявлением о текущем паритете требуется чистая установка зависимостей.
+5. Doctor: `-Plan` и профиль-зависимый `-DryRun`; `-Apply` по-прежнему заблокирован.
 
-## Diagnostic outcome vocabulary
+## Словарь диагностических исходов
 
-- `PASS`: check completed and expected state was observed.
-- `PRODUCT_FAILURE`: product or contract behavior is wrong.
-- `ENVIRONMENT_GAP`: required local resource/tool is absent.
-- `SAFETY_BLOCK`: the requested probe would cross a forbidden boundary.
-- `NOT_VERIFIED`: evidence could not be obtained safely.
-- `WARNING`: non-blocking quality or inventory finding.
+- `PASS` (пройдено): проверка выполнена, наблюдалось ожидаемое состояние.
+- `PRODUCT_FAILURE` (сбой продукта): поведение продукта или контракта неверно.
+- `ENVIRONMENT_GAP` (пробел окружения): необходимый локальный ресурс/инструмент отсутствует.
+- `SAFETY_BLOCK` (блокировка безопасности): запрошенная проверка пересекла бы запрещённую
+  границу.
+- `NOT_VERIFIED` (не проверено): доказательство не удалось получить безопасным способом.
+- `WARNING` (предупреждение): некритичная находка по качеству или инвентаризации.
 
-Missing database or `.env` is an `ENVIRONMENT_GAP`, not a generic product
-failure. HTTP `401` and `404` are expected outcomes for protected and unknown
-probes respectively.
+Отсутствие базы данных или `.env` — это `ENVIRONMENT_GAP`, а не общий сбой продукта. HTTP `401`
+и `404` — ожидаемые результаты для защищённых и неизвестных запросов соответственно.
 
-## Coverage metrics
+## Метрики покрытия
 
-Diagnostic coverage is separate from code coverage and from test verification:
+Диагностическое покрытие — отдельная вещь от покрытия кода и от проверки тестами:
 
-- `TEST_VERIFICATION_LEVEL`: the strongest existing fixture/fake/runtime test
-  evidence for the requirement.
-- `DIAGNOSTIC_LEVEL`: what the doctor can prove without pretending that a
-  static or structural check is behavioral.
-- `LIVE_ACCEPTANCE_LEVEL`: whether real external evidence is required; V1.1
-  records `NOT_REQUIRED` or `NOT_VERIFIED` explicitly.
+- `TEST_VERIFICATION_LEVEL` (уровень проверки тестами): самое сильное существующее
+  доказательство (фикстура/подделка/рантайм-тест) для требования.
+- `DIAGNOSTIC_LEVEL` (диагностический уровень): что Doctor способен доказать, не выдавая
+  статическую или структурную проверку за поведенческую.
+- `LIVE_ACCEPTANCE_LEVEL` (уровень живой приёмки): требуется ли реальное внешнее доказательство;
+  V1.1 явно фиксирует `NOT_REQUIRED` (не требуется) или `NOT_VERIFIED` (не проверено).
 
-Levels are `NONE`, `STATIC`, `STRUCTURAL`, `BEHAVIORAL`, `RUNTIME` and
-`LIVE_EXTERNAL`. A static check proves code/config/contract presence only; it
-does not prove a mail send, sync, deduplication, pacing, suppression or
-delivery outcome.
+Уровни: `NONE` (нет), `STATIC` (статический), `STRUCTURAL` (структурный), `BEHAVIORAL`
+(поведенческий), `RUNTIME` (во время выполнения) и `LIVE_EXTERNAL` (живой, внешний). Статическая
+проверка доказывает только наличие кода/конфигурации/контракта; она не доказывает результат
+отправки почты, синхронизации, дедупликации, дозирования, подавления или доставки.
 
-The traceability validator reports requirement/test/rule/diagnostic counts and
-rejects inconsistent doctor/failure-mode mappings without modifying the tree.
-Offline eligibility is not the same as behavioral proof: live provider
-acceptance and repair actions remain outside the canonical offline gate.
+Валидатор трассировки выдаёт количество требований/тестов/правил/диагностик и отклоняет
+несогласованные связки doctor/сбой без изменения дерева файлов. Пригодность для офлайн-режима —
+не то же самое, что поведенческое доказательство: живая приёмка провайдера и действия по
+восстановлению остаются вне канонического офлайн-гейта.
 
-## Gate 4 clarification (2026-09-17 audit)
+## Уточнение по Gate 4 (аудит 2026-09-17)
 
-Gate 4 above ("Frontend: npm ci, typecheck, lint, build and public-shell browser test") was
-written before `frontend-v2` existed and, as implemented in `.github/workflows/ci.yml` today,
-runs **two different depths** under one name:
-- `frontend` job (v1, `frontend/` — not deployed): npm ci → typecheck → lint → build →
-  `browser_smoke`/`browser_full` (real Playwright against a live test backend).
-- `frontend_v2` job (v2, `frontend-v2/` — **the actually deployed UI**): npm ci → lint → build
-  only. **No runtime/browser check runs against the live frontend at all.**
+Gate 4 выше («Frontend: npm ci, проверка типов, линтер, сборка и браузерный тест публичной
+оболочки») был написан ещё до появления `frontend-v2` и, как реализован в
+`.github/workflows/ci.yml` сегодня, на самом деле выполняет **две разные по глубине проверки**
+под одним названием:
+- джоб `frontend` (старая версия, `frontend/` — не задеплоена): npm ci → проверка типов →
+  линтер → сборка → `browser_smoke`/`browser_full` (настоящий Playwright против живого тестового
+  backend).
+- джоб `frontend_v2` (новая версия, `frontend-v2/` — **реально задеплоенный интерфейс**): npm ci
+  → линтер → сборка. **Никакая проверка во время выполнения/в браузере против живого
+  frontend'а вообще не запускается.**
 
-This means the deployed application currently has weaker CI coverage than the retired one. See
-[`../frontend/UI_INVENTORY.md`](../frontend/UI_INVENTORY.md) for what that lets slip through
-(no browser proof that links are clickable, that a reminder toast actually appears, etc. — see
-the `NOT VERIFIED` rows in `TEST_CASES.md`'s product test-case table).
+Это означает, что у задеплоенного приложения сейчас более слабое покрытие CI, чем у
+отключённого. См. [`../frontend/UI_INVENTORY.md`](../frontend/UI_INVENTORY.md), что именно
+из-за этого проходит незамеченным (нет браузерного доказательства, что ссылки кликабельны, что
+тост напоминания реально появляется и т.д. — см. строки со статусом `NOT_TESTED` в таблице
+продуктовых тест-кейсов `TEST_CASES.md`).
 
-## Minimal QA infrastructure proposal — what to ADD, not what to install from scratch
+## Предложение по минимальной QA-инфраструктуре — что ДОБАВИТЬ, а не что ставить с нуля
 
-Full existing-tooling inventory: see `docs/system/KNOWN_GAPS.md` (`GAP-010`). Summary of what
-already exists and must **not** be reinstalled:
+Полный перечень уже существующих инструментов: см. `docs/system/KNOWN_GAPS.md` (`GAP-010`).
+Кратко, что уже есть и **не нужно** ставить заново:
 
-| Tool | Already present, where |
+| Инструмент | Уже есть, где |
 |---|---|
 | TypeScript, Vite, oxlint, Vitest + Testing Library | `frontend-v2` |
-| ESLint, Playwright, `@axe-core/playwright`, Applitools Eyes, Storybook (+a11y addon), Lighthouse CI, `knip` | `frontend/` (v1) only — real, working configs, just pointed at the wrong (retired) app |
-| unittest backend suite (~90 files), `tests/run-tests.ps1` | repo root |
-| CI (`.github/workflows/ci.yml`) | exists, already gates backend + v1 frontend |
+| ESLint, Playwright, `@axe-core/playwright`, Applitools Eyes, Storybook (+аддон accessibility), Lighthouse CI, `knip` | только `frontend/` (старая версия) — реальные, рабочие конфигурации, просто направленные не на то приложение |
+| Набор backend-тестов на unittest (~90 файлов), `tests/run-tests.ps1` | корень репозитория |
+| CI (`.github/workflows/ci.yml`) | уже существует, уже проверяет backend + старый frontend |
 
-**Proposal (not started, per explicit instruction for this audit pass):** the fastest path to
-real coverage for the live app is **re-pointing** the already-working v1 Playwright/axe config at
-`frontend-v2` (same `@playwright/test`/`@axe-core/playwright` versions, new base URL and a handful
-of updated selectors) rather than standing up a second, parallel toolchain from zero. Storybook
-and Applitools are lower priority — they require the most setup work per unit of risk reduced,
-given the primitives inventory in `docs/frontend/UI_INVENTORY.md` shows the underlying visual
-inconsistency is concentrated in 5 known component categories, not general layout drift.
-Recommended order: (1) Playwright smoke test hitting the same routes CI's old `browser_smoke`
-covered, (2) axe-core pass on the same routes, (3) visual regression only after the Input/
-Checkbox/Card/Table/Tabs primitives are unified (testing against a known-inconsistent baseline
-would just snapshot the inconsistency).
+**Предложение (не начато, согласно явному указанию для этого прохода аудита):** самый быстрый
+путь к реальному покрытию рабочего приложения — **перенаправить** уже рабочую конфигурацию
+Playwright/axe со старой версии на `frontend-v2` (те же версии `@playwright/test`/
+`@axe-core/playwright`, новый базовый адрес и небольшая правка селекторов элементов), а не
+строить второй, параллельный набор инструментов с нуля. Storybook и Applitools —
+менее приоритетны: они требуют больше всего первоначальной настройки на единицу снижаемого
+риска, при том что инвентарь примитивов в `docs/frontend/UI_INVENTORY.md` показывает, что
+реальная визуальная несогласованность сосредоточена в 5 конкретных категориях компонентов, а не
+является общим расползанием вёрстки. Рекомендуемый порядок: (1) smoke-тест на Playwright
+(короткая проверка того, что основные функции вообще запускаются) по тем же маршрутам, что
+раньше проверял старый `browser_smoke`, (2) проход axe-core по тем же маршрутам, (3) визуальное
+регрессионное тестирование — только после того, как компоненты Input/Checkbox/Card/Table/Tabs
+будут унифицированы (тестировать против заведомо несогласованного состояния — значит просто
+зафиксировать снимком саму несогласованность).

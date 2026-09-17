@@ -7,62 +7,63 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# Product Invariants
+# Инварианты продукта
 
-Durable rules SupplyDesk must uphold. Each has a stable ID, a status (`HELD` = verified true in
-current code, `VIOLATED` = confirmed broken, `PARTIAL` = held in most but not all paths), and
-evidence. Extracted from actual code/tests plus the pre-existing `docs/requirements/
-BUSINESS_RULES.md` (`BR-*` ids kept as-is where still accurate, cross-referenced rather than
-duplicated).
+Устойчивые правила, которые SupplyDesk обязан соблюдать, сформулированные с точки зрения
+поведения продукта, а не деталей реализации. У каждого — стабильный ID, статус (`HELD` —
+подтверждён верным в текущем коде, `VIOLATED` — подтверждённо нарушен, `PARTIAL` — соблюдается в
+большинстве, но не во всех случаях) и доказательство. Извлечены из реального кода/тестов, а
+также из уже существовавшего `docs/requirements/BUSINESS_RULES.md` (идентификаторы `BR-*`
+сохранены как есть там, где они всё ещё верны — указаны ссылкой, а не переписаны заново).
 
-## Messages
+## Сообщения
 
-| ID | Rule | Status | Evidence |
+| ID | Правило | Статус | Доказательство |
 |---|---|---|---|
-| INV-MSG-001 | A message/thread is never physically deleted by any user-facing action — only status/visibility changes. | HELD | Only DELETE in the repo touching these tables is in an offline maintenance script with no HTTP route |
-| INV-MSG-002 | An unmatched inbound message is preserved, never silently dropped, until a human resolves it. | HELD | `mail_inbox_messages`, no path removes a row except explicit `ignore` (status change, not deletion) |
-| INV-MSG-003 | `conversation_status` (personal workflow label) never affects sending or blacklist status. | HELD | `thread_metadata.py::set_thread_status`, confirmed by both `docs/ui/MESSAGES_SCREEN_SPEC.md` §13 and this audit |
-| BR-MSG-001 | Incoming messages are deduplicated and remain visible with no request match. | HELD | `tests/test_mail_integration.py`, `tests/test_messages_visibility.py` |
+| INV-MSG-001 | Письмо или переписка никогда не удаляются физически ни одним действием пользователя — меняется только статус или видимость. | HELD | Единственный DELETE, затрагивающий эти таблицы во всём репозитории, находится в офлайн-скрипте без HTTP-маршрута |
+| INV-MSG-002 | Непривязанное входящее письмо сохраняется, никогда не теряется молча, пока человек не разрешит ситуацию вручную. | HELD | `mail_inbox_messages`, ни один путь не удаляет строку, кроме явного действия «проигнорировать» (это смена статуса, не удаление) |
+| INV-MSG-003 | Личная рабочая метка переписки (`conversation_status`) никогда не влияет на отправку писем или статус чёрного списка. | HELD | `thread_metadata.py::set_thread_status`, подтверждено и `docs/ui/MESSAGES_SCREEN_SPEC.md` §13, и этим аудитом |
+| BR-MSG-001 | Входящие письма дедуплицируются и остаются видимыми, даже если совпадения с заявкой не нашлось. | HELD | `tests/test_mail_integration.py`, `tests/test_messages_visibility.py` |
 
-## Suppliers
+## Поставщики
 
-| ID | Rule | Status | Evidence |
+| ID | Правило | Статус | Доказательство |
 |---|---|---|---|
-| INV-SUP-001 | One real ИНН groups as one `global_suppliers` identity within a workspace; different ИНН stays separate. | HELD | `global_suppliers UNIQUE(workspace_id, inn)`, `tests/test_supplier_identity.py` |
-| **INV-SUP-002** | **One real-world supplier must not uncontrollably create new independent `suppliers` rows on repeated discovery/contact.** | **VIOLATED (confirmed live, not historical)** | `resolve_supplier_for_send`'s key-degrades-to-raw-email fallback creates a duplicate when no host is known at write time — 28/243 rows (11.5%) in the audited local DB carry this signature. See `GAP-003`, [`../product/SUPPLIERS.md`](../product/SUPPLIERS.md) |
-| INV-SUP-003 | A cross-tenant company resolution (`canonical_companies`) is reused instead of re-querying Checko for a company another workspace already resolved. | HELD (partially — only in `_resolve_missing_inn`, not the main enrich pipeline) | `tests/test_canonical_companies_cache_reuse.py`; `docs/domain/SUPPLIER_MODEL.md` §4 honestly documents the partial scope |
-| INV-SUP-004 | Workspace-private data (contacts, notes, tasks, prices) never leaks into the cross-tenant `canonical_companies` layer. | HELD | `tests/test_canonical_companies.py::test_write_through_carries_no_tenant_specific_data`, `tests/test_supplier_workspace_isolation.py` |
-| INV-SUP-005 | A manually-entered ИНН is never silently overwritten by a later automatic candidate. | HELD | `tests/test_manual_inn_is_visible_and_wins_over_later_auto_candidate` |
+| INV-SUP-001 | Один реальный ИНН группируется в одну карточку `global_suppliers` в рамках рабочего пространства; разные ИНН остаются раздельными. | HELD | `global_suppliers UNIQUE(workspace_id, inn)`, `tests/test_supplier_identity.py` |
+| **INV-SUP-002** | **Одна и та же реальная компания не должна бесконтрольно создавать новые независимые записи `suppliers` при повторном обнаружении или контакте.** Если система уже определила, что две записи относятся к одной компании, дальнейшие данные должны связываться с существующей сущностью, а не порождать новый независимый дубль. | **VIOLATED (подтверждено, живая проблема, не историческая)** | Резервный механизм в `resolve_supplier_for_send` откатывается на сырой email как ключ идентичности — создаёт дубликат, когда хост неизвестен на момент записи. 28 из 243 записей (11.5%) в проверенной локальной базе несут этот признак. См. `GAP-003`, [`../product/SUPPLIERS.md`](../product/SUPPLIERS.md) |
+| INV-SUP-003 | Результат резолюции компании, уже найденный одним рабочим пространством (кросс-tenant кэш `canonical_companies`), переиспользуется вместо повторного запроса к Checko другим рабочим пространством. | HELD (частично — только в одном из путей резолюции, не во всём пайплайне обогащения) | `tests/test_canonical_companies_cache_reuse.py`; `docs/domain/SUPPLIER_MODEL.md` §4 честно описывает частичный охват |
+| INV-SUP-004 | Приватные данные рабочего пространства (контакты, заметки, задачи, цены) никогда не попадают в кросс-tenant слой `canonical_companies`. | HELD | `tests/test_canonical_companies.py::test_write_through_carries_no_tenant_specific_data`, `tests/test_supplier_workspace_isolation.py` |
+| INV-SUP-005 | Вручную введённый ИНН никогда не перезаписывается молча более поздним автоматическим кандидатом. | HELD | `tests/test_manual_inn_is_visible_and_wins_over_later_auto_candidate` |
 
-## AI Assistant
+## AI-ассистент
 
-| ID | Rule | Status | Evidence |
+| ID | Правило | Статус | Доказательство |
 |---|---|---|---|
-| INV-AI-001 | A supplier must not enter AI context solely because it is linked to a request — only because real communication exists. | HELD | Fixed 2026-09-10 (`0d16945`); server-enforced via `get_thread_owned`, not just a frontend filter. See [`../product/AI_ASSISTANT.md`](../product/AI_ASSISTANT.md) |
-| INV-AI-002 | AI usage cannot exceed the configured daily spend cap. | HELD | Checked before every LLM call, `ai_chat_usage` |
+| INV-AI-001 | Поставщик не должен попадать в AI-контекст только потому, что он привязан к заявке — только из-за реальной коммуникации. | HELD | Исправлено 10.09.2026 (`0d16945`); проверяется на сервере через `get_thread_owned`, а не только фильтром на фронтенде. См. [`../product/AI_ASSISTANT.md`](../product/AI_ASSISTANT.md) |
+| INV-AI-002 | Использование AI не может превышать настроенный дневной лимит расходов. | HELD | Проверяется перед каждым вызовом LLM, таблица `ai_chat_usage` |
 
-## Mail sending safety
+## Безопасность отправки почты
 
-| ID | Rule | Status | Evidence |
+| ID | Правило | Статус | Доказательство |
 |---|---|---|---|
-| BR-MAIL-001 | Deliverability preflight/preview never calls a real provider. | HELD | `tests/test_mail_deliverability.py` |
-| BR-MAIL-002 | One company identity does not receive multiple grouped outbound messages in one operation. | HELD | `tests/test_supplier_identity.py` |
-| BR-MAIL-003 | A used recipient is never silently reused; an alternate must be `NEVER_USED` before selection. | HELD | `tests/test_mail_status_semantics.py` |
-| BR-MAIL-004 | Repeating an idempotent operation does not create another message/job. | HELD | `tests/test_mail_integrity.py` |
-| BR-MAIL-006 | Hard bounce suppresses future use; soft bounce keeps a recoverable history, never deletes. | HELD | `mail/bounce.py`, `tests/test_mail_status_semantics.py` |
-| INV-MAIL-004 | Two suppliers whose resolved recipient converges on the same final email are blocked as duplicates, counted post-resolution not pre-resolution. | HELD | Fixed 2026-09-16, `docs/domain/SUPPLIER_MODEL.md` §7.4, `tests/test_contact_resolution_send_path.py` |
+| BR-MAIL-001 | Предпросмотр и проверка доставляемости никогда не обращаются к реальному почтовому провайдеру. | HELD | `tests/test_mail_deliverability.py` |
+| BR-MAIL-002 | Одна и та же компания не получает несколько групповых исходящих писем за одну операцию. | HELD | `tests/test_supplier_identity.py` |
+| BR-MAIL-003 | Уже использованный адрес получателя никогда не переиспользуется молча; альтернативный адрес должен быть в статусе «никогда не использовался» перед выбором. | HELD | `tests/test_mail_status_semantics.py` |
+| BR-MAIL-004 | Повторный вызов идемпотентной операции не создаёт ещё одно сообщение или задачу. | HELD | `tests/test_mail_integrity.py` |
+| BR-MAIL-006 | Жёсткий отказ доставки блокирует адрес для будущего использования; мягкий отказ сохраняет историю для восстановления, но ничего не удаляет. | HELD | `mail/bounce.py`, `tests/test_mail_status_semantics.py` |
+| INV-MAIL-004 | Если у двух разных поставщиков после разрешения приоритета контакта получается один и тот же итоговый адрес — они блокируются как дубликат; проверка идёт по итоговому, а не по исходному адресу. | HELD | Исправлено 16.09.2026, `docs/domain/SUPPLIER_MODEL.md` §7.4, `tests/test_contact_resolution_send_path.py` |
 
-## Data/runtime safety
+## Безопасность данных/рантайма
 
-| ID | Rule | Status | Evidence |
+| ID | Правило | Статус | Доказательство |
 |---|---|---|---|
-| BR-DATA-001 | Destructive request deletion is blocked while delivery resolution is unresolved. | HELD | 409 response, `tests/test_mail_status_semantics.py` |
-| BR-RUNTIME-001 | Only the canonical runtime may hold the canonical lock; other runtimes write only their own manifest. | HELD | `mail/runtime.py`, `tests/test_canonical_runtime.py` |
-| BR-CONTENT-001 | HTML is sanitized; remote-image fetching is never a prerequisite for rendering. | HELD | `mail/content.py` |
-| BR-AUTH-001 | A request must never expose another workspace's records. | HELD | `tests/test_mail_integrity.py` |
+| BR-DATA-001 | Удаление заявки заблокировано, пока статус доставки писем по ней не разрешён окончательно. | HELD | Ответ 409, `tests/test_mail_status_semantics.py` |
+| BR-RUNTIME-001 | Только канонический (основной) рантайм может владеть основной блокировкой; остальные рантаймы пишут только в свой собственный манифест. | HELD | `mail/runtime.py`, `tests/test_canonical_runtime.py` |
+| BR-CONTENT-001 | HTML санитизируется; загрузка внешних изображений никогда не является обязательным условием для отображения письма. | HELD | `mail/content.py` |
+| BR-AUTH-001 | Ни один запрос не должен раскрывать данные другого рабочего пространства. | HELD | `tests/test_mail_integrity.py` |
 
-## Maintenance/operational safety (newly extracted this audit)
+## Безопасность служебных операций (новое, извлечено этим аудитом)
 
-| ID | Rule | Status | Evidence |
+| ID | Правило | Статус | Доказательство |
 |---|---|---|---|
-| INV-OPS-001 | A maintenance route that spends a metered third-party API budget must be POST (not GET), CSRF-protected, and bounded by an explicit per-call budget. | **VIOLATED by `force_enrich_all_suppliers`** (as written on the snapshot branch — not merged into the active branch) | GET, no CSRF check, no rate limit, no budget cap, unbounded Checko spend (`2×N` calls worst case). See `GAP-002` |
+| INV-OPS-001 | Служебный маршрут, тратящий бюджет платного стороннего API, обязан быть POST-запросом (не GET), защищён CSRF-токеном и ограничен явным лимитом на один вызов. | **VIOLATED маршрутом `force_enrich_all_suppliers`** (в том виде, в каком он написан на ветке-снапшоте — не влит в рабочую ветку) | GET-запрос, нет проверки CSRF, нет ограничения частоты, нет лимита на вызов, неограниченный расход бюджета Checko (в худшем случае `2×N` запросов). См. `GAP-002` |

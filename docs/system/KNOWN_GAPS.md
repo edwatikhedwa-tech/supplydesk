@@ -7,26 +7,270 @@ updated_at: 2026-09-17
 source_commit: dc66b0b
 ---
 
-# Known Gaps
+# Известные проблемы (Known Gaps)
 
-Found during the 2026-09-17 full audit. **Nothing here was fixed** — per explicit instruction,
-this pass is investigation and documentation only. Severity: P0 (breaks a core flow / data
-integrity), P1 (real user-facing defect or risk), P2 (quality/consistency issue), P3 (cosmetic/
-low-impact or pre-emptive).
+Найдено в ходе полного аудита 17.09.2026. **Ничего из этого не исправлено** — по прямому указанию
+владельца этот проход был только исследованием и документированием. Приоритет: **P0** (ломает
+основной сценарий или целостность данных), **P1** (реальный дефект или риск, заметный
+пользователю), **P2** (проблема качества/согласованности), **P3** (косметика/низкое влияние или
+превентивная находка).
 
-| ID | Severity | Area | Gap |
-|---|---|---|---|
-| GAP-001 | P1 | Requests/Mail | Campaign monitor/control (pause/resume/stop, continuation dry-run) exists only in `frontend/` (v1, not deployed) — `frontend-v2` has no route or page for it. A bulk-send campaign in progress cannot currently be paused/stopped/inspected from the live UI at all. |
-| GAP-002 | P2 | Suppliers/Process | `force_enrich_all_suppliers` maintenance route (requested for this audit) exists only on branch `state/current-20260917-2119` (this session's git snapshot), not on `experiment/frontend-v2-greenfield-20260905`. It is also, as written: a **GET** route (should be POST — GET-triggered mutation/spend is CSRF-exposable via passive `<img>`-style forgery), has **no CSRF check**, **no rate limit**, **no per-call budget cap** (unlike its sibling `refresh_bad_global_supplier_names(budget=10)`), and runs synchronously to completion inside one HTTP request instead of using the existing durable step-queue pattern every other enrichment path uses. Worst case: `2×N` Checko calls in one request for N suppliers with an existing ИНН, re-spent every time it's called regardless of whether anything changed. |
-| GAP-003 | **P0** | Suppliers | Live (not historical) supplier-identity duplication: `suppliers` dedup key `(workspace_id, external_key)` silently degrades to the raw email address when no host is known at write time (`resolve_supplier_for_send` fallback, `mail/repository.py:3551`). Confirmed in the live local DB: **28 of 243 supplier rows (11.5%)** carry this exact signature; 12 of those are the specific "personal reply address differs from the searched company domain" case. A partial guard (email-match-first in `resolve_supplier_for_send`) exists but only catches it if the *pre-existing* row's `email` column is already populated — a supplier discovered via search starts with `email=""`, so the very first manual send to a personal address found on that supplier's own site still creates a duplicate today. Violates `INV-SUP-002`. |
-| GAP-004 | P2 | Messages | Inbound/received attachments are parsed and stored (`mail_attachments`) but never rendered, listed, or downloadable in the Messages thread view — `MailAttachment[]` in the frontend is wired only to the composer's own draft attachments. Real backend capability with no UI surface. |
-| GAP-005 | P2 | Frontend | No shared `Input`, `Checkbox`, `Card`, `Table`, or `Tabs` components in `frontend-v2` — each page re-implements its own version (Input alone: ~18+ near-identical inline Tailwind strings across 11 files with small drifts). This is the concrete, evidence-based root cause of the "Frankenstein" visual complaint — not everything is inconsistent (Button/Modal/Toast/Badge/Loading-Empty-Error are genuinely centralized), but these five categories are not. |
-| GAP-006 | P2 | Frontend | Two parallel status-pill implementations: `components/ui/Badge.tsx` (the general one) and `ConversationStatusSelect.tsx`'s own hand-rolled `StatusPill`, independently re-typing the same tone→class mapping instead of composing `Badge`. |
-| GAP-007 | P3 | Frontend | `CommandPalette.tsx` re-implements ~15 lines of modal-overlay shell logic instead of composing the shared `Modal.tsx`, which every other named `*Modal.tsx` component correctly uses. |
-| GAP-008 | P2 | Frontend | `Login.tsx` uses literal Tailwind colors (`slate-950`, `blue-400`, `white/20`) instead of the app's design tokens (`bg-surface`, `text-ink`, `accent-*`) used everywhere else, and pulls in the entire `three` package for a decorative shader background (`MagicRings.tsx`) used on that one screen only. Reads as visually imported from a different source than the rest of the app. |
-| GAP-009 | P2 | Frontend | `@tanstack/react-table` is a real dependency used in exactly 1 of 6 hand-rolled `<table>` implementations (`Requests.tsx`) — the other five (Suppliers ×2, RequestDetail, Blacklist, AiChatPanel) don't use it, suggesting it was adopted mid-project without backfilling. |
-| GAP-010 | P1 | QA infra | `frontend-v2` has zero browser/e2e/accessibility/visual-regression coverage. All "frontend testing" for v2 today is Python tests that assert on `.tsx` **source text**, not on rendered/running behavior — they cannot catch a real runtime or visual regression. `frontend/` (v1, not deployed) has a mature Playwright+axe+Storybook+Applitools setup that was never ported when v2 became the live UI. |
-| GAP-011 | P2 | Documentation | `docs/architecture/COMPONENT_MAP.md` and `docs/product/CAPABILITY_CATALOG.md` (both `status: CURRENT`) predate `frontend-v2` entirely and describe `frontend/` as *the* frontend — actively misleading if read without this audit's context. Not deleted (historical value), but must not be trusted for "what frontend is live" without cross-checking `docs/frontend/FRONTEND_ARCHITECTURE.md`. |
-| GAP-012 | P3 | Database | Two migration files share number 026 (`026_mail_account_profiles.sql` and `026_request_email_send_guards.sql`). Both apply correctly (alphabetical glob order, both idempotent) — not currently breaking anything, but a numbering collision that risks confusion or an actual conflict if a third `026_*` file is ever added carelessly. |
-| GAP-013 | P3 | AI Assistant | `TOTAL_CONTEXT_CHAR_BUDGET` (40,000 chars) truncation is a blunt suffix cut of the whole assembled context string — could cut mid-supplier-block and drop the most-recently-added (often most relevant) supplier's messages if enough suppliers/messages are selected at once, rather than budgeting proportionally. Inbox-conversation-mode context also has no message-count cap (only per-message char trim), unlike the request/thread path's `MAX_MESSAGES_PER_SUPPLIER=10`. |
-| GAP-014 | P3 | Mail | `preflight_bulk`'s `unique_domains`/`duplicate_recipient` checks are computed by *final* (post contact-priority-resolution) recipient as of the 2026-09-16 fix — correct — but this is a narrow, previously-missed edge case class; worth a regression eye if `resolve_contact_priority`'s logic changes again. (Documented here only as a fragility note, not a currently-active bug — see `docs/domain/SUPPLIER_MODEL.md` §7.4.) |
+---
+
+### GAP-001
+
+**Приоритет:** P1
+**Область:** Заявки / Почта
+
+**Текущее поведение:** Мониторинг и управление массовой рассылкой (пауза/возобновление/стоп,
+предпросмотр продолжения) реализованы только в `frontend/` (старая версия, не используется) — в
+`frontend-v2` нет ни маршрута, ни страницы для этого.
+
+**Ожидаемое поведение:** Пользователь может увидеть и управлять запущенной массовой рассылкой из
+реально работающего интерфейса.
+
+**Риск:** Запущенную сейчас массовую рассылку невозможно поставить на паузу или остановить из
+рабочего интерфейса вообще.
+
+---
+
+### GAP-002
+
+**Приоритет:** P2
+**Область:** Поставщики / Процессы
+
+**Текущее поведение:** Служебный маршрут `force_enrich_all_suppliers` (запрошен для этого аудита)
+существует только на ветке `state/current-20260917-2119` (git-снапшот этой сессии), не влит в
+`experiment/frontend-v2-greenfield-20260905`. Как написан: это **GET**-запрос (должен быть POST —
+GET, который тратит бюджет/меняет данные, уязвим к подделке запроса через пассивный `<img>`),
+**без проверки CSRF**, **без ограничения частоты запросов**, **без лимита на один вызов** (в
+отличие от похожего метода `refresh_bad_global_supplier_names(budget=10)`), и выполняется
+синхронно до конца внутри одного HTTP-запроса вместо использования уже существующего устойчивого
+пошагового механизма очереди, которым пользуется весь остальной пайплайн обогащения.
+
+**Ожидаемое поведение:** Служебные маршруты, тратящие бюджет платного внешнего API, должны быть
+POST-запросами, защищёнными CSRF, с явным лимитом на один вызов.
+
+**Риск:** В худшем случае — `2×N` запросов к Checko за один HTTP-запрос при N поставщиках с уже
+известным ИНН, и это будет повторяться при каждом вызове независимо от того, изменилось ли
+что-то на самом деле.
+
+---
+
+### GAP-003
+
+**Приоритет:** **P0**
+**Область:** Поставщики
+
+**Текущее поведение:** В таблице `suppliers` может существовать несколько записей одной и той же
+реальной компании. Ключ идентичности `(workspace_id, external_key)` незаметно откатывается на
+сырой email-адрес, если на момент записи хост неизвестен (`resolve_supplier_for_send`,
+`mail/repository.py:3551`) — это не редкий случай: чаще всего происходит, когда сотрудник
+компании отвечает с личного адреса (Gmail/Яндекс/Mail.ru), отличного от сайта, который нашёл
+поиск.
+
+**Ожидаемое поведение:** Одна реальная компания должна иметь единую каноническую идентичность в
+рамках одного рабочего пространства, независимо от того, как именно система впервые её
+обнаружила — через поиск по сайту или через личный email в ответном письме.
+
+**Риск:** Переписка и данные обогащения (ИНН, реестр, финансы) могут оказаться привязаны к
+разным карточкам одной и той же компании: подтверждено на реальной локальной базе — **28 из 243
+строк поставщиков (11.5%)** несут этот признак, из них 12 — именно случай «личный email отличается
+от домена компании».
+
+---
+
+### GAP-004
+
+**Приоритет:** P2
+**Область:** Сообщения
+
+**Текущее поведение:** Вложения входящих/полученных писем разбираются и сохраняются
+(`mail_attachments`), но никогда не отображаются, не перечисляются и недоступны для скачивания в
+окне переписки — тип `MailAttachment[]` на фронтенде используется только для собственных
+вложений черновика в композере.
+
+**Ожидаемое поведение:** Пользователь может увидеть и скачать вложение из уже полученного или
+отправленного письма.
+
+**Риск:** Реальная возможность backend полностью скрыта от пользователя без соответствующего
+интерфейса.
+
+---
+
+### GAP-005
+
+**Приоритет:** P2
+**Область:** Frontend
+
+**Текущее поведение:** В `frontend-v2` отсутствует единая реализация Input, Checkbox, Card, Table
+и Tabs. Поэтому отдельные страницы используют собственные варианты этих элементов, что приводит
+к разным размерам, отступам и состояниям. Пример: только для Input — 18+ почти одинаковых
+inline-строк Tailwind-классов в 11 разных файлах с мелкими расхождениями (`h-8` вместо `h-9`,
+разные внутренние отступы, разные размеры шрифта).
+
+**Ожидаемое поведение:** Для каждого распространённого UI-элемента существует один общий,
+переиспользуемый компонент.
+
+**Риск:** Это конкретная, подтверждённая доказательствами первопричина жалобы «выглядит как
+франкенштейн» — не всё в интерфейсе несогласованно (Button/Modal/Toast/Badge/состояния
+загрузки-пусто-ошибки как раз реально централизованы), но именно эти пять категорий — нет.
+
+---
+
+### GAP-006
+
+**Приоритет:** P2
+**Область:** Frontend
+
+**Текущее поведение:** Существуют два параллельных способа отображения статус-пилюли:
+`components/ui/Badge.tsx` (общий компонент) и собственная реализация `StatusPill` внутри
+`ConversationStatusSelect.tsx`, независимо повторяющая ту же логику «тон → CSS-класс» вместо
+переиспользования `Badge`.
+
+**Ожидаемое поведение:** Один компонент для отображения статуса, переиспользуемый везде.
+
+**Риск:** Дублирование логики — изменение цветовой схемы статусов потребует правки в двух местах
+одновременно, и легко забыть про одно из них.
+
+---
+
+### GAP-007
+
+**Приоритет:** P3
+**Область:** Frontend
+
+**Текущее поведение:** `CommandPalette.tsx` заново реализует ~15 строк логики модального окна
+(затемнение фона, закрытие по клику вне окна и т.д.) вместо использования уже существующего
+общего компонента `Modal.tsx`, которым корректно пользуются все остальные модальные окна в
+приложении.
+
+**Ожидаемое поведение:** Один общий компонент модального окна для всех случаев.
+
+**Риск:** Низкий — но лишний источник расхождений в поведении/анимации модальных окон.
+
+---
+
+### GAP-008
+
+**Приоритет:** P2
+**Область:** Frontend
+
+**Текущее поведение:** Страница входа (`Login.tsx`) использует прямые цвета Tailwind
+(`slate-950`, `blue-400`, `white/20`) вместо общих дизайн-токенов приложения (`bg-surface`,
+`text-ink`, `accent-*`), которые используются везде на других страницах, и подключает всю
+библиотеку `three` ради декоративного шейдерного фона (`MagicRings.tsx`), который используется
+только на этом одном экране.
+
+**Ожидаемое поведение:** Все страницы, включая вход, используют единую систему дизайн-токенов.
+
+**Риск:** Экран входа выглядит так, будто взят из другого источника дизайна, чем остальное
+приложение — именно это и создаёт первое впечатление «несобранности».
+
+---
+
+### GAP-009
+
+**Приоритет:** P2
+**Область:** Frontend
+
+**Текущее поведение:** Библиотека `@tanstack/react-table` подключена как реальная зависимость, но
+используется только в 1 из 6 реализаций таблиц (`Requests.tsx`) — остальные пять (Поставщики ×2,
+Заявка, Чёрный список, AI-чат) написаны вручную без неё.
+
+**Ожидаемое поведение:** Если библиотека для таблиц принята в проект — она используется
+последовательно везде, где нужна таблица.
+
+**Риск:** Похоже на библиотеку, подключённую в середине разработки без последующего переноса
+остальных таблиц на неё — источник несогласованного поведения таблиц (сортировка, фиксация
+колонок и т.д. работают по-разному).
+
+---
+
+### GAP-010
+
+**Приоритет:** P1
+**Область:** QA-инфраструктура
+
+**Текущее поведение:** У `frontend-v2` нулевое покрытие браузерными/e2e/accessibility/визуальными
+тестами. Всё «тестирование фронтенда» для v2 сегодня — это Python-тесты, которые проверяют
+**текст исходного кода** `.tsx`-файлов, а не реально отрендеренное и работающее поведение — они
+физически не способны поймать настоящую регрессию в работе или во внешнем виде. У `frontend/`
+(старая версия, не задеплоена) есть зрелая настройка Playwright+axe+Storybook+Applitools,
+которая так и не была перенесена, когда v2 стал рабочим интерфейсом.
+
+**Ожидаемое поведение:** Рабочий (задеплоенный) интерфейс покрыт реальными браузерными тестами.
+
+**Риск:** Любая визуальная или функциональная регрессия в реальном интерфейсе сейчас не будет
+поймана автоматически ничем.
+
+---
+
+### GAP-011
+
+**Приоритет:** P2
+**Область:** Документация
+
+**Текущее поведение:** `docs/architecture/COMPONENT_MAP.md` и `docs/product/CAPABILITY_CATALOG.md`
+(оба помечены как `status: CURRENT`) написаны до появления `frontend-v2` и описывают `frontend/`
+так, будто это и есть текущий интерфейс — вводит в заблуждение, если читать без контекста этого
+аудита.
+
+**Ожидаемое поведение:** Документ со статусом `CURRENT` описывает то, что реально работает
+сейчас.
+
+**Риск:** Не удалено (сохраняет историческую ценность), но нельзя доверять этим двум документам
+в вопросе «что сейчас реально работает» без сверки с `docs/frontend/FRONTEND_ARCHITECTURE.md`.
+
+---
+
+### GAP-012
+
+**Приоритет:** P3
+**Область:** База данных
+
+**Текущее поведение:** Два файла миграций имеют один и тот же номер 026
+(`026_mail_account_profiles.sql` и `026_request_email_send_guards.sql`). Оба применяются
+корректно (порядок по алфавиту, оба идемпотентны) — сейчас ничего не ломает, но это коллизия в
+нумерации, которая рискует создать путаницу или настоящий конфликт, если кто-то невнимательно
+добавит третий файл `026_*`.
+
+**Ожидаемое поведение:** Каждый номер миграции используется ровно одним файлом.
+
+**Риск:** Низкий сейчас, но растёт с каждым новым файлом миграций.
+
+---
+
+### GAP-013
+
+**Приоритет:** P3
+**Область:** AI-ассистент
+
+**Текущее поведение:** Ограничение `TOTAL_CONTEXT_CHAR_BUDGET` (40 000 символов) — это грубая
+обрезка всей собранной строки контекста с конца, что может обрезать блок самого недавно
+добавленного (часто самого важного) поставщика вместо того, чтобы распределять бюджет
+пропорционально между поставщиками. У режима «переписка из папки непривязанных писем» вообще нет
+ограничения по числу сообщений, только по числу символов на сообщение.
+
+**Ожидаемое поведение:** Ограничение объёма контекста не должно случайно отрезать самые
+релевантные данные.
+
+**Риск:** Низкий на практике, но теоретически может ухудшить качество ответа AI-ассистента при
+большом количестве выбранных поставщиков/сообщений.
+
+---
+
+### GAP-014
+
+**Приоритет:** P3
+**Область:** Почта
+
+**Текущее поведение:** Проверки `unique_domains`/`duplicate_recipient` в `preflight_bulk`
+корректно считаются по итоговому (после разрешения приоритета контакта) адресу получателя,
+начиная с исправления 16.09.2026 — это уже верно. Отмечено здесь только как узкое место,
+требующее внимания, если логика `resolve_contact_priority` снова изменится.
+
+**Ожидаемое поведение:** Проверка дублей всегда учитывает итоговый, а не исходный адрес.
+
+**Риск:** Сейчас риска нет — это заметка на будущее, не активная проблема. См.
+`docs/domain/SUPPLIER_MODEL.md` §7.4.
