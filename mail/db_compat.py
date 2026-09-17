@@ -45,6 +45,14 @@ def _adapt_postgres_sql(sql: str) -> str:
     """Translate the small SQLite dialect surface used by this repository."""
     adapted = sql.replace("BEGIN IMMEDIATE", "BEGIN")
     adapted = adapted.replace("last_insert_rowid()", "LASTVAL()")
+    # SQLite's built-in NOCASE collation has no Postgres equivalent (it has
+    # no case-insensitive collation without a separate extension), so every
+    # "<expr> COLLATE NOCASE" is rewritten to "LOWER(<expr>)" -- the standard
+    # case-insensitive ORDER BY substitute. Never exercised against Postgres
+    # before CHECKO_KEY-driven enrichment first ran there (global_supplier_detail
+    # was only ever called with a real Postgres connection at that point),
+    # so this UndefinedObject crash on "nocase" was a previously-latent bug.
+    adapted = re.sub(r"(\S+)\s+COLLATE\s+NOCASE", r"LOWER(\1)", adapted, flags=re.IGNORECASE)
     # «OR IGNORE» в SQLite молча пропускает КАКОЕ УГОДНО нарушение ограничения,
     # а не только по конкретной колонке — ровно то же самое делает
     # ON CONFLICT DO NOTHING без указания цели конфликта в Postgres. Раньше
