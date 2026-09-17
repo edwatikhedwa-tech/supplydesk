@@ -7,7 +7,7 @@ updated_at: 2026-09-01
 source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 ---
 
-# Engineering Contract
+# Инженерный контракт
 
 Постоянные правила разработки SupplyDesk.
 

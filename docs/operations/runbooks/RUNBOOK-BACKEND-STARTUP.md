@@ -7,78 +7,76 @@ updated_at: 2026-09-04
 source_commit: 878cf70292683fa8d9730ee353af78854746b2b1
 ---
 
-# Runbook: backend startup and safe HTTP probe
+# Runbook: запуск backend и безопасная HTTP-проверка
 
-## Observe
+## Наблюдение
 
-Before any command that can start the backend, run the workspace guard from the
-repository root:
+Перед любой командой, способной запустить backend, выполните защиту рабочей директории из
+корня репозитория:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\assert_workspace.ps1
 ```
 
-It must print `WORKSPACE_GUARD: PASS`. The default local root is
-`C:\Users\edwat\SupplyDesk`; an intentional Git worktree or CI checkout must
-pass its exact absolute root with `-ExpectedRoot`. A
-`BLOCKED_WRONG_WORKSPACE` result is a stop condition.
+Она должна вывести `WORKSPACE_GUARD: PASS`. Локальный корень по умолчанию —
+`C:\Users\edwat\SupplyDesk`; намеренный Git worktree или checkout в CI должен передать свой
+точный абсолютный корень через `-ExpectedRoot`. Результат `BLOCKED_WRONG_WORKSPACE` — это
+условие остановки.
 
-Use `scripts/doctor.ps1 -Plan` to inspect intended checks. Use `-DryRun` for
-the read-only runner. Safe route expectations are `/` → `200`,
-`/api/auth/me` → `200` in the recorded local contract, protected mail route
-→ `401`, and an unknown API route → `404`. A connection refusal is an
-`ENVIRONMENT_GAP`, not a failed product assertion.
+Используйте `scripts/doctor.ps1 -Plan` для осмотра запланированных проверок. Используйте
+`-DryRun` для read-only раннера. Ожидания безопасных маршрутов: `/` → `200`,
+`/api/auth/me` → `200` в зафиксированном локальном контракте, защищённый почтовый маршрут
+→ `401`, неизвестный маршрут API → `404`. Отказ в соединении — это `ENVIRONMENT_GAP`, а не
+проваленное утверждение продукта.
 
-## Runtime mode classification (required before any start command)
+## Классификация режима рантайма (обязательна перед любой командой запуска)
 
-Before starting a backend process, classify the run against
-`PROJECT_MANIFEST.yaml`'s `runtime_modes` block — the first source of truth —
-then this runbook. Only two modes exist; do not invent a third without an
-explicit owner task naming it:
+Перед запуском процесса backend классифицируйте запуск относительно блока `runtime_modes` в
+`PROJECT_MANIFEST.yaml` — первого источника истины — а затем относительно этого runbook'а.
+Существует только два режима; не придумывайте третий без явной задачи владельца, называющей
+его:
 
-- **`LOCAL_CANONICAL`** — the owner's normal local session. One command, no
-  ambiguity:
+- **`LOCAL_CANONICAL`** — обычная локальная сессия владельца. Одна команда, без
+  двусмысленности:
   ```powershell
   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_local_canonical.ps1 -Plan
   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_local_canonical.ps1 -Apply
   ```
-  The launcher requires a repo-root `.env` (`backend/app_config.py`'s
-  `load_dotenv` reads it). Base URL `http://127.0.0.1:8000`; database is the canonical
-  `mail-data/supplier.sqlite3`. Real provider credentials (Yandex OAuth, SMTP,
-  etc.) belong here only when the owner has explicitly authorized them for
-  this checkout.
-- **`SAFE_TEST`** — tests/browser/diagnostics only, never the owner's normal
-  "log me in and let me use it" session:
+  Скрипту запуска требуется `.env` в корне репозитория (его читает `load_dotenv` в
+  `backend/app_config.py`). Базовый URL `http://127.0.0.1:8000`; база данных — каноническая
+  `mail-data/supplier.sqlite3`. Реальные учётные данные провайдера (Яндекс OAuth, SMTP и т.д.)
+  уместны здесь только когда владелец явно авторизовал их для этого checkout'а.
+- **`SAFE_TEST`** — только для тестов/браузера/диагностики, никогда для обычной сессии
+  владельца «войти и пользоваться»:
   ```powershell
   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_test_runtime.ps1 -Apply -Purpose SAFE_TEST
   ```
-  Default port `18000`, disposable database, real provider credentials are
-  blanked by the script itself — Yandex/SMTP/IMAP login can never succeed
-  here by design. An occupied `18000` is a hard stop; no alternate test port
-  is selected.
+  Порт по умолчанию `18000`, одноразовая база данных, реальные учётные данные провайдера
+  затираются самим скриптом — вход через Яндекс/SMTP/IMAP здесь никогда не может пройти
+  успешно по замыслу. Занятый порт `18000` — это жёсткая остановка; альтернативный тестовый
+  порт не выбирается.
 
-The single guard is `scripts/runtime_guard.py`. Every purpose must select its
-allowed mode: `OWNER_SESSION`, `VISUAL_ACCEPTANCE`, `OAUTH_CHECK` and
-`MAIL_PROVIDER_CHECK` require `LOCAL_CANONICAL`; `SAFE_TEST` and
-`AUTOMATED_TEST` require `SAFE_TEST`. The guard prints the purpose, mode, URL,
-database class and authentication mode before browser acceptance. A mismatch
-prints `FAIL: RUNTIME_SELECTION_GUARD` and `STOP`; fallback to `SAFE_TEST`
-requires an explicit owner decision and is not automatic.
+Единственная защита — `scripts/runtime_guard.py`. Каждая цель должна выбирать свой допустимый
+режим: `OWNER_SESSION`, `VISUAL_ACCEPTANCE`, `OAUTH_CHECK` и
+`MAIL_PROVIDER_CHECK` требуют `LOCAL_CANONICAL`; `SAFE_TEST` и
+`AUTOMATED_TEST` требуют `SAFE_TEST`. Перед браузерной приёмкой защита выводит цель, режим, URL,
+класс базы данных и режим авторизации. Несовпадение выводит `FAIL: RUNTIME_SELECTION_GUARD` и
+`STOP`; откат на `SAFE_TEST` требует явного решения владельца и не происходит автоматически.
 
-Starting `SAFE_TEST` when the owner asked to use the app normally (or vice
-versa) is a stop condition, not a judgment call — ask which mode applies if
-it is not already obvious from the request.
+Запуск `SAFE_TEST`, когда владелец просил пользоваться приложением обычным образом (или
+наоборот) — это условие остановки, а не вопрос суждения: спросите, какой режим применим, если
+это не очевидно из запроса.
 
-## Start boundary
+## Граница запуска
 
-Only start `LOCAL_CANONICAL` after a human-approved need for it, with
-outgoing mail explicitly disabled unless the owner separately authorized real
-sending. Both startup wrappers run the workspace guard themselves and accept
-the same explicit `-ExpectedRoot` override. A read-only diagnostic task does
-not start a server and does not inspect secret values.
+Запускайте `LOCAL_CANONICAL` только после одобренной человеком потребности в этом, с явно
+отключённой исходящей почтой, если владелец отдельно не авторизовал реальную отправку. Оба
+скрипта запуска сами выполняют защиту рабочей директории и принимают один и тот же явный
+override `-ExpectedRoot`. Read-only диагностическая задача не запускает сервер и не осматривает
+значения секретов.
 
-## Stop conditions
+## Условия остановки
 
-Do not start a provider sync, queue worker or campaign. Do not change
-`supplier_app.py`, `api/index.py`, runtime settings or the canonical DB while
-diagnosing an HTTP failure.
+Не запускайте синхронизацию с провайдером, воркер очереди или рассылку. Не меняйте
+`supplier_app.py`, `api/index.py`, настройки рантайма или каноническую базу данных во время
+диагностики сбоя HTTP.

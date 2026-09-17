@@ -7,120 +7,122 @@ updated_at: 2026-09-01
 source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 ---
 
-# Documentation policy
+# Политика документации
 
-## Purpose
+## Назначение
 
-This policy defines which repository documents are operational control, which
-are product documentation, how documents age, and what must be updated when a
-task changes a source of truth.
+Эта политика определяет, какие документы репозитория относятся к оперативному контролю, какие —
+к продуктовой документации, как документы устаревают, и что должно обновляться, когда задача
+меняет источник истины.
 
-## Ownership boundary
+## Граница владения
 
-- `ai/**` is the operational control plane: current state, active-task lock,
-  handoff, decisions, deferred findings, audits, task reports, and later
-  incident records.
-- `docs/**` is product documentation: product context, requirements,
-  architecture, data, API, testing, and operations.
-- `ai/CURRENT_STATE.md` is the only canonical current-state source. `docs/**`
-  must not create a second current-state file or duplicate live counts.
-- `PROJECT_MANIFEST.yaml` is the compact project map and points to these
-  boundaries; it does not replace the current state or product documents.
+- `ai/**` — плоскость оперативного контроля: текущее состояние, блокировка активной задачи,
+  передача, решения, отложенные находки, аудиты, отчёты по задачам и последующие записи об
+  инцидентах.
+- `docs/**` — продуктовая документация: контекст продукта, требования, архитектура, данные, API,
+  тестирование и эксплуатация.
+- `ai/CURRENT_STATE.md` — единственный канонический источник текущего состояния. `docs/**` не
+  должен создавать второй файл текущего состояния или дублировать живые счётчики.
+- `PROJECT_MANIFEST.yaml` — компактная карта проекта, указывающая на эти границы; она не
+  заменяет документы текущего состояния или продукта.
 
-## Lifecycle
+## Жизненный цикл
 
-Every important operational or product document has a small metadata block with
-`document_id`, `status`, `canonical`, `owner`, `updated_at`, and a commit
-anchor. Historical or immutable records may use `source_commit`; current state
-and handoff documents should use `based_on_commit` for the functional baseline
-they describe. The commit that publishes the document is already authoritative
-in Git history, so current documents must not pretend that their own publication
-commit is the functional source commit.
-The allowed lifecycle statuses are:
+У каждого важного оперативного или продуктового документа есть небольшой блок метаданных с
+`document_id`, `status`, `canonical`, `owner`, `updated_at` и якорем коммита. Исторические или
+неизменяемые записи могут использовать `source_commit`; документы текущего состояния и передачи
+должны использовать `based_on_commit` для функциональной базы, которую они описывают. Коммит,
+публикующий документ, уже авторитетен в истории Git, поэтому текущие документы не должны
+выдавать свой собственный коммит публикации за функциональный исходный коммит.
+Допустимые статусы жизненного цикла:
 
-- `DRAFT` — proposed and not authoritative.
-- `CURRENT` — maintained for the present process or product contract.
-- `SUPERSEDED` — replaced by a newer document, with the replacement linked.
-- `HISTORICAL` — retained chronology or evidence; never current authority.
-- `ARCHIVED` — deliberately retained at a dated or remote location and not
-  part of the active working set.
+- `DRAFT` — предложен и не является авторитетным.
+- `CURRENT` — поддерживается для текущего процесса или продуктового контракта.
+- `SUPERSEDED` — заменён более новым документом, замена связана ссылкой.
+- `HISTORICAL` — сохранённая хронология или доказательство; никогда не текущий авторитет.
+- `ARCHIVED` — намеренно сохранён в датированном или удалённом месте и не входит в активный
+  рабочий набор.
 
-`canonical: true` is reserved for the one `ai/CURRENT_STATE.md` file. A policy,
-index, task lock, decision register, audit pointer, or product document may be
-`CURRENT` while remaining `canonical: false`.
+`canonical: true` зарезервировано только для одного файла `ai/CURRENT_STATE.md`. Политика,
+индекс, блокировка задачи, реестр решений, указатель аудита или продуктовый документ может быть
+`CURRENT`, оставаясь при этом `canonical: false`.
 
-## Naming and placement
+## Именование и размещение
 
-- Use stable descriptive names for current documents and date/task IDs for
-  reports, audits, and preserved chronology.
-- Put operational records under `ai/`; put product explanations under the
-  relevant `docs/` domain directory.
-- Put superseded chronology under `ai/history/YYYY/MM/` or the dedicated remote
-  audit branch. Do not leave dated task reports at repository root when they
-  are not project entrypoints.
-- A historical file must state `status: HISTORICAL` (or `ARCHIVED` where
-  appropriate), `canonical: false`, and link to current authority when a local
-  link is practical.
+- Используйте устойчивые описательные имена для текущих документов и даты/ID задач для отчётов,
+  аудитов и сохранённой хронологии.
+- Размещайте оперативные записи в `ai/`; размещайте продуктовые объяснения в соответствующей
+  предметной директории `docs/`.
+- Размещайте замещённую хронологию в `ai/history/YYYY/MM/` или на выделенной удалённой ветке
+  аудита. Не оставляйте датированные отчёты по задачам в корне репозитория, если они не являются
+  точками входа проекта.
+- Исторический файл должен указывать `status: HISTORICAL` (или `ARCHIVED`, где уместно),
+  `canonical: false` и ссылаться на текущий авторитет, когда локальная ссылка практична.
 
-## Current-state precedence
+## Приоритет текущего состояния
 
-When documents disagree, use this order: current code/schema/runtime evidence;
-`ai/CURRENT_STATE.md`; current decisions/deferred findings and handoff; current
-domain documentation; historical reports and audits. A historical report can
-prove what was observed then, but cannot prove that the same fact is true now.
-Unverified values must be labeled `NOT VERIFIED`.
+Когда документы расходятся, используйте этот порядок: текущий код/схема/доказательства
+рантайма; `ai/CURRENT_STATE.md`; текущие решения/отложенные находки и передача; текущая
+предметная документация; исторические отчёты и аудиты. Исторический отчёт может доказать, что
+наблюдалось тогда, но не может доказать, что тот же факт верен сейчас. Непроверенные значения
+должны быть помечены `NOT VERIFIED`.
 
-## Update rules
+## Правила обновления
 
-If a task changes application/API/frontend behavior, database schema or
-migrations, runtime/deployment, test contracts, user workflow, or a current
-operational fact, the task must check documentation impact and update the
-affected current documents in the same task. At minimum:
+Если задача меняет поведение приложения/API/frontend, схему базы данных или миграции,
+рантайм/развёртывание, контракты тестов, пользовательский сценарий или текущий оперативный
+факт, задача обязана проверить влияние на документацию и обновить затронутые текущие документы
+в рамках той же задачи. Как минимум:
 
-- record `DOC_IMPACT=YES` or `DOC_IMPACT=NO` in the task report;
-- update `ai/CURRENT_STATE.md` when current project facts change;
-- update the relevant `docs/**` contract when product behavior or requirements
-  change;
-- update `ai/DECISIONS.md` when a durable design/control choice is made;
-- update `ai/DEFERRED_FINDINGS.md` when unresolved risk or verification debt is
-  created or closed;
-- add append-only entries to `ai/CHANGELOG.md` and `ai/INTERACTION_LOG.md` for
-  substantial work;
-- retain evidence in a dated task report or audit pointer.
+- зафиксировать `DOC_IMPACT=YES` или `DOC_IMPACT=NO` в отчёте по задаче;
+- обновить `ai/CURRENT_STATE.md`, если изменились текущие факты проекта;
+- обновить соответствующий контракт `docs/**`, если изменилось продуктовое поведение или
+  требования;
+- обновить `ai/DECISIONS.md`, когда принято устойчивое решение по дизайну/контролю;
+- обновить `ai/DEFERRED_FINDINGS.md`, когда создан или закрыт нерешённый риск или долг по
+  проверке;
+- добавить append-only записи в `ai/CHANGELOG.md` и `ai/INTERACTION_LOG.md` для существенной
+  работы;
+- сохранить доказательства в датированном отчёте по задаче или указателе аудита.
 
-For a documentation-only task, `DOC_IMPACT=NO` is valid when the change only
-clarifies ownership, lifecycle, placement, or historical labeling and does not
-alter a product contract.
+Для задачи, касающейся только документации, `DOC_IMPACT=NO` допустим, когда изменение только
+уточняет владение, жизненный цикл, размещение или историческую маркировку и не меняет
+продуктовый контракт.
 
-## Task documentation definition of done
+## Определение готовности документации задачи
 
-A task may close only when all applicable items are true:
+Задача может быть закрыта только тогда, когда верны все применимые пункты:
 
-- `CODE PASS`: changed code is formatted/checked, or `N/A` for documentation-only work;
-- `TESTS PASS`: relevant tests or validators pass, or the report states exactly what was not rerun and why;
-- `DOC_IMPACT=YES/NO` is explicit;
-- relevant product and operational documents are updated or the report records why no update is needed;
-- `ai/CURRENT_STATE.md` is current when project facts changed;
-- durable choices are in `ai/DECISIONS.md`;
-- unresolved verification debt is in `ai/DEFERRED_FINDINGS.md`;
-- task/audit traceability identifies source commit, changed scope, evidence, and limitations;
-- links, metadata, secrets, and forbidden application/data changes are checked.
+- `CODE PASS`: изменённый код отформатирован/проверен, либо `N/A` для работы только с
+  документацией;
+- `TESTS PASS`: соответствующие тесты или валидаторы проходят, либо отчёт точно указывает, что
+  не перезапускалось и почему;
+- `DOC_IMPACT=YES/NO` указан явно;
+- соответствующие продуктовые и оперативные документы обновлены, либо отчёт фиксирует, почему
+  обновление не требуется;
+- `ai/CURRENT_STATE.md` актуален, если факты проекта изменились;
+- устойчивые решения зафиксированы в `ai/DECISIONS.md`;
+- нерешённый долг по проверке зафиксирован в `ai/DEFERRED_FINDINGS.md`;
+- трассировка задачи/аудита указывает исходный коммит, изменённый объём, доказательства и
+  ограничения;
+- проверены ссылки, метаданные, секреты и запрещённые изменения приложения/данных.
 
-Cosmetic wording or formatting alone is not a reason to rewrite unrelated
-documents. The goal is truthful, navigable, reversible documentation.
+Косметическая правка формулировок или форматирования сама по себе не является поводом
+переписывать несвязанные документы. Цель — правдивая, навигируемая, обратимая документация.
 
-## Audit retention
+## Хранение аудита
 
-Keep a compact audit pointer and important summaries in the canonical branch.
-Keep large forensic inventories, raw logs, screenshots, traces, and generated
-tool output on the dedicated audit branch after verifying its exact ref and
-commit. Never delete or rewrite that branch as part of documentation cleanup.
-See [`ai/AUDIT_POLICY.md`](../ai/AUDIT_POLICY.md).
+Держите компактный указатель аудита и важные сводки в канонической ветке. Держите крупные
+криминалистические инвентаризации, сырые логи, скриншоты, трассировки и сгенерированный вывод
+инструментов на выделенной ветке аудита после проверки её точного ref и коммита. Никогда не
+удаляйте и не переписывайте эту ветку в рамках уборки документации. См.
+[`ai/AUDIT_POLICY.md`](../ai/AUDIT_POLICY.md).
 
-## Acceptance and rollback
+## Приёмка и откат
 
-Before closing, run `python ai/tools/validate_docs.py`,
-`python ai/tools/validate_state.py`, and `git diff --check`; reread changed
-documents and inspect the changed-file allowlist. A documentation change is
-reversible by reverting its task commit(s); audit history, application code,
-database, mail data, and migrations are not modified by this policy.
+Перед закрытием запустите `python ai/tools/validate_docs.py`,
+`python ai/tools/validate_state.py` и `git diff --check`; перечитайте изменённые документы и
+осмотрите allowlist изменённых файлов. Изменение документации обратимо через откат его
+коммита(ов) задачи; история аудита, код приложения, база данных, почтовые данные и миграции этой
+политикой не изменяются.

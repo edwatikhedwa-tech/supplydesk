@@ -7,29 +7,28 @@ updated_at: 2026-09-01
 source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 ---
 
-# API documentation
+# Документация API
 
-## Purpose
+## Назначение
 
-Stable API contracts, endpoint behavior, authentication boundaries, and error
-semantics supported by code and acceptance evidence.
+Стабильные контракты API, поведение эндпоинтов, границы авторизации и семантика ошибок,
+подтверждённые кодом и доказательствами приёмки.
 
-## Canonical ownership
+## Каноническое владение
 
-This directory owns API explanations and contracts. Current route availability
-and verification status remain in `ai/CURRENT_STATE.md` and task evidence.
+Эта директория владеет объяснениями и контрактами API. Актуальная доступность маршрутов и
+статус проверки хранятся в `ai/CURRENT_STATE.md` и доказательствах по задачам.
 
-## Expected artifacts
+## Ожидаемые артефакты
 
-Endpoint contracts, request/response examples without secrets, error catalogs,
-and traceability to tests.
+Контракты эндпоинтов, примеры запросов/ответов без секретов, каталоги ошибок и трассировка к
+тестам.
 
-## Current contracts
+## Текущие контракты
 
-- [`messages.md`](messages.md) — correspondence workspace, user-scoped
-  metadata and unmatched-linking boundaries.
+- [`messages.md`](messages.md) — рабочее пространство переписки, метаданные в рамках
+  пользователя и границы привязки непривязанных писем.
 
-## Status
+## Статус
 
-`CURRENT` as an entrypoint; unverified routes must be labeled `NOT VERIFIED`.
-
+`CURRENT` как точка входа; непроверенные маршруты должны быть помечены `NOT VERIFIED`.

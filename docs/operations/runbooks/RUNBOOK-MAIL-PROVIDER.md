@@ -7,18 +7,19 @@ updated_at: 2026-09-01
 source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
 ---
 
-# Runbook: mail provider boundary
+# Runbook: граница почтового провайдера
 
-## Diagnostic interpretation
+## Интерпретация диагностики
 
-The diagnostic runner never opens SMTP/IMAP or provider adapters. It can
-classify a server as unavailable from safe HTTP probes, but that is not proof
-of provider health. Provider credentials, quotas, mailbox contents and real
-delivery remain `NOT VERIFIED` unless separately authorized and evidenced.
+Диагностический раннер никогда не открывает SMTP/IMAP или адаптеры провайдера. Он может
+классифицировать сервер как недоступный по результатам безопасных HTTP-проверок, но это не
+доказательство работоспособности провайдера. Учётные данные провайдера, квоты, содержимое
+почтового ящика и реальная доставка остаются `NOT VERIFIED` (не проверено), если не
+авторизованы и не подтверждены отдельно.
 
-## Human gate
+## Контроль человеком
 
-Real provider authentication, send, retry, credential rotation and mailbox
-mutation are `L4_HUMAN_APPROVAL_REQUIRED` or `L5_FORBIDDEN_AUTOMATIC`.
-Preflight and preview must remain read-only and must not be used as a hidden
-transport attempt.
+Реальная авторизация у провайдера, отправка, повтор, ротация учётных данных и изменение
+почтового ящика — это `L4_HUMAN_APPROVAL_REQUIRED` или `L5_FORBIDDEN_AUTOMATIC`.
+Предпроверка (preflight) и предпросмотр должны оставаться read-only и не должны использоваться
+как скрытая попытка транспортировки.

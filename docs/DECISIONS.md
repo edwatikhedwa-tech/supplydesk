@@ -7,123 +7,122 @@ updated_at: 2026-08-30
 source_commit: 792f441b4b6099533177e7c1d23d6252670f9309
 ---
 
-# Decisions — HISTORICAL — NOT CURRENT
+# Решения — ИСТОРИЧЕСКОЕ — НЕ АКТУАЛЬНО
 
-> **SUPPORTING DECISIONS — NOT CURRENT STATE.** Current repository state and
-> current decisions are maintained in [`ai/CURRENT_STATE.md`](../ai/CURRENT_STATE.md)
-> and [`ai/DECISIONS.md`](../ai/DECISIONS.md). This file preserves the older
-> resend design record; it must not be used for live counts or provider status.
+> **ВСПОМОГАТЕЛЬНЫЕ РЕШЕНИЯ — НЕ ТЕКУЩЕЕ СОСТОЯНИЕ.** Текущее состояние репозитория и
+> текущие решения ведутся в [`ai/CURRENT_STATE.md`](../ai/CURRENT_STATE.md)
+> и [`ai/DECISIONS.md`](../ai/DECISIONS.md). Этот файл сохраняет более старую
+> запись о дизайне повторной отправки; его нельзя использовать для живых счётчиков или статуса
+> провайдера.
 
 ## RESEND-001
 
-Status: Confirmed by current SQLite implementation and tests.
+Статус: подтверждено текущей реализацией и тестами SQLite.
 
-Decision: Automatic initial-send protection is scoped to one workspace + request
-+ normalized email.
+Решение: автоматическая защита от первичной отправки ограничена рамками одного workspace +
+заявки + нормализованного email.
 
-Reason: The composite database guard prevents the same request/contact from
-being created twice while allowing the same contact in another request or
-workspace.
+Причина: составная защита базы данных предотвращает повторное создание одного и того же
+контакта заявки, позволяя при этом тот же контакт в другой заявке или рабочем пространстве.
 
-User impact: A repeated initial click for the same request/email is blocked.
+Влияние на пользователя: повторный клик по первичной отправке для той же заявки/email
+блокируется.
 
-Do not reinterpret as: This email can never be contacted again.
+Не трактовать как: этому email больше никогда нельзя написать.
 
 ## RESEND-002
 
-Status: Confirmed by current implementation and tests.
+Статус: подтверждено текущей реализацией и тестами.
 
-Decision: If the requested primary email was already used in the request and an
-unambiguous NEVER_USED alternate exists in the same company card, one alternate
-may be selected automatically.
+Решение: если запрошенный основной email уже использовался в заявке и в той же карточке
+компании есть однозначная альтернатива NEVER_USED, один альтернативный адрес может быть выбран
+автоматически.
 
-Reason: It preserves one-contact-per-operation safety without silently sending
-to every email on the card.
+Причина: это сохраняет безопасность «один контакт на операцию», не отправляя молча на каждый
+email карточки.
 
-User impact: The effective recipient may differ from the visible primary; the
-preflight result and queued target must show the same recipient.
+Влияние на пользователя: фактический получатель может отличаться от видимого основного адреса;
+результат предпроверки и цель в очереди должны показывать одного и того же получателя.
 
-Do not reinterpret as: All alternate emails should be sent automatically.
+Не трактовать как: все альтернативные email должны отправляться автоматически.
 
 ## RESEND-003
 
-Status: Confirmed by current implementation and regression tests.
+Статус: подтверждено текущей реализацией и регрессионными тестами.
 
-Decision: One company-card selection creates at most one outbound target/message
-for the selected effective contact.
+Решение: выбор одной карточки компании создаёт максимум одну исходящую цель/сообщение для
+выбранного эффективного контакта.
 
-Reason: Company grouping must not turn one user action into multiple duplicate
-messages.
+Причина: группировка по компании не должна превращать одно действие пользователя в несколько
+дублирующихся сообщений.
 
-User impact: Remaining company emails stay available as contact data and are not
-automatically sent.
+Влияние на пользователя: остальные email компании остаются доступны как контактные данные и не
+отправляются автоматически.
 
-Do not reinterpret as: The UI already provides an explicit email picker.
+Не трактовать как: интерфейс уже предоставляет явный выбор email.
 
 ## MAIL-001
 
-Status: Confirmed by current UI labels, backend status mapping, and tests.
+Статус: подтверждено текущими подписями UI, отображением статусов backend и тестами.
 
-Decision: User-facing «Отправлено» represents SMTP/provider acceptance.
+Решение: видимое пользователю «Отправлено» означает принятие SMTP/провайдером.
 
-Reason: The application records a historical transport acceptance separately
-from bounce, delivery-unknown, and Inbox evidence.
+Причина: приложение фиксирует историческое принятие транспортом отдельно от отказа доставки,
+неопределённой доставки и доказательства попадания в Inbox.
 
-User impact: «Отправлено» means the sending server accepted the message.
+Влияние на пользователя: «Отправлено» означает, что сервер отправки принял сообщение.
 
-Do not reinterpret as: The message is guaranteed to be delivered to the
-recipient's Inbox.
+Не трактовать как: сообщение гарантированно доставлено во входящие получателя.
 
 ## IDENTITY-001
 
-Status: Confirmed by current grouping rules and tests.
+Статус: подтверждено текущими правилами группировки и тестами.
 
-Decision: Company cards may collapse rows only on confirmed global/legal identity;
-same name alone is insufficient. Host/site rows remain distinct source contacts
-unless the confirmed identity grouping says they belong to one company card.
+Решение: карточки компаний могут схлопывать строки только при подтверждённой глобальной/
+юридической идентичности; одного совпадения имени недостаточно. Строки хоста/сайта остаются
+раздельными источниками контактов, если подтверждённая группировка идентичности не говорит, что
+они принадлежат одной карточке компании.
 
-Reason: A name can be shared by unrelated legal entities, while one company can
-legitimately have multiple sites and emails.
+Причина: имя может совпадать у несвязанных юридических лиц, тогда как у одной компании
+законно может быть несколько сайтов и email.
 
-User impact: A card can show multiple contacts; physical supplier rows are not
-deleted by presentation grouping.
+Влияние на пользователя: карточка может показывать несколько контактов; физические строки
+поставщика не удаляются группировкой на уровне отображения.
 
-Do not reinterpret as: Every same-name or same-email row is safe to merge.
+Не трактовать как: любую строку с одинаковым именем или email безопасно объединять.
 
 ## DEPLOY-001
 
-Status: Confirmed by current deployment configuration.
+Статус: подтверждено текущей конфигурацией развёртывания.
 
-Decision: Local development supports SQLite; the intended Vercel production
-path requires durable PostgreSQL through `DATABASE_URL`. SQLite under Vercel's
-`/tmp` is only a fallback and is not durable production storage.
+Решение: локальная разработка поддерживает SQLite; предполагаемый прод-путь на Vercel требует
+устойчивого PostgreSQL через `DATABASE_URL`. SQLite в `/tmp` на Vercel — только фолбэк и не
+является устойчивым хранилищем продакшена.
 
-Reason: `vercel.json` excludes SQLite/mail-data and `api/index.py` documents the
-production PostgreSQL requirement.
+Причина: `vercel.json` исключает SQLite/mail-data, а `api/index.py` документирует требование
+PostgreSQL для продакшена.
 
-User impact: PostgreSQL acceptance is a release prerequisite for production
-behavior, even though local SQLite acceptance is available.
+Влияние на пользователя: приёмка PostgreSQL — обязательное условие релиза для поведения на
+продакшене, даже если доступна приёмка локального SQLite.
 
-Do not reinterpret as: PostgreSQL has already passed the current acceptance
-suite.
+Не трактовать как: PostgreSQL уже прошёл текущий набор приёмки.
 
 ## MAIL-SAFETY
 
-Status: Confirmed by source inspection, isolated SQLite tests, mail/runtime
-acceptance tests, and read-only live-state verification.
+Статус: подтверждено осмотром исходного кода, изолированными тестами SQLite, тестами приёмки
+рантайма/почты и read-only проверкой живого состояния.
 
-Decision: Outgoing mail is fail-closed. Default, missing, or invalid durable
-state is disabled; enabling requires an explicit authenticated owner action with
-CSRF protection and confirmation.
+Решение: исходящая почта закрыта по умолчанию (fail-closed). Значение по умолчанию,
+отсутствующее или невалидное устойчивое состояние — отключено; включение требует явного
+авторизованного действия владельца с защитой CSRF и подтверждением.
 
-Reason: Application startup, imports, migrations, restarts, and malformed
-configuration must never become implicit permission to contact suppliers.
+Причина: запуск приложения, импорты, миграции, перезапуски и некорректная конфигурация никогда
+не должны становиться неявным разрешением обращаться к поставщикам.
 
-User impact: Existing queued messages remain queued while outgoing is off. An
-owner can deliberately change the global switch through
-`POST /api/mail/runtime/outgoing`; the provider boundary still checks the
-runtime and environment kill switch before transport.
+Влияние на пользователя: существующие сообщения в очереди остаются в очереди, пока исходящая
+почта отключена. Владелец может намеренно изменить глобальный переключатель через
+`POST /api/mail/runtime/outgoing`; граница провайдера всё равно проверяет рантайм и kill switch
+окружения перед транспортировкой.
 
-Do not reinterpret as: Enabling the durable switch bypasses the production
-runtime lock, the environment kill switch, account eligibility, or provider
-delivery safeguards.
+Не трактовать как: включение устойчивого переключателя обходит блокировку рантайма продакшена,
+kill switch окружения, право аккаунта или защиту доставки провайдера.

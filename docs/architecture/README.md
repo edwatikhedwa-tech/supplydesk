@@ -7,31 +7,30 @@ updated_at: 2026-09-02
 source_commit: 84083130e3a75eb5a6d4fa83957db6760724379b
 ---
 
-# Architecture documentation
+# Документация по архитектуре
 
-## Purpose
+## Назначение
 
-Architecture decisions, system boundaries, integrations, and deployment
-topology supported by repository or runtime evidence.
+Архитектурные решения, границы системы, интеграции и топология развёртывания, подтверждённые
+доказательствами из репозитория или рантайма.
 
-## Canonical ownership
+## Каноническое владение
 
-This directory owns product architecture documentation. Operational state and
-task decisions remain in `ai/**`.
+Эта директория владеет документацией продуктовой архитектуры. Оперативное состояние и решения
+по задачам хранятся в `ai/**`.
 
-## Expected artifacts
+## Ожидаемые артефакты
 
-Architecture decision records, system context, component boundaries, and
-deployment notes with source references. The component lifecycle registry is
-the canonical record for retained, deprecated, disabled, superseded,
-experimental and deferred components: [`COMPONENT_LIFECYCLE.md`](COMPONENT_LIFECYCLE.md).
+Записи архитектурных решений, контекст системы, границы компонентов и заметки о развёртывании со
+ссылками на источники. Реестр жизненного цикла компонентов — канонический источник для
+сохранённых, устаревших, отключённых, заменённых, экспериментальных и отложенных компонентов:
+[`COMPONENT_LIFECYCLE.md`](COMPONENT_LIFECYCLE.md).
 
-Repository placement rules are shared in [`ai/AI_CONTRACT.md`](../../ai/AI_CONTRACT.md).
-`docs/architecture/REPOSITORY_LAYOUT.md` is added only when a planned root
-refactor introduces a new major directory.
+Правила размещения в репозитории описаны в [`ai/AI_CONTRACT.md`](../../ai/AI_CONTRACT.md).
+`docs/architecture/REPOSITORY_LAYOUT.md` добавляется только тогда, когда запланированный
+рефакторинг корня вводит новую крупную директорию.
 
-## Status
+## Статус
 
-`CURRENT` as an entrypoint; detailed architecture is not inferred where the
-repository does not provide evidence.
-
+`CURRENT` как точка входа; детальная архитектура не додумывается там, где репозиторий не даёт
+доказательств.

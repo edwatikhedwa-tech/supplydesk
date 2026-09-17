@@ -7,18 +7,19 @@ updated_at: 2026-09-01
 source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
 ---
 
-# Runbook: test or diagnostic failure
+# Runbook: сбой теста или диагностики
 
-1. Record the exact command, branch, HEAD, status, exit code and diagnostic
-   output path. Never copy secret values into the record.
-2. Classify the result as `PRODUCT_FAILURE`, `ENVIRONMENT_GAP`,
-   `SAFETY_BLOCK`, `NOT_VERIFIED` or `WARNING`.
-3. Reproduce only in the approved isolated worktree. Use a disposable/local
-   database for write-oriented tests; the canonical database stays read-only.
-4. Preserve the existing expectation. Do not disable tests or change expected
-   output just to make the gate green.
-5. For a code repair, follow the repair contract's
-   `Detect → Diagnose → Confirm scope → Create sandbox branch → Reproduce →
-   Patch → focused tests → regression → doctor → evidence → await approval`
-   flow. If the same failure cannot be safely reproduced, record
-   `NOT VERIFIED` and stop.
+1. Зафиксируйте точную команду, ветку, HEAD, статус, код выхода и путь к диагностическому
+   выводу. Никогда не копируйте значения секретов в запись.
+2. Классифицируйте результат как `PRODUCT_FAILURE`, `ENVIRONMENT_GAP`,
+   `SAFETY_BLOCK`, `NOT_VERIFIED` или `WARNING`.
+3. Воспроизводите только в утверждённом изолированном worktree. Используйте одноразовую/
+   локальную базу данных для тестов, связанных с записью; каноническая база данных остаётся
+   read-only.
+4. Сохраняйте существующее ожидание. Не отключайте тесты и не меняйте ожидаемый вывод только
+   ради того, чтобы контрольная точка стала зелёной.
+5. Для исправления кода следуйте потоку контракта восстановления:
+   `Обнаружить → Диагностировать → Подтвердить объём → Создать sandbox-ветку → Воспроизвести →
+   Исправить → целевые тесты → регрессия → doctor → доказательства → ожидание одобрения`.
+   Если тот же сбой невозможно безопасно воспроизвести, зафиксируйте
+   `NOT VERIFIED` и остановитесь.

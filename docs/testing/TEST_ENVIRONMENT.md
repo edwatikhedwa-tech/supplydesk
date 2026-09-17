@@ -1,4 +1,4 @@
-# SupplyDesk Test Environment
+# Тестовое окружение SupplyDesk
 
 ## Что это
 
@@ -12,25 +12,25 @@
 регрессии backend, frontend-gates и Playwright без приватного `.env`, личной
 почты, production credentials и внешней сети.
 
-## Workspace boundary
+## Граница рабочей директории
 
-Before setup, tests, frontend build, safe runtime start or Doctor, the
-workspace guard must pass:
+Перед настройкой, тестами, сборкой frontend, запуском safe runtime или Doctor должна пройти
+защита рабочей директории:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\assert_workspace.ps1
 ```
 
-Without an override it accepts only `C:\Users\edwat\SupplyDesk` and rejects
-the legacy recovery-only root `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
-For an intentional Git worktree or CI checkout, pass its exact absolute path:
+Без override она принимает только `C:\Users\edwat\SupplyDesk` и отклоняет
+legacy-корень только для восстановления `C:\Users\edwat\OneDrive\Документы\ChatGPT\SaaS`.
+Для намеренного Git worktree или checkout в CI передайте его точный абсолютный путь:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\assert_workspace.ps1 -ExpectedRoot 'C:\path\to\worktree'
 ```
 
-The guard never changes directory, branch or files. CI supplies its checkout
-root explicitly through `-ExpectedRoot $env:GITHUB_WORKSPACE`.
+Защита никогда не меняет директорию, ветку или файлы. CI передаёт свой корень checkout'а
+явно через `-ExpectedRoot $env:GITHUB_WORKSPACE`.
 
 ## Чистый checkout: последовательность
 
@@ -196,7 +196,7 @@ SAFE_TEST предназначен для автоматических пров�
 .\scripts\stop_test_runtime.ps1 -Apply
 ```
 
-## Doctor profiles
+## Профили Doctor
 
 ```powershell
 .\scripts\doctor.ps1 -Plan
@@ -221,7 +221,7 @@ Doctor различает `NOT_REQUIRED_FOR_OFFLINE_ACCEPTANCE` и
 но отсутствие test DB, venv, runner, runtime или browser evidence остаётся
 `ENVIRONMENT_GAP`.
 
-## Behavioral coverage and limits
+## Поведенческое покрытие и ограничения
 
 Историческая цифра `373 passed, 1 skipped` сохранена только как baseline для
 сравнения. Runner не подгоняет количество: итоговый `tests`, failures, errors и
@@ -239,7 +239,7 @@ runner стали воспроизводимыми, но это не превр�
 ограничением; synthetic login и read-only routes проверяются отдельно, когда
 это возможно.
 
-## CI readiness
+## Готовность CI
 
 Будущий CI может выполнить ту же последовательность без GitHub Actions-файла:
 

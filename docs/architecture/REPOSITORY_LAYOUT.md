@@ -7,130 +7,126 @@ updated_at: 2026-09-04
 source_commit: 78484108ed010e152ab0e3e04d2490e8c4137d6c
 ---
 
-# Repository Layout
+# Структура репозитория
 
-This is a concise map of current top-level directories, kept in sync only
-after a planned root refactor actually lands. It documents what exists now,
-not a target structure. For behavioral component ownership, see
+Это краткая карта текущих директорий верхнего уровня, синхронизируемая только после того, как
+запланированный рефакторинг корня действительно произошёл. Она документирует то, что существует
+сейчас, а не целевую структуру. За поведенческим владением компонентами — см.
 [`COMPONENT_MAP.md`](COMPONENT_MAP.md).
 
-| Path | Contains |
+| Путь | Содержит |
 |---|---|
-| root composition entrypoints | `supplier_app.py` (local backend entrypoint); `serp_parser.py` (thin CLI-compatibility wrapper, implementation moved) and `collect_inn.py` (thinned CLI, implementation partly extracted) still at root; the four root tests (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
-| `api/` | `api/index.py` — the Vercel serverless adapter around `supplier_app.py` |
-| `backend/` | New product-code area. `backend/integrations/registry/` — provider adapters moved out of the root flat package (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — LLM/provider transport moved out of the root flat package (`llm_fallback.py`, `routerai_client.py`); `backend/integrations/search/` — SERP/web-lookup integrations moved out of the root flat package (`web_lookup.py`, `xmlriver_client.py`, `serp_parser.py`, the last with a thin root CLI-compatibility wrapper); `backend/integrations/logistics/` — Деловые Линии (Dellin) shipping-cost calculator client (`dellin_client.py`), new, not a move; `backend/domain/supplier_identity/` — supplier-identity product logic moved out of the root flat package (`email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`); `backend/domain/supplier_enrichment/` — supplier-enrichment logic split out of the root flat package: `contact_crawler.py` (moved) and `pipeline.py` (extracted from `collect_inn.py`'s reusable ИНН/ОГРН parsing, shared by `supplier_app.py` and the CLI); `backend/domain/logistics/` — `quote_service.py`, the shipping-cost business rule (hard gate, cache, response parsing), new, not a move |
-| `mail/` | Real Yandex IMAP/SMTP integration and SQLite-backed mail repository, including `logistics_quotes.py` (`LogisticsQuotesMixin`, persistence for manual shipping-cost quotes) |
-| `migrations/` | Versioned SQL schema DDL |
-| `frontend/` | React/Vite SPA (TypeScript, Tailwind) |
-| `scripts/` | Operator/control tooling, plus one moved CLI implementation (`scripts/collect_contacts.py`) with a root compatibility wrapper |
-| `benchmarks/` | Offline fixtures (`enrichment_cases.json`) and one moved CLI implementation (`benchmarks/benchmark_models.py`) with a root compatibility wrapper |
-| `tests/` | Backend unittest suites, including `tests/diagnostics/` and `tests/legacy/` (four root manual-check scripts converted to real `unittest.TestCase`s) |
-| `supplier_discovery_v2/` | Isolated discovery pilot; does not import or modify production parser code (see its own `README.md`) |
+| точки входа композиции в корне | `supplier_app.py` (точка входа локального backend); `serp_parser.py` (тонкая обёртка для совместимости с CLI, реализация перенесена) и `collect_inn.py` (облегчённый CLI, реализация частично вынесена) всё ещё в корне; четыре корневых теста (`test_extractor.py`, `test_inn.py`, `test_parser.py`, `test_verify.py`) |
+| `api/` | `api/index.py` — адаптер Vercel serverless поверх `supplier_app.py` |
+| `backend/` | Новая область продуктового кода. `backend/integrations/registry/` — адаптеры провайдеров, вынесенные из плоского пакета в корне (`dadata_client.py`, `checko_client.py`); `backend/integrations/llm/` — транспорт LLM/провайдера, вынесенный из плоского пакета в корне (`llm_fallback.py`, `routerai_client.py`); `backend/integrations/search/` — интеграции SERP/веб-поиска, вынесенные из плоского пакета в корне (`web_lookup.py`, `xmlriver_client.py`, `serp_parser.py`, последний — с тонкой обёрткой для совместимости с CLI в корне); `backend/integrations/logistics/` — клиент калькулятора стоимости доставки Деловых Линий (Dellin) (`dellin_client.py`), новый, не перенос; `backend/domain/supplier_identity/` — продуктовая логика идентичности поставщика, вынесенная из плоского пакета в корне (`email_extractor.py`, `inn_extractor.py`, `inn_resolver.py`, `verify.py`); `backend/domain/supplier_enrichment/` — логика обогащения поставщиков, вынесенная из плоского пакета в корне: `contact_crawler.py` (перенесён) и `pipeline.py` (извлечён из переиспользуемого разбора ИНН/ОГРН в `collect_inn.py`, общий для `supplier_app.py` и CLI); `backend/domain/logistics/` — `quote_service.py`, бизнес-правило расчёта стоимости доставки (жёсткий gate, кэш, разбор ответа), новый, не перенос |
+| `mail/` | Реальная интеграция Yandex IMAP/SMTP и репозиторий почты на SQLite, включая `logistics_quotes.py` (`LogisticsQuotesMixin`, хранение ручных расчётов стоимости доставки) |
+| `migrations/` | Версионированный DDL схемы SQL |
+| `frontend/` | SPA на React/Vite (TypeScript, Tailwind) |
+| `scripts/` | Инструменты оператора/управления, плюс одна перенесённая реализация CLI (`scripts/collect_contacts.py`) с обёрткой совместимости в корне |
+| `benchmarks/` | Офлайн-фикстуры (`enrichment_cases.json`) и одна перенесённая реализация CLI (`benchmarks/benchmark_models.py`) с обёрткой совместимости в корне |
+| `tests/` | Наборы backend-тестов на unittest, включая `tests/diagnostics/` и `tests/legacy/` (четыре корневых скрипта ручной проверки, преобразованные в настоящие `unittest.TestCase`) |
+| `supplier_discovery_v2/` | Изолированный пилот discovery; не импортирует и не изменяет продуктовый код парсера (см. собственный `README.md`) |
 
-## Moves in progress
+## Переносы в процессе
 
-- `TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902`: `collect_contacts.py` and
-  `benchmark_models.py` implementations moved to `scripts/` and
-  `benchmarks/`; root files are thin compatibility wrappers.
+- `TASK-BOUNDED-ROOT-REFACTOR-CLI-20260902`: реализации `collect_contacts.py` и
+  `benchmark_models.py` перенесены в `scripts/` и `benchmarks/`; файлы в корне — тонкие обёртки
+  совместимости.
 - `TASK-BOUNDED-ROOT-REFACTOR-REGISTRY-20260902` +
   `TASK-CHECKO-REGISTRY-MOVE-IMMUTABILITY-MIGRATION-20260902`:
-  `dadata_client.py` and `checko_client.py` both moved to
-  `backend/integrations/registry/`, no root wrapper (no confirmed external
-  Python-import consumer for either). `supplier_discovery_v2/immutability_check.py`'s
-  protected-path list was migrated to Checko's new location in the same
-  change that moved it, so the existing immutability guard was never
-  weakened.
-- `TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902`: `llm_fallback.py` and
-  `routerai_client.py` moved to `backend/integrations/llm/`, no root
-  wrapper. `supplier_app.py`, `collect_inn.py`,
-  `scripts/collect_contacts.py` and `benchmarks/benchmark_models.py` updated
-  to the canonical import path.
+  `dadata_client.py` и `checko_client.py` оба перенесены в
+  `backend/integrations/registry/`, без обёртки в корне (не подтверждено ни одного внешнего
+  потребителя Python-импорта ни для одного из них). Список защищённых путей в
+  `supplier_discovery_v2/immutability_check.py` был перенесён на новое расположение Checko в
+  том же изменении, что и сам перенос, поэтому существующая защита неизменяемости ни разу не
+  ослаблялась.
+- `TASK-BOUNDED-ROOT-REFACTOR-LLM-20260902`: `llm_fallback.py` и
+  `routerai_client.py` перенесены в `backend/integrations/llm/`, без обёртки
+  в корне. `supplier_app.py`, `collect_inn.py`,
+  `scripts/collect_contacts.py` и `benchmarks/benchmark_models.py` обновлены
+  на канонический путь импорта.
 - `TASK-BOUNDED-ROOT-REFACTOR-SUPPLIER-IDENTITY-20260902`:
-  `email_extractor.py`, `inn_extractor.py`, `inn_resolver.py` and `verify.py`
-  moved to `backend/domain/supplier_identity/`, no root wrapper. 14 known
-  consumers updated (`supplier_app.py`, `contact_crawler.py`, `collect_inn.py`,
+  `email_extractor.py`, `inn_extractor.py`, `inn_resolver.py` и `verify.py`
+  перенесены в `backend/domain/supplier_identity/`, без обёртки в корне. 14 известных
+  потребителей обновлены (`supplier_app.py`, `contact_crawler.py`, `collect_inn.py`,
   `web_lookup.py`, `scripts/collect_contacts.py`, `scripts/verify_enrichment_live.py`,
   `benchmarks/benchmark_models.py`, `backend/integrations/llm/llm_fallback.py`,
-  `backend/integrations/registry/dadata_client.py`, `mail/repository.py`, root
-  tests, and `tests/test_enrichment_pipeline.py`), including two not named in
-  the original diagnostic (`web_lookup.py`, `mail/repository.py`) found by a
-  fresh full-tree scan rather than assumed from the prior evidence.
-  `supplier_discovery_v2/immutability_check.py`'s protected-path list was
-  migrated for the three already-protected files
-  (`email_extractor.py`/`inn_extractor.py`/`verify.py`) in the same change;
-  `inn_resolver.py` was deliberately left unprotected — it was never
-  protected before, and moving beside the other three is not evidence for
-  adding it.
+  `backend/integrations/registry/dadata_client.py`, `mail/repository.py`, корневые
+  тесты и `tests/test_enrichment_pipeline.py`), включая два, не названных в
+  исходной диагностике (`web_lookup.py`, `mail/repository.py`), найденных
+  свежим полным сканированием дерева, а не предположенных по прежним доказательствам.
+  Список защищённых путей в `supplier_discovery_v2/immutability_check.py` был
+  перенесён для трёх уже защищённых файлов
+  (`email_extractor.py`/`inn_extractor.py`/`verify.py`) в том же изменении;
+  `inn_resolver.py` намеренно оставлен незащищённым — он никогда не был
+  защищён раньше, и перенос рядом с остальными тремя не является основанием для его добавления.
 - `TASK-BOUNDED-ROOT-REFACTOR-SEARCH-INTEGRATIONS-20260903`: `web_lookup.py`
-  and `xmlriver_client.py` moved to `backend/integrations/search/`, no root
-  wrapper. Both are 0-diff pure moves (`git diff -M --stat`). 6 confirmed
-  consumers updated to the canonical import path (`supplier_app.py`,
+  и `xmlriver_client.py` перенесены в `backend/integrations/search/`, без обёртки
+  в корне. Оба — чистые переносы с нулевым diff (`git diff -M --stat`). 6 подтверждённых
+  потребителей обновлены на канонический путь импорта (`supplier_app.py`,
   `collect_inn.py`, `scripts/collect_contacts.py`, `test_extractor.py`,
-  `serp_parser.py`, `test_parser.py`); `serp_parser.py` itself stays
-  `DEFER`red (unmoved) per the diagnostic — only its one internal import line
-  was touched. `supplier_discovery_v2/xmlriver_subprocess.py` is unaffected:
-  it invokes the untouched `serp_parser.py` by absolute path via
-  `subprocess.run(..., cwd=...)`, so `serp_parser.py`'s own updated import
-  resolves normally at that call site.
-  `supplier_discovery_v2/immutability_check.py`'s protected-path list was
-  migrated for both files in the same change, so the existing immutability
-  guard was never weakened.
+  `serp_parser.py`, `test_parser.py`); сам `serp_parser.py` остаётся
+  в статусе `DEFER` (не перенесён) согласно диагностике — изменена только одна его
+  внутренняя строка импорта. `supplier_discovery_v2/xmlriver_subprocess.py` не затронут:
+  он вызывает нетронутый `serp_parser.py` по абсолютному пути через
+  `subprocess.run(..., cwd=...)`, поэтому обновлённый импорт самого `serp_parser.py`
+  разрешается в этой точке вызова как обычно.
+  Список защищённых путей в `supplier_discovery_v2/immutability_check.py` был
+  перенесён для обоих файлов в том же изменении, поэтому существующая защита
+  неизменяемости ни разу не ослаблялась.
 - `TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-CONTACT-CRAWLER-20260903`:
-  `contact_crawler.py` moved to `backend/domain/supplier_enrichment/`, no root
-  wrapper. It is a 0-diff pure move (`git diff -M --stat`); its only internal
-  import was already the canonical `backend.domain.supplier_identity.email_extractor`
-  path from an earlier pass. 6 confirmed consumers updated to the canonical
-  import path (`supplier_app.py`, `collect_inn.py`,
+  `contact_crawler.py` перенесён в `backend/domain/supplier_enrichment/`, без обёртки
+  в корне. Это чистый перенос с нулевым diff (`git diff -M --stat`); его единственный внутренний
+  импорт уже указывал на канонический путь `backend.domain.supplier_identity.email_extractor`
+  с более раннего прохода. 6 подтверждённых потребителей обновлены на канонический
+  путь импорта (`supplier_app.py`, `collect_inn.py`,
   `benchmarks/benchmark_models.py`, `scripts/verify_enrichment_live.py`,
   `scripts/collect_contacts.py`, `tests/test_enrichment_pipeline.py`,
   `tests/diagnostics/test_collect_inn_llm_path.py`).
-  `supplier_discovery_v2/immutability_check.py`'s protected-path list was
-  migrated in the same change, so the existing immutability guard was never
-  weakened.
+  Список защищённых путей в `supplier_discovery_v2/immutability_check.py` был
+  перенесён в том же изменении, поэтому существующая защита неизменяемости ни разу не ослаблялась.
 - `TASK-BOUNDED-ROOT-REFACTOR-ENRICHMENT-COLLECT-INN-SPLIT-20260903`:
-  `collect_inn.py`'s reusable deterministic ИНН/ОГРН parsing (`INN_URL_HINTS`,
+  переиспользуемый детерминированный разбор ИНН/ОГРН из `collect_inn.py` (`INN_URL_HINTS`,
   `INN_PATHS`, `page_text`, `extract_for_site`, `extract_legal_ids_for_site`)
-  was extracted to `backend/domain/supplier_enrichment/pipeline.py`;
-  `collect_inn.py` stays at root as the thinned CLI (argument parsing, the
-  crawl/LLM/web/DaData orchestration in `main()`, and CSV output), importing
-  the extracted functions back. 4 confirmed consumers of those specific
-  symbols were updated to the canonical import path (`supplier_app.py`,
+  вынесен в `backend/domain/supplier_enrichment/pipeline.py`;
+  `collect_inn.py` остаётся в корне как облегчённый CLI (разбор аргументов, оркестрация
+  краулинга/LLM/веб/DaData в `main()` и вывод CSV), импортируя обратно
+  вынесенные функции. 4 подтверждённых потребителя этих конкретных
+  символов обновлены на канонический путь импорта (`supplier_app.py`,
   `scripts/verify_enrichment_live.py`, `tests/test_enrichment_pipeline.py`,
   `benchmarks/benchmark_models.py`).
-  `supplier_discovery_v2/immutability_check.py`'s protected-path list gained
-  the new `pipeline.py` path alongside the unchanged root `collect_inn.py`
-  entry — the split's deliberate content change to `collect_inn.py` does not
-  remove its own protection.
+  Список защищённых путей в `supplier_discovery_v2/immutability_check.py` получил
+  новый путь `pipeline.py` рядом с неизменённой записью корневого `collect_inn.py` —
+  намеренное изменение содержимого `collect_inn.py` при разделении не снимает
+  его собственную защиту.
 - `TASK-BOUNDED-ROOT-REFACTOR-SEARCH-SERP-PARSER-20260903`: `serp_parser.py`
-  moved to `backend/integrations/search/serp_parser.py`, with a thin root
-  `serp_parser.py` compatibility wrapper (delegating only `main()`, same
-  pattern as `collect_contacts.py`'s wrapper) preserving the documented
-  `python serp_parser.py ...` invocation. Per explicit owner decision (the
-  diagnostic had flagged this as conflicting with
-  `supplier_discovery_v2/xmlriver_subprocess.py`'s hardcoded subprocess path
-  and the Vercel deployment boundary): that hardcoded default `parser_path`
-  was updated to the new canonical location, and the module's own
-  `load_dotenv(Path(__file__).with_name(".env"))` call (which would have
-  silently started looking for `.env` beside the new nested path) was fixed
-  to a `REPO_ROOT`-relative lookup, matching the pattern already proven by
-  `collect_contacts.py` in Pass 2. 7 confirmed consumers updated to the
-  canonical import path. `supplier_discovery_v2/immutability_check.py`'s
-  protected-path list was migrated in the same change; the unprotected root
-  wrapper carries no logic to drift, matching `collect_contacts.py`'s and
-  `benchmark_models.py`'s wrappers.
-- `TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903`: the four root manual
-  check scripts (`test_extractor.py`, `test_inn.py`, `test_parser.py`,
-  `test_verify.py` — custom `check()`/`main()` scripts, never part of
-  `scripts/run_test_suite.py`'s discovery) were converted into real
-  `unittest.TestCase`s under `tests/legacy/`, per explicit owner decision.
-  Every `check(name, actual, expected)` call became
-  `self._check(name, actual, expected)` (a thin `subTest`+`assertEqual`
-  wrapper), 1:1 verified by call-site line diff — no coverage lost, no
-  assertion rewritten. The root files were deleted (no other code imported
-  them). `tests/legacy/` is picked up automatically by
-  `scripts/run_test_suite.py`'s existing recursive `unittest` discovery over
-  `tests/` — no runner change was needed.
-- Remaining root modules named in
+  перенесён в `backend/integrations/search/serp_parser.py`, с тонкой обёрткой совместимости
+  `serp_parser.py` в корне (делегирует только `main()`, тот же паттерн, что и обёртка
+  `collect_contacts.py`), сохраняя задокументированный вызов
+  `python serp_parser.py ...`. По явному решению владельца (диагностика отмечала это
+  как конфликт с зашитым путём subprocess в
+  `supplier_discovery_v2/xmlriver_subprocess.py` и границей развёртывания Vercel):
+  этот зашитый путь по умолчанию `parser_path` был обновлён на новое каноническое расположение,
+  а собственный вызов модуля `load_dotenv(Path(__file__).with_name(".env"))` (который
+  молча начал бы искать `.env` рядом с новым вложенным путём) был исправлен на поиск
+  относительно `REPO_ROOT`, по образцу, уже проверенному в обёртке `collect_contacts.py` на
+  Проходе 2. 7 подтверждённых потребителей обновлены на
+  канонический путь импорта. Список защищённых путей в
+  `supplier_discovery_v2/immutability_check.py` был перенесён в том же изменении;
+  незащищённая обёртка в корне не несёт логики, которая могла бы разойтись, — как и обёртки
+  `collect_contacts.py` и `benchmark_models.py`.
+- `TASK-BOUNDED-ROOT-REFACTOR-TESTS-LEGACY-20260903`: четыре корневых скрипта ручной
+  проверки (`test_extractor.py`, `test_inn.py`, `test_parser.py`,
+  `test_verify.py` — скрипты с собственными `check()`/`main()`, никогда не входившие в
+  обнаружение `scripts/run_test_suite.py`) преобразованы в настоящие
+  `unittest.TestCase` под `tests/legacy/` по явному решению владельца.
+  Каждый вызов `check(name, actual, expected)` стал
+  `self._check(name, actual, expected)` (тонкая обёртка `subTest`+`assertEqual`),
+  проверено построчным diff по каждой точке вызова 1:1 — покрытие не потеряно, ни одно
+  утверждение не переписано. Корневые файлы удалены (их не импортировал никакой другой код).
+  `tests/legacy/` автоматически подхватывается существующим рекурсивным обнаружением
+  `unittest` в `scripts/run_test_suite.py` по `tests/` — изменений в раннере не потребовалось.
+- Оставшиеся корневые модули, названные в
   `ai/reports/TASK-PYTHON-ROOT-DIAGNOSTIC-20260902-report.md`
-  (`supplier_app.py`, `api/index.py`) are unmoved and stay `KEEP_ROOT` as
-  protected entrypoints.
+  (`supplier_app.py`, `api/index.py`), не перенесены и остаются в статусе `KEEP_ROOT` как
+  защищённые точки входа.

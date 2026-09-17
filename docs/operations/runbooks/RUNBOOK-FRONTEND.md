@@ -7,65 +7,64 @@ updated_at: 2026-09-04
 source_commit: 878cf70292683fa8d9730ee353af78854746b2b1
 ---
 
-# Runbook: frontend gates
+# Runbook: контрольные точки frontend
 
-## Gate order
+## Порядок контрольных точек
 
-In an approved controlled worktree, use the manifest commands: `npm ci
+В утверждённом контролируемом worktree используйте команды из манифеста: `npm ci
 --no-audit --fund=false`, `npm run typecheck`, `npm run lint`, `npm run
-build`, then the public-shell Playwright test. `npm run dev` and every browser
-script load `scripts/runtime_guard.py`; the runner checks the manifest
-by default and runs these gates only with explicit opt-in.
+build`, затем Playwright-тест публичной оболочки. `npm run dev` и каждый браузерный скрипт
+загружают `scripts/runtime_guard.py`; раннер по умолчанию проверяет манифест и запускает эти
+контрольные точки только при явном opt-in.
 
-`npm run dev` defaults to `OWNER_SESSION` and therefore targets the canonical
-backend at `http://127.0.0.1:8000`. `npm test` defaults to `AUTOMATED_TEST`
-and therefore requires `SAFE_TEST` at `http://127.0.0.1:18000`.
-`npm run test:visual` and `npm run lhci` default to `VISUAL_ACCEPTANCE` and
-therefore require `LOCAL_CANONICAL`. Before browser acceptance the guard prints
-`RUNTIME_PURPOSE`, `RUNTIME_MODE`, `BASE_URL`, `DATABASE_CLASS` and `AUTH_MODE`.
-An incompatible purpose/runtime pair is `FAIL + STOP`; there is no silent
-fallback to the safe runtime.
+`npm run dev` по умолчанию использует `OWNER_SESSION` и поэтому нацелен на канонический backend
+по адресу `http://127.0.0.1:8000`. `npm test` по умолчанию использует `AUTOMATED_TEST` и поэтому
+требует `SAFE_TEST` по адресу `http://127.0.0.1:18000`.
+`npm run test:visual` и `npm run lhci` по умолчанию используют `VISUAL_ACCEPTANCE` и поэтому
+требуют `LOCAL_CANONICAL`. Перед браузерной приёмкой защита выводит
+`RUNTIME_PURPOSE`, `RUNTIME_MODE`, `BASE_URL`, `DATABASE_CLASS` и `AUTH_MODE`.
+Несовместимая пара цель/рантайм — это `FAIL + STOP`; молчаливого отката на безопасный рантайм
+не происходит.
 
-## Failure labels
+## Метки сбоев
 
-Keep `NPM_MISSING`, `DEPENDENCIES_NOT_INSTALLED`, `INSTALL_FAIL`,
+Различайте `NPM_MISSING`, `DEPENDENCIES_NOT_INSTALLED`, `INSTALL_FAIL`,
 `TYPECHECK_FAIL`, `LINT_FAIL`, `BUILD_FAIL`, `BROWSER_FAIL`,
-`ACCESSIBILITY_FAIL` and `OVERFLOW_FAIL` distinct. `NPM_MISSING` means the
-toolchain is unavailable; `DEPENDENCIES_NOT_INSTALLED` means the declared
-frontend dependencies are absent. A failing script or browser assertion is a
-product/test failure. The V1.1 doctor does not edit source or snapshots to make
-a gate pass.
+`ACCESSIBILITY_FAIL` и `OVERFLOW_FAIL`. `NPM_MISSING` означает, что инструментарий недоступен;
+`DEPENDENCIES_NOT_INSTALLED` означает, что заявленные зависимости frontend отсутствуют. Падающий
+скрипт или браузерная проверка — это сбой продукта/теста. Doctor версии V1.1 не редактирует
+исходный код или снапшоты, чтобы заставить контрольную точку пройти.
 
-The default doctor run validates only the frontend manifest and reports the
-typecheck/lint/build/browser checks as not verified. Runtime gates require the
-explicit `--run-frontend` or `--run-browser` opt-in and a disposable local
-server; no remote browser session is implied.
+Запуск Doctor по умолчанию проверяет только манифест frontend и сообщает, что проверки
+typecheck/lint/build/браузер не проверены. Контрольные точки времени выполнения требуют явного
+opt-in через `--run-frontend` или `--run-browser` и одноразового локального сервера; удалённая
+браузерная сессия не подразумевается.
 
-## Safety and human-in-the-loop browser authentication
+## Безопасность и браузерная авторизация с участием человека
 
-Browser acceptance defaults to safe shell/navigation scenarios. Do not log in,
-send mail, change requests, or alter provider/database state unless the task
-explicitly requires an approved local interactive authentication handoff.
+Браузерная приёмка по умолчанию использует безопасные сценарии оболочки/навигации. Не входите в
+систему, не отправляйте почту, не меняйте заявки и не меняйте состояние провайдера/базы данных,
+если задача явно не требует утверждённой передачи локальной интерактивной авторизации.
 
-For that handoff, use only a local interactive session: launch a separate
-headed Chromium (a visible browser window) with a dedicated Playwright
-profile/context. The owner manually signs in in that window; the agent never
-asks for a password or token in chat. The owner says `done`, and the agent
-continues in the same browser context. Never use the owner's personal Chrome
-profile. Keep cookies and authentication state only in the dedicated ignored
-or outside-repository state location; never commit or report them.
+Для такой передачи используйте только локальную интерактивную сессию: запустите отдельный
+Chromium с видимым окном (не headless) с выделенным профилем/контекстом Playwright. Владелец
+вручную входит в систему в этом окне; агент никогда не просит пароль или токен в чате. Владелец
+пишет `done`, и агент продолжает работу в том же контексте браузера. Никогда не используйте
+личный профиль Chrome владельца. Храните cookies и состояние авторизации только в выделенном,
+игнорируемом или расположенном вне репозитория месте хранения состояния; никогда не коммитьте
+и не сообщайте их.
 
-Remote CI cannot depend on an owner's manual sign-in. CI must use an isolated
-test account, a seeded test session or a controlled fixture. `WAITING_FOR_OWNER_LOGIN`
-is never a valid CI state.
+Удалённый CI не может зависеть от ручного входа владельца. CI должен использовать изолированный
+тестовый аккаунт, заранее подготовленную тестовую сессию или контролируемую фикстуру.
+`WAITING_FOR_OWNER_LOGIN` никогда не является допустимым состоянием CI.
 
-## Current public-login failure classification
+## Текущая классификация сбоя публичного входа
 
-`frontend/tests/frontend-audit.spec.ts` opens `/login` and checks the public
-login UI; this scenario does not require authentication. Do not classify its
-failure as an auth failure or ask the owner to log in. A timeout at
-`page.goto('/login', { waitUntil: 'networkidle' })` first requires diagnosis
-of requests, the network-idle wait, background requests, page errors and the
-accessibility check. Only after evidence shows that `networkidle` is unstable
-may the test owner consider `domcontentloaded` plus a concrete login element;
-that is a test change and remains outside this policy-only task.
+`frontend/tests/frontend-audit.spec.ts` открывает `/login` и проверяет публичный UI входа; этот
+сценарий не требует авторизации. Не классифицируйте его сбой как сбой авторизации и не просите
+владельца войти в систему. Таймаут на
+`page.goto('/login', { waitUntil: 'networkidle' })` сначала требует диагностики запросов,
+ожидания network-idle, фоновых запросов, ошибок страницы и проверки доступности. Только после
+того, как доказательства покажут, что `networkidle` нестабилен, владелец теста может рассмотреть
+`domcontentloaded` плюс конкретный элемент входа; это изменение теста и остаётся вне рамок этой
+чисто политической задачи.

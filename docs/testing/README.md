@@ -7,25 +7,24 @@ updated_at: 2026-09-01
 source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 ---
 
-# Testing documentation
+# Документация по тестированию
 
-## Purpose
+## Назначение
 
-Test strategy, commands, fixtures, acceptance scenarios, and verification
-evidence for SupplyDesk.
+Стратегия тестирования, команды, фикстуры, приёмочные сценарии и доказательства проверки для
+SupplyDesk.
 
-## Canonical ownership
+## Каноническое владение
 
-This directory owns testing guidance. The current pass/fail snapshot is
-maintained in `ai/CURRENT_STATE.md` and dated task/audit reports.
+Эта директория владеет руководством по тестированию. Актуальный срез пройдено/провалено ведётся
+в `ai/CURRENT_STATE.md` и датированных отчётах по задачам/аудитам.
 
-## Expected artifacts
+## Ожидаемые артефакты
 
-Test catalog, targeted commands, fixture contracts, browser acceptance notes,
-and traceability from requirements to tests.
+Каталог тестов, целевые команды, контракты фикстур, заметки о браузерной приёмке и трассировка
+от требований к тестам.
 
-## Status
+## Статус
 
-`CURRENT` as an entrypoint. The baseline commands are recorded in
-`PROJECT_MANIFEST.yaml`; new backend-backed live routes remain `NOT VERIFIED`.
-
+`CURRENT` как точка входа. Базовые команды зафиксированы в `PROJECT_MANIFEST.yaml`; новые
+маршруты, опирающиеся на backend вживую, остаются `NOT VERIFIED` (не проверено).

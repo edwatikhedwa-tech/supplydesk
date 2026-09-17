@@ -7,34 +7,33 @@ updated_at: 2026-09-01
 source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 ---
 
-# Product documentation
+# Продуктовая документация
 
-## Purpose
+## Назначение
 
-Entry point for product context, terminology, and user-facing behavior.
+Точка входа в продуктовый контекст, терминологию и поведение, видимое пользователю.
 
-## Canonical ownership
+## Каноническое владение
 
-This directory owns product explanations and requirements. It does not own
-current runtime state; use `ai/CURRENT_STATE.md` for that.
+Эта директория владеет продуктовыми объяснениями и требованиями. Она не владеет актуальным
+состоянием рантайма — для этого используется `ai/CURRENT_STATE.md`.
 
-## Expected artifacts
+## Ожидаемые артефакты
 
-Product overview, domain glossary, user workflows, and links to approved
-requirements.
+Обзор продукта, глоссарий предметной области, пользовательские сценарии и ссылки на утверждённые
+требования.
 
-## Current workflows
+## Текущие сценарии
 
-- [`messages-workspace.md`](messages-workspace.md) — procurement-oriented
-  correspondence workspace and safe unmatched workflow.
+- [`messages-workspace.md`](messages-workspace.md) — рабочее пространство переписки,
+  ориентированное на закупки, и безопасный сценарий работы с непривязанными письмами.
 - [`APPROVED_MVP_INTERFACE.md`](APPROVED_MVP_INTERFACE.md) — утверждённый
   продуктовый контракт MVP: экраны, данные, Activity, календарь и границы
   phone reminders.
 - [`MVP_BACKLOG.md`](MVP_BACKLOG.md) — единый проверяемый backlog MVP с
   приоритетами, зависимостями, рисками и методами проверки.
 
-## Status
+## Статус
 
-`CURRENT` as a documentation entrypoint; detailed artifacts are added only when
-they are supported by product evidence.
-
+`CURRENT` как точка входа в документацию; детальные артефакты добавляются только тогда, когда
+они подтверждены продуктовыми доказательствами.

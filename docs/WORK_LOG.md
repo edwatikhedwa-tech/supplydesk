@@ -7,172 +7,168 @@ updated_at: 2026-08-30
 source_commit: 792f441b4b6099533177e7c1d23d6252670f9309
 ---
 
-# Work Log — HISTORICAL — NOT CURRENT
+# Журнал работ — ИСТОРИЧЕСКОЕ — НЕ АКТУАЛЬНО
 
-> Preserved task chronology. Current control state is
+> Сохранённая хронология задач. Текущее состояние контроля —
 > [`ai/CURRENT_STATE.md`](../ai/CURRENT_STATE.md).
 
 ## 2026-08-30 19:36 +03:00
 
-TASK
+ЗАДАЧА
 
-Audit current SupplyDesk state and establish one verified project-state source
-before selecting the next implementation task.
+Провести аудит текущего состояния SupplyDesk и установить один подтверждённый источник
+состояния проекта перед выбором следующей задачи реализации.
 
-WHAT WAS VERIFIED
+ЧТО ПРОВЕРЕНО
 
-- Read current repository, migrations, deployment configuration, frontend/backend
-  implementation, existing tests, and historical docs as non-authoritative
-  context.
-- Read the live/local SQLite only through read-only connections. Current count:
-  493 supplier rows; request 1059 has 171 raw rows, 170 visible rows, and 140
-  cards.
-- Recomputed identity/card distributions and ran the current strict supplier
-  scan: 0 strict-safe, 30 strict-unresolved, 2 ambiguous; three unknown
-  supplier-reference tables remain in the audit inventory.
-- Traced company-card selection through frontend Composer, API, service
-  resolver, repository operation creation, and database uniqueness.
-- Confirmed current outgoing safety: canonical runtime active, SQLite integrity
-  ok, durable switch false, environment kill switch true, effective SMTP NO.
-- Confirmed local SQLite and intended Vercel/PostgreSQL deployment paths.
+- Прочитан текущий репозиторий, миграции, конфигурация развёртывания, реализация frontend/
+  backend, существующие тесты и исторические документы как неавторитетный контекст.
+- Живая/локальная SQLite прочитана только через read-only соединения. Текущий счёт:
+  493 строки поставщиков; у заявки 1059 171 сырая строка, 170 видимых строк и 140
+  карточек.
+- Пересчитаны распределения идентичности/карточек и выполнено текущее строгое сканирование
+  поставщиков: 0 строго безопасных, 30 строго неразрешённых, 2 неоднозначных; в инвентаризации
+  аудита остаются три неизвестные таблицы ссылок на поставщика.
+- Прослежен выбор карточки компании через композер frontend, API, резолвер сервиса,
+  создание операции репозитория и уникальность базы данных.
+- Подтверждена текущая безопасность исходящей почты: канонический рантайм активен, целостность
+  SQLite ok, устойчивый переключатель false, kill switch окружения true, эффективный SMTP NO.
+- Подтверждены пути локального SQLite и предполагаемого развёртывания Vercel/PostgreSQL.
 
-WHAT CHANGED
+ЧТО ИЗМЕНЕНО
 
-- Created/updated `docs/ENGINEERING_CONTRACT.md`, `docs/CURRENT_STATE.md`,
-  `docs/DECISIONS.md`, and this `docs/WORK_LOG.md`.
-- No product code, schema, live supplier rows, mail messages, guards, jobs, or
-  outgoing controls were changed in this audit.
+- Создан/обновлён `docs/ENGINEERING_CONTRACT.md`, `docs/CURRENT_STATE.md`,
+  `docs/DECISIONS.md` и этот `docs/WORK_LOG.md`.
+- В рамках этого аудита не менялся код продукта, схема, живые строки поставщиков, почтовые
+  сообщения, защиты, задачи или контроли исходящей почты.
 
-TESTS
+ТЕСТЫ
 
 - `python -m unittest discover -s tests -p 'test_supplier_identity.py'`: 27 OK.
 - `python -m unittest discover -s tests -p 'test_mail_status_semantics.py'`: 16 OK.
 - `python -m unittest discover -s tests -p 'test_mailru_mvp.py'`: 12 OK.
 - `npm run typecheck`: PASS.
-- `npm run lint`: PASS, 8 existing warnings.
+- `npm run lint`: PASS, 8 существующих предупреждений.
 - `npm run build`: PASS.
-- Previous full backend verification on this source state: 344 tests, OK,
-  1 PostgreSQL skip.
-- HTTP smoke: `/` 200, `/api/auth/me` 200, unauthenticated request endpoint 401.
+- Предыдущая полная проверка backend на этом состоянии источника: 344 теста, OK,
+  1 пропуск PostgreSQL.
+- HTTP smoke: `/` 200, `/api/auth/me` 200, неавторизованный эндпоинт заявки 401.
 
-DATABASE IMPACT
+ВЛИЯНИЕ НА БАЗУ ДАННЫХ
 
-- Read-only only for the audit. No `supplier_identity_audit.py --apply` and no
-  `--apply-strict-safe` were run. No real SMTP/IMAP send was run.
+- Только read-only для этого аудита. `supplier_identity_audit.py --apply` и
+  `--apply-strict-safe` не запускались. Реальная отправка SMTP/IMAP не выполнялась.
 
-UNRESOLVED
+НЕРЕШЁННОЕ
 
-- Supplier merge is not apply-ready: current strict-safe count is zero.
-- PostgreSQL and real Mail.ru live acceptance remain unverified.
-- Test suites lack a centralized production/live DB-path abort guard.
-- Outgoing lifecycle and recyclable Vercel queue startup need hardening before
-  any future enablement.
+- Объединение поставщиков не готово к применению: текущий счёт строго безопасных — ноль.
+- Приёмка PostgreSQL и реальная живая приёмка Mail.ru остаются непроверенными.
+- В наборах тестов нет централизованной защиты от прерывания на пути к живой БД продакшена.
+- Жизненный цикл исходящей почты и запуск очереди Vercel, допускающий повторное использование,
+  нуждаются в укреплении перед любым будущим включением.
 
-NEXT RECOMMENDED STEP
+СЛЕДУЮЩИЙ РЕКОМЕНДУЕМЫЙ ШАГ
 
-Design and implement the supplier-identity relation inventory/gate as one
-isolated task. It must classify the two live FK relations and the immutable
-reconciled evidence table before any future merge apply decision.
+Спроектировать и реализовать инвентаризацию/gate связей идентичности поставщика как одну
+изолированную задачу. Он должен классифицировать две живые FK-связи и неизменяемую таблицу
+согласованных доказательств перед любым будущим решением о применении объединения.
 
 ## 2026-08-30 20:22 +03:00
 
-TASK
+ЗАДАЧА
 
-Implement and adversarially accept `SAFETY-001`: outgoing mail must remain
-disabled unless an explicit trusted action enables it.
+Реализовать и адверсарно принять `SAFETY-001`: исходящая почта должна оставаться отключённой,
+пока явное доверенное действие её не включит.
 
-ROOT CAUSE
+ПЕРВОПРИЧИНА
 
-- `migrations/022_outgoing_mail_integrity.sql` created the singleton durable
-  control with default/insert value `1`.
-- `migrations/026_mail_account_profiles.sql` and account query fallbacks also
-  treated missing account configuration as enabled.
-- `api/index.py` called `_APP.queue.start()` during module import.
-- `RuntimeSession` cached the durable flag, so an in-process explicit change
-  would not be observed until restart.
+- `migrations/022_outgoing_mail_integrity.sql` создала единственный устойчивый
+  контроль со значением по умолчанию/вставки `1`.
+- `migrations/026_mail_account_profiles.sql` и фолбэки запроса аккаунта также
+  трактовали отсутствующую конфигурацию аккаунта как включённую.
+- `api/index.py` вызывал `_APP.queue.start()` во время импорта модуля.
+- `RuntimeSession` кэшировала устойчивый флаг, поэтому явное изменение в процессе не было бы
+  видно до перезапуска.
 
-WHAT CHANGED
+ЧТО ИЗМЕНЕНО
 
-- Changed clean-schema durable defaults to `0` and made account-profile
-  fallbacks fail-closed.
-- Made repository control reads strict: missing, invalid, and DB-error states
-  return disabled and emit a diagnostic log.
-- Added owner-only, CSRF-protected explicit control API:
-  `POST /api/mail/runtime/outgoing` with strict boolean `enabled` and
-  `confirmation=true`; added a read-only GET status endpoint.
-- Removed API-module queue startup; local process startup remains explicit via
+- Изменены значения по умолчанию устойчивых настроек при чистой схеме на `0`, фолбэки профиля
+  аккаунта сделаны закрытыми по умолчанию.
+- Чтение контроля репозитория сделано строгим: отсутствующее, невалидное состояние и ошибка БД
+  возвращают «отключено» и порождают диагностическую запись в лог.
+- Добавлен явный API контроля только для владельца, защищённый CSRF:
+  `POST /api/mail/runtime/outgoing` со строгим булевым `enabled` и
+  `confirmation=true`; добавлен read-only GET-эндпоинт статуса.
+- Убран запуск очереди из модуля API; локальный запуск процесса остаётся явным через
   `SupplierApp.run()`.
-- Runtime refreshes the durable flag before worker/provider gates.
-- Added `tests/test_outgoing_safety.py` and updated positive-path temporary
-  fixtures to explicitly enable their fake transport.
-- `docs/CURRENT_STATE.md` and `docs/DECISIONS.md` updated. The engineering
-  contract was unchanged because its existing no-real-send rule already covers
-  this invariant.
+- Рантайм обновляет устойчивый флаг перед проверками воркера/провайдера.
+- Добавлен `tests/test_outgoing_safety.py`, обновлены временные фикстуры позитивного пути,
+  чтобы явно включать свой фейковый транспорт.
+- Обновлены `docs/CURRENT_STATE.md` и `docs/DECISIONS.md`. Инженерный контракт не менялся,
+  так как его существующее правило «нет реальной отправки» уже покрывает этот инвариант.
 
-TESTS
+ТЕСТЫ
 
 - `python -m unittest -v tests.test_outgoing_safety`: 11 OK.
-- `python -m unittest tests.test_mail_integrity tests.test_mail_pacing tests.test_canonical_runtime tests.test_mail_integration`: 159 OK, 1 PostgreSQL skip.
-- `python -m unittest discover -s tests -p 'test_*.py'`: 355 OK, 1 PostgreSQL skip.
-- The prescribed `powershell -ExecutionPolicy Bypass -File .\tests\run-tests.ps1`
-  and `.\scripts\doctor.ps1` entry points are absent from this repository;
-  both commands were attempted and reported missing files.
-- After restarting the local process with the changed source: `GET /` = 200,
-  `/api/auth/me` = 200, unauthenticated `/api/requests/1059` = 401, and
-  unauthenticated `/api/mail/runtime/outgoing` = 401.
-- Read-only `scripts/runtime_status.py`: canonical runtime count `1`, SQLite
-  integrity `ok`, durable outgoing `False`, kill switch `True`,
+- `python -m unittest tests.test_mail_integrity tests.test_mail_pacing tests.test_canonical_runtime tests.test_mail_integration`: 159 OK, 1 пропуск PostgreSQL.
+- `python -m unittest discover -s tests -p 'test_*.py'`: 355 OK, 1 пропуск PostgreSQL.
+- Предписанные точки входа `powershell -ExecutionPolicy Bypass -File .\tests\run-tests.ps1`
+  и `.\scripts\doctor.ps1` в этом репозитории отсутствуют; обе команды были
+  опробованы и сообщили об отсутствующих файлах.
+- После перезапуска локального процесса с изменённым исходным кодом: `GET /` = 200,
+  `/api/auth/me` = 200, неавторизованный `/api/requests/1059` = 401 и
+  неавторизованный `/api/mail/runtime/outgoing` = 401.
+- Read-only `scripts/runtime_status.py`: счёт канонического рантайма `1`, целостность SQLite
+  `ok`, устойчивая исходящая почта `False`, kill switch `True`,
   `live_smtp_allowed=NO`.
-- Read-only live queue snapshot: `queued=84`, `sent=62`, `failed=2`,
-  `delivery_unknown=1`; no real SMTP call was made.
+- Read-only снимок живой очереди: `queued=84`, `sent=62`, `failed=2`,
+  `delivery_unknown=1`; реального вызова SMTP не производилось.
 
-DATABASE / SMTP IMPACT
+ВЛИЯНИЕ НА БАЗУ ДАННЫХ / SMTP
 
-- All new safety tests use temporary SQLite databases and fake providers.
-- No `supplier_identity_audit.py --apply` command was run.
-- No real SMTP call was made. The canonical live database was inspected only
-  read-only; its durable outgoing control remained `0`.
+- Все новые тесты безопасности используют временные базы данных SQLite и фейковых провайдеров.
+- Команда `supplier_identity_audit.py --apply` не запускалась.
+- Реального вызова SMTP не производилось. Каноническая живая база данных осматривалась только
+  read-only; её устойчивый контроль исходящей почты оставался `0`.
 
-DEFERRED FINDINGS
+ОТЛОЖЕННЫЕ НАХОДКИ
 
-- PostgreSQL safety acceptance still requires an isolated configured test
-  database.
-- Vercel needs a dedicated durable worker before background delivery can be
-  enabled; import-time queue startup is intentionally removed.
-- No unrelated supplier identity, resend, provider, retry, status UI, or
-  campaign behavior was changed.
+- Приёмка безопасности PostgreSQL всё ещё требует изолированной настроенной тестовой базы
+  данных.
+- Vercel нужен выделенный устойчивый воркер, прежде чем можно будет включить фоновую доставку;
+  запуск очереди во время импорта намеренно удалён.
+- Никакое несвязанное поведение идентичности поставщика, повторной отправки, провайдера,
+  повтора, статуса UI или рассылки не изменялось.
 
-NEXT RECOMMENDED STEP
+СЛЕДУЮЩИЙ РЕКОМЕНДУЕМЫЙ ШАГ
 
-Run the PostgreSQL-specific safety acceptance in an isolated database, then
-review whether the database-wide owner-controlled switch should eventually be
-split into workspace-scoped controls.
+Выполнить приёмку безопасности, специфичную для PostgreSQL, в изолированной базе данных, затем
+рассмотреть, стоит ли в будущем разделить общий для базы данных переключатель, контролируемый
+владельцем, на переключатели в рамках рабочего пространства.
 
-## 2026-09-01 07:30 +03:00 — DOCUMENTATION CANONICALIZATION
+## 2026-09-01 07:30 +03:00 — КАНОНИЗАЦИЯ ДОКУМЕНТАЦИИ
 
-STATUS
+СТАТУС
 
-This entry supersedes the older current-state numbers in this append-only log.
-The only current-state source is now [`ai/CURRENT_STATE.md`](../ai/CURRENT_STATE.md).
-Older entries remain historical evidence and must not be used as a live queue
-or supplier count.
+Эта запись замещает более старые числа текущего состояния в этом append-only логе.
+Единственный источник текущего состояния теперь — [`ai/CURRENT_STATE.md`](../ai/CURRENT_STATE.md).
+Более старые записи остаются историческим доказательством и не должны использоваться как живой
+счёт очереди или поставщиков.
 
-CONFIRMED CURRENT SNAPSHOT
+ПОДТВЕРЖДЁННЫЙ ТЕКУЩИЙ СНАПШОТ
 
-- Request `1059`: 171 relevant supplier links; outbound `sent=125`, `failed=4`,
+- Заявка `1059`: 171 релевантная связь поставщика; исходящие `sent=125`, `failed=4`,
   `delivery_unknown=2`, `cancelled=82`, `queued=0`.
-- Durable outgoing switch is `0`; no new mail is sent by this documentation
-  task.
-- SQLite integrity check is `ok`.
-- Current code contains a Mail.ru provider implementation; live Mail.ru
-  acceptance remains a separate `NOT VERIFIED` item unless a fresh provider
-  run is recorded.
+- Устойчивый переключатель исходящей почты — `0`; эта документационная задача не отправляет
+  новую почту.
+- Проверка целостности SQLite — `ok`.
+- Текущий код содержит реализацию провайдера Mail.ru; живая приёмка Mail.ru
+  остаётся отдельным пунктом `NOT VERIFIED`, если не зафиксирован свежий прогон провайдера.
 
-DOCUMENTATION RULE
+ПРАВИЛО ДОКУМЕНТАЦИИ
 
-[`docs/DOCUMENTATION_POLICY.md`](DOCUMENTATION_POLICY.md) defines the maintenance
-process: update the canonical state and affected feature documentation in the
-same task, mark old snapshots `HISTORICAL — NOT CURRENT`, and run
-state/link/secret/diff checks before closeout. No application code, database
-rows, migrations, mail settings or deployment configuration changed in this
-reconciliation.
+[`docs/DOCUMENTATION_POLICY.md`](DOCUMENTATION_POLICY.md) определяет процесс сопровождения:
+обновлять каноническое состояние и затронутую документацию по фиче в рамках одной задачи,
+помечать старые снапшоты `HISTORICAL — NOT CURRENT` и запускать проверки состояния/ссылок/
+секретов/diff перед закрытием. В рамках этой сверки не менялся код приложения, строки базы
+данных, миграции, настройки почты или конфигурация развёртывания.

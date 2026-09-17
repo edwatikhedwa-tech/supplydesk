@@ -7,48 +7,48 @@ updated_at: 2026-09-04
 source_commit: 78484108ed010e152ab0e3e04d2490e8c4137d6c
 ---
 
-# Component Map
+# Карта компонентов
 
-| ID | Component | Responsibility | Boundary/evidence |
+| ID | Компонент | Ответственность | Граница/доказательство |
 |---|---|---|---|
-| COMP-APP | `supplier_app.py` | Application route dispatch, auth and product HTTP surface | GET routes begin near line 239; POST routes near line 470 |
-| COMP-AUTH | `supplier_app.py` + `mail/auth.py` | Authentication, sessions, CSRF and ownership gates | Auth routes and integrity tests |
-| COMP-REQUEST | `supplier_app.py` + `mail/repository.py` | Request, position and search lifecycle | Request routes and dashboard tests |
-| COMP-SUPPLIER | `supplier_app.py` + `mail/repository.py` | Supplier identity, grouping, filters and enrichment | Supplier routes and identity tests |
-| COMP-ADAPTER | `api/index.py` | Serverless adapter and environment loading | Imports `supplier_app`; DB fallback is a known runtime limitation |
-| COMP-DATABASE | `mail/repository.py` | SQLite persistence and schema initialization | Repository initialization can write/migrate; diagnostics must not instantiate it for canonical DB |
-| COMP-SERVICE | `mail/service.py` | Incoming/outgoing orchestration, queue and provider gates | `sync_incoming`, `preflight_bulk`, `queue_*`, `send_claimed_job` |
-| COMP-INCOMING | `mail/service.py` + `mail/content.py` | Incoming sync, parsing and unmatched preservation | Mail integration tests |
-| COMP-MESSAGE | `mail/repository.py` + `supplier_app.py` | Message visibility and correspondence/outbox views | Messages visibility tests |
-| COMP-QUEUE | `mail/queue.py` + `mail/service.py` | Claims, idempotency and recipient guards | Integrity and identity tests |
-| COMP-PACING | `mail/pacing.py` | Pacing, reservations, cooldown and budgets | Mail pacing tests |
-| COMP-CAMPAIGN | `mail/service.py` + `supplier_app.py` | Campaign stage, pause/stop and safe retry preview | Deliverability tests and campaign routes |
-| COMP-RUNTIME | `mail/runtime.py` | Runtime lock, session manifest and provenance | `LiveMailLock`, `RuntimeSession`, path and process checks |
-| COMP-PROVIDER | `mail/providers/` | Yandex/Mail.ru provider adapters and base contract | Provider transport boundary; not contacted by diagnostics |
-| COMP-DELIVERY | `mail/deliverability.py` | Email validation, suppression, quality, pacing and error classification | Read-only preflight helpers and safety semantics |
-| COMP-CONTENT | `mail/content.py` | HTML/plain/CID sanitation and text extraction | Rendering boundary; remote images are not fetched by diagnostics |
-| COMP-BOUNCE | `mail/bounce.py` | Bounce classification and suppression | Delivery-history boundary |
-| COMP-DISCOVERY | `supplier_discovery_v2/` | Query planning, read-only HTTP, adapters, evidence and qualification | Discovery boundary; no live lookup in diagnostics |
-| COMP-MIGRATION | `migrations/` | Versioned schema DDL | Read-only schema inspection only in diagnostics |
-| COMP-LOGISTICS | `backend/integrations/logistics/` + `backend/domain/logistics/` + `mail/logistics_quotes.py` | Manual shipping-cost calculator (Dellin) for one request/one supplier: transport client, hard-gate/cache business rule, persistence | `tests/test_logistics_quote.py`; live-verified 2026-09-04 against `api.dellin.ru` |
-| COMP-FRONTEND | `frontend/` | Product client and browser tests | `package.json`, `frontend/src/`, `frontend/tests/` |
-| COMP-WORKSPACE | `scripts/assert_workspace.ps1` | Checkout boundary guard | Compares real Git root with canonical default or explicit absolute worktree root |
-| COMP-DOCTOR | `scripts/doctor.ps1` | Windows operator entrypoint | Plan/DryRun/Apply all invoke read-only V1 checks after the workspace guard |
-| COMP-DIAGNOSTICS | `scripts/diagnostics/` | Standard-library diagnostic contract and runner | No application writes, provider calls or canonical DB writes |
-| COMP-REPAIR | `ai/repair-agent/` | Future repair contract only | No implementation or autonomy in V1 |
+| COMP-APP | `supplier_app.py` | Маршрутизация запросов приложения, авторизация и продуктовая HTTP-поверхность | GET-маршруты начинаются около строки 239; POST-маршруты — около строки 470 |
+| COMP-AUTH | `supplier_app.py` + `mail/auth.py` | Авторизация, сессии, CSRF и проверки владения | Маршруты авторизации и тесты целостности |
+| COMP-REQUEST | `supplier_app.py` + `mail/repository.py` | Жизненный цикл заявки, позиции и поиска | Маршруты заявок и тесты дашборда |
+| COMP-SUPPLIER | `supplier_app.py` + `mail/repository.py` | Идентичность поставщика, группировка, фильтры и обогащение | Маршруты поставщиков и тесты идентичности |
+| COMP-ADAPTER | `api/index.py` | Serverless-адаптер и загрузка окружения | Импортирует `supplier_app`; фолбэк базы данных — известное ограничение рантайма |
+| COMP-DATABASE | `mail/repository.py` | Персистентность SQLite и инициализация схемы | Инициализация репозитория может писать/мигрировать; диагностика не должна инстанцировать его для канонической базы |
+| COMP-SERVICE | `mail/service.py` | Оркестрация входящих/исходящих, очередь и провайдерские gate | `sync_incoming`, `preflight_bulk`, `queue_*`, `send_claimed_job` |
+| COMP-INCOMING | `mail/service.py` + `mail/content.py` | Входящая синхронизация, разбор и сохранение непривязанных писем | Тесты интеграции почты |
+| COMP-MESSAGE | `mail/repository.py` + `supplier_app.py` | Видимость сообщений и представления переписки/исходящих | Тесты видимости сообщений |
+| COMP-QUEUE | `mail/queue.py` + `mail/service.py` | Захваты (claims), идемпотентность и защита получателей | Тесты целостности и идентичности |
+| COMP-PACING | `mail/pacing.py` | Дозирование, резервирование, задержки (cooldown) и бюджеты | Тесты дозирования почты |
+| COMP-CAMPAIGN | `mail/service.py` + `supplier_app.py` | Стадии рассылки, пауза/стоп и предпросмотр безопасного повтора | Тесты доставляемости и маршруты рассылок |
+| COMP-RUNTIME | `mail/runtime.py` | Блокировка рантайма, манифест сессии и происхождение | `LiveMailLock`, `RuntimeSession`, проверки пути и процесса |
+| COMP-PROVIDER | `mail/providers/` | Адаптеры провайдеров Яндекс/Mail.ru и базовый контракт | Граница транспорта провайдера; диагностика к ней не обращается |
+| COMP-DELIVERY | `mail/deliverability.py` | Валидация email, подавление, качество, дозирование и классификация ошибок | Read-only вспомогательные функции предпросмотра и семантика безопасности |
+| COMP-CONTENT | `mail/content.py` | Санитизация HTML/plain/CID и извлечение текста | Граница рендеринга; диагностика не загружает внешние изображения |
+| COMP-BOUNCE | `mail/bounce.py` | Классификация отказов доставки и подавление | Граница истории доставки |
+| COMP-DISCOVERY | `supplier_discovery_v2/` | Планирование запросов, read-only HTTP, адаптеры, доказательства и квалификация | Граница discovery; диагностика не делает живых запросов |
+| COMP-MIGRATION | `migrations/` | Версионированный DDL схемы | В диагностике — только read-only осмотр схемы |
+| COMP-LOGISTICS | `backend/integrations/logistics/` + `backend/domain/logistics/` + `mail/logistics_quotes.py` | Ручной калькулятор стоимости доставки (Dellin) для одной заявки/одного поставщика: транспортный клиент, бизнес-правило жёсткого gate/кэша, персистентность | `tests/test_logistics_quote.py`; проверено вживую 04.09.2026 против `api.dellin.ru` |
+| COMP-FRONTEND | `frontend/` | Клиент продукта и браузерные тесты | `package.json`, `frontend/src/`, `frontend/tests/` |
+| COMP-WORKSPACE | `scripts/assert_workspace.ps1` | Защита рабочей директории при checkout | Сравнивает реальный корень Git с каноническим значением по умолчанию или явным абсолютным путём воркспейса |
+| COMP-DOCTOR | `scripts/doctor.ps1` | Точка входа оператора для Windows | Plan/DryRun/Apply — все вызывают read-only проверки V1 после защиты рабочей директории |
+| COMP-DIAGNOSTICS | `scripts/diagnostics/` | Стандартный (на базе stdlib) диагностический контракт и раннер | Никаких записей приложения, обращений к провайдерам или записей в каноническую базу данных |
+| COMP-REPAIR | `ai/repair-agent/` | Только будущий контракт восстановления | В V1 нет ни реализации, ни автономности |
 
-## Data flow boundary
+## Граница потока данных
 
-Browser → `supplier_app.py`/`api/index.py` → `mail/service.py` → repository and
-provider adapters. Diagnostic flow stops before provider adapters and uses a
-read-only SQLite URI for database inspection.
+Браузер → `supplier_app.py`/`api/index.py` → `mail/service.py` → репозиторий и адаптеры
+провайдеров. Диагностический поток останавливается перед адаптерами провайдеров и использует
+read-only URI SQLite для осмотра базы данных.
 
-## Frontend UI boundaries
+## Границы UI Frontend
 
-`frontend/src/components/ui/` owns the local dependency-free primitives and
-semantic control language. `frontend/src/components/PageFrame.tsx` owns the
-shared page header/content frame. `frontend/src/components/mail/EmailWorkspace.tsx`
-owns the email navigator/read-pane layout boundary; data fetching, selection,
-reply and linking remain in the existing mail page/components. Future Notes/AI
-rendering inputs are type-only contracts in `frontend/src/lib/uiContracts.ts`;
-there is no server or model integration in this boundary.
+`frontend/src/components/ui/` владеет локальными примитивами без внешних зависимостей и
+семантическим языком элементов управления. `frontend/src/components/PageFrame.tsx` владеет общей
+рамкой заголовка/содержимого страницы. `frontend/src/components/mail/EmailWorkspace.tsx` владеет
+границей раскладки навигатора почты/панели чтения; получение данных, выбор, ответ и привязка
+остаются в существующей странице/компонентах почты. Будущие входные данные для рендеринга
+Заметок/AI — это контракты только на уровне типов в `frontend/src/lib/uiContracts.ts`; в этой
+границе нет ни сервера, ни интеграции с моделью.

@@ -7,37 +7,36 @@ updated_at: 2026-09-02
 source_commit: 84083130e3a75eb5a6d4fa83957db6760724379b
 ---
 
-# Component lifecycle registry
+# Реестр жизненного цикла компонентов
 
-This is the one maintained registry for component lifecycle records. It is a
-component register, not a second current-state document. It contains no
-secrets, cookies, runtime state or user data.
+Это единственный поддерживаемый реестр записей о жизненном цикле компонентов. Это реестр
+компонентов, а не второй документ о текущем состоянии. Он не содержит секретов, cookies,
+состояния рантайма или пользовательских данных.
 
-## Status vocabulary
+## Словарь статусов
 
-Each retained component has exactly one of these statuses:
+У каждого сохранённого компонента ровно один из этих статусов:
 
-`ACTIVE`, `DEPRECATED`, `DISABLED`, `SUPERSEDED`, `EXPERIMENTAL` or
-`DEFERRED`.
+`ACTIVE` (активен), `DEPRECATED` (устарел), `DISABLED` (отключён), `SUPERSEDED` (заменён),
+`EXPERIMENTAL` (экспериментальный) или `DEFERRED` (отложен).
 
-`DEPRECATED` means replacement work is expected; `DISABLED` means an explicit
-configuration state can re-enable it; `SUPERSEDED` means a replacement exists;
-`EXPERIMENTAL` means the component is intentionally being evaluated; and
-`DEFERRED` means the decision or return is intentionally postponed. A fully
-superseded and unused implementation is removed from the active tree after
-the approved reference and safety checks.
+`DEPRECATED` означает, что ожидается замена; `DISABLED` означает, что явная конфигурация может
+снова его включить; `SUPERSEDED` означает, что замена уже существует; `EXPERIMENTAL` означает,
+что компонент намеренно находится на стадии оценки; `DEFERRED` означает, что решение или
+возврат к нему намеренно отложены. Полностью заменённая и неиспользуемая реализация удаляется из
+рабочего дерева после утверждённой ссылки и проверок безопасности.
 
-## Current records
+## Текущие записи
 
-| Path / Component | Status | Reason | Replacement | Since | Removal/Reenable condition | Priority |
+| Путь / компонент | Статус | Причина | Замена | С какого момента | Условие удаления/повторного включения | Приоритет |
 |---|---|---|---|---|---|---|
-| `frontend/playwright.real-email.config.ts` / manual real-email diagnostic configuration | `DEFERRED` | The config is retained as a manual diagnostic surface, but it is not part of the offline acceptance path; its explicit test match targets the currently absent `frontend/tests/real-email-diagnostic.spec.ts`, and no package script invokes it. | `NOT APPLICABLE` — the public-shell/offline browser path is not an equivalent real-email diagnostic | `2026-09-02` (registry record) | Owner explicitly restores the diagnostic spec in an authorized live profile or retires this config. If it will not return, remove it under an exact approved allowlist. | `P2` — noticeable maintenance ambiguity, not a user block |
+| `frontend/playwright.real-email.config.ts` / ручная диагностическая конфигурация для реальной почты | `DEFERRED` | Конфигурация сохранена как ручная диагностическая поверхность, но не входит в офлайн-путь приёмки; её явная цель теста указывает на сейчас отсутствующий `frontend/tests/real-email-diagnostic.spec.ts`, и ни один npm-скрипт её не вызывает. | `NOT APPLICABLE` (не применимо) — путь публичной оболочки/офлайн-браузера не является эквивалентной диагностикой реальной почты | `2026-09-02` (запись в реестре) | Владелец явно восстанавливает диагностический спек в авторизованном живом профиле, либо эта конфигурация выводится из эксплуатации. Если возврата не будет — удалить по точному утверждённому allowlist. | `P2` — заметная неопределённость по сопровождению, не блокирует пользователя |
 
-## New record template
+## Шаблон новой записи
 
-Use one row per retained component and do not put secrets or runtime values in
-the row:
+Используйте одну строку на сохранённый компонент и не помещайте в строку секреты или значения
+рантайма:
 
-| Path / Component | Status | Reason | Replacement | Since | Removal/Reenable condition | Priority |
+| Путь / компонент | Статус | Причина | Замена | С какого момента | Условие удаления/повторного включения | Приоритет |
 |---|---|---|---|---|---|---|
-| `<path>` / `<component>` | `ACTIVE` | `<why this status is retained>` | `<path or NOT APPLICABLE>` | `<YYYY-MM-DD>` | `<concrete removal or re-enable condition>` | `P0`–`P3` |
+| `<путь>` / `<компонент>` | `ACTIVE` | `<почему сохранён этот статус>` | `<путь или NOT APPLICABLE>` | `<ГГГГ-ММ-ДД>` | `<конкретное условие удаления или повторного включения>` | `P0`–`P3` |

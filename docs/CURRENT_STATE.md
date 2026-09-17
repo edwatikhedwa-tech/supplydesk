@@ -7,193 +7,193 @@ updated_at: 2026-08-30
 source_commit: 792f441b4b6099533177e7c1d23d6252670f9309
 ---
 
-# Current State — HISTORICAL — NOT CURRENT
+# Текущее состояние — ИСТОРИЧЕСКОЕ — НЕ АКТУАЛЬНО
 
-> **HISTORICAL — NOT CURRENT.** This file preserves the 2026-08-30 audit
-> snapshot for traceability. Use [`ai/CURRENT_STATE.md`](../ai/CURRENT_STATE.md)
-> for the current state, numbers, runtime and verified evidence. Do not use the
-> values below for operational decisions.
+> **ИСТОРИЧЕСКОЕ — НЕ АКТУАЛЬНО.** Этот файл сохраняет снапшот аудита от 2026-08-30 для
+> трассировки. Для текущего состояния, чисел, рантайма и подтверждённых доказательств
+> используйте [`ai/CURRENT_STATE.md`](../ai/CURRENT_STATE.md). Не используйте значения ниже для
+> оперативных решений.
 
 <details>
-<summary>Historical snapshot retained for audit history</summary>
+<summary>Исторический снапшот, сохранён для истории аудита</summary>
 
-Дата аудита: 2026-08-30. Это snapshot фактически проверенного состояния, не
+Дата аудита: 2026-08-30. Это снапшот фактически проверенного состояния, не
 changelog.
 
-## SYSTEM
+## СИСТЕМА
 
-- Backend: Python HTTP application с DB-API repository; frontend: React +
+- Backend: приложение на Python HTTP с репозиторием DB-API; frontend: React +
   TypeScript/Vite.
-- Локальный runtime на `127.0.0.1:8000` запущен и использует canonical
+- Локальный рантайм на `127.0.0.1:8000` запущен и использует каноническую
   `mail-data/supplier.sqlite3`.
-- Source migration set заканчивается `031_manual_inbox_request_links`.
+- Набор миграций источника заканчивается на `031_manual_inbox_request_links`.
 
-## DATABASE
+## БАЗА ДАННЫХ
 
-- Текущая read-only SQLite содержит `493` supplier rows.
+- Текущая read-only SQLite содержит `493` строки поставщиков.
 - `PRAGMA integrity_check` возвращает `ok`.
-- В схеме есть SQLite и PostgreSQL ветки. Миграции выполняются repository при
-  инициализации; отдельного applied-migrations ledger не обнаружено.
-- В filenames есть два migration с префиксом `026`: это не ломает текущую
-  idempotent SQLite инициализацию, но ухудшает операционную ясность порядка.
+- В схеме есть ветки SQLite и PostgreSQL. Миграции выполняются репозиторием при
+  инициализации; отдельного журнала применённых миграций не обнаружено.
+- В именах файлов есть две миграции с префиксом `026`: это не ломает текущую
+  идемпотентную инициализацию SQLite, но ухудшает операционную ясность порядка.
 
-## MAIL
+## ПОЧТА
 
-- Текущая база содержит две connected accounts: Yandex и Mail.ru.
-- Outbound messages: `sent=62`, `queued=84`, `failed=2`,
-  `delivery_unknown=1`; inbound messages: `16 received`.
-- Для request 1059: `outbound_total=132`, `queued=84`, историческое SMTP
+- Текущая база содержит два подключённых аккаунта: Yandex и Mail.ru.
+- Исходящие сообщения: `sent=62`, `queued=84`, `failed=2`,
+  `delivery_unknown=1`; входящие сообщения: `16 получено`.
+- Для заявки 1059: `outbound_total=132`, `queued=84`, историческое SMTP
   acceptance `accepted=46`, эффективное accepted без bounced `45`, `failed=2`,
-  `bounced=1`, replies `7`.
-- UI-термин «Отправлено» означает SMTP/provider acceptance. Это не доказательство
-  Inbox placement.
-- Hard bounce распознаётся отдельно; soft bounce не превращается автоматически
-  в permanent suppression.
+  `bounced=1`, ответов `7`.
+- Термин UI «Отправлено» означает принятие SMTP/провайдером. Это не доказательство
+  попадания в Inbox.
+- Жёсткий отказ доставки распознаётся отдельно; мягкий отказ автоматически не превращается
+  в постоянное подавление.
 
-## OUTGOING SAFETY
+## БЕЗОПАСНОСТЬ ИСХОДЯЩЕЙ ПОЧТЫ
 
-- `SAFETY-001` is closed for the verified SQLite/runtime path. The durable
-  global control is `mail_runtime_controls.outgoing_enabled`; clean schema
-  creation and a missing control row are fail-closed (`0`/`False`). Invalid
-  values and database read failures are also treated as disabled and logged.
-- The default for `mail_account_profiles.outgoing_enabled` and the account
-  query fallback is `0`. A provider connection explicitly creates/refreshes
-  that account's profile, but it never enables the global outgoing switch.
-- The only implemented enable flow is `POST /api/mail/runtime/outgoing` with
-  explicit JSON booleans `enabled` and `confirmation=true`, an authenticated
-  CSRF-protected session, and durable `owner` membership. The global switch is
-  database-wide; it is not a per-workspace switch. A new workspace does not
-  create an enabling row and remains blocked while the global default is off.
-- `api/index.py` no longer starts the mail queue during module import. The
-  local `SupplierApp.run()` entry point starts workers explicitly. A running
-  worker performs the durable gate check before claiming work, and the
-  provider boundary retains the final race-safe check.
-- With outgoing disabled, existing jobs remain `queued` and attempts do not
-  increase. No real SMTP call was made by the safety acceptance.
+- `SAFETY-001` закрыт для проверенного пути SQLite/рантайма. Устойчивый
+  глобальный контроль — `mail_runtime_controls.outgoing_enabled`; чистое создание схемы
+  и отсутствующая строка контроля закрыты по умолчанию (fail-closed, `0`/`False`). Невалидные
+  значения и сбои чтения базы данных также трактуются как отключённые и логируются.
+- Значение по умолчанию для `mail_account_profiles.outgoing_enabled` и фолбэк запроса
+  аккаунта — `0`. Подключение провайдера явно создаёт/обновляет профиль этого аккаунта, но
+  никогда не включает глобальный переключатель исходящей почты.
+- Единственный реализованный поток включения — `POST /api/mail/runtime/outgoing` с
+  явными JSON-булевыми `enabled` и `confirmation=true`, авторизованной, защищённой CSRF
+  сессией и устойчивым членством `owner`. Глобальный переключатель — общий для всей базы данных;
+  это не переключатель на уровне рабочего пространства. Новое рабочее пространство не
+  создаёт включающую строку и остаётся заблокированным, пока глобальное значение по умолчанию
+  выключено.
+- `api/index.py` больше не запускает очередь почты во время импорта модуля. Локальная точка
+  входа `SupplierApp.run()` явно запускает воркеры. Работающий
+  воркер выполняет устойчивую проверку контроля перед захватом работы, а
+  граница провайдера сохраняет финальную race-safe проверку.
+- При отключённой исходящей почте существующие задачи остаются `queued`, а попытки не
+  увеличиваются. Ни одного реального SMTP-вызова во время приёмки безопасности сделано не было.
 
-## REQUEST / SUPPLIER
+## ЗАЯВКА / ПОСТАВЩИК
 
-- Request 1059: `171` raw `request_suppliers` rows; `170` visible rows после
-  исключения одной irrelevant row; `140` company cards.
-- Card math: `112` cards of size 1, `27` of size 2, `0` of size 3, `1` of
-  size 4+, so `112 + 27 + 1 = 140` cards and
-  `112 + 27×2 + 4 = 170` visible supplier memberships. The reduction is
-  `170 - 140 = 30` presentation-level collapsed memberships; it is not a
-  physical delete.
-- All-database identity grouping by confirmed `global_supplier_id`, with each
-  unlinked supplier row as its own group: `485` groups; `6` groups contain more
-  than one row. Distribution: size 1 = `479`, size 2 = `5`, size 3 = `0`, size
-  4+ = `1` (the latter has 4 rows). The check is
-  `479 + 5×2 + 4 = 493` rows and `479 + 5 + 1 = 485` groups.
-- Request-level grouping uses the same confirmed identity plus the request
-  view's unambiguous hostless-email attachment rule. Its distribution is the
-  card distribution above. A card may retain several distinct emails.
-- Current supplier strict cleanup scan: broad exact-host-email candidates `29`,
-  base unresolved `1`, ambiguous `2`, strict unresolved `30`, strict safe `0`.
-  No physical supplier row is currently approved for deletion/deactivation.
-- Supplier merge audit reports unknown supplier relations:
-  `mail_cross_provider_retries`, `mail_inbox_request_links`, and
-  `mail_reconciled_outbound_events`. Each has one live row; their semantics are
-  different and must be classified before any merge.
+- Заявка 1059: `171` сырая строка `request_suppliers`; `170` видимых строк после
+  исключения одной нерелевантной строки; `140` карточек компаний.
+- Математика карточек: `112` карточек размера 1, `27` размера 2, `0` размера 3, `1`
+  размера 4+, то есть `112 + 27 + 1 = 140` карточек и
+  `112 + 27×2 + 4 = 170` видимых членств поставщика. Разница —
+  `170 - 140 = 30` схлопнутых на уровне отображения членств; это не
+  физическое удаление.
+- Группировка идентичности по всей базе данных по подтверждённому `global_supplier_id`, с
+  каждой непривязанной строкой поставщика как отдельной группой: `485` групп; `6` групп содержат
+  более одной строки. Распределение: размер 1 = `479`, размер 2 = `5`, размер 3 = `0`, размер
+  4+ = `1` (в последней 4 строки). Проверка:
+  `479 + 5×2 + 4 = 493` строки и `479 + 5 + 1 = 485` групп.
+- Группировка на уровне заявки использует ту же подтверждённую идентичность плюс однозначное
+  правило привязки email без хоста из представления заявки. Её распределение совпадает с
+  распределением карточек выше. Карточка может сохранять несколько разных email.
+- Текущее строгое сканирование очистки поставщиков: широкие кандидаты по точному хосту-email
+  `29`, базовое неразрешённое `1`, неоднозначное `2`, строгое неразрешённое `30`, строго
+  безопасное `0`. В настоящее время ни одна физическая строка поставщика не одобрена для
+  удаления/деактивации.
+- Аудит объединения поставщиков сообщает о неизвестных связях поставщика:
+  `mail_cross_provider_retries`, `mail_inbox_request_links` и
+  `mail_reconciled_outbound_events`. У каждой одна живая строка; их семантика
+  различна и должна быть классифицирована перед любым объединением.
 
-## RESEND PROTECTION
+## ЗАЩИТА ОТ ПОВТОРНОЙ ОТПРАВКИ
 
-- **CLOSED FOR SQLITE** based on current code and isolated tests: composite
-  `(workspace, request, normalized_email)` guard, transactional guard/message
-  creation, database uniqueness, rollback, concurrency, operation idempotency,
-  explicit repeat, and preflight/queue recipient agreement are covered.
-- One selected company card produces at most one outbound target/message in the
-  tested grouped-company flow. When the requested primary is already used and
-  an unambiguous NEVER_USED alternate exists, one alternate is selected.
-- The current request Composer has no explicit alternate-email picker; this is a
-  product/UX choice, not an automatic merge or a resend bypass.
-- Current live guard row count is `0`; the guard table and constraints exist.
-- PostgreSQL acceptance is not verified in this environment.
+- **ЗАКРЫТО ДЛЯ SQLITE** на основе текущего кода и изолированных тестов: составная защита
+  `(workspace, request, normalized_email)`, транзакционное создание защиты/сообщения,
+  уникальность в базе данных, откат, конкурентность, идемпотентность операции, явный повтор и
+  согласие получателя между предпроверкой и очередью — всё покрыто.
+- Одна выбранная карточка компании создаёт максимум одну исходящую цель/сообщение в
+  протестированном сценарии сгруппированной компании. Когда запрошенный основной адрес уже
+  использован и есть однозначная альтернатива NEVER_USED, выбирается один альтернативный адрес.
+- У текущего композера заявки нет явного выбора альтернативного email; это
+  продуктовый/UX-выбор, а не автоматическое объединение или обход повторной отправки.
+- Текущее количество живых строк защиты — `0`; таблица защиты и ограничения существуют.
+- Приёмка PostgreSQL в этом окружении не проверена.
 
-## MAIL PROVIDERS
+## ПОЧТОВЫЕ ПРОВАЙДЕРЫ
 
-- Mail.ru MVP uses application password, SMTP SSL 465 and IMAP SSL 993; OAuth
-  Mail.ru is explicitly unsupported.
-- Mail.ru unit/MVP tests use patched/dummy transports. Targeted current run:
-  `12 tests, OK`.
-- No real Mail.ru SMTP/IMAP acceptance was run during this audit. A connected
-  account row is not live provider acceptance evidence.
-- Failure classification distinguishes retryable/transient, permanent,
-  policy/auth failures, and post-DATA delivery unknown in the tested provider
-  adapter. Live provider confirmation remains open.
+- MVP Mail.ru использует пароль приложения, SMTP SSL 465 и IMAP SSL 993; OAuth
+  для Mail.ru явно не поддерживается.
+- Юнит/MVP-тесты Mail.ru используют patched/dummy-транспорты. Целевой текущий прогон:
+  `12 тестов, OK`.
+- Реальная приёмка SMTP/IMAP Mail.ru в рамках этого аудита не выполнялась. Строка подключённого
+  аккаунта — не доказательство живой приёмки провайдера.
+- Классификация сбоев различает повторяемые/временные, постоянные, сбои
+  политики/авторизации и неопределённую доставку после DATA в протестированном адаптере
+  провайдера. Живое подтверждение провайдера остаётся открытым.
 
 ## FRONTEND
 
-- Request company cards expose aggregated contacts/statuses. Selection sends a
-  selected card's primary supplier row to Composer; backend resolves the final
-  contact and the bulk operation creates one target per selected effective
-  contact.
-- `not_sent` is a company-card predicate: the card has email and all its email
-  contacts are `not_sent`, with no queued/accepted/failed/unknown/bounced/
-  cancelled contact. A mixed card is not classified as wholly not sent.
-- Playwright default config points to local port 8000 but the audited frontend
-  suites route-mock their `/api/**` calls. The live email regression reads real
-  inbox/thread endpoints after login and does not send mail. No central test
-  guard rejects a live DB path.
-- Current checks: typecheck PASS, lint PASS with 8 existing warnings, build
-  PASS. Full visual matrix was not rerun in this audit.
+- Карточки компаний заявки показывают агрегированные контакты/статусы. Выбор отправляет
+  основную строку поставщика выбранной карточки в композер; backend разрешает финальный
+  контакт, а массовая операция создаёт одну цель на каждый выбранный эффективный контакт.
+- `not_sent` — предикат карточки компании: у карточки есть email и все её email-контакты —
+  `not_sent`, без единого контакта в состоянии queued/accepted/failed/unknown/bounced/
+  cancelled. Смешанная карточка не классифицируется как полностью неотправленная.
+- Конфигурация Playwright по умолчанию указывает на локальный порт 8000, но проверенные наборы
+  frontend подменяют (route-mock) свои вызовы `/api/**`. Живая регрессия email читает реальные
+  эндпоинты inbox/thread после входа и не отправляет почту. Никакая центральная защита теста не
+  отклоняет путь к живой базе данных.
+- Текущие проверки: typecheck PASS, lint PASS с 8 существующими предупреждениями, build
+  PASS. Полная визуальная матрица в рамках этого аудита не перезапускалась.
 
-## TEST STATUS
+## СТАТУС ТЕСТОВ
 
-- Backend full suite post-change: `355 tests`, `OK (skipped=1)`; the skip is
-  the PostgreSQL branch without `DATABASE_URL`/isolated integration fixture.
-- `tests/test_outgoing_safety.py`: `11 tests, OK`; this covers clean/missing,
-  false/malformed/restart, missing account profile, import, owner control,
-  runtime refresh, 84 queued jobs, and explicit fake-provider enable.
-- Current targeted tests: supplier identity `27 OK`, status semantics `16 OK`,
-  Mail.ru MVP `12 OK`.
-- Existing backend tests use temporary SQLite paths in the inspected suites;
-  no explicit centralized `if DB path == live: ABORT` guard was found.
-- The missing guard is a test-infrastructure risk even though the observed
-  current tests were isolated.
+- Полный набор backend после изменения: `355 тестов`, `OK (skipped=1)`; пропуск —
+  это ветка PostgreSQL без `DATABASE_URL`/изолированной интеграционной фикстуры.
+- `tests/test_outgoing_safety.py`: `11 тестов, OK`; покрывает чистое/отсутствующее, false/
+  некорректное/перезапуск, отсутствующий профиль аккаунта, импорт, контроль владельца,
+  обновление рантайма, 84 задачи в очереди и явное включение фейкового провайдера.
+- Текущие целевые тесты: идентичность поставщика `27 OK`, семантика статусов `16 OK`,
+  MVP Mail.ru `12 OK`.
+- Существующие backend-тесты используют временные пути SQLite в проверенных наборах;
+  явной централизованной защиты вида `if путь БД == живая: ПРЕРВАТЬ` не найдено.
+- Отсутствующая защита — это риск тестовой инфраструктуры, даже если наблюдаемые
+  текущие тесты были изолированы.
 
-## PRODUCTION SAFETY
+## БЕЗОПАСНОСТЬ ПРОДАКШЕНА
 
-- Current runtime report: one active canonical runtime, canonical path match,
-  SQLite integrity `ok`, live SMTP allowed `NO`.
-- `MAIL_OUTGOING_DISABLED=1` is set in local environment and durable
-  `mail_runtime_controls.outgoing_enabled=0` is present in the current DB.
-- Account-level outgoing flags are `1` for the two existing connected accounts,
-  but the global durable control and environment kill switch block transport.
-  New account profiles default to `0`; explicit account connection is the
-  account-level eligibility action, while the global switch remains separate.
-- The source default for a new runtime control row is now `0`, and importing
-  `api/index.py` has no queue-start side effect. Vercel still requires a
-  dedicated durable worker before any production background delivery is
-  enabled there.
-- HTTP smoke passed while leaving the server running: `GET / = 200`,
-  `/api/auth/me = 200`, unauthenticated `/api/requests/1059 = 401`.
+- Текущий отчёт рантайма: один активный канонический рантайм, совпадение канонического пути,
+  целостность SQLite `ok`, живой SMTP разрешён `NO`.
+- В локальном окружении задан `MAIL_OUTGOING_DISABLED=1`, и в текущей БД присутствует устойчивый
+  `mail_runtime_controls.outgoing_enabled=0`.
+- Флаги исходящей почты на уровне аккаунта — `1` для двух существующих подключённых аккаунтов,
+  но глобальный устойчивый контроль и kill switch окружения блокируют транспорт.
+  Новые профили аккаунтов по умолчанию — `0`; явное подключение аккаунта — это действие,
+  дающее право на уровне аккаунта, а глобальный переключатель остаётся отдельным.
+- Значение по умолчанию для новой строки контроля рантайма теперь `0`, и импорт
+  `api/index.py` не имеет побочного эффекта запуска очереди. Vercel по-прежнему требует
+  выделенного устойчивого воркера, прежде чем там будет включена любая фоновая доставка на
+  продакшене.
+- HTTP smoke-проверка прошла при работающем сервере: `GET / = 200`,
+  `/api/auth/me = 200`, неавторизованный `/api/requests/1059 = 401`.
 
-## KNOWN LIMITATIONS
+## ИЗВЕСТНЫЕ ОГРАНИЧЕНИЯ
 
-- PostgreSQL transaction/concurrency/continuation acceptance is not verified.
-- Real Mail.ru live acceptance is not verified; no real sends were made.
-- Supplier identity cleanup is not apply-ready. The old historical `132`
-  candidate number is not a current metric.
-- No explicit central test DB-path safety guard exists.
-- Vercel durable worker behavior is not verified; the adapter intentionally
-  does not start background delivery during import.
-- The request Composer does not let the user explicitly choose among multiple
-  company emails.
+- Приёмка транзакций/конкурентности/продолжения PostgreSQL не проверена.
+- Реальная живая приёмка Mail.ru не проверена; реальных отправок не производилось.
+- Очистка идентичности поставщиков не готова к применению. Старое историческое число
+  `132` кандидатов не является текущей метрикой.
+- Явной центральной защиты пути тестовой базы данных не существует.
+- Поведение устойчивого воркера Vercel не проверено; адаптер намеренно
+  не запускает фоновую доставку во время импорта.
+- Композер заявки не даёт пользователю явно выбрать между несколькими email компании.
 
-## UNRESOLVED
+## НЕРЕШЁННОЕ
 
-- `IDENTITY-001` (HIGH): 30 strict-unresolved identity records and 2 ambiguous
-  records; no apply permitted.
-- `IDENTITY-002` (HIGH): three live supplier-reference tables are absent from
-  the merge auditor's known relation set; one is immutable evidence, two are
-  live FK/association records.
-- `MAIL-001` (MEDIUM): PostgreSQL acceptance is not verified.
-- `MAIL-002` (MEDIUM): no real Mail.ru live acceptance evidence.
-- `TEST-001` (MEDIUM): no centralized live-DB abort guard for backend/Playwright
-  test execution.
-- `UX-001` (LOW): explicit multi-email contact picker is absent; backend's
-  automatic alternate policy is currently the behavior under test.
-- `DB-001` (LOW): duplicate migration numeric prefix and no migration ledger.
+- `IDENTITY-001` (ВЫСОКИЙ): 30 строго неразрешённых записей идентичности и 2 неоднозначные
+  записи; применение не разрешено.
+- `IDENTITY-002` (ВЫСОКИЙ): три живые таблицы ссылок на поставщика отсутствуют в
+  известном наборе связей аудитора объединения; одна — неизменяемое доказательство, две —
+  живые записи FK/связей.
+- `MAIL-001` (СРЕДНИЙ): приёмка PostgreSQL не проверена.
+- `MAIL-002` (СРЕДНИЙ): нет доказательств живой приёмки Mail.ru.
+- `TEST-001` (СРЕДНИЙ): нет централизованной защиты от прерывания на живой БД для выполнения
+  backend/Playwright-тестов.
+- `UX-001` (НИЗКИЙ): явный выбор из нескольких email-контактов отсутствует; текущая
+  автоматическая политика альтернативы backend — это проверяемое поведение.
+- `DB-001` (НИЗКИЙ): дублирующийся числовой префикс миграции и отсутствие журнала миграций.
 
 </details>

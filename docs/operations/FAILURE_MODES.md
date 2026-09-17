@@ -7,44 +7,44 @@ updated_at: 2026-09-01
 source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
 ---
 
-# Failure Modes
+# Режимы отказа (Failure Modes)
 
-The machine-readable catalog is [`failure_modes.yaml`](failure_modes.yaml).
-Each mode names a symptom, possible causes, confirming checks, excluding
-checks, evidence level, root-cause confidence, runbook and repair eligibility.
-The default confidence is `UNCONFIRMED`; doctor reports a symptom and possible
-failure modes, not a proven root cause. V1.1 allows no automatic recovery for
-product, data, mail, credential or deployment failures.
+Машиночитаемый каталог — [`failure_modes.yaml`](failure_modes.yaml). Каждый режим называет
+симптом, возможные причины, подтверждающие проверки, исключающие проверки, уровень
+доказательства, уверенность в первопричине, runbook и допустимость восстановления. Уверенность
+по умолчанию — `UNCONFIRMED` (не подтверждено); Doctor сообщает о симптоме и возможных режимах
+отказа, а не о доказанной первопричине. V1.1 не допускает автоматического восстановления для
+сбоев продукта, данных, почты, учётных данных или развёртывания.
 
-## Safety levels
+## Уровни безопасности
 
-- `L0_OBSERVE`: inspect state without changing it.
-- `L1_SAFE_RECOVERY`: reversible local recovery with no external side effect.
-- `L2_DIAGNOSE`: reproduce and collect evidence in the approved environment.
-- `L3_SANDBOX_REPAIR`: patch only a disposable branch/worktree after scope confirmation.
-- `L4_HUMAN_APPROVAL_REQUIRED`: a human must approve the exact irreversible scope.
-- `L5_FORBIDDEN_AUTOMATIC`: never perform automatically.
+- `L0_OBSERVE`: осмотр состояния без его изменения.
+- `L1_SAFE_RECOVERY`: обратимое локальное восстановление без внешних побочных эффектов.
+- `L2_DIAGNOSE`: воспроизведение и сбор доказательств в утверждённом окружении.
+- `L3_SANDBOX_REPAIR`: правка только в одноразовой ветке/worktree после подтверждения объёма.
+- `L4_HUMAN_APPROVAL_REQUIRED`: человек должен утвердить точный необратимый объём.
+- `L5_FORBIDDEN_AUTOMATIC`: никогда не выполнять автоматически.
 
-Repair eligibility is separate from evidence level:
+Допустимость восстановления — отдельная вещь от уровня доказательства:
 
-- `DIAGNOSE_ONLY` — collect evidence; no patch is eligible.
-- `SANDBOX_REPAIR_ELIGIBLE` — patch may be proposed only in an isolated branch
-  after a behavioral reproduction and scope confirmation.
-- `SAFE_RECOVERY_ELIGIBLE` — a reversible local recovery is proven and
-  separately authorized.
-- `HUMAN_ONLY` — human approval is required. All V1.1 failure modes default to
-  this value.
+- `DIAGNOSE_ONLY` — только сбор доказательств; никакая правка не допускается.
+- `SANDBOX_REPAIR_ELIGIBLE` — правка может быть предложена только в изолированной ветке после
+  поведенческого воспроизведения и подтверждения объёма.
+- `SAFE_RECOVERY_ELIGIBLE` — обратимое локальное восстановление доказано и отдельно
+  авторизовано.
+- `HUMAN_ONLY` — требуется одобрение человека. Все режимы отказа V1.1 по умолчанию имеют это
+  значение.
 
-Database migrations, production deletion, auth changes, credential rotation,
-mass email, real provider sends, permission changes, force-push and deployment
-are `L5_FORBIDDEN_AUTOMATIC`. Canonical DB writes and customer deletion are
-also human-gated and never part of doctor.
+Миграции базы данных, удаление на проде, изменения авторизации, ротация учётных данных, массовая
+рассылка, реальные отправки через провайдера, изменения прав доступа, force-push и
+развёртывание — это `L5_FORBIDDEN_AUTOMATIC`. Записи в каноническую базу данных и удаление
+клиентов также требуют одобрения человека и никогда не являются частью Doctor.
 
-## Outcome interpretation
+## Интерпретация результата
 
-An absent local database or dependency is an `ENVIRONMENT_GAP`. A broken
-manifest, failing test, invalid route contract or malformed schema is a
-`PRODUCT_FAILURE`. A requested provider/migration/production mutation is a
-`SAFETY_BLOCK`; it is not retried or downgraded to a warning. A static contract
-check can identify missing surface, but cannot prove behavior; the matrix must
-retain the corresponding `diagnostic_gap`.
+Отсутствующая локальная база данных или зависимость — это `ENVIRONMENT_GAP`. Сломанный манифест,
+падающий тест, невалидный контракт маршрута или повреждённая схема — это `PRODUCT_FAILURE`.
+Запрошенное изменение провайдера/миграции/продакшена — это `SAFETY_BLOCK`; оно не повторяется и
+не понижается до предупреждения. Статическая проверка контракта может выявить отсутствующую
+поверхность, но не может доказать поведение; матрица должна сохранять соответствующий
+`diagnostic_gap`.

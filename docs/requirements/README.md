@@ -7,23 +7,22 @@ updated_at: 2026-09-01
 source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 ---
 
-# Requirements documentation
+# Документация по требованиям
 
-## Purpose
+## Назначение
 
-Business, functional, and acceptance requirements for SupplyDesk.
+Бизнес-, функциональные и приёмочные требования для SupplyDesk.
 
-## Canonical ownership
+## Каноническое владение
 
-This directory owns approved requirement documents. Current implementation
-status remains in `ai/CURRENT_STATE.md`.
+Эта директория владеет утверждёнными документами требований. Актуальный статус реализации
+хранится в `ai/CURRENT_STATE.md`.
 
-## Expected artifacts
+## Ожидаемые артефакты
 
-Requirement briefs, acceptance criteria, traceability links, and explicitly
-dated superseded requirements.
+Краткие описания требований, критерии приёмки, ссылки трассировки и явно датированные
+замещённые требования.
 
-## Status
+## Статус
 
-`CURRENT` as an entrypoint; no new requirements are invented by this task.
-
+`CURRENT` как точка входа; новые требования этой задачей не придумываются.

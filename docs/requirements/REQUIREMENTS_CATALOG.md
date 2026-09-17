@@ -7,40 +7,39 @@ updated_at: 2026-09-01
 source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
 ---
 
-# Requirements Catalog
+# Каталог требований
 
-Active requirements are extracted from implementation and existing tests.
-`DRAFT` items describe a safe future boundary and are not accepted product
-contracts. `SAFETY` is a control requirement; `OPERATIONAL` covers evidence
-and recovery practice.
+Активные требования извлечены из реализации и существующих тестов. Пункты со статусом `DRAFT`
+описывают безопасную будущую границу и не являются принятыми продуктовыми контрактами. `SAFETY` —
+это контрольное требование; `OPERATIONAL` покрывает практику доказательств и восстановления.
 
-| ID | Type | Status | Critical | Summary |
+| ID | Тип | Статус | Критично | Краткое описание |
 |---|---|---|---|---|
-| REQ-AUTH-001 | FUNCTIONAL | ACTIVE | yes | Requests and mail data are scoped to the authenticated workspace. |
-| REQ-AUTH-002 | SAFETY | ACTIVE | yes | CSRF, ownership and rate-limit gates must block unsafe access. |
-| REQ-REQUEST-001 | FUNCTIONAL | ACTIVE | no | Operators can create and inspect requests and positions. |
-| REQ-REQUEST-002 | FUNCTIONAL | ACTIVE | no | Search/enrichment progress and retry state are durable. |
-| REQ-SUPPLIER-001 | FUNCTIONAL | ACTIVE | no | Supplier identity, grouping, filters and blacklist semantics are stable. |
-| REQ-SUPPLIER-002 | FUNCTIONAL | ACTIVE | no | Manual identifiers and enrichment evidence are persisted without duplicates. |
-| REQ-DISCOVERY-001 | FUNCTIONAL | ACTIVE | no | Discovery uses planned queries and evidence-backed candidate qualification. |
-| REQ-MESSAGE-001 | FUNCTIONAL | ACTIVE | no | Queue-only, sent/failed and incoming visibility are distinct. |
-| REQ-MAIL-001 | FUNCTIONAL | ACTIVE | yes | Incoming sync parses, deduplicates and preserves unmatched mail. |
-| REQ-MAIL-002 | SAFETY | ACTIVE | yes | Deliverability preflight is read-only and does not contact SMTP. |
-| REQ-MAIL-003 | SAFETY | ACTIVE | yes | Duplicate recipients and non-idempotent retries are blocked. |
-| REQ-MAIL-004 | FUNCTIONAL | ACTIVE | no | HTML/plain/CID content is sanitized and rendered safely. |
-| REQ-MAIL-005 | SAFETY | ACTIVE | yes | Accepted or uncertain delivery is not automatically retried. |
-| REQ-MAIL-006 | SAFETY | ACTIVE | yes | Pacing, budgets, reservations and kill switch gate outgoing work. |
-| REQ-MAIL-007 | FUNCTIONAL | ACTIVE | no | Bounce classification drives suppression while retaining history. |
-| REQ-MAIL-008 | FUNCTIONAL | ACTIVE | no | Campaign stages and pause/stop state are durable. |
-| REQ-DATA-001 | SAFETY | ACTIVE | yes | Canonical database diagnostics are read-only; integrity is explicit. |
-| REQ-RUNTIME-001 | SAFETY | ACTIVE | yes | Canonical runtime lock and provenance prevent unsafe parallel operation. |
-| REQ-FRONTEND-001 | FUNCTIONAL | ACTIVE | no | Frontend shell and key views meet type, lint, build and browser gates. |
-| REQ-DIAG-001 | OPERATIONAL | ACTIVE | yes | Doctor reports typed outcomes for repository and runtime checks. |
-| REQ-DIAG-002 | OPERATIONAL | ACTIVE | yes | Doctor emits machine-readable evidence and stable exit codes. |
-| REQ-DIAG-003 | OPERATIONAL | DRAFT | yes | Future repair agent works only in a sandbox after human confirmation. |
+| REQ-AUTH-001 | FUNCTIONAL | ACTIVE | да | Заявки и данные почты ограничены рамками авторизованного рабочего пространства. |
+| REQ-AUTH-002 | SAFETY | ACTIVE | да | Проверки CSRF, владения и ограничения частоты должны блокировать небезопасный доступ. |
+| REQ-REQUEST-001 | FUNCTIONAL | ACTIVE | нет | Операторы могут создавать и просматривать заявки и позиции. |
+| REQ-REQUEST-002 | FUNCTIONAL | ACTIVE | нет | Прогресс поиска/обогащения и состояние повторных попыток устойчивы. |
+| REQ-SUPPLIER-001 | FUNCTIONAL | ACTIVE | нет | Идентичность поставщика, группировка, фильтры и семантика чёрного списка стабильны. |
+| REQ-SUPPLIER-002 | FUNCTIONAL | ACTIVE | нет | Ручные идентификаторы и доказательства обогащения сохраняются без дублей. |
+| REQ-DISCOVERY-001 | FUNCTIONAL | ACTIVE | нет | Discovery использует запланированные запросы и квалификацию кандидатов, подтверждённую доказательствами. |
+| REQ-MESSAGE-001 | FUNCTIONAL | ACTIVE | нет | Видимость «только в очереди», «отправлено/не удалось» и входящих различаются. |
+| REQ-MAIL-001 | FUNCTIONAL | ACTIVE | да | Входящая синхронизация разбирает, дедуплицирует и сохраняет непривязанную почту. |
+| REQ-MAIL-002 | SAFETY | ACTIVE | да | Предпроверка доставляемости — read-only и не обращается к SMTP. |
+| REQ-MAIL-003 | SAFETY | ACTIVE | да | Дублирующиеся получатели и неидемпотентные повторы блокируются. |
+| REQ-MAIL-004 | FUNCTIONAL | ACTIVE | нет | Содержимое HTML/plain/CID санитизируется и безопасно рендерится. |
+| REQ-MAIL-005 | SAFETY | ACTIVE | да | Принятая или неопределённая доставка не повторяется автоматически. |
+| REQ-MAIL-006 | SAFETY | ACTIVE | да | Дозирование, бюджеты, резервирование и kill switch контролируют исходящую работу. |
+| REQ-MAIL-007 | FUNCTIONAL | ACTIVE | нет | Классификация отказов доставки определяет подавление, сохраняя историю. |
+| REQ-MAIL-008 | FUNCTIONAL | ACTIVE | нет | Стадии рассылки и состояние паузы/стопа устойчивы. |
+| REQ-DATA-001 | SAFETY | ACTIVE | да | Диагностика канонической базы данных — read-only; целостность явна. |
+| REQ-RUNTIME-001 | SAFETY | ACTIVE | да | Блокировка канонического рантайма и происхождение предотвращают небезопасную параллельную работу. |
+| REQ-FRONTEND-001 | FUNCTIONAL | ACTIVE | нет | Оболочка frontend и ключевые экраны проходят контрольные точки типов, линтера, сборки и браузера. |
+| REQ-DIAG-001 | OPERATIONAL | ACTIVE | да | Doctor сообщает типизированные результаты проверок репозитория и рантайма. |
+| REQ-DIAG-002 | OPERATIONAL | ACTIVE | да | Doctor выдаёт машиночитаемые доказательства и стабильные коды выхода. |
+| REQ-DIAG-003 | OPERATIONAL | DRAFT | да | Будущий агент восстановления работает только в sandbox после подтверждения человеком. |
 
-## Acceptance rule
+## Правило приёмки
 
-Only `ACTIVE` rows are accepted contracts. A traceability row for
-`REQ-DIAG-003` is intentionally marked `DRAFT` and cannot satisfy an active
-requirement gate.
+Принятыми контрактами являются только строки со статусом `ACTIVE`. Строка трассировки для
+`REQ-DIAG-003` намеренно помечена `DRAFT` и не может удовлетворить контрольную точку активного
+требования.

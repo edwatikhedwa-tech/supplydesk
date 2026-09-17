@@ -3,54 +3,54 @@ test_catalog:
   - id: TEST-DIAG-001
     path: tests/diagnostics/test_diagnostic_runner.py
     kind: unit
-    scope: diagnostic status and safe probes
+    scope: диагностический статус и безопасные проверки
   - id: TEST-DIAG-002
     path: tests/diagnostics/test_doctor_contract.py
     kind: contract
-    scope: PowerShell doctor modes and manifest
+    scope: режимы PowerShell doctor и манифест
   - id: TEST-DIAG-003
     path: tests/diagnostics/test_diagnostic_negative_fixtures.py
     kind: negative
-    scope: controlled diagnostic failures, secret classification and machine-output safety
+    scope: контролируемые диагностические сбои, классификация секретов и безопасность машинного вывода
   - id: TEST-BACKEND-001
     path: tests/
     kind: regression
-    scope: inherited backend and mail suite
+    scope: унаследованный набор backend и почты
     baseline: 373 passed, 1 skipped
   - id: TEST-DISCOVERY-001
     path: supplier_discovery_v2/tests/
     kind: unit
-    scope: query planning, matching, fixture pipeline and storage
+    scope: планирование запросов, сопоставление, пайплайн фикстур и хранение
   - id: TEST-FRONTEND-001
     path: frontend/tests/frontend-audit.spec.ts
     kind: browser
-    scope: public shell
+    scope: публичная оболочка
     inherited_evidence: 8 passed
   - id: TEST-FRONTEND-002
     path: frontend/tests/email-renderer-responsive.spec.ts
     kind: browser
-    scope: content rendering at responsive widths
+    scope: рендеринг содержимого на адаптивных ширинах экрана
   - id: TEST-MAIL-001
     path: tests/test_mail_deliverability.py
     kind: integration
-    scope: preflight, suppression, pacing and provider-gate semantics
+    scope: предпроверка, подавление, дозирование и семантика gate провайдера
   - id: TEST-MAIL-002
     path: tests/test_mail_integrity.py
     kind: integration
-    scope: idempotency, authorization, atomicity and queue claims
+    scope: идемпотентность, авторизация, атомарность и захват очереди
   - id: TEST-MAIL-003
     path: tests/test_mail_status_semantics.py
     kind: integration
-    scope: delivery axes and retry safety
+    scope: оси доставки и безопасность повторов
   - id: TEST-RUNTIME-001
     path: tests/test_canonical_runtime.py
     kind: unit
-    scope: canonical lock and provenance
+    scope: канонический lock и происхождение
   - id: TEST-ENV-001
     path: tests/diagnostics/test_reproducible_environment.py
     kind: negative
-    scope: OFFLINE_TEST profile, disposable database refusal and provider/network safety
+    scope: профиль OFFLINE_TEST, отказ одноразовой базы данных и безопасность провайдера/сети
   - id: TEST-ENV-002
     path: scripts/run_test_suite.py
     kind: runner
-    scope: loopback-only unittest regression entrypoint
+    scope: точка входа регрессии unittest только через loopback

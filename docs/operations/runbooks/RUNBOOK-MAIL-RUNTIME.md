@@ -7,27 +7,27 @@ updated_at: 2026-09-01
 source_commit: 6687fa4289d8f65c47a34e8b7124e113cb3201e6
 ---
 
-# Runbook: mail runtime
+# Runbook: рантайм почты
 
-## Observe
+## Наблюдение
 
-Use `scripts/doctor.ps1 -DryRun` and inspect only typed evidence. The default
-`DOC-011` check is `mail_runtime_contract_static`: it checks source markers and
-does not prove live runtime health, mailbox synchronization, provider
-connectivity or delivery. Runtime lock/provenance behavior is covered by
-`tests/test_canonical_runtime.py`. Queue, pacing, deduplication, suppression
-and delivery uncertainty are covered by the mail test catalog.
+Используйте `scripts/doctor.ps1 -DryRun` и осматривайте только типизированные доказательства.
+Проверка `DOC-011` по умолчанию — это `mail_runtime_contract_static`: она проверяет маркеры в
+исходном коде и не доказывает работоспособность живого рантайма, синхронизацию почтового ящика,
+связность с провайдером или доставку. Поведение блокировки/происхождения рантайма покрыто
+`tests/test_canonical_runtime.py`. Очередь, дозирование, дедупликация, подавление и
+неопределённость доставки покрыты каталогом почтовых тестов.
 
-## Safety levels
+## Уровни безопасности
 
-Runtime inspection is `L0_OBSERVE`/`L2_DIAGNOSE`; live runtime health remains
-`NOT_VERIFIED` unless an explicitly recorded runtime or external acceptance
-run supplies evidence. Do not instantiate a repository against canonical
-data, claim a job, sync a mailbox, enable outgoing, or contact a provider as
-part of diagnosis.
+Осмотр рантайма — это `L0_OBSERVE`/`L2_DIAGNOSE`; работоспособность живого рантайма остаётся
+`NOT_VERIFIED` (не проверено), если явно зафиксированный прогон рантайма или внешней приёмки не
+предоставляет доказательства. Не инстанцируйте репозиторий против канонических данных, не
+захватывайте задачу, не синхронизируйте почтовый ящик, не включайте исходящую почту и не
+обращайтесь к провайдеру в рамках диагностики.
 
-## Recovery
+## Восстановление
 
-An uncertain provider acceptance stays unresolved until evidence is reconciled;
-it is not automatically retried. Any continuation is a separate human-
-approved operation with an exact recipient and job scope.
+Неопределённая приёмка провайдером остаётся неразрешённой до сверки доказательств; она не
+повторяется автоматически. Любое продолжение — это отдельная, одобренная человеком операция с
+точным получателем и объёмом задачи.

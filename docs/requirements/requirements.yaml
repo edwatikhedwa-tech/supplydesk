@@ -6,130 +6,130 @@ requirements:
     status: ACTIVE
     critical: true
     capability: CAP-AUTH-001
-    summary: workspace-scoped authenticated access
+    summary: авторизованный доступ в рамках рабочего пространства
   - id: REQ-AUTH-002
     type: SAFETY
     status: ACTIVE
     critical: true
     capability: CAP-AUTH-001
-    summary: csrf ownership and rate-limit gates
+    summary: проверки csrf, владения и ограничения частоты запросов
   - id: REQ-REQUEST-001
     type: FUNCTIONAL
     status: ACTIVE
     critical: false
     capability: CAP-REQUEST-001
-    summary: request and position lifecycle
+    summary: жизненный цикл заявки и позиции
   - id: REQ-REQUEST-002
     type: FUNCTIONAL
     status: ACTIVE
     critical: false
     capability: CAP-REQUEST-001
-    summary: durable search and enrichment progress
+    summary: устойчивый прогресс поиска и обогащения
   - id: REQ-SUPPLIER-001
     type: FUNCTIONAL
     status: ACTIVE
     critical: false
     capability: CAP-SUPPLIER-001
-    summary: supplier identity grouping and filters
+    summary: группировка идентичности поставщика и фильтры
   - id: REQ-SUPPLIER-002
     type: FUNCTIONAL
     status: ACTIVE
     critical: false
     capability: CAP-SUPPLIER-001
-    summary: manual identifier and enrichment evidence
+    summary: ручной идентификатор и доказательства обогащения
   - id: REQ-DISCOVERY-001
     type: FUNCTIONAL
     status: ACTIVE
     critical: false
     capability: CAP-DISCOVERY-001
-    summary: planned evidence-backed discovery
+    summary: запланированный discovery, подтверждённый доказательствами
   - id: REQ-MESSAGE-001
     type: FUNCTIONAL
     status: ACTIVE
     critical: false
     capability: CAP-MESSAGE-001
-    summary: message visibility semantics
+    summary: семантика видимости сообщений
   - id: REQ-MAIL-001
     type: FUNCTIONAL
     status: ACTIVE
     critical: true
     capability: CAP-INCOMING-001
-    summary: safe incoming sync and unmatched preservation
+    summary: безопасная входящая синхронизация и сохранение непривязанных писем
   - id: REQ-MAIL-002
     type: SAFETY
     status: ACTIVE
     critical: true
     capability: CAP-DELIVERY-001
-    summary: read-only deliverability preflight
+    summary: read-only предпроверка доставляемости
   - id: REQ-MAIL-003
     type: SAFETY
     status: ACTIVE
     critical: true
     capability: CAP-DEDUP-001
-    summary: duplicate recipient and idempotency protection
+    summary: защита от дублирующихся получателей и повторной обработки
   - id: REQ-MAIL-004
     type: FUNCTIONAL
     status: ACTIVE
     critical: false
     capability: CAP-RENDERING-001
-    summary: safe message content rendering
+    summary: безопасный рендеринг содержимого сообщения
   - id: REQ-MAIL-005
     type: SAFETY
     status: ACTIVE
     critical: true
     capability: CAP-DELIVERY-001
-    summary: no automatic retry after acceptance uncertainty
+    summary: нет автоматического повтора после неопределённости принятия
   - id: REQ-MAIL-006
     type: SAFETY
     status: ACTIVE
     critical: true
     capability: CAP-PACING-001
-    summary: pacing budget reservations and kill switch
+    summary: дозирование, бюджет, резервирование и kill switch
   - id: REQ-MAIL-007
     type: FUNCTIONAL
     status: ACTIVE
     critical: false
     capability: CAP-SUPPRESSION-001
-    summary: bounce and suppression semantics
+    summary: семантика отказов доставки и подавления
   - id: REQ-MAIL-008
     type: FUNCTIONAL
     status: ACTIVE
     critical: false
     capability: CAP-CAMPAIGN-001
-    summary: campaign stage pause and stop
+    summary: пауза и стоп стадии рассылки
   - id: REQ-DATA-001
     type: SAFETY
     status: ACTIVE
     critical: true
     capability: CAP-DATABASE-001
-    summary: read-only canonical database diagnostics
+    summary: read-only диагностика канонической базы данных
   - id: REQ-RUNTIME-001
     type: SAFETY
     status: ACTIVE
     critical: true
     capability: CAP-RUNTIME-001
-    summary: canonical runtime lock and provenance
+    summary: блокировка канонического рантайма и происхождение
   - id: REQ-FRONTEND-001
     type: FUNCTIONAL
     status: ACTIVE
     critical: false
     capability: CAP-FRONTEND-001
-    summary: frontend quality gates
+    summary: контрольные точки качества frontend
   - id: REQ-DIAG-001
     type: OPERATIONAL
     status: ACTIVE
     critical: true
     capability: CAP-DIAGNOSTIC-001
-    summary: typed doctor outcomes
+    summary: типизированные результаты doctor
   - id: REQ-DIAG-002
     type: OPERATIONAL
     status: ACTIVE
     critical: true
     capability: CAP-DIAGNOSTIC-001
-    summary: machine-readable diagnostic evidence
+    summary: машиночитаемые диагностические доказательства
   - id: REQ-DIAG-003
     type: OPERATIONAL
     status: DRAFT
     critical: true
     capability: CAP-DIAGNOSTIC-001
-    summary: future sandbox-only repair agent contract
+    summary: будущий контракт агента восстановления, только в sandbox

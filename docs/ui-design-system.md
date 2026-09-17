@@ -6,9 +6,9 @@ owner: product-design
 updated_at: 2026-09-04
 ---
 
-# SupplyDesk UI foundation — 2026-09-04
+# Основа UI SupplyDesk — 2026-09-04
 
-## Visual identity
+## Визуальная идентичность
 
 SupplyDesk — это не generic admin panel, а спокойный рабочий стол снабженца.
 Визуальная система должна помогать сравнивать компании, понимать состояние
@@ -17,105 +17,106 @@ SupplyDesk — это не generic admin panel, а спокойный рабоч
 синем action color, табличной точности и компактной иерархии «заявка → поставщик
 → коммуникация».
 
-## Product rationale → UI decision → evidence
+## Продуктовая причина → UI-решение → доказательство
 
-| Product reason | Principle | Concrete decision | Acceptance evidence |
+| Продуктовая причина | Принцип | Конкретное решение | Доказательство приёмки |
 |---|---|---|---|
-| Снабженец сканирует много объектов | Density with hierarchy | компактные строки и спокойные counters | first viewport, long names, 13+ rows |
-| Ошибка и ожидание требуют разного действия | Status is semantic | badge только для состояния, действия — кнопки | rendered status/error states |
-| Ответ нужно читать в контексте заявки | Context before content | request strip above message history | selected thread screenshot |
-| На мобильном важнее чтение и reply | Progressive disclosure | list → full-width detail, no squeezed sidebar | 390×844 and 360×800 screenshots |
-| Частые actions должны быть предсказуемыми | Shared controls | Button variants and common focus ring | keyboard/pointer interaction |
+| Снабженец сканирует много объектов | Плотность с иерархией | компактные строки и спокойные счётчики | первый экран, длинные названия, 13+ строк |
+| Ошибка и ожидание требуют разного действия | Статус семантичен | badge только для состояния, действия — кнопки | отрендеренные состояния статуса/ошибки |
+| Ответ нужно читать в контексте заявки | Контекст перед содержимым | полоса заявки над историей сообщений | скриншот выбранной переписки |
+| На мобильном важнее чтение и ответ | Постепенное раскрытие | список → детали на всю ширину, без сжатого сайдбара | скриншоты 390×844 и 360×800 |
+| Частые действия должны быть предсказуемыми | Общие элементы управления | варианты Button и общее кольцо фокуса | клавиатурное/указательное взаимодействие |
 
-## Tokens
+## Токены
 
-Текущая Tailwind palette сохраняется и оформляется как продуктовые роли:
+Текущая Tailwind-палитра сохраняется и оформляется как продуктовые роли:
 
-- Canvas: `ink-50` / `#f8fafc`.
-- Surface: white.
-- Text: `ink-900`, supporting text `ink-500`, quiet `ink-400`.
-- Action: `accent-600`/`accent-700`; use only for primary action, active link or
-  selected navigation.
-- State: emerald for success, amber for attention/waiting, rose for error;
-  never use state colors for counters or decoration.
-- Borders: `ink-200` for meaningful separation, `ink-100` for internal rhythm.
-- Radius: `rounded-lg` controls, `rounded-xl` surfaces, `rounded-2xl` only for
-  intentional hero/empty surfaces.
-- Spacing: 4, 8, 12, 16, 24, 32 px. New UI must not introduce arbitrary gaps.
-- UI font: `Public Sans`, then `Geist`, then the local system UI stack
-  (`ui-sans-serif`, `system-ui`, `Segoe UI`); no remote font request is added,
-  so the app remains usable offline. Embedded email content keeps its isolated
-  sender-controlled font stack as an intentional content exception.
-- Screen titles use the shared `page-title` role: `28px` on mobile up to `32px`
-  on desktop. The login display title uses `32px` on mobile up to `36px` on
-  desktop, matching the reference scale without making dense B2B content
-  oversized.
-- Primary screen `h1` elements use the local `sd-shimmer-heading` CSS treatment:
-  a restrained blue gradient sweep with a `prefers-reduced-motion` static
-  fallback. Shimmer is reserved for page titles, not error messages, metadata,
-  statuses or mail HTML.
+- Canvas (фон): `ink-50` / `#f8fafc`.
+- Surface (поверхность): белый.
+- Текст: `ink-900`, вспомогательный текст `ink-500`, приглушённый `ink-400`.
+- Action (действие): `accent-600`/`accent-700`; использовать только для основного действия,
+  активной ссылки или выбранной навигации.
+- Состояние: изумрудный для успеха, янтарный для внимания/ожидания, розовый для ошибки;
+  никогда не использовать цвета состояния для счётчиков или декора.
+- Границы: `ink-200` для значимого разделения, `ink-100` для внутреннего ритма.
+- Радиус: `rounded-lg` для элементов управления, `rounded-xl` для поверхностей, `rounded-2xl`
+  только для намеренных hero/пустых поверхностей.
+- Отступы: 4, 8, 12, 16, 24, 32 px. Новый UI не должен вводить произвольные промежутки.
+- Шрифт UI: `Public Sans`, затем `Geist`, затем локальный системный стек UI
+  (`ui-sans-serif`, `system-ui`, `Segoe UI`); удалённый запрос шрифта не добавляется,
+  поэтому приложение остаётся работоспособным офлайн. Встроенное содержимое письма сохраняет
+  свой изолированный, заданный отправителем шрифтовой стек как намеренное исключение для
+  содержимого.
+- Заголовки экранов используют общую роль `page-title`: `28px` на мобильном, до `32px`
+  на десктопе. Заголовок экрана входа использует `32px` на мобильном, до `36px` на
+  десктопе, соответствуя эталонному масштабу без укрупнения плотного B2B-контента.
+- Элементы `h1` основных экранов используют локальную CSS-обработку `sd-shimmer-heading`:
+  сдержанный синий градиентный сдвиг со статичным фолбэком при `prefers-reduced-motion`.
+  Shimmer зарезервирован только для заголовков страниц, не для сообщений об ошибках,
+  метаданных, статусов или HTML почты.
 
-## Primitives
+## Примитивы
 
-The staged foundation adds local primitives under `frontend/src/components/ui/`
-without adding shadcn/Radix or another dependency:
+Поэтапная основа добавляет локальные примитивы в `frontend/src/components/ui/`
+без добавления shadcn/Radix или другой зависимости:
 
-- `Button`: `primary`, `secondary`, `ghost`, `danger`, `link` variants and
-  `sm`/`md` sizes; all preserve 40px minimum touch height where appropriate.
-- `StatusBadge`: semantic state only (`success`, `info`, `warning`, `danger`,
-  `neutral`), with optional dot; no quantity or action labels.
-- `Count`: quiet numeric metadata for list headers and tabs.
-- `TextField`: consistent search/input surface with label, focus and error hooks.
+- `Button`: варианты `primary`, `secondary`, `ghost`, `danger`, `link` и размеры `sm`/`md`;
+  все сохраняют минимальную высоту касания 40px там, где это уместно.
+- `StatusBadge`: только семантическое состояние (`success`, `info`, `warning`, `danger`,
+  `neutral`), с опциональной точкой; без количества или подписей действия.
+- `Count`: тихие числовые метаданные для заголовков списков и вкладок.
+- `TextField`: единообразная поверхность поиска/ввода с меткой, фокусом и хуками ошибки.
 
-The current foundation uses these primitives in `/messages` and the main
-operational pages. Product-specific status, mail rendering and data-fetching
-components remain local where their behavior is domain-specific.
+Текущая основа использует эти примитивы на `/messages` и основных операционных страницах.
+Продуктово-специфичные статусы, рендеринг почты и компоненты получения данных остаются
+локальными там, где их поведение специфично для предметной области.
 
-## Design System v1 foundation extension — 2026-09-04
+## Расширение основы Design System v1 — 2026-09-04
 
-The semantic layer now also exposes canvas/surface/text/border/action/state
-roles, 4/8/12/16/24/32 spacing, 6/10/14 radii and shared control height in
-`frontend/src/index.css`, with matching Tailwind aliases. The canonical local
-inventory is:
+Семантический слой теперь также предоставляет роли canvas/surface/text/border/action/state,
+отступы 4/8/12/16/24/32, радиусы 6/10/14 и общую высоту элементов управления в
+`frontend/src/index.css`, с соответствующими Tailwind-алиасами. Канонический локальный
+инвентарь:
 
 `Button`, `Input`, `Textarea`, `Select`, `Checkbox`, `Radio`, `Switch`,
 `Badge`/`StatusBadge`, `Tooltip`, `DropdownMenu`, `Dialog`, `Sheet`, `Tabs`,
 `Card`, `Skeleton`, `EmptyState`, `ErrorState`, `LoadingState`, `Toast`,
-`TableShell`, `TextField`, `Count`, `PageFrame` and `PageIntro`.
+`TableShell`, `TextField`, `Count`, `PageFrame` и `PageIntro`.
 
-The migration intentionally covered shared shell, dashboard, requests,
-suppliers, blacklist, settings, new request, edit modal, tables and list
-toolbar. No second UI dependency was added, and domain-specific mail states
-were not replaced with generic fake data.
+Миграция намеренно охватила общую оболочку, дашборд, заявки, поставщиков, чёрный список,
+настройки, новую заявку, модальное окно редактирования, таблицы и панель инструментов списка.
+Вторая UI-зависимость не добавлялась, а специфичные для почты состояния не заменялись общими
+фейковыми данными.
 
-## Reference synthesis
+## Синтез эталонов
 
-References supplied by the owner: Linear, Vercel Dashboard, Stripe Dashboard,
-Notion. They are used as problem/category benchmarks, not copied layouts.
+Эталоны, предоставленные владельцем: Linear, Vercel Dashboard, Stripe Dashboard,
+Notion. Они используются как эталоны проблемы/категории, а не копируемые макеты.
 
-| Category/reference | Transferable principle | SupplyDesk adaptation | Deliberate non-copy |
+| Категория/эталон | Переносимый принцип | Адаптация SupplyDesk | Намеренное отличие от копирования |
 |---|---|---|---|
-| Information architecture / Linear | clear object hierarchy and low-noise navigation | request group → supplier row → message detail | no keyboard-first issue tracker clone |
-| Data-dense UI / Stripe Dashboard | restrained surfaces and aligned metadata | quiet counters, stable row rhythm, semantic status | no KPI-card wall or finance-specific density |
-| Visual system / Vercel Dashboard | strong contrast axis and simple surfaces | graphite rail + white workbench + blue action | no monochrome developer dashboard language |
-| Progressive disclosure / Notion | reveal detail in the context of the object | list → full-width reading detail, compact relation strip | no editor canvas or block model |
+| Информационная архитектура / Linear | чёткая иерархия объектов и малошумная навигация | группа заявки → строка поставщика → детали сообщения | не клон трекера задач с приоритетом клавиатуры |
+| Плотный по данным UI / Stripe Dashboard | сдержанные поверхности и выровненные метаданные | тихие счётчики, устойчивый ритм строк, семантический статус | не стена KPI-карточек и не финансовая плотность |
+| Визуальная система / Vercel Dashboard | сильная ось контраста и простые поверхности | графитовый rail + белый рабочий стол + синее действие | не монохромный язык дашборда разработчика |
+| Постепенное раскрытие / Notion | раскрытие деталей в контексте объекта | список → детали для чтения на всю ширину, компактная полоса связи | не canvas редактора и не блочная модель |
 
-Synthesis: a procurement-specific split workspace with a quiet information layer,
-clear semantic states and one unmistakable action path. The signature is the
-request context strip and its consistent transition into supplier communication.
+Синтез: специфичное для закупок раздельное рабочее пространство с тихим информационным слоем,
+чёткими семантическими состояниями и одним безошибочным путём действия. Отличительная черта —
+полоса контекста заявки и её последовательный переход в коммуникацию с поставщиком.
 
-## Acceptance criteria for `/messages`
+## Критерии приёмки для `/messages`
 
-- The first viewport identifies page, search, section, selected request and
-  primary action within seconds.
-- Buttons use the shared variants; status badges do not carry counts/actions.
-- The detail panel consumes available width without artificial max-width.
-- Long company names, long emails, missing company and multiline message content
-  do not clip or overlap.
-- Search, tabs, selection, reply, manual link and error recovery remain reachable.
-- No page-level horizontal overflow at required viewports.
-- `PASS`: full rendered QA covers the repository viewport matrix; `PARTIAL` for
-  the owner-facing comparison because the before image is inline-only and no
-  approved reference image was supplied.
-- Any future width not covered by the named Playwright profiles must be marked
-  `NOT VERIFIED`, even if the desktop CUA render looks correct.
+- Первый экран за секунды даёт понять страницу, поиск, раздел, выбранную заявку и
+  основное действие.
+- Кнопки используют общие варианты; статус-бейджи не несут количество/действия.
+- Панель деталей занимает доступную ширину без искусственного max-width.
+- Длинные названия компаний, длинные email, отсутствующая компания и многострочное содержимое
+  сообщения не обрезаются и не накладываются друг на друга.
+- Поиск, вкладки, выбор, ответ, ручная привязка и восстановление после ошибки остаются
+  достижимыми.
+- Нет горизонтального переполнения на уровне страницы на требуемых viewport.
+- `PASS`: полный отрендеренный QA покрывает матрицу viewport репозитория; `PARTIAL` для
+  сравнения, ориентированного на владельца, потому что изображение «до» только inline и не
+  предоставлено утверждённое эталонное изображение.
+- Любая будущая ширина, не покрытая названными профилями Playwright, должна быть помечена
+  `NOT VERIFIED`, даже если десктопный CUA-рендер выглядит корректно.

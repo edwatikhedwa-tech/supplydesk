@@ -7,25 +7,24 @@ updated_at: 2026-09-01
 source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 ---
 
-# Operations documentation
+# Эксплуатационная документация
 
-## Purpose
+## Назначение
 
-Safe runbooks for local development, diagnostics, deployment, recovery, and
-operational gates.
+Безопасные runbook'и (пошаговые инструкции) для локальной разработки, диагностики,
+развёртывания, восстановления и эксплуатационных контрольных точек.
 
-## Canonical ownership
+## Каноническое владение
 
-This directory owns operational procedures. Active task locks, current state,
-and deferred risk remain in `ai/**`.
+Эта директория владеет эксплуатационными процедурами. Блокировки активных задач, текущее
+состояние и отложенные риски хранятся в `ai/**`.
 
-## Expected artifacts
+## Ожидаемые артефакты
 
-Runbooks, preflight checks, rollback instructions, incident procedures, and
-links to the tracked scripts that implement them.
+Runbook'и, предполётные проверки, инструкции по откату, процедуры на случай инцидентов и ссылки
+на отслеживаемые скрипты, которые их реализуют.
 
-## Status
+## Статус
 
-`CURRENT` as an entrypoint; destructive or external actions require explicit
-gates documented in the repository rules.
-
+`CURRENT` как точка входа; разрушительные или внешние действия требуют явных контрольных точек,
+описанных в правилах репозитория.

@@ -7,25 +7,23 @@ updated_at: 2026-09-01
 source_commit: c076e1be385c3ae6da2716159e1f46fc2fce23d7
 ---
 
-# Data documentation
+# Документация по данным
 
-## Purpose
+## Назначение
 
-Data entities, persistence rules, migrations, retention, and data-safety
-documentation.
+Сущности данных, правила хранения, миграции, сроки хранения и документация по безопасности
+данных.
 
-## Canonical ownership
+## Каноническое владение
 
-This directory owns the documented data model. It does not contain live rows
-or replace the canonical database.
+Эта директория владеет описанной моделью данных. Она не содержит живых строк и не заменяет
+каноническую базу данных.
 
-## Expected artifacts
+## Ожидаемые артефакты
 
-Data model notes, migration references, retention rules, and safe fixture
-contracts.
+Заметки о модели данных, ссылки на миграции, правила хранения и безопасные контракты фикстур.
 
-## Status
+## Статус
 
-`CURRENT` as an entrypoint; no database schema or rows are changed by this
-documentation task.
-
+`CURRENT` как точка входа; эта документационная задача не меняет ни схему базы данных, ни строки
+в ней.
