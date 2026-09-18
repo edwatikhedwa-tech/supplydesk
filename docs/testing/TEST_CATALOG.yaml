@@ -54,3 +54,32 @@ test_catalog:
     path: scripts/run_test_suite.py
     kind: runner
     scope: точка входа регрессии unittest только через loopback
+  - id: TEST-FRONTEND-V2-001
+    path: frontend-v2/tests/e2e/smoke.spec.ts
+    kind: browser
+    scope: smoke-сценарии SMOKE-001..010 против SAFE_TEST backend (порт 18000)
+    inherited_evidence: 8 passed, 1 skipped (нет фикстуры переписки)
+  - id: TEST-FRONTEND-V2-002
+    path: frontend-v2/tests/e2e/a11y.spec.ts
+    kind: browser
+    scope: axe-проверки login/requests/request-detail/messages/suppliers
+    inherited_evidence: 4 passed, 1 failed (см. GAP-015)
+  - id: TEST-FRONTEND-V2-003
+    path: frontend-v2/tests/e2e/visual.spec.ts
+    kind: browser
+    scope: визуальные baseline'ы desktop 1440px без горизонтального overflow
+    inherited_evidence: 5 passed
+  - id: TEST-FRONTEND-V2-004
+    path: frontend-v2/tests/e2e/mobile.spec.ts
+    kind: browser
+    scope: визуальные/интерактивные проверки на 390px
+    inherited_evidence: 2 passed, 1 failed (см. GAP-016)
+  - id: TEST-FRONTEND-V2-005
+    path: frontend-v2/tests/e2e/regression/ai-context.spec.ts
+    kind: regression
+    scope: клиент отправляет ограниченный thread_ids в /api/ai/chat, а не список всех поставщиков
+    inherited_evidence: skipped (нет фикстуры переписки в SAFE_TEST)
+  - id: TEST-FRONTEND-V2-006
+    path: frontend-v2/tests/e2e/regression/supplier-dedup.spec.ts
+    kind: regression
+    scope: baseline-сценарий для P0 дедупликации поставщиков (заявка №1059); fixme до появления фикстуры

@@ -25,3 +25,10 @@ dist-ssr
 
 .vercel
 .env*
+
+# Playwright QA output (regenerable; screenshot baselines under
+# tests/e2e/**/*-snapshots/ are the only Playwright artifacts kept in git)
+/artifacts/playwright-report/
+/artifacts/playwright-output/
+/blob-report/
+/playwright/.cache/

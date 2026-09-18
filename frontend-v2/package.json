@@ -8,7 +8,14 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:smoke": "playwright test tests/e2e/smoke.spec.ts",
+    "test:e2e": "playwright test --project=desktop",
+    "test:a11y": "playwright test tests/e2e/a11y.spec.ts",
+    "test:visual": "playwright test tests/e2e/visual.spec.ts --project=desktop && playwright test tests/e2e/mobile.spec.ts --project=mobile",
+    "validate": "npm run typecheck && npm run test:unit && npm run test:smoke",
+    "typecheck": "tsc -b"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
@@ -27,6 +34,8 @@
     "three": "^0.169.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
