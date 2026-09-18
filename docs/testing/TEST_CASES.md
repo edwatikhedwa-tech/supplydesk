@@ -275,8 +275,11 @@ source_commit: dc66b0b
 Шаги: 1. Найти компанию через поиск (создаётся запись с хостом) 2. Получить/отправить письмо на личный адрес этой же компании, отличный от хоста 3. Проверить таблицу `suppliers`
 Ожидаемый результат: одна запись для этой компании в рамках рабочего пространства
 Текущий результат: **создаются две отдельные записи**
-Автоматизация: unittest (новый)
-Статус: FAIL (GAP-003)
+Автоматизация: unittest — реализовано в `tests/test_supplier_dedup_p0_regression.py`
+(воспроизводит реальным кодом `MailRepository.upsert_supplier` +
+`resolve_supplier_for_send`, не синтетическими строками)
+Статус: FAIL (GAP-003) — подтверждено выполнением 2026-09-18, красный тест намеренно не
+исправлен в этом проходе; исправление GAP-003 — следующая задача
 
 ### TC-SUP-002
 
@@ -420,3 +423,157 @@ source_commit: dc66b0b
 Текущий результат: **письмо никогда не отправляется**
 Автоматизация: Playwright/вручную (новый)
 Статус: FAIL (так и задумано — MOCK)
+
+---
+
+## Расширенный каталог (закрытие пробелов между кодом и документацией, 2026-09-18)
+
+Формат этого раздела — компактная таблица, а не полный блок выше: раздел закрывает разрыв между
+~730 реальными автоматизированными тестами в репозитории и 20 продуктовыми `TC-*`,
+задокументированными аудитом 2026-09-17. Каждая строка — реальный продуктовый сценарий, с
+привязкой к конкретному тестовому файлу(ам), где он проверяется. Правило: файл — не тест-кейс;
+один файл может закрывать несколько строк ниже, и наоборот, один сценарий может требовать
+нескольких файлов. `UNCOVERED` означает — реального теста с осмысленной проверкой (assert) на
+этот сценарий не найдено; код может существовать и использоваться как *setup* в других тестах
+без собственной проверки поведения.
+
+Эта задача **не** является новым аудитом: выводы ниже — фактическая инвентаризация уже
+существующего кода и тестов, без пересмотра требований/severity, установленных аудитом
+2026-09-17.
+
+### Requests
+
+| ID | Сценарий | Тест(ы) | Статус |
+|---|---|---|---|
+| TC-REQ-003 | Создание заявки (базовый CRUD) | используется как setup почти во всех файлах ниже (`MailRepository.create_request`), но не имеет собственного assertion-теста на сам факт создания/полей | `UNCOVERED` |
+| TC-REQ-004 | Изменение существующей заявки | не найдено | `UNCOVERED` |
+| TC-REQ-005 | Позиции заявки (добавление/список) | не найдено отдельного теста; используются только как payload в других тестах | `UNCOVERED` |
+| TC-REQ-006 | Запуск supplier discovery по заявке | `supplier_discovery_v2/tests/test_pipeline_fixture.py`, `test_enrichment_pipeline.py` | `AUTOMATED` |
+| TC-REQ-001 (см. выше) | Возобновление поиска после перезагрузки | `test_migration_replay_stability.py`, `test_canonical_runtime.py` | `AUTOMATED` |
+| TC-REQ-007 | Ошибки поиска (внешний провайдер недоступен/timeout) | `test_mail_deliverability.py` покрывает почтовые сбои; отдельного теста именно XMLRiver/поиск-сбоя не найдено | `UNCOVERED` |
+| TC-REQ-008 | Результаты поставщиков сохраняются и видны на заявке | `test_supplier_directory.py`, `test_dashboard.py` | `AUTOMATED` |
+| TC-REQ-009 | Email references (SD-XXXX) заявки | `test_request_email_references.py`, `test_request_email_reference_ui.py` | `AUTOMATED` |
+| TC-REQ-010 | Bulk send по заявке (массовая рассылка) | `test_mail_integration.py`, `test_outgoing_safety.py`, `test_mail_pacing.py` | `AUTOMATED` |
+
+### Supplier Discovery
+
+| ID | Сценарий | Тест(ы) | Статус |
+|---|---|---|---|
+| TC-DISC-001 | Query planning (построение поисковых запросов) | `supplier_discovery_v2/tests/test_query_planner.py` | `AUTOMATED` |
+| TC-DISC-002 | Enrichment (обогащение найденного поставщика) | `test_enrichment_pipeline.py` | `AUTOMATED` |
+| TC-DISC-003 | Контакт найден | `test_contact_intelligence.py`, `test_contact_resolution_send_path.py` | `AUTOMATED` |
+| TC-DISC-004 | Контакт не найден (пустой результат) | `supplier_discovery_v2/tests/test_matching.py` — частично; явного «контакт не найден → корректная деградация UI» теста не найдено | `AUTOMATED` (частично) |
+| TC-DISC-005 | Повторно найденный (уже известный) поставщик | `test_canonical_companies_cache_reuse.py` (`test_a_second_workspace_skips_the_live_checko_calls_entirely`) | `AUTOMATED` |
+| TC-DISC-006 | Разные identity signals (ИНН/домен/email) сходятся к одной записи | `test_supplier_identity.py`, `test_supplier_name_resolution.py` | `AUTOMATED` (см. также GAP-003 — сходится не всегда, TC-SUP-001) |
+| TC-DISC-007 | ИНН как идентификатор | `supplier_discovery_v2/tests/test_matching.py`, `test_supplier_import_preview.py` | `AUTOMATED` |
+| TC-DISC-008 | Домен как идентификатор | `test_supplier_identity.py` | `AUTOMATED` |
+| TC-DISC-009 | Email как идентификатор (fallback-путь) | `test_supplier_dedup_p0_regression.py` (новый, см. GAP-003 — это как раз проблемный путь) | `AUTOMATED` (красный, GAP-003) |
+| TC-DISC-010 | Canonical company (кросс-tenant резолюция) | `test_canonical_companies.py` | `AUTOMATED` |
+| TC-DISC-011 | Checko cache (не тратить бюджет повторно) | `test_canonical_companies_cache_reuse.py` | `AUTOMATED` |
+
+### Suppliers
+
+| ID | Сценарий | Тест(ы) | Статус |
+|---|---|---|---|
+| TC-SUP-003 | Workspace isolation (поставщик не виден чужому workspace) | `test_supplier_workspace_isolation.py` | `AUTOMATED` |
+| TC-SUP-004 | Supplier directory (список/фильтры) | `test_supplier_directory.py` | `AUTOMATED` |
+| TC-SUP-005 | Import preview | `test_supplier_import_preview.py` | `AUTOMATED` |
+| TC-SUP-006 | Import apply | `test_supplier_import_apply.py` | `AUTOMATED` |
+| TC-SUP-007 | Ручной ввод ИНН | `test_supplier_import_preview.py` | `AUTOMATED` |
+| TC-SUP-008 | Name resolution (нормализация названия компании) | `test_supplier_name_resolution.py`, `test_list_page_header_pluralization.py` | `AUTOMATED` |
+| TC-SUP-009 | Contact intelligence (приоритет контакта) | `test_contact_intelligence.py`, `test_contact_resolution_send_path.py` | `AUTOMATED` |
+| TC-SUP-010 | Чёрный список — управление записями (CRUD) | не найдено отдельного файла; `blacklist_entries` упоминается только косвенно в `test_dashboard.py`/`test_thread_metadata.py` | `UNCOVERED` |
+| TC-SUP-011 | Классификации поставщика (workspace-specific) | `test_workspace_supplier_classifications.py` | `AUTOMATED` |
+| TC-SUP-012 | Дублирующаяся идентичность (см. TC-SUP-001) | `test_supplier_dedup_p0_regression.py` | `AUTOMATED` (красный, GAP-003) |
+
+### Mail / Messages
+
+| ID | Сценарий | Тест(ы) | Статус |
+|---|---|---|---|
+| TC-MSG-005 | Входящая синхронизация | `test_sent_mail_sync.py` покрывает исходящую сторону; входящую — `test_mail_topic_import.py` частично | `AUTOMATED` (частично) |
+| TC-MSG-006 | Исходящая отправка | `test_mail_integration.py`, `test_outgoing_safety.py` | `AUTOMATED` |
+| TC-MSG-007 | Sent-sync (отправленное попадает в переписку) | `test_sent_mail_sync.py`, `test_sent_mail_sync_ui.py` | `AUTOMATED` |
+| TC-MSG-008 | Threading (группировка по заявке/поставщику) | `test_thread_metadata.py`, `test_messages_visibility.py` | `AUTOMATED` |
+| TC-MSG-009 | Topic import (импорт переписки по теме) | `test_mail_topic_import.py`, `test_mail_topic_import_ui.py` | `AUTOMATED` |
+| TC-MSG-010 | HTML-рендеринг письма | `test_mail_content.py`, `test_email_renderer_frame_observer.py` | `AUTOMATED` |
+| TC-MSG-011 | Plain-text письмо | `test_mail_content.py` | `AUTOMATED` |
+| TC-MSG-012 | CID-вложения (inline-картинки) | `test_mail_content.py` — есть ли отдельный CID-кейс, не подтверждено без построчного чтения; помечено консервативно | `NOT_TESTED` (требует подтверждения) |
+| TC-MSG-013 | Вложения (обычные) | GAP-004: вложения входящих писем не отображаются в UI вообще | `BLOCKED` (GAP-004) |
+| TC-MSG-014 | Кликабельные ссылки в письме | `test_mail_content.py` | `AUTOMATED` |
+| TC-MSG-015 | Unread/read статус | `test_thread_metadata.py` (unread_count), фронтенд — не покрыт браузерным тестом отдельно | `AUTOMATED` (backend) |
+| TC-MSG-016 | Статусы переписки (in_progress/deferred/rejected) | `test_messages_interaction_contract.py`, `test_thread_notes_visibility.py` | `AUTOMATED` |
+| TC-MSG-017 | Заметки (notes) к переписке | `test_thread_notes_visibility.py` | `AUTOMATED` |
+| TC-MSG-018 | Непривязанная почта (unmatched inbox) | `test_messages_visibility.py` | `AUTOMATED` |
+| TC-MSG-019 | Retry отправки | `test_cross_provider_retry.py` | `AUTOMATED` |
+| TC-MSG-020 | Pacing (дозирование отправки) | `test_mail_pacing.py` (65 тестов — самый крупный файл в репозитории) | `AUTOMATED` |
+| TC-MSG-021 | Bounce/suppression | `test_mail_deliverability.py`, `test_mail_status_semantics.py` | `AUTOMATED` |
+| TC-MSG-022 | Delivery uncertainty (не подтверждена доставка) | `test_mail_status_semantics.py`, `test_mail_smtp_evidence.py` | `AUTOMATED` |
+| TC-MSG-023 | Дедуп получателей | `test_mail_integrity.py` | `AUTOMATED` |
+| TC-MSG-024 | Кросс-провайдерное поведение (разные почтовые провайдеры) | `test_cross_provider_retry.py`, `test_mailru_mvp.py` | `AUTOMATED` |
+
+### AI
+
+| ID | Сценарий | Тест(ы) | Статус |
+|---|---|---|---|
+| TC-AI-003 | Thread ownership (сервер проверяет владение thread) | `test_ai_context_scoping.py` | `AUTOMATED` |
+| TC-AI-004 | Request ownership | `test_ai_context_scoping.py` (`test_workspace_isolation_...`) | `AUTOMATED` |
+| TC-AI-005 | Только коммуникация попадает в контекст (не весь список поставщиков) | `test_ai_context_scoping.py` (backend) + `frontend-v2/tests/e2e/regression/ai-context.spec.ts` (browser, новый, 2026-09-18) | `AUTOMATED` |
+| TC-AI-006 | Несколько threads в одном запросе к AI | `test_ai_context_scoping.py` (`test_selecting_3_of_132_suppliers_...`) | `AUTOMATED` |
+| TC-AI-007 | Пустой контекст (ни один thread не выбран) | не найдено явного теста на нулевой `thread_ids` | `UNCOVERED` |
+| TC-AI-008 | Дневной лимит расходов | `test_ai_chat_usage.py` | `AUTOMATED` |
+| TC-AI-009 | Сбой провайдера (RouterAI недоступен) | не найдено | `UNCOVERED` |
+| TC-AI-010 | Слишком большой контекст (превышение `TOTAL_CONTEXT_CHAR_BUDGET`) | не найдено — см. GAP-013 | `UNCOVERED` |
+
+### Tasks
+
+| ID | Сценарий | Тест(ы) | Статус |
+|---|---|---|---|
+| TC-TASK-003 | CRUD задачи | `test_task_details.py` | `AUTOMATED` |
+| TC-TASK-004 | Завершение задачи | `test_task_details.py`, `test_task_creation_feedback.py` | `AUTOMATED` |
+| TC-TASK-001 (см. выше) | Напоминание (browser) | NOT_TESTED (уже так помечено аудитом) | `NOT_TESTED` |
+| TC-TASK-005 | Дедупликация напоминаний | `test_followup_task_dedup.py` | `AUTOMATED` |
+| TC-TASK-006 | Dashboard/calendar связь задач | `test_dashboard_calendar.py` | `AUTOMATED` |
+| TC-TASK-002 (см. выше) | UI-уведомление | `test_task_reminder_ui.py` (компонентный), реальный browser-тест — NOT_TESTED | `AUTOMATED` (частично) |
+| TC-TASK-007 | Email/телефон как канал напоминания не поддерживаются | `test_task_reminder_delivery.py` подтверждает MOCK-статус (см. TC-TASK-002) | `AUTOMATED` |
+
+### Dashboard
+
+| ID | Сценарий | Тест(ы) | Статус |
+|---|---|---|---|
+| TC-DASH-001 | KPI/загрузка данных | `test_dashboard.py` | `AUTOMATED` |
+| TC-DASH-002 | Ссылки на заявки с дашборда | `test_dashboard.py` | `AUTOMATED` |
+| TC-DASH-003 | Task/calendar блок на дашборде | `test_dashboard_calendar.py` | `AUTOMATED` |
+| TC-DASH-004 | Фильтр bulk-рассыльщиков (не считать их как «новый ответ») | `test_dashboard_bulk_sender_filter.py` | `AUTOMATED` |
+
+### Logistics
+
+| ID | Сценарий | Тест(ы) | Статус |
+|---|---|---|---|
+| TC-LOG-001 | Dellin — успешный расчёт | `test_logistics_quote.py` | `AUTOMATED` |
+| TC-LOG-002 | Невалидный ввод | `test_logistics_quote.py` | `AUTOMATED` |
+| TC-LOG-003 | Сбой провайдера (Dellin недоступен) | `test_logistics_quote.py` (28 тестов в файле — весьма вероятно покрыт; не подтверждено построчно) | `AUTOMATED` |
+
+### Security / Data
+
+| ID | Сценарий | Тест(ы) | Статус |
+|---|---|---|---|
+| TC-SEC-001 | Аутентификация | `test_login_provider_ring.py`, диагностика `tests/diagnostics/` | `AUTOMATED` |
+| TC-SEC-002 | CSRF | часть `test_mail_integrity.py`; выделенного файла нет | `AUTOMATED` (частично) |
+| TC-SEC-003 | Workspace isolation (сквозная) | `test_supplier_workspace_isolation.py`, `test_ai_context_scoping.py` | `AUTOMATED` |
+| TC-SEC-004 | Миграции | `test_migration_replay_stability.py` | `AUTOMATED` |
+| TC-SEC-005 | Postgres/SQLite совместимость | `test_db_compat_postgres_sql_adapter.py` | `AUTOMATED` |
+| TC-SEC-006 | Редактирование секретов в логах/выводе | `test_secret_redaction.py`, `tests/diagnostics/test_diagnostic_negative_fixtures.py` | `AUTOMATED` |
+| TC-SEC-007 | Runtime safety (loopback-only, OFFLINE_TEST) | `tests/diagnostics/test_reproducible_environment.py`, `tests/diagnostics/test_runtime_guard.py` | `AUTOMATED` |
+
+### Frontend-v2
+
+| ID | Сценарий | Тест(ы) | Статус |
+|---|---|---|---|
+| TC-FE-001 | Production routes открываются | `frontend-v2/tests/e2e/smoke.spec.ts` (SMOKE-003) | `AUTOMATED` |
+| TC-FE-002 | Loading-состояния | `frontend-v2/tests/e2e/smoke.spec.ts` (SMOKE-001/004/005) | `AUTOMATED` (частично — не отдельный «медленная сеть» кейс) |
+| TC-FE-003 | Empty-состояния | не выделено отдельным тестом (только косвенно, если у фикстуры нет данных) | `UNCOVERED` |
+| TC-FE-004 | Error-состояния (5xx с бэкенда) | `frontend-v2/tests/e2e/smoke.spec.ts` (SMOKE-009/010, сеть) | `AUTOMATED` (частично — реального форс-инжекта 5xx нет) |
+| TC-FE-005 | Mobile (390px) | `frontend-v2/tests/e2e/mobile.spec.ts` | `AUTOMATED` (1 из 3 — FAIL, GAP-016) |
+| TC-FE-006 | Accessibility (axe) | `frontend-v2/tests/e2e/a11y.spec.ts` | `AUTOMATED` (1 из 5 — FAIL, GAP-015) |
+| TC-FE-007 | Visual regression | `frontend-v2/tests/e2e/visual.spec.ts` | `AUTOMATED` |
+| TC-FE-008 | Console errors / API 5xx во время обычной навигации | `frontend-v2/tests/e2e/smoke.spec.ts` (SMOKE-009/010) | `AUTOMATED` |

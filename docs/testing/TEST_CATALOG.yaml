@@ -16,7 +16,12 @@ test_catalog:
     path: tests/
     kind: regression
     scope: унаследованный набор backend и почты
-    baseline: 373 passed, 1 skipped
+    baseline: >-
+      2026-09-18 (scripts/run_test_suite.py, полный прогон tests/ + tests/diagnostics/ +
+      supplier_discovery_v2/tests/): 738 tests, 1 failure, 0 errors, 2 skipped. Единственный
+      failure — tests/test_supplier_dedup_p0_regression.py, намеренный красный regression-тест
+      для GAP-003 (не исправлен в этом проходе). Прежнее значение "373 passed, 1 skipped"
+      относилось к более узкому историческому подмножеству и устарело.
   - id: TEST-DISCOVERY-001
     path: supplier_discovery_v2/tests/
     kind: unit
@@ -58,12 +63,15 @@ test_catalog:
     path: frontend-v2/tests/e2e/smoke.spec.ts
     kind: browser
     scope: smoke-сценарии SMOKE-001..010 против SAFE_TEST backend (порт 18000)
-    inherited_evidence: 8 passed, 1 skipped (нет фикстуры переписки)
+    inherited_evidence: 9 passed (2026-09-18, после scripts/seed_qa_fixtures.py — больше не skip)
   - id: TEST-FRONTEND-V2-002
     path: frontend-v2/tests/e2e/a11y.spec.ts
     kind: browser
     scope: axe-проверки login/requests/request-detail/messages/suppliers
-    inherited_evidence: 4 passed, 1 failed (см. GAP-015)
+    inherited_evidence: >-
+      3 passed, 2 failed (2026-09-18, после seed_qa_fixtures.py: GAP-015 login,
+      GAP-018 messages nested-interactive — второй баг стал виден только после появления
+      данных переписки)
   - id: TEST-FRONTEND-V2-003
     path: frontend-v2/tests/e2e/visual.spec.ts
     kind: browser
@@ -78,8 +86,19 @@ test_catalog:
     path: frontend-v2/tests/e2e/regression/ai-context.spec.ts
     kind: regression
     scope: клиент отправляет ограниченный thread_ids в /api/ai/chat, а не список всех поставщиков
-    inherited_evidence: skipped (нет фикстуры переписки в SAFE_TEST)
+    inherited_evidence: >-
+      1 passed (2026-09-18, после scripts/seed_qa_fixtures.py: Request -> Supplier A/B/C,
+      B без переписки никогда не попадает в thread_ids)
   - id: TEST-FRONTEND-V2-006
     path: frontend-v2/tests/e2e/regression/supplier-dedup.spec.ts
     kind: regression
-    scope: baseline-сценарий для P0 дедупликации поставщиков (заявка №1059); fixme до появления фикстуры
+    scope: указатель на реальный P0-тест (см. TEST-SUPPLIER-DEDUP-001); fixme само по себе, реальный тест — в backend
+  - id: TEST-SUPPLIER-DEDUP-001
+    path: tests/test_supplier_dedup_p0_regression.py
+    kind: regression
+    scope: >-
+      GAP-003/INV-SUP-002 — воспроизводит через реальные MailRepository.upsert_supplier +
+      resolve_supplier_for_send (не синтетические строки), что поставщик, найденный по домену,
+      получает вторую identity при контакте через личный email того же человека
+    inherited_evidence: >-
+      1 failed (намеренно, 2026-09-18) — красный тест до исправления GAP-003, следующей задачи

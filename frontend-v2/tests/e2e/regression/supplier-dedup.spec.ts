@@ -1,32 +1,26 @@
 import { test } from '@playwright/test';
 
 /**
- * P0 supplier-identity duplication (see docs/product/SUPPLIERS.md and
- * ai/DEFERRED_FINDINGS.md). This test intentionally does NOT fix anything --
- * per the current task scope, P0 supplier deduplication stays untouched
- * until a baseline exists. This spec documents the concrete reported case
- * so a future fix has an executable acceptance target.
+ * P0 supplier-identity duplication (GAP-003 / INV-SUP-002; see
+ * docs/product/SUPPLIERS.md, docs/domain/SUPPLIER_MODEL.md and
+ * docs/system/KNOWN_GAPS.md#GAP-003).
  *
- * Reported case: заявка №1059 (sfera.termo@yandex.ru). Two supplier rows
- * for one real company:
- *   - id 2837, external_key=termo-sfera.pro (has registry/finance data)
- *   - id 3315, external_key=sfera.termo@yandex.ru (holds the real thread,
- *     created via the outgoing-send path with no host, per
- *     request_suppliers.reason='Добавлен при отправке письма.')
+ * The real, executable reproduction of this bug now lives at
+ * tests/test_supplier_dedup_p0_regression.py -- it drives the actual
+ * MailRepository.upsert_supplier / resolve_supplier_for_send code paths
+ * production uses (not a UI click-through), and currently FAILS on purpose:
+ * a supplier discovered by corporate domain gets a SECOND supplier row the
+ * moment the same real company is contacted by a staff member's personal
+ * email with no host known at send time. Run it with:
+ *   .venv-test/Scripts/python.exe -m unittest tests.test_supplier_dedup_p0_regression -v
  *
- * This exact production data does not exist in the disposable SAFE_TEST
- * fixture used by the rest of this suite, so the case cannot be exercised
- * end-to-end here without either seeding production-shaped fixtures (out of
- * scope for this QA pass) or reading production data from a test (never
- * allowed). Marked fixme rather than deleted or silently skipped, so it
- * stays visible as a tracked gap instead of a false green.
+ * There is intentionally no frontend/browser reproduction of this: the bug
+ * is in server-side identity resolution, a browser click-through would only
+ * re-test the same server call through more moving parts for no extra
+ * signal. This file stays as the pointer other QA/regression suites expect
+ * to find under tests/e2e/regression/.
  */
 test.fixme(
-  'a request with two supplier rows for the same real company (external_key=host vs external_key=email) shows one merged supplier, not two',
-  async () => {
-    // Intentionally not implemented: requires the production-shaped fixture
-    // described above. Do not mark this PASS without that data; do not
-    // change canonical_companies/global_suppliers merge logic to make this
-    // pass -- that is the P0 fix, a separate task.
-  },
+  'see tests/test_supplier_dedup_p0_regression.py for the real, currently-failing reproduction of GAP-003',
+  async () => {},
 );

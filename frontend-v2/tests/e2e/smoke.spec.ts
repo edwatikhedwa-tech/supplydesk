@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { loginAsTestUser } from './support/auth';
+import { loadQaFixture } from './support/fixture';
 
 const EXPECTED_STATUSES = new Set([500, 502, 503, 504]);
 
@@ -94,12 +95,14 @@ test('SMOKE-005: an existing request opens with its main blocks rendered', async
 test('SMOKE-006: messages list opens and a conversation can be opened', async ({ page }) => {
   const diag = attachDiagnostics(page);
   await loginAsTestUser(page);
+  const fixture = await loadQaFixture(page.request);
   await page.getByRole('link', { name: /Сообщения/ }).click();
   await expect(page.getByRole('heading', { name: /Сообщения/ })).toBeVisible();
-  const threadRow = page.locator('[data-testid="thread-row"], button:has-text("@")').first();
-  if (await threadRow.count()) {
-    await threadRow.click();
-  }
+  // scripts/seed_qa_fixtures.py guarantees this thread; deep-link by
+  // request+supplier id instead of clicking through the (auto-refreshing,
+  // flaky-to-click-through) grouped list.
+  await page.goto(`/#/messages?request=${fixture.requestId}&supplier=${fixture.supplierAId}`);
+  await expect(page.getByText('ООО КЕЙС А', { exact: false }).first()).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('#root')).not.toBeEmpty();
   expect(diag.pageErrors, diag.pageErrors.join('\n')).toEqual([]);
   expect(diag.badResponses, diag.badResponses.join('\n')).toEqual([]);
@@ -129,15 +132,9 @@ test('SMOKE-008: AI assistant panel opens and offers a context selection', async
     await route.abort();
   });
   await loginAsTestUser(page);
-  await page.getByRole('link', { name: /Сообщения/ }).click();
-  const threadRow = page.locator('[data-testid="thread-row"], button:has-text("@")').first();
-  test.skip(
-    !(await threadRow.count()),
-    'SAFE_TEST fixture (runtime/test-data/supplier.sqlite3) has no correspondence threads yet -- ' +
-      'the AI assistant only appears once a thread is open. See final QA report: needs a seeded ' +
-      'thread fixture to exercise this smoke test end-to-end.',
-  );
-  await threadRow.click();
+  const fixture = await loadQaFixture(page.request);
+  await page.goto(`/#/messages?request=${fixture.requestId}&supplier=${fixture.supplierAId}`);
+  await expect(page.getByText('ООО КЕЙС А', { exact: false }).first()).toBeVisible({ timeout: 10_000 });
   const assistantToggle = page.getByRole('button', { name: 'Открыть ИИ-помощника' });
   await expect(assistantToggle).toBeVisible();
   await assistantToggle.click();

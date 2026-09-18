@@ -6,6 +6,7 @@ const BASE_URL = process.env.QA_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: './tests/e2e',
+  globalSetup: './tests/e2e/support/global-setup.ts',
   timeout: 30_000,
   expect: {
     timeout: 5_000,
