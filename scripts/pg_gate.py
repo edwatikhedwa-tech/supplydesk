@@ -36,6 +36,7 @@ TEST_MODULES = [
     "tests.test_mail_analysis_validation",
     "tests.test_attachment_persistence",
     "tests.test_analysis_queue",
+    "tests.test_canary",
     "tests.test_supplier_dedup_p0_regression",
     "tests.test_contact_intelligence",
     "tests.test_contact_resolution_send_path",
@@ -97,7 +98,8 @@ def phase_scratch_replay(url: str) -> bool:
     need = {"supplier_identity_evidence", "canonical_company_contact_signal_revocations", "supplier_merges",
             "supplier_merge_moves", "supplier_merge_candidates", "mail_analyses", "mail_ai_runs", "mail_facts", "mail_analysis_events",
             "mail_attachment_analyses", "mail_attachment_facts", "mail_attachment_ai_calls", "mail_analysis_jobs", "mail_ai_reply_cache",
-            "mail_inbox_attachments", "mail_fact_bindings"}
+            "mail_inbox_attachments", "mail_fact_bindings", "mail_intelligence_canary", "mail_intelligence_stop_events",
+            "mail_intelligence_queue_samples", "mail_intelligence_metric_snapshots"}
     missing = need - table_names(url, "g_scratch")
     print(f"[scratch] new tables present: {sorted(need - missing)}; missing={sorted(missing)}")
     ok &= not missing
@@ -107,9 +109,9 @@ def phase_scratch_replay(url: str) -> bool:
     print("[replay] ensure_schema x3 + new repository start on the same schema: OK")
     with admin(url) as c:  # constraints really exist
         n = c.execute("SELECT count(*) FROM pg_indexes WHERE schemaname='g_scratch' AND indexname IN "
-                      "('uq_supplier_identity_evidence_fact','idx_supplier_merge_moves_merge','uq_mail_analysis_jobs_key','uq_mail_attachment_analyses_key')").fetchone()[0]
-    print(f"[replay] indexes present={n}/4")
-    ok &= n == 4
+                      "('uq_supplier_identity_evidence_fact','idx_supplier_merge_moves_merge','uq_mail_analysis_jobs_key','uq_mail_attachment_analyses_key','uq_mail_intelligence_metric_snapshots')").fetchone()[0]
+    print(f"[replay] indexes present={n}/5")
+    ok &= n == 5
     drop_schema(url, "g_scratch")
     return ok
 

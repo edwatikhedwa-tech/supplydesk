@@ -31,7 +31,7 @@ class AttachmentAnalysisMixin:
         return [{"pid": str(r["position_key"] or r["id"]), "name": r["name"], "sku": None, "brand": "", "qty": r["quantity"], "unit": ""} for r in rows]
 
     def analyze_message_attachments(self, workspace_id: int, message_id: int, *, models: Any = None, vision: Any = None,
-                                    version: str = AI.ANALYSIS_VERSION) -> dict[str, Any]:
+                                    version: str = AI.ANALYSIS_VERSION, ocr_enabled: bool = True) -> dict[str, Any]:
         summary: dict[str, Any] = {"message_id": message_id, "attachments": 0, "analysed": 0, "reused_same_bytes": 0, "already_done": 0,
                                    "ai_calls": 0, "cost_rub": 0.0, "manual_review": False, "facts": 0, "conflicts": 0, "items": []}
         with self.connect() as connection:
@@ -63,7 +63,7 @@ class AttachmentAnalysisMixin:
                 reused_from, ai_calls, cost, latency, ocr_pages = int(original["id"]), [], 0.0, 0, 0
                 summary["reused_same_bytes"] += 1
             else:
-                result = AI.analyze_attachment(data, att["filename"], models=models, cache=None, version=version, vision=vision)
+                result = AI.analyze_attachment(data, att["filename"], models=models, cache=None, version=version, vision=vision if ocr_enabled else None, ocr_enabled=ocr_enabled)
                 reused_from, ai_calls = None, result.get("ai_calls") or []
                 cost = sum(float(c.get("cost_rub") or 0.0) for c in ai_calls)
                 latency, ocr_pages = int(result.get("latency_ms") or 0), int(result.get("ocr_pages") or 0)

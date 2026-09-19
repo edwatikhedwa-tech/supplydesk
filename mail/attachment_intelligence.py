@@ -592,7 +592,7 @@ def vision_repair(models: Models, page: int, image: Any, targets: list[dict[str,
 
 # ------------------------------------------------------------------------------------------------ analysis of one attachment
 def analyze_attachment(data: bytes, filename: str = "", models: Models | None = None, cache: Any = None, version: str = ANALYSIS_VERSION,
-                       vision: Models | None = None) -> dict[str, Any]:
+                       vision: Models | None = None, ocr_enabled: bool = True) -> dict[str, Any]:
     """Idempotent by content hash: (sha256, analysis version) -> one result, computed once."""
     digest = sha256_hex(data)
     if cache is not None:
@@ -610,6 +610,12 @@ def analyze_attachment(data: bytes, filename: str = "", models: Models | None = 
     try:
         if kind in ("empty", "corrupt", "unsupported"):
             raise ParseError(kind)
+        if kind in ("png", "jpg") and not ocr_enabled:
+            result.update(status="ok", needs_ocr=True, parser="scan_not_enabled", manual_review=True, reasons=["scan_or_image_manual_review"])
+            result["latency_ms"] = int((time.monotonic() - started) * 1000)
+            if cache is not None:
+                cache.put(digest, version, result)
+            return result
         if kind == "xlsx":
             lines, result["parser"] = parse_xlsx(data), "xlsx_cells"
         elif kind == "docx":
@@ -617,6 +623,12 @@ def analyze_attachment(data: bytes, filename: str = "", models: Models | None = 
         elif kind == "pdf":
             lines, scans = parse_pdf_text(data)
             result["parser"] = "pdf_text_layer"
+            if scans and not ocr_enabled:
+                result.update(needs_ocr=True, parser="pdf_scan_not_enabled", manual_review=True, reasons=["scan_or_image_manual_review"])
+                result["latency_ms"] = int((time.monotonic() - started) * 1000)
+                if cache is not None:
+                    cache.put(digest, version, result)
+                return result
             if scans:
                 from PIL import Image  # noqa: F401
                 result["needs_ocr"], result["parser"] = True, "pdf_text_layer+ocr"

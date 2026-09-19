@@ -23,6 +23,7 @@ from .supplier_merge import SupplierMergeMixin
 from .message_analysis import MessageAnalysisMixin
 from .attachment_analysis import AttachmentAnalysisMixin
 from .analysis_queue import AnalysisQueueMixin, intelligence_enabled
+from .canary import CanaryMixin, CanaryTickMixin
 from .attachment_intelligence import ANALYSIS_VERSION as ATTACHMENT_ANALYSIS_VERSION
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
@@ -261,7 +262,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 class MailRepository(
     AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, SupportMixin, AiChatUsageMixin, AiConversationsMixin, TasksMixin,
     CanonicalCompaniesMixin, ContactIntelligenceMixin, TaskReminderDeliveryMixin, SupplierIdentityEvidenceMixin,
-    SupplierMergeMixin, MessageAnalysisMixin, AttachmentAnalysisMixin, AnalysisQueueMixin,
+    SupplierMergeMixin, MessageAnalysisMixin, AttachmentAnalysisMixin, AnalysisQueueMixin, CanaryMixin, CanaryTickMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
@@ -2199,7 +2200,8 @@ class MailRepository(
         messages: Iterable[Any],
         enqueue_analysis: bool | None = None,
     ) -> dict[str, int]:
-        enqueue = intelligence_enabled() if enqueue_analysis is None else bool(enqueue_analysis)
+        explicit_enqueue = enqueue_analysis is not None
+        enqueue = bool(enqueue_analysis) if explicit_enqueue else intelligence_enabled()
         enqueued = 0
         imported = 0
         skipped = 0
@@ -2274,7 +2276,7 @@ class MailRepository(
                                 connection.execute(
                                     "INSERT INTO mail_inbox_attachments(inbox_message_id, filename, mime_type, size_bytes, content) VALUES (?, ?, ?, ?, ?)",
                                     (int(inbox_row[0]), attachment["filename"], attachment["mime_type"], int(attachment["size_bytes"]), attachment["content"]))
-                        if enqueue:
+                        if enqueue and (explicit_enqueue or self.canary_accepts_message(workspace_id, incoming.received_at.astimezone(UTC).isoformat(), connection)):
                             enqueued += self.enqueue_analysis_for_message(connection, workspace_id, "inbox_message", int(inbox_row[0]))
                     continue
                 created_at = incoming.received_at.astimezone(UTC).isoformat()
@@ -2290,7 +2292,7 @@ class MailRepository(
                         (message_id, attachment["filename"], attachment["mime_type"], int(attachment["size_bytes"]), attachment["content"]),
                     )
                 imported_ids.append(message_id)
-                if enqueue:
+                if enqueue and (explicit_enqueue or self.canary_accepts_message(workspace_id, incoming.received_at.astimezone(UTC).isoformat(), connection)):
                     enqueued += self.enqueue_analysis_for_message(connection, workspace_id, "mail_message", message_id, has_attachments=bool(getattr(incoming, "attachments", None)))
                 # One rule set for every inbound message in a supplier's thread (real reply =
                 # ownership evidence, bounce = deliverability evidence); see
@@ -2847,7 +2849,7 @@ class MailRepository(
             for attachment in moved:                       # the files kept while the request was unknown now belong to the linked message
                 connection.execute("INSERT INTO mail_attachments(message_id, filename, mime_type, size_bytes, content) VALUES (?, ?, ?, ?, ?)",
                                    (new_message_id, attachment["filename"], attachment["mime_type"], attachment["size_bytes"], attachment["content"]))
-            if moved and intelligence_enabled():
+            if moved and self.canary_active(workspace_id, connection):
                 self._enqueue_job(connection, workspace_id, "mail_message", new_message_id, "attachments", ATTACHMENT_ANALYSIS_VERSION)
             self._audit_connection(
                 connection, workspace_id, user_id, "mail.inbox_attached", "mail_message", str(new_message_id),

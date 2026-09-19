@@ -23,6 +23,7 @@ from typing import Any
 from uuid import uuid4
 
 from .attachment_intelligence import ANALYSIS_VERSION as ATTACHMENT_VERSION
+from .canary import BudgetPaused
 from .message_analysis import ANALYSIS_VERSION as BODY_VERSION, ModelReply
 
 LEASE_SECONDS = 300
@@ -49,8 +50,8 @@ def _request_key(stage: str, model: str, system: str, user: Any, schema: Any) ->
 class CachingModels:
     """Wraps a models adapter: the reply is persisted immediately (own commit) and replayed for an identical request."""
 
-    def __init__(self, inner: Any, repository: Any, workspace_id: int) -> None:
-        self.inner, self.repository, self.workspace_id = inner, repository, workspace_id
+    def __init__(self, inner: Any, repository: Any, workspace_id: int, guard: Any = None) -> None:
+        self.inner, self.repository, self.workspace_id, self.guard = inner, repository, workspace_id, guard
         self.paid_calls = 0
         self.replays = 0
 
@@ -68,6 +69,8 @@ class CachingModels:
                 d = json.loads(row["reply_json"])
                 return ModelReply(d.get("data"), d.get("model", ""), d.get("provider", "routerai"), int(d.get("input_tokens") or 0), int(d.get("output_tokens") or 0),
                                   0.0, "none", 0, d.get("error", ""))
+        if self.guard is not None:
+            self.guard()              # budget check BEFORE a paid call (raises BudgetPaused); replays above are free
         reply = self.inner.call(stage, system, user, schema)
         self.paid_calls += 1
         blob = {"data": reply.data, "model": reply.model, "provider": reply.provider, "input_tokens": reply.input_tokens, "output_tokens": reply.output_tokens, "error": reply.error}
@@ -119,13 +122,14 @@ class AnalysisQueueMixin:
         return n
 
     # ---------------------------------------------------------------- claim / finish
-    def claim_analysis_job(self, worker_id: str, *, workspace_id: int | None = None, lease_seconds: int = LEASE_SECONDS) -> dict[str, Any] | None:
+    def claim_analysis_job(self, worker_id: str, *, workspace_id: int | None = None, lease_seconds: int = LEASE_SECONDS, canary_only: bool = False) -> dict[str, Any] | None:
         now, token = _now(), uuid4().hex
         with self.connect() as c:
             c.execute("BEGIN IMMEDIATE") if not self.database_url else None
             where = "(status='queued' AND next_attempt_at<=?) OR (status='running' AND lease_until IS NOT NULL AND lease_until<?)"
             args: list[Any] = [now, now]
-            sql = f"SELECT id FROM mail_analysis_jobs WHERE ({where})" + (" AND workspace_id=?" if workspace_id else "") + " ORDER BY id LIMIT 1"
+            canary_sql = (" AND workspace_id IN (SELECT workspace_id FROM mail_intelligence_canary WHERE enabled=1 AND stopped_at IS NULL)" if canary_only else "")
+            sql = f"SELECT id FROM mail_analysis_jobs WHERE ({where})" + canary_sql + (" AND workspace_id=?" if workspace_id else "") + " ORDER BY id LIMIT 1"
             cand = c.execute(sql, args + ([workspace_id] if workspace_id else [])).fetchone()
             if not cand:
                 c.commit()
@@ -172,21 +176,26 @@ class AnalysisQueueMixin:
                 CachingModels(vision, self, workspace_id) if vision is not None else None)
 
     def run_analysis_jobs(self, worker_id: str, *, limit: int = 100, workspace_id: int | None = None, models: Any = None, vision: Any = None,
-                          lease_seconds: int = LEASE_SECONDS) -> dict[str, Any]:
-        summary = {"worker": worker_id, "processed": 0, "done": 0, "retried": 0, "failed": 0, "lost_claim": 0, "model_calls": 0, "replays": 0, "seconds": 0.0, "jobs": []}
+                          lease_seconds: int = LEASE_SECONDS, canary_only: bool = False) -> dict[str, Any]:
+        summary = {"worker": worker_id, "processed": 0, "done": 0, "retried": 0, "failed": 0, "deferred": 0, "lost_claim": 0, "model_calls": 0, "replays": 0, "seconds": 0.0, "jobs": []}
         started = time.monotonic()
         for _ in range(limit):
-            job = self.claim_analysis_job(worker_id, workspace_id=workspace_id, lease_seconds=lease_seconds)
+            job = self.claim_analysis_job(worker_id, workspace_id=workspace_id, lease_seconds=lease_seconds, canary_only=canary_only)
             if not job:
                 break
             ws = int(job["workspace_id"])
             t0 = time.monotonic()
             error = ""
             m, v = (models, vision) if models is not None or vision is not None else self._analysis_models_for_worker(ws)
+            guard = (lambda w=ws: self.assert_canary_budget(w)) if canary_only else None
             if models is not None:
-                m = CachingModels(models, self, ws)
+                m = CachingModels(models, self, ws, guard)
+            elif isinstance(m, CachingModels):
+                m.guard = guard
             if vision is not None:
-                v = CachingModels(vision, self, ws)
+                v = CachingModels(vision, self, ws, guard)
+            elif isinstance(v, CachingModels):
+                v.guard = guard
             if int(job["attempts"]) > 1:      # a previous attempt died: it left its analysis in_progress; this claim owns the job, so recover it now
                 with self.connect() as rc:
                     rc.execute("UPDATE mail_analyses SET status='pending_retry' WHERE workspace_id=? AND message_kind=? AND message_id=? AND status='in_progress'",
@@ -198,9 +207,19 @@ class AnalysisQueueMixin:
                     if res.get("status") == "pending_retry":
                         error = "provider_error_pending_retry"
                 elif job["job_type"] == "attachments":
-                    self.analyze_message_attachments(ws, int(job["message_id"]), models=None, vision=v)
+                    self.analyze_message_attachments(ws, int(job["message_id"]), models=None, vision=v, ocr_enabled=not canary_only)
                 else:
                     error = f"unknown job type {job['job_type']}"
+            except BudgetPaused:
+                # not a failure: put the job back untouched (no attempt used), release the half-done analysis, wait for the window to reopen
+                with self.connect() as rc:
+                    rc.execute("UPDATE mail_analyses SET status='pending_retry' WHERE workspace_id=? AND message_kind=? AND message_id=? AND status='in_progress'", (ws, job["message_kind"], job["message_id"]))
+                    rc.execute("UPDATE mail_analysis_jobs SET status='queued', attempts=attempts-1, next_attempt_at=?, lease_until=NULL, updated_at=? WHERE id=? AND claim_token=?",
+                               (_after(1800), _now(), job["id"], job["claim_token"]))
+                    rc.commit()
+                summary["deferred"] += 1
+                summary["jobs"].append({"job": job["id"], "type": job["job_type"], "kind": job["message_kind"], "message": job["message_id"], "outcome": "deferred_budget", "ms": 0, "error": ""})
+                continue
             except Exception as exc:  # noqa: BLE001 - a failed job is recorded and retried, never raised into the worker loop
                 error = f"{type(exc).__name__}: {exc}"[:300]
             duration = int((time.monotonic() - t0) * 1000)

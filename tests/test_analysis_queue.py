@@ -7,7 +7,7 @@ import json
 import tempfile
 import threading
 import unittest
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -130,6 +130,7 @@ class RoutingBeforeExtractionTest(Base):
         import os
         os.environ["MAIL_INTELLIGENCE_ON_SYNC"] = "1"
         self.addCleanup(os.environ.pop, "MAIL_INTELLIGENCE_ON_SYNC", None)
+        self.repo.canary_enable(self.ws, started_at=(datetime.now(UTC) - timedelta(hours=1)).isoformat())     # the environment flag alone is not enough any more
         r = self.mail(subject="Fwd: КП", body="Пересылаю.", files=[("kp.xlsx", xlsx(QUOTE))], sender="someone@else.example")
         inbox = r["unmatched_inbox_ids"][0]
         with self.repo.connect() as c:
