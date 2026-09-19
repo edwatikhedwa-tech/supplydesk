@@ -113,3 +113,48 @@ class AttachmentPersistenceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class E2EFindingsRegressionTest(unittest.TestCase):
+    """Found by the real-mailbox end-to-end run (EDW-31)."""
+
+    def test_our_own_request_subject_is_not_a_quote_signal(self) -> None:
+        from mail.message_analysis import needs_extraction, normalize_text
+        self.assertFalse(needs_extraction(normalize_text("Re: Запрос цены: Подшипники [SD-1064]", "Добрый день! Спасибо за запрос, принято в работу.")))
+        self.assertFalse(needs_extraction(normalize_text("Re: Запрос цены: Подшипники [SD-1064]", "КП во вложении.")))
+        self.assertTrue(needs_extraction(normalize_text("Re: Запрос", "Цену пришлём завтра, срок 5 дней.")))
+        self.assertTrue(needs_extraction(normalize_text("Re: Запрос", "Подшипник 6205 — 1 850 руб.")))
+
+    def test_the_inbound_copy_of_our_own_outbound_letter_is_not_a_second_object(self) -> None:
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        repo = MailRepository(Path(temp.name) / "dbl.sqlite3")
+        fx = _Fixture(repo, "dbl-a@example.com")
+        req = fx.create_request()
+        supplier, thread, _g = fx.add_supplier_thread(req, inn="7707083893", email="b@example.com", host="example.com")
+        fx.send_outbound(request_id=req, supplier_id=supplier, to_email="b@example.com", sent_at=datetime.now(UTC))
+        with repo.connect() as c:
+            c.execute("UPDATE mail_messages SET message_id='<own-rfq@yandex.ru>' WHERE direction='outbound'")
+            row = c.execute("SELECT message_id, mail_account_id FROM mail_messages WHERE direction='outbound' ORDER BY id DESC LIMIT 1").fetchone()
+            other = c.execute("INSERT INTO mail_accounts(user_id, workspace_id, provider, email, status, created_at, updated_at) VALUES (?, ?, 'mailru', 'b@example.com', 'connected', 'x', 'x')",
+                              (fx.user_id, fx.workspace_id)).lastrowid
+        raw = raw_mail("Запрос", [], msg_id=row["message_id"], sender="a@example.com", to="b@example.com")
+        incoming = YandexMailProvider._parse_incoming(raw, email="b@example.com", uidvalidity="1", uid=1)
+        res = repo.import_incoming_messages(workspace_id=fx.workspace_id, user_id=fx.user_id, account_id=int(other), messages=[incoming])
+        self.assertEqual((res["imported"], res["unmatched"], res["skipped"]), (0, 0, 1))
+        with repo.connect() as c:
+            self.assertEqual(c.execute("SELECT COUNT(*) AS n FROM mail_inbox_messages").fetchone()["n"], 0)
+
+
+class BodyWithAttachmentsTest(AttachmentPersistenceTest):
+    def test_a_letter_with_attachments_and_no_price_in_its_text_makes_no_model_call(self) -> None:
+        a, _ = self.receive([("kp.xlsx", xlsx(QUOTE))])
+        calls = []
+
+        class Boom:
+            def model_for(self, stage): return "m"
+            def call(self, *args, **kwargs):
+                calls.append(1)
+                raise AssertionError("the model must not be called")
+        res = self.repo.analyze_message(self.ws, a["imported_message_ids"][0], models=Boom())
+        self.assertEqual((calls, res["status"]), ([], "final"))

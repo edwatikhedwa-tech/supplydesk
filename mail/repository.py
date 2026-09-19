@@ -2200,6 +2200,7 @@ class MailRepository(
         skipped = 0
         unmatched = 0
         imported_ids: list[int] = []
+        unmatched_ids: list[int] = []
         with self.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             for incoming in messages:
@@ -2215,6 +2216,15 @@ class MailRepository(
                     (account_id, incoming.provider_message_id, incoming.message_id),
                 ).fetchone()
                 if inbox_duplicate:
+                    skipped += 1
+                    continue
+                # One message = one object. A letter this workspace itself sent through another connected mailbox comes back as the
+                # recipient mailbox's inbound copy (same Message-ID): it must not become a second, "unmatched" object.
+                own_outbound = connection.execute(
+                    "SELECT id FROM mail_messages WHERE workspace_id=? AND direction='outbound' AND message_id<>'' AND message_id=? LIMIT 1",
+                    (workspace_id, incoming.message_id),
+                ).fetchone() if incoming.message_id else None
+                if own_outbound:
                     skipped += 1
                     continue
                 bounce = classify_bounce(
@@ -2250,6 +2260,10 @@ class MailRepository(
                         (workspace_id, user_id, account_id, incoming.provider_message_id, incoming.message_id, incoming.in_reply_to, incoming.references, incoming.from_email, incoming.to_email, incoming.subject, incoming.body_text, incoming.body_html, received_at, received_at),
                     )
                     unmatched += 1
+                    inbox_row = connection.execute("SELECT id FROM mail_inbox_messages WHERE mail_account_id=? AND provider_message_id=?",
+                                                   (account_id, incoming.provider_message_id)).fetchone()
+                    if inbox_row:
+                        unmatched_ids.append(int(inbox_row[0]))
                     continue
                 created_at = incoming.received_at.astimezone(UTC).isoformat()
                 connection.execute(
@@ -2305,7 +2319,7 @@ class MailRepository(
                 self._audit_connection(connection, workspace_id, user_id, "mail.incoming_imported", "mail_message", str(message_id), {"thread_id": thread["thread_id"], "bounce": bounce})
                 imported += 1
             connection.commit()
-        return {"imported": imported, "skipped": skipped, "unmatched": unmatched, "imported_message_ids": imported_ids}
+        return {"imported": imported, "skipped": skipped, "unmatched": unmatched, "imported_message_ids": imported_ids, "unmatched_inbox_ids": unmatched_ids}
 
     def import_sent_messages(
         self,

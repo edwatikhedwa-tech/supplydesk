@@ -347,7 +347,7 @@ class MailService:
                 unmatched_count=result["unmatched"],
             )
             self.repository.mark_mail_error(account["id"], "", status="connected")
-            analysis = self._analyze_imported_messages(workspace_id, result.get("imported_message_ids") or [])
+            analysis = self._analyze_imported_messages(workspace_id, result.get("imported_message_ids") or [], result.get("unmatched_inbox_ids") or [])
             return {"ok": True, "scanned": batch.scanned_count, **result, **({"analysis": analysis} if analysis is not None else {})}
         except ProviderError as exc:
             self.repository.mark_mail_sync_error(account["id"], exc.message)
@@ -358,11 +358,11 @@ class MailService:
                 self.repository.mark_mail_error(account["id"], exc.message)
             raise
 
-    def _analyze_imported_messages(self, workspace_id: int, message_ids: list[int]) -> list[dict[str, Any]] | None:
+    def _analyze_imported_messages(self, workspace_id: int, message_ids: list[int], inbox_ids: list[int] | None = None) -> list[dict[str, Any]] | None:
         """Feature flag MAIL_INTELLIGENCE_ON_SYNC=1: analyse each newly imported message (body, then attachments).
         Never breaks the sync: a failure is recorded in the result and the message stays for manual handling.
         Synchronous on purpose for the controlled end-to-end run; production must run it from a queue (model latency is 1-80 s)."""
-        if os.getenv("MAIL_INTELLIGENCE_ON_SYNC") != "1" or not message_ids:
+        if os.getenv("MAIL_INTELLIGENCE_ON_SYNC") != "1" or not (message_ids or inbox_ids):
             return None
         out: list[dict[str, Any]] = []
         vision = None
@@ -385,6 +385,13 @@ class MailService:
                 item["attachments"] = self.repository.analyze_message_attachments(workspace_id, message_id, vision=vision)
             except Exception as exc:  # noqa: BLE001
                 item["attachments_error"] = f"{type(exc).__name__}: {exc}"[:200]
+            out.append(item)
+        for inbox_id in inbox_ids or []:                     # unmatched letters: the exact rules (marker + known sender) may still link them
+            item = {"inbox_message_id": inbox_id}
+            try:
+                item["body"] = self.repository.analyze_message(workspace_id, inbox_id, kind="inbox_message", models=text_models)
+            except Exception as exc:  # noqa: BLE001
+                item["body_error"] = f"{type(exc).__name__}: {exc}"[:200]
             out.append(item)
         return out
 

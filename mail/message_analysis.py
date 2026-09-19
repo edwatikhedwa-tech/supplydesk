@@ -29,7 +29,7 @@ from .bounce import classify_bounce
 from .request_references import parse_request_reference_from_subject
 from .time_utils import iso_now
 
-ANALYSIS_VERSION = "mail-extract/v1"
+ANALYSIS_VERSION = "mail-extract/v3"
 STALE_IN_PROGRESS_MINUTES = 15
 MAX_ATTEMPTS = 3                      # provider errors per (message, hash, version) before manual review
 MAX_TEXT_CHARS = 6000                 # what may be sent to a model
@@ -123,7 +123,10 @@ def needs_extraction(text: str) -> bool:
     term at all or only an "it is in the attachment" note (attachments are a later iteration)."""
     if _PRICE_PATTERN.search(text):
         return True
-    return bool(_QUOTE_TERMS.search(text)) and not _ATTACHMENT.search(text)
+    # Quote terms count only in the message's own text: the subject of a reply carries OUR request ("Запрос цены ..."),
+    # which is not a signal that the supplier named a price (found by the real-mailbox E2E run).
+    own_text = text.partition("\n")[2]
+    return bool(_QUOTE_TERMS.search(own_text)) and not _ATTACHMENT.search(text)
 
 
 def looks_like_newsletter(text: str) -> bool:
@@ -367,8 +370,9 @@ class MessageAnalysisMixin:
     def _load_message(self, connection: Any, workspace_id: int, kind: str, message_id: int) -> dict[str, Any]:
         if kind == "mail_message":
             row = connection.execute(
-                """SELECT id, request_id, supplier_id, from_email, subject, body_text FROM mail_messages
-                   WHERE id=? AND workspace_id=? AND direction='inbound'""", (message_id, workspace_id)).fetchone()
+                """SELECT id, request_id, supplier_id, from_email, subject, body_text,
+                          (SELECT COUNT(*) FROM mail_attachments a WHERE a.message_id = mail_messages.id) AS attachment_count
+                   FROM mail_messages WHERE id=? AND workspace_id=? AND direction='inbound'""", (message_id, workspace_id)).fetchone()
         elif kind == "inbox_message":
             row = connection.execute(
                 """SELECT id, NULL AS request_id, NULL AS supplier_id, from_email, subject, body_text
@@ -495,7 +499,10 @@ class MessageAnalysisMixin:
                               provider="rules", status="not_needed", chash=chash, version=version, detail="bulk_sender_or_unsubscribe")
             else:
                 self._match_deterministically(connection, workspace_id, kind, message, outcome)
-                if not needs_extraction(text):
+                # A letter that carries attachments and names no price in its own text: the offer is in the attachments (read by the
+                # attachment pipeline), the body has nothing for a model to extract. Found by the real-mailbox E2E run.
+                body_only_note = kind == "mail_message" and bool(message.get("attachment_count")) and not _PRICE_PATTERN.search(text)
+                if body_only_note or not needs_extraction(text):
                     outcome["result"] = {"rule": "no_extractable_signal"}
                     self._log_run(connection, workspace_id=workspace_id, analysis_id=analysis_id, reason="classify", stage="rules",
                                   provider="rules", status="not_needed", chash=chash, version=version, detail="no_extractable_signal")
