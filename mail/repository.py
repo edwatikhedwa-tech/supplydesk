@@ -162,7 +162,7 @@ def _communication_message_predicate(alias: str = "m") -> str:
 def _table_has_column(connection: Any, table: str, column: str, *, is_postgres: bool) -> bool:
     if is_postgres:
         row = connection.execute(
-            "SELECT 1 FROM information_schema.columns WHERE table_name=? AND column_name=?",
+            "SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=? AND column_name=?",
             (table, column),
         ).fetchone()
         return bool(row)
@@ -7848,7 +7848,7 @@ class MailRepository(
                 account_clause = " AND r.mail_account_id=?"
                 params.append(int(account_id))
             params.append(bounded_limit)
-            lock_clause = " FOR UPDATE" if self.database_url else ""
+            lock_clause = " FOR UPDATE OF r" if self.database_url else ""
             reservations = connection.execute(
                 f"""SELECT r.id, r.reservation_token, r.owner_type, r.owner_id,
                                   j.status AS job_status,
