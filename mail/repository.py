@@ -18,6 +18,7 @@ from .auth import new_token
 from .auth_accounts import AuthAccountsMixin
 from .canonical_companies import CanonicalCompaniesMixin
 from .contact_intelligence import ContactIntelligenceMixin
+from .supplier_identity_evidence import SupplierIdentityEvidenceMixin
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
 from .ai_chat_usage import AiChatUsageMixin
@@ -51,7 +52,7 @@ from .time_utils import (  # noqa: F401 -- re-exported for mail/queue.py, backen
     iso_now,
     utc_now,
 )
-from backend.domain.supplier_identity.contact_linking import is_free_mail, match_free_mail_contact
+from backend.domain.supplier_identity.contact_linking import is_free_mail
 from backend.domain.supplier_identity.inn_extractor import normalize_inn, validate_inn_checksum
 from .pacing import PacingSettings
 from .deliverability import transient_health_metrics
@@ -254,7 +255,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 
 class MailRepository(
     AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, SupportMixin, AiChatUsageMixin, AiConversationsMixin, TasksMixin,
-    CanonicalCompaniesMixin, ContactIntelligenceMixin, TaskReminderDeliveryMixin,
+    CanonicalCompaniesMixin, ContactIntelligenceMixin, TaskReminderDeliveryMixin, SupplierIdentityEvidenceMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
@@ -2252,6 +2253,14 @@ class MailRepository(
                     (thread["thread_id"], workspace_id, user_id, thread["request_id"], thread["supplier_id"], account_id, incoming.provider_message_id, incoming.message_id, incoming.in_reply_to, incoming.references, incoming.from_email, incoming.to_email, incoming.subject, incoming.body_text, incoming.body_html, created_at, created_at),
                 )
                 message_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+                if not bounce:
+                    # A real (non-bounce) message in this supplier's thread: strongest
+                    # evidence that the sender's address is a working contact of it.
+                    self._record_email_evidence_for_message(
+                        connection, workspace_id=workspace_id, supplier_id=int(thread["supplier_id"]),
+                        request_id=int(thread["request_id"]), message_id=message_id,
+                        direction="inbound", email=incoming.from_email,
+                    )
                 connection.execute(
                     """UPDATE mail_threads SET last_message_at=CASE WHEN last_message_at IS NULL OR last_message_at < ? THEN ? ELSE last_message_at END WHERE id=?""",
                     (created_at, created_at, thread["thread_id"]),
@@ -2767,6 +2776,11 @@ class MailRepository(
                  message["body_text"], message["body_html"], received_at, received_at),
             )
             new_message_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+            self._record_email_evidence_for_message(
+                connection, workspace_id=workspace_id, supplier_id=supplier_id, request_id=request_id,
+                message_id=new_message_id, direction="inbound", email=message["from_email"],
+                source_type="manual_confirmed",
+            )
             connection.execute(
                 "UPDATE mail_threads SET last_message_at=CASE WHEN last_message_at IS NULL OR last_message_at < ? THEN ? ELSE last_message_at END WHERE id=?",
                 (received_at, received_at, thread_id),
@@ -3629,30 +3643,43 @@ class MailRepository(
                             raise ValueError("Email не совпадает с найденным сайтом поставщика.")
                         row = candidate
 
-                # GAP-003: a staff member's personal mailbox (yandex/gmail/...)
-                # says nothing about which company it belongs to, so the raw
-                # email must not mint a second supplier for a company already
-                # on this request. Reuse a card only on the narrow triple
-                # condition: same request, card still has no email, and the
-                # mailbox name is token-identical to the site name; anything
-                # ambiguous falls through to the old behaviour (no guessing).
+                # GAP-003 / Pack V1.2.3: a personal mailbox (yandex/gmail/...)
+                # says nothing about which company it belongs to, and a mailbox
+                # name that merely resembles a site name is NOT proof either.
+                # An address reuses an existing supplier identity only when a
+                # CONFIRMED link exists (supplier_identity_evidence: an RFQ we
+                # sent to it for that card, a real inbound reply from it in that
+                # card's thread, or a user confirmation). Ambiguity is refused,
+                # never guessed. Anything else keeps creating a card from the
+                # raw email, but the resemblance is stored as a weak candidate
+                # for review (it never links by itself).
+                if row is None and normalized_email:
+                    confirmed = self._confirmed_supplier_ids_for_email(
+                        connection, workspace_id, normalized_email, request_id,
+                    )
+                    if len(confirmed) > 1:
+                        raise ValueError("Этот email связан с несколькими поставщиками. Выберите конкретную строку компании.")
+                    if confirmed:
+                        row = connection.execute(
+                            """SELECT s.id, s.external_key, s.name, s.email, s.host,
+                                      COALESCE(p.inn, '') AS inn, gl.global_supplier_id
+                               FROM suppliers s
+                               LEFT JOIN supplier_profiles p ON p.supplier_id=s.id
+                               LEFT JOIN global_supplier_links gl ON gl.supplier_id=s.id
+                               WHERE s.id=? AND s.workspace_id=?""",
+                            (confirmed[0], workspace_id),
+                        ).fetchone()
                 if row is None and not normalized_host and is_free_mail(normalized_email):
-                    pending = connection.execute(
-                        """SELECT s.id, s.external_key, s.name, s.email, s.host,
-                                  COALESCE(p.inn, '') AS inn, gl.global_supplier_id
-                           FROM suppliers s
+                    hosts = connection.execute(
+                        """SELECT s.id, s.host FROM suppliers s
                            JOIN request_suppliers rs ON rs.supplier_id=s.id AND rs.request_id=?
-                           LEFT JOIN supplier_profiles p ON p.supplier_id=s.id
-                           LEFT JOIN global_supplier_links gl ON gl.supplier_id=s.id
-                           WHERE s.workspace_id=? AND s.host<>'' AND COALESCE(s.email,'')=''
-                           ORDER BY s.id""",
+                           WHERE s.workspace_id=? AND s.host<>''""",
                         (request_id, workspace_id),
                     ).fetchall()
-                    matched_id = match_free_mail_contact(
-                        normalized_email, [(int(c["id"]), str(c["host"])) for c in pending],
+                    self._record_weak_name_candidates(
+                        connection, workspace_id, request_id, normalized_email,
+                        [(int(h["id"]), str(h["host"])) for h in hosts],
                     )
-                    if matched_id is not None:
-                        row = next(c for c in pending if int(c["id"]) == matched_id)
 
             if row is not None:
                 resolved_id = int(row["id"])
@@ -7411,6 +7438,10 @@ class MailRepository(
                 (thread_id, workspace_id, user_id, request_id, supplier_id, account_id, message_id_header, in_reply_to, references_header, from_email, to_email, subject, body_text, body_html, now),
             )
             message_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+            self._record_email_evidence_for_message(
+                connection, workspace_id=workspace_id, supplier_id=supplier_id, request_id=request_id,
+                message_id=message_id, direction="outbound", email=to_email,
+            )
             connection.execute(
                 "INSERT INTO mail_message_integrity(message_id, state_schema_version, resend_of_message_id, created_at) VALUES (?, ?, ?, ?)",
                 (message_id, MAIL_INTEGRITY_SCHEMA_VERSION, resend_of_message_id, now),
@@ -7545,6 +7576,10 @@ class MailRepository(
             ),
         )
         message_id = int(connection.execute("SELECT LASTVAL()" if self.database_url else "SELECT last_insert_rowid()").fetchone()[0])
+        self._record_email_evidence_for_message(
+            connection, workspace_id=workspace_id, supplier_id=supplier_id, request_id=request_id,
+            message_id=message_id, direction="outbound", email=to_email,
+        )
         connection.execute(
             "INSERT INTO mail_message_integrity(message_id, state_schema_version, resend_of_message_id, created_at) VALUES (?, ?, ?, ?)",
             (message_id, MAIL_INTEGRITY_SCHEMA_VERSION, resend_of_message_id, now),

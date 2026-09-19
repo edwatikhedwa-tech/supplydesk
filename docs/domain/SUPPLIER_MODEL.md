@@ -456,3 +456,23 @@ test_two_suppliers_converging_to_the_same_final_email_are_blocked_as_duplicates`
 совпали на один и тот же итоговый адрес, существующая проверка дублей это
 не поймает (узкий, не встречавшийся на практике край; отдельная задача,
 не расширяю эту без явного запроса). См. `ai/DEFERRED_FINDINGS.md`.
+
+## 8. Identity evidence: уровни связи контакта (2026-09-19, GAP-003 / EDW-13, EDW-14)
+
+Три уровня не смешиваются:
+
+1. **Request-level association** — адрес использован для поставщика в конкретной заявке
+   (`request_id` в evidence + `request_suppliers`).
+2. **Supplier identity** — постоянная строка `suppliers` (и canonical company).
+3. **Contact evidence** — `supplier_identity_evidence` (`migrations/053`,
+   `mail/supplier_identity_evidence.py`): источник, сила, decision, обратимость.
+
+Правила:
+- `rfq_sent` пишется при постановке письма в очередь; `inbound_reply` — при реальном (не bounce, не
+  технический адрес) входящем письме, привязанном к треду по заголовкам; `manual_confirmed` — по решению
+  пользователя. Все три — `strong` + `linked`.
+- `resolve_supplier_for_send` переиспользует существующую identity для нового адреса **только** по
+  `strong+linked` не отменённому evidence в этом workspace; несколько кандидатов — отказ, не догадка.
+- Сходство username↔домен/название (`name_token_similarity`) — `weak` + `candidate`; никогда не связывает.
+- Разные подтверждённые ИНН — блокирующий конфликт (`backend/domain/supplier_identity/merge_guard.py`).
+- Не реализовано: UI/review candidate, обратимый merge/unmerge, миграция исторических дублей (EDW-14/16/17).

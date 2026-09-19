@@ -1,26 +1,22 @@
-"""Связать личный (free-mail) адрес с уже известной карточкой компании.
+"""Слабый сигнал: имя личного (free-mail) ящика похоже на название сайта компании.
 
-Чистая функция без БД и без сети: GAP-003 (см. docs/system/KNOWN_GAPS.md).
-Сотрудник поставщика отвечает с личного адреса (sfera.termo@yandex.ru), а
-карточка компании уже создана по сайту (termo-sfera.pro). Домен почты ничего
-не говорит о компании, поэтому единственный проверяемый признак — совпадение
-токенов local-part с токенами названия домена.
-
-Правило намеренно узкое: кандидаты приходят от вызывающего уже отфильтрованными
-(та же заявка, карточка ещё без email), а здесь требуется ПОЛНОЕ совпадение
-токенов. Неоднозначность (0 или ≥2 совпадений) — не выбор, а отказ.
+Чистая функция без БД и без сети. GAP-003 / Documentation Pack V1.2.3:
+сходство username↔название компании — только СЛАБЫЙ candidate-сигнал. Он
+никогда не связывает и не объединяет supplier identity сам по себе; результат
+пишется как evidence с decision='candidate' (mail/supplier_identity_evidence.py)
+и ждёт подтверждения (реальный ответ, ручное подтверждение, ИНН).
 """
 
 from __future__ import annotations
 
 import re
+from itertools import permutations
 from typing import Iterable
 
 from backend.domain.supplier_identity.email_extractor import FREE_MAIL_DOMAINS
 
 _SPLIT = re.compile(r"[._\-+]+")
 _MIN_TOKEN_LEN = 3
-# Цифры в local-part (ivanov1985) — шум, а не часть названия компании.
 _DIGITS = re.compile(r"\d+")
 
 
@@ -35,17 +31,18 @@ def _tokens(text: str) -> tuple[str, ...]:
 
 
 def _company_label(host: str) -> str:
-    """Название сайта без TLD и www: termo-sfera.pro -> termo-sfera."""
     parts = [p for p in str(host or "").strip().lower().split(".") if p and p != "www"]
     if len(parts) < 2:
         return parts[0] if parts else ""
-    # co.uk-подобные суффиксы для .ru-B2B не актуальны; берём второй справа.
     return parts[-2]
 
 
-def local_part_matches_host(email: str, host: str) -> bool:
-    """True, если local-part и название домена состоят из одних и тех же токенов
-    (в любом порядке) либо совпадают без разделителей: termosfera ~ termo-sfera."""
+def _orderings(tokens: tuple[str, ...]):
+    return permutations(tokens) if len(tokens) <= 4 else ()
+
+
+def local_part_resembles_host(email: str, host: str) -> bool:
+    """Токены local-part и названия сайта совпадают (в любом порядке / слитно)."""
     local = str(email or "").partition("@")[0]
     label = _company_label(host)
     if not local or not label:
@@ -57,7 +54,6 @@ def local_part_matches_host(email: str, host: str) -> bool:
         return False
     if local_tokens == label_tokens:
         return True
-    # termosfera / sferatermo: одно слово против нескольких токенов.
     if len(local_tokens) == 1 and len(label_tokens) > 1:
         return local_tokens[0] in {"".join(p) for p in _orderings(label_tokens)}
     if len(label_tokens) == 1 and len(local_tokens) > 1:
@@ -65,20 +61,8 @@ def local_part_matches_host(email: str, host: str) -> bool:
     return False
 
 
-def _orderings(tokens: tuple[str, ...]):
-    from itertools import permutations
-
-    # Токенов у названия компании единицы; ограничиваем, чтобы не взрываться.
-    return permutations(tokens) if len(tokens) <= 4 else ()
-
-
-def match_free_mail_contact(email: str, candidate_hosts: Iterable[tuple[int, str]]) -> int | None:
-    """Вернуть id единственной карточки, к которой относится личный адрес.
-
-    `candidate_hosts` — пары (supplier_id, host) уже отфильтрованных вызывающим
-    кандидатов. None — если адрес не free-mail, совпадений нет или их больше одного.
-    """
+def weak_candidate_supplier_ids(email: str, candidate_hosts: Iterable[tuple[int, str]]) -> list[int]:
+    """id всех карточек, на которые адрес СЛАБО похож. Это подсказка, не решение."""
     if not is_free_mail(email):
-        return None
-    matched = [sid for sid, host in candidate_hosts if local_part_matches_host(email, host)]
-    return matched[0] if len(matched) == 1 else None
+        return []
+    return [sid for sid, host in candidate_hosts if local_part_resembles_host(email, host)]
