@@ -163,6 +163,8 @@ def make_doc(rng: random.Random, spec: dict) -> dict:
 def table_rows(doc: dict) -> tuple[list[str], list[str], list[list[str]], list[str]]:
     keys, heads = STYLES[doc["style"]]
     cur = doc["cur"]
+    if any(l["price_per"] == 100 for l in doc["lines"]):        # the header must say so, otherwise the label would be unknowable
+        heads = [h.replace("Цена, руб.", "Цена за 100 шт., руб.") for h in heads]
     rows = []
     for i, ln in enumerate(doc["lines"], 1):
         unit = {"шт": "pcs"}.get(ln["unit"], ln["unit"]) if doc["style"] == "en" else ln["unit"]
@@ -668,6 +670,8 @@ def main() -> None:
     if FILES.parent.exists():
         shutil.rmtree(FILES.parent)
     FILES.mkdir(parents=True)
+    (FILES.parent / ".gitattributes").write_text("files/* -text
+", encoding="utf-8")   # byte-exact checkout: the hashes in ground_truth.json must survive
     truth_docs: dict[str, dict] = {}
     built: dict[str, dict] = {}
     order = [d["id"] for d in DOCS]

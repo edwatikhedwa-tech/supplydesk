@@ -67,7 +67,7 @@ for size, price in [("M8", 1.6), ("M10", 2.4), ("M12", 3.9), ("M16", 8.5), ("M20
     _i += 1
 for size, price in [("M8", 0.7), ("M10", 1.1), ("M12", 1.7), ("M16", 3.2), ("M20", 6.0)]:
     R3.append(P(f"R3-{_i:02d}", f"Шайба DIN 125 {size} оцинкованная", f"DIN125-{size}", "Metiz", 500, "шт", price,
-                [f"Шайба плоская {size} DIN 125", f"Шайба {size}"], None))
+                [f"Шайба плоская {size} DIN 125", f"Шайба DIN125 {size} цинк"], None))
     _i += 1
 for size, price in [("M8", 1.2), ("M10", 1.9), ("M12", 2.8), ("M16", 5.4)]:
     R3.append(P(f"R3-{_i:02d}", f"Шайба пружинная DIN 127 {size}", f"DIN127-{size}", "Metiz", 300, "шт", price,
