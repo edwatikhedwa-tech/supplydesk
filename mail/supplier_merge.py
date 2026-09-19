@@ -64,11 +64,16 @@ def _j(value: Any) -> str:
 
 
 def _table_exists(connection: Any, table: str) -> bool:
-    try:
-        connection.execute(f"SELECT 1 FROM {table} LIMIT 1")
-        return True
-    except Exception:  # noqa: BLE001 - older schema without the table (read-only dry-run on a legacy DB)
-        return False
+    """Existence check that NEVER raises a SQL error: on PostgreSQL a failed statement aborts the whole
+    transaction ("current transaction is aborted"), so probing with try/except SELECT is not safe there.
+    Used by the read-only dry-run on legacy SQLite databases that predate some tables."""
+    if hasattr(connection, "raw"):  # PostgresConnection (mail/db_compat.py)
+        row = connection.execute(
+            "SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name=?", (table,),
+        ).fetchone()
+    else:
+        row = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
+    return row is not None
 
 
 def merge_plan(connection: Any, survivor_id: int, merged_id: int) -> dict[str, dict[str, int]]:
@@ -92,6 +97,50 @@ def merge_plan(connection: Any, survivor_id: int, merged_id: int) -> dict[str, d
         if moved or aside:
             plan[table] = {"would_move": moved, "would_set_aside": aside}
     return plan
+
+
+def find_merge_candidates(connection: Any, workspace_id: int) -> list[dict[str, Any]]:
+    """READ-ONLY detection of suspected duplicate cards. Similarity NEVER decides anything: it only
+    proposes a pair for a human. Two sources:
+      * exact_email_hostless -- a card without a site whose address is the stored address of exactly one
+        card that has a site (the historical shape of GAP-003);
+      * name_similarity      -- an unconfirmed weak `name_token_similarity` evidence row points at the pair.
+    Not proposed: one hostless card matching several site cards, and a hostless card that is already linked to
+    a legal entity (INN) -- those need a separate, deliberate look (same rule as the legacy audit)."""
+    shells = ""
+    if _table_exists(connection, "supplier_merges"):
+        shells = ("AND s.id NOT IN (SELECT merged_supplier_id FROM supplier_merges "
+                  "WHERE workspace_id=s.workspace_id AND status='active')")
+    rows = connection.execute(
+        f"""SELECT d.id AS merged_id, s.id AS survivor_id
+            FROM suppliers d
+            JOIN suppliers s ON s.workspace_id=d.workspace_id AND s.id<>d.id AND LOWER(s.email)=LOWER(d.email)
+            WHERE d.workspace_id=? AND COALESCE(d.host,'')='' AND COALESCE(d.email,'')<>'' AND COALESCE(s.host,'')<>''
+              AND NOT EXISTS (SELECT 1 FROM global_supplier_links gl WHERE gl.supplier_id=d.id)
+              {shells}""",
+        (workspace_id,),
+    ).fetchall()
+    by_merged: dict[int, set[int]] = {}
+    for r in rows:
+        by_merged.setdefault(int(r["merged_id"]), set()).add(int(r["survivor_id"]))
+    pairs: dict[tuple[int, int], set[str]] = {}
+    for merged_id, survivors in by_merged.items():
+        if len(survivors) == 1:
+            pairs.setdefault((next(iter(survivors)), merged_id), set()).add("exact_email_hostless")
+    if _table_exists(connection, "supplier_identity_evidence"):
+        weak = connection.execute(
+            """SELECT e.supplier_id AS survivor_id, d.id AS merged_id
+               FROM supplier_identity_evidence e
+               JOIN suppliers s ON s.id=e.supplier_id AND s.workspace_id=e.workspace_id
+               JOIN suppliers d ON d.workspace_id=e.workspace_id AND d.id<>s.id AND LOWER(d.email)=e.value
+               WHERE e.workspace_id=? AND e.kind='email' AND e.source_type='name_token_similarity' AND e.state='candidate'
+                 AND COALESCE(s.host,'')<>'' AND COALESCE(d.host,'')=''""",
+            (workspace_id,),
+        ).fetchall()
+        for r in weak:
+            pairs.setdefault((int(r["survivor_id"]), int(r["merged_id"])), set()).add("name_similarity")
+    return [{"survivor_supplier_id": a, "merged_supplier_id": b, "reason": "+".join(sorted(src))}
+            for (a, b), src in sorted(pairs.items())]
 
 
 class SupplierMergeMixin:
@@ -305,6 +354,141 @@ class SupplierMergeMixin:
             inns = [(connection.execute("SELECT COALESCE(inn,'') AS inn FROM supplier_profiles WHERE supplier_id=?", (sid,)).fetchone() or {"inn": ""})["inn"]
                     for sid in (survivor_id, merged_id)]
             return {"inn_verdict": merge_verdict(inns[0], inns[1]), "plan": merge_plan(connection, int(survivor_id), int(merged_id))}
+
+    # ------------------------------------------------------------------ review workflow (EDW-21)
+    def register_merge_candidates(self, workspace_id: int) -> dict[str, int]:
+        """Put suspected duplicates into the review queue. Idempotent; changes no supplier data and never
+        resurrects a rejected pair."""
+        now = iso_now()
+        with self.connect() as connection:
+            found = find_merge_candidates(connection, workspace_id)
+            for c in found:
+                connection.execute(
+                    """INSERT INTO supplier_merge_candidates(workspace_id, survivor_supplier_id, merged_supplier_id,
+                                                             status, reason, detected_at)
+                       VALUES (?, ?, ?, 'pending', ?, ?)
+                       ON CONFLICT(workspace_id, survivor_supplier_id, merged_supplier_id) DO NOTHING""",
+                    (workspace_id, c["survivor_supplier_id"], c["merged_supplier_id"], c["reason"], now),
+                )
+            total = connection.execute(
+                "SELECT COUNT(*) AS n FROM supplier_merge_candidates WHERE workspace_id=?", (workspace_id,)).fetchone()["n"]
+        return {"detected": len(found), "in_queue": int(total)}
+
+    def list_merge_candidates(self, workspace_id: int, *, status: str | None = None) -> list[dict[str, Any]]:
+        sql = """SELECT c.id, c.status, c.reason, c.detected_at, c.decided_at, c.merge_id,
+                        c.survivor_supplier_id, c.merged_supplier_id,
+                        s.name AS survivor_name, s.host AS survivor_host, d.name AS merged_name
+                 FROM supplier_merge_candidates c
+                 JOIN suppliers s ON s.id=c.survivor_supplier_id JOIN suppliers d ON d.id=c.merged_supplier_id
+                 WHERE c.workspace_id=?"""
+        params: list[Any] = [workspace_id]
+        if status:
+            sql += " AND c.status=?"
+            params.append(status)
+        with self.connect() as connection:
+            return [dict(r) for r in connection.execute(sql + " ORDER BY c.id", params).fetchall()]
+
+    def _card_view(self, connection: Any, workspace_id: int, supplier_id: int) -> dict[str, Any]:
+        card = dict(connection.execute(
+            "SELECT id, name, host, external_key, email FROM suppliers WHERE id=? AND workspace_id=?",
+            (supplier_id, workspace_id)).fetchone())
+        prof = connection.execute("SELECT COALESCE(inn,'') AS inn FROM supplier_profiles WHERE supplier_id=?", (supplier_id,)).fetchone()
+        link = connection.execute("SELECT global_supplier_id FROM global_supplier_links WHERE supplier_id=?", (supplier_id,)).fetchone()
+        card["inn"] = prof["inn"] if prof else ""
+        card["global_supplier_id"] = link["global_supplier_id"] if link else None
+        card["domains"] = [card["host"]] if card["host"] else []
+        card["requests"] = [dict(r) for r in connection.execute(
+            """SELECT r.id, r.name FROM request_suppliers rs JOIN requests r ON r.id=rs.request_id
+               WHERE rs.supplier_id=? AND r.workspace_id=? ORDER BY r.id""", (supplier_id, workspace_id)).fetchall()]
+        card["messages"] = {
+            r["direction"]: int(r["n"]) for r in connection.execute(
+                "SELECT direction, COUNT(*) AS n FROM mail_messages WHERE supplier_id=? AND workspace_id=? GROUP BY direction",
+                (supplier_id, workspace_id)).fetchall()}
+        card["recent_messages"] = [dict(r) for r in connection.execute(
+            """SELECT direction, created_at, subject, from_email, to_email FROM mail_messages
+               WHERE supplier_id=? AND workspace_id=? ORDER BY created_at DESC, id DESC LIMIT 5""",
+            (supplier_id, workspace_id)).fetchall()]
+        card["evidence"] = [dict(r) for r in connection.execute(
+            """SELECT value AS email, source_type, assertion, strength, state, request_id, occurred_at
+               FROM supplier_identity_evidence WHERE workspace_id=? AND supplier_id=? AND kind='email' ORDER BY id""",
+            (workspace_id, supplier_id)).fetchall()]
+        return card
+
+    _CANDIDATE_REASONS = {
+        "exact_email_hostless": "Карточка без сайта имеет тот же адрес, что сохранён у карточки с сайтом.",
+        "name_similarity": "Имя ящика похоже на название сайта (слабый признак, сам ничего не доказывает).",
+    }
+
+    def get_merge_review(self, workspace_id: int, candidate_id: int) -> dict[str, Any]:
+        """Everything the owner needs to decide, read-only: both cards (INN, domains, emails, requests,
+        correspondence, evidence), why they were proposed, what a merge would transfer, and that it is
+        reversible."""
+        with self.connect() as connection:
+            cand = connection.execute(
+                "SELECT * FROM supplier_merge_candidates WHERE id=? AND workspace_id=?", (candidate_id, workspace_id)).fetchone()
+            if not cand:
+                raise ValueError("Кандидат на объединение не найден в текущем рабочем пространстве.")
+            a, b = int(cand["survivor_supplier_id"]), int(cand["merged_supplier_id"])
+            survivor = self._card_view(connection, workspace_id, a)
+            merged = self._card_view(connection, workspace_id, b)
+            verdict = merge_verdict(survivor["inn"], merged["inn"])
+            return {
+                "candidate": {k: cand[k] for k in ("id", "status", "reason", "detected_at", "decided_at", "merge_id")},
+                "survivor": survivor,
+                "merged": merged,
+                "why": [self._CANDIDATE_REASONS.get(r, r) for r in str(cand["reason"]).split("+")],
+                "inn_verdict": verdict,
+                "can_merge": verdict != "conflict",
+                "needs_explicit_confirmation": verdict == "unknown",
+                "blocked_reason": "Разные подтверждённые ИНН: объединение запрещено." if verdict == "conflict" else "",
+                "will_transfer": merge_plan(connection, a, b),
+                "after_merge": ("Заявки, переписка и evidence объединённой карточки перейдут к выжившей; "
+                                "адрес объединённой карточки станет подтверждённым контактом выжившей."),
+                "reversible": True,
+                "how_to_undo": "decision='undo' возвращает все строки из журнала объединения.",
+            }
+
+    def decide_merge_candidate(
+        self, workspace_id: int, user_id: int, candidate_id: int, decision: str, *, confirm_unknown_inn: bool = False,
+    ) -> dict[str, Any]:
+        """merge | reject | later | undo. Owner only (merging changes the whole workspace's data)."""
+        if decision not in ("merge", "reject", "later", "undo"):
+            raise ValueError("Допустимые решения: merge, reject, later, undo.")
+        if not self.is_workspace_owner(user_id, workspace_id):
+            raise ValueError("Решение об объединении может принять только владелец рабочего пространства.")
+        with self.connect() as connection:
+            cand = connection.execute(
+                "SELECT * FROM supplier_merge_candidates WHERE id=? AND workspace_id=?", (candidate_id, workspace_id)).fetchone()
+        if not cand:
+            raise ValueError("Кандидат на объединение не найден в текущем рабочем пространстве.")
+        status = cand["status"]
+        result: dict[str, Any] = {"candidate_id": candidate_id}
+        if decision == "merge":
+            if status not in ("pending", "later"):
+                raise ValueError("Это объединение уже решено.")
+            merged = self.merge_suppliers(
+                workspace_id, user_id, int(cand["survivor_supplier_id"]), int(cand["merged_supplier_id"]),
+                reason=f"review:{cand['reason']}", confirm_unknown_inn=confirm_unknown_inn)
+            new_status, merge_id = "merged", merged["merge_id"]
+            result.update(merged)
+        elif decision == "undo":
+            if status != "merged" or cand["merge_id"] is None:
+                raise ValueError("Отменять нечего: объединение не выполнено.")
+            result.update(self.unmerge_supplier(workspace_id, user_id, int(cand["merge_id"])))
+            new_status, merge_id = "pending", None
+        else:
+            if status == "merged":
+                raise ValueError("Объединение выполнено: сначала отмените его (undo).")
+            new_status, merge_id = ("rejected" if decision == "reject" else "later"), cand["merge_id"]
+        with self.connect() as connection:
+            connection.execute(
+                """UPDATE supplier_merge_candidates SET status=?, decided_by_user_id=?, decided_at=?, merge_id=?
+                   WHERE id=? AND workspace_id=?""",
+                (new_status, user_id, iso_now(), merge_id, candidate_id, workspace_id))
+            self._audit_connection(connection, workspace_id, user_id, f"supplier.merge_candidate.{decision}",
+                                   "supplier_merge_candidate", str(candidate_id), {"status": new_status})
+        result["status"] = new_status
+        return result
 
     def list_supplier_merges(self, workspace_id: int, *, status: str | None = None) -> list[dict[str, Any]]:
         sql, params = "SELECT * FROM supplier_merges WHERE workspace_id=?", [workspace_id]

@@ -75,7 +75,7 @@ class LogisticsQuotesMixin:
                 """SELECT q.* FROM logistics_quotes q
                    JOIN requests r ON r.id = q.request_id
                    WHERE r.workspace_id=? AND q.request_id=?
-                     AND ((q.supplier_id IS NULL AND ? IS NULL) OR q.supplier_id=?)
+                     AND ((q.supplier_id IS NULL AND CAST(? AS INTEGER) IS NULL) OR q.supplier_id=?)
                    ORDER BY q.id DESC LIMIT 1""",
                 (workspace_id, request_id, supplier_id, supplier_id),
             ).fetchone()

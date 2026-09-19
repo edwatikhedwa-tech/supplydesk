@@ -145,7 +145,7 @@ class RfqSentIsAssociationOnlyTest(_Base):
         self.reply(0, "new.person@yandex.ru")
         self.repo.backfill_email_evidence_from_messages(self.ws[0].workspace_id)
         self.assertEqual(self.repo.contact_state(self.ws[0].workspace_id, "new.person@yandex.ru"),
-                         {"email": "new.person@yandex.ru", "state": "confirmed", "supplier_ids": [self.sup[0]]})
+                         {"email": "new.person@yandex.ru", "state": "confirmed", "supplier_ids": [self.sup[0]], "identity_confidence": "strong"})
 
 
 class StatesAndApiTest(_Base):

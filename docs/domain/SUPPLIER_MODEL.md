@@ -495,3 +495,48 @@ test_two_suppliers_converging_to_the_same_final_email_are_blocked_as_duplicates`
 - Исторические дубли: `scripts/supplier_duplicates_dry_run.py` (read-only, отчёт без email). Старый
   `supplier_identity_audit.py --apply-strict-safe` необратим и знает не все таблицы — не использовать.
 - Отдельно существует `supplier_evidence` (поля обогащения: ИНН, названия) — это другой контур.
+
+## 9. Две таблицы «evidence» — не путать (2026-09-19)
+
+| | `supplier_evidence` | `supplier_identity_evidence` |
+|---|---|---|
+| Про что | **реквизиты и факты об организации**: ИНН, название, поля обогащения — откуда взято значение поля | **принадлежность email/контакта конкретной supplier identity** (карточке поставщика в workspace) |
+| Ключ | (supplier_id, field_name, field_value, source_type, source_url) | (workspace_id, supplier_id, kind, value, source_type, source_id) |
+| Отвечает на вопрос | «какое значение реквизита подтверждено и чем» | «этот адрес — контакт именно этого поставщика, и чем это доказано» |
+| Пишет | обогащение (реестр, Checko, LLM) | отправка/получение почты, решения пользователя, merge |
+| Читает | карточка организации, enrichment | выбор identity при отправке, contact intelligence, merge review |
+
+Они не заменяют друг друга и не объединены сознательно: у них разные единицы факта (поле организации против
+адреса контакта), разная область (организация против карточки в workspace) и разные правила отмены.
+
+## 10. Identity confidence и contact quality — два разных понятия (2026-09-19)
+
+- **Identity confidence** — насколько мы уверены, что адрес принадлежит ЭТОЙ компании. Определяется самой
+  строкой evidence (`assertion`, `strength`, `state`); политика `_POLICY` и `sufficient_for_identity_reuse`.
+- **Contact quality** — насколько адрес реально рабочий и полезный. Определяется сигналами, которые факт
+  порождает в contact intelligence (`_SIGNAL_MAP`), и считается по канонической компании (ИНН), а не по карточке.
+
+| Источник | Identity | Quality |
+|---|---|---|
+| `inbound_reply` | сильная | сильный положительный |
+| `manual_confirmed` | сильная (человек поручился) | слабый положительный (работоспособность не доказана) |
+| `official_source` | сильная | сильный положительный |
+| `workspace_contact_result` | слабая | слабый положительный |
+| `rfq_sent` | нет (только связь в заявке) | нет |
+| `hard/soft_bounce` | нет | отрицательный |
+| `name_token_similarity` | нет (candidate) | нет |
+
+Единого «score» нет и не вводится: `contact_state(...)["identity_confidence"]` и `contact_quality(...)` —
+разные функции с разными входами; тесты `tests/test_identity_vs_quality.py` фиксируют разницу (подтверждение
+пользователем устанавливает identity, но само не делает контакт `preferred`).
+
+## 11. Проверка дублей: review path (EDW-21, 2026-09-19)
+
+`candidate pair → показать → merge / reject / later (+ undo)`. Кандидат — только вопрос владельцу:
+регистрация очереди (`register_merge_candidates`, таблица `supplier_merge_candidates`, migration 056) не меняет
+данные поставщиков; сходство ничего не решает. Владелец видит обе карточки (ИНН, домены, email, заявки,
+переписка, evidence), причину кандидата, вердикт по ИНН, точный план переноса и возможность undo.
+Интерфейсы: `GET/POST /api/supplier-merge-candidates…` (сессия + CSRF, только владелец, workspace из сессии),
+`scripts/merge_review.py` (scan/list/show/decide). `merge` без подтверждения при неизвестном ИНН отклоняется,
+при разных подтверждённых ИНН запрещён всегда; `reject` липкий; `undo` возвращает строки из журнала.
+

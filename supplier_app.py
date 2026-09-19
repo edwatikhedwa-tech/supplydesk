@@ -50,6 +50,7 @@ from backend.domain.supplier_import.apply_plan import build_apply_plan
 from backend.domain.supplier_enrichment.orchestrator import EnrichmentOrchestratorMixin
 from backend.http_auth import AuthHandlerMixin
 from backend.http_global_suppliers import GlobalSupplierRouteMixin
+from backend.http_merge_review import MergeReviewRouteMixin
 from backend.http_requests import RequestRouteMixin
 from backend.http_support import SupportRouteMixin
 from scripts.runtime_guard import RuntimeSelectionError, print_runtime_context, validate_runtime_selection
@@ -69,7 +70,7 @@ def _strict_optional_bool(payload: dict, field: str) -> bool | None:
     return value
 
 
-class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMixin, SupportRouteMixin, SimpleHTTPRequestHandler):
+class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMixin, MergeReviewRouteMixin, SupportRouteMixin, SimpleHTTPRequestHandler):
     server_version = "SupplydeskMail/1.0"
 
     @property
@@ -181,6 +182,11 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             session = self._require_session()
             if session:
                 self._json(200, {"items": self.app.repository.list_supplier_directory(session["workspace_id"])})
+            return
+        if parsed.path == "/api/supplier-merge-candidates" or parsed.path.startswith("/api/supplier-merge-candidates/"):
+            session = self._require_session()
+            if session:
+                self._merge_review_get(session, self.path)
             return
         if parsed.path.startswith("/api/global-suppliers/"):
             session = self._require_session()
@@ -450,6 +456,9 @@ class SupplierHandler(AuthHandlerMixin, RequestRouteMixin, GlobalSupplierRouteMi
             return
         if not self.app.allow_api_request(self._session_token()):
             self._json(429, {"error": "Слишком много запросов. Попробуйте через минуту."})
+            return
+        if parsed.path.startswith("/api/supplier-merge-candidates"):
+            self._merge_review_post(session, parsed.path, body)
             return
         try:
             if parsed.path == "/maintenance/restore-global-suppliers-20260909":

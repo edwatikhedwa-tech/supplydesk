@@ -48,6 +48,15 @@ _POLICY: dict[str, tuple[str, str, str]] = {
     "name_token_similarity": ("ownership", "weak", "candidate"),
 }
 
+# TWO DIFFERENT QUESTIONS, never one score:
+#   identity confidence -- "does this address belong to THIS supplier?"  -> `_POLICY`
+#                          (assertion/strength/state of the evidence row itself);
+#   contact quality     -- "is this address actually a working, useful contact?" -> `_SIGNAL_MAP`
+#                          (the cross-tenant contact-intelligence signal the fact produces).
+# They deliberately differ: `manual_confirmed` is STRONG identity evidence (a person vouched for it)
+# but only a WEAK quality signal (nobody proved the mailbox answers); `inbound_reply` is strong for both;
+# `rfq_sent` is neither; a bounce says nothing about identity but is negative for quality.
+#
 # Evidence -> cross-tenant contact-intelligence signal (signal_type, strength).
 # Matches the pre-EDW-14 semantics: a real reply / official source is strong,
 # a workspace's own confirmation is always weak, bounces are weak-negative.
@@ -219,7 +228,33 @@ class SupplierIdentityEvidenceMixin:
             state = "confirmed"
         else:
             state = next((s for s in ("candidate", "revoked", "rejected", "confirmed") if s in states), "unknown")
-        return {"email": _clean_email(email), "state": state, "supplier_ids": sufficient}
+        rank = {"strong": 3, "medium": 2, "weak": 1}
+        identity_confidence = max(
+            (r["strength"] for r in rows if r["state"] == "confirmed"), key=lambda x: rank.get(x, 0), default="none")
+        return {"email": _clean_email(email), "state": state, "supplier_ids": sufficient,
+                "identity_confidence": identity_confidence}
+
+    def contact_quality(self, workspace_id: int, email: str) -> dict[str, int]:
+        """Contact QUALITY of an address in this workspace (separate from identity confidence): how many
+        confirmed positive-strong / positive-weak / negative signals its evidence produces."""
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT e.source_type FROM supplier_identity_evidence e
+                   JOIN suppliers s ON s.id=e.supplier_id AND s.workspace_id=e.workspace_id
+                   WHERE e.workspace_id=? AND e.kind='email' AND e.value=? AND e.state='confirmed'""",
+                (workspace_id, _clean_email(email)),
+            ).fetchall()
+        out = {"positive_strong": 0, "positive_weak": 0, "negative": 0}
+        for r in rows:
+            signal = _SIGNAL_MAP.get(r["source_type"])
+            if not signal:
+                continue
+            kind, strength = signal
+            if kind in ("hard_bounce", "soft_bounce"):
+                out["negative"] += 1
+            else:
+                out["positive_strong" if strength == "strong" else "positive_weak"] += 1
+        return out
 
     # ------------------------------------------------------------------ decisions (safe API)
     def _require_supplier(self, connection: Any, workspace_id: int, supplier_id: int, request_id: int | None) -> None:

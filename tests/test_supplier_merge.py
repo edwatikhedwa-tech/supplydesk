@@ -99,7 +99,7 @@ class MergeUnmergeRoundTripTest(_Base):
                                        (self.req, a, b)).fetchone()[0], 1)          # threads merged, messages re-parented
             self.assertEqual(c.execute("SELECT COUNT(*) FROM request_suppliers WHERE request_id=?", (self.req,)).fetchone()[0], 1)
         # the merged card's address is now a known, confirmed contact of the survivor
-        self.assertEqual(self.repo.contact_state(self.ws, PERSONAL), {"email": PERSONAL, "state": "confirmed", "supplier_ids": [a]})
+        self.assertEqual(self.repo.contact_state(self.ws, PERSONAL), {"email": PERSONAL, "state": "confirmed", "supplier_ids": [a], "identity_confidence": "strong"})
 
     def test_merged_card_can_never_be_resurrected_as_a_second_identity(self) -> None:
         a = self.card(self.fx, self.req, "termo-sfera.pro", "info@termo-sfera.pro")
@@ -195,6 +195,74 @@ class TenantIsolationTest(_Base):
         self.assertEqual(self.repo.list_supplier_merges(other.workspace_id), [])
 
 
+class AtomicityAndTransactionSafetyTest(_Base):
+    """A failed merge leaves NOTHING behind (also on PostgreSQL, where a failed SQL statement aborts the
+    transaction), and no probe may leave a PostgreSQL transaction in the aborted state."""
+
+    def _pair(self):
+        a = self.card(self.fx, self.req, "termo-sfera.pro", "info@termo-sfera.pro")
+        b = self.card(self.fx, self.req, "ivanov.local", PERSONAL)
+        return a, b
+
+    def test_a_python_error_midway_rolls_the_whole_merge_back(self) -> None:
+        a, b = self._pair()
+        before = _snapshot(self.repo, self.ws)
+        original = self.repo._merge_log
+        calls = {"n": 0}
+
+        def boom(*args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] == 5:
+                raise RuntimeError("simulated crash midway")
+            return original(*args, **kwargs)
+
+        self.repo._merge_log = boom
+        with self.assertRaises(RuntimeError):
+            self.repo.merge_suppliers(self.ws, self.uid, a, b, confirm_unknown_inn=True)
+        self.repo._merge_log = original
+        self.assertEqual(_snapshot(self.repo, self.ws), before)
+        self.assertEqual(self.repo.list_supplier_merges(self.ws), [])
+        self.assertIsNotNone(self.repo.merge_suppliers(self.ws, self.uid, a, b, confirm_unknown_inn=True))  # still works
+
+    def test_a_sql_error_midway_rolls_back_and_the_next_operation_is_not_poisoned(self) -> None:
+        a, b = self._pair()
+        before = _snapshot(self.repo, self.ws)
+        original = self.repo._merge_table
+        calls = {"n": 0}
+
+        def bad_sql(connection, *args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] == 3:
+                connection.execute("SELECT * FROM table_that_does_not_exist")   # real SQL error
+            return original(connection, *args, **kwargs)
+
+        self.repo._merge_table = bad_sql
+        with self.assertRaises(Exception):
+            self.repo.merge_suppliers(self.ws, self.uid, a, b, confirm_unknown_inn=True)
+        self.repo._merge_table = original
+        self.assertEqual(_snapshot(self.repo, self.ws), before)
+        self.assertEqual(self.repo.list_supplier_merges(self.ws), [])
+
+    def test_table_exists_never_raises_and_never_aborts_the_transaction(self) -> None:
+        from mail.supplier_merge import _table_exists
+        with self.repo.connect() as c:
+            self.assertTrue(_table_exists(c, "suppliers"))
+            self.assertFalse(_table_exists(c, "table_that_does_not_exist"))
+            # the same connection/transaction must still be usable afterwards
+            self.assertEqual(c.execute("SELECT COUNT(*) FROM suppliers").fetchone()[0] >= 0, True)
+
+    def test_preview_is_read_only_and_predicts_the_merge(self) -> None:
+        a, b = self._pair()
+        before = _snapshot(self.repo, self.ws)
+        preview = self.repo.preview_merge_suppliers(self.ws, a, b)
+        self.assertEqual(_snapshot(self.repo, self.ws), before)
+        self.assertEqual(preview["inn_verdict"], "unknown")
+        merged = self.repo.merge_suppliers(self.ws, self.uid, a, b, confirm_unknown_inn=True)
+        planned = sum(t["would_move"] + t["would_set_aside"] for t in preview["plan"].values())
+        # the merge additionally records the merged card's address as evidence (a ledger 'insert'), not a moved row
+        self.assertEqual(planned, merged["moved_rows"] + merged["set_aside_rows"])
+
+
 class RegistryCoverageTest(unittest.TestCase):
     def test_every_table_with_a_supplier_foreign_key_is_handled_by_merge(self) -> None:
         with tempfile.TemporaryDirectory() as d:
@@ -208,7 +276,7 @@ class RegistryCoverageTest(unittest.TestCase):
                         referencing.add(t)
             c.close()
         # supplier_merges/moves point at suppliers by design (the ledger itself), not data to move.
-        missing = referencing - {s["table"] for s in _TABLES} - {"supplier_merges"}
+        missing = referencing - {s["table"] for s in _TABLES} - {"supplier_merges", "supplier_merge_candidates"}
         self.assertEqual(missing, set(), "new supplier-referencing table: add it to mail/supplier_merge.py::_TABLES")
 
 

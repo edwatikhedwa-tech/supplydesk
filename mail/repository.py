@@ -1256,7 +1256,7 @@ class MailRepository(
                    FROM mail_reconciled_outbound_events re
                    WHERE re.request_id=? AND re.supplier_id=?
                      AND re.outcome='accepted'
-                     AND (? IS NULL OR re.normalized_recipient=?)
+                     AND (CAST(? AS TEXT) IS NULL OR re.normalized_recipient=?)
                ) accepted_events
                ORDER BY accepted_at DESC, event_id DESC
                LIMIT 1""",
@@ -3068,8 +3068,8 @@ class MailRepository(
                      ON rs.supplier_id=s.id AND rs.request_id=?
                    LEFT JOIN mail_messages lm ON lm.id=rs.last_message_id
                    WHERE s.workspace_id=?
-                     AND ((? IS NOT NULL AND s.id=?)
-                          OR (? IS NULL AND ((? <> '' AND LOWER(s.external_key)=?)
+                     AND ((CAST(? AS INTEGER) IS NOT NULL AND s.id=?)
+                          OR (CAST(? AS INTEGER) IS NULL AND ((? <> '' AND LOWER(s.external_key)=?)
                               OR (? <> '' AND LOWER(s.email)=?))))
                    ORDER BY s.id DESC LIMIT 1"""
             supplier = connection.execute(
@@ -7713,7 +7713,7 @@ class MailRepository(
                          )
                        )
                      )
-                     AND (? IS NULL OR j.id=?)
+                     AND (CAST(? AS INTEGER) IS NULL OR j.id=?)
                    ORDER BY COALESCE(j.next_attempt_at, j.created_at), j.created_at, j.id""",
                 (iso_now(), only_job_id, only_job_id),
             ).fetchall()
