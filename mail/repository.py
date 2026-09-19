@@ -51,6 +51,7 @@ from .time_utils import (  # noqa: F401 -- re-exported for mail/queue.py, backen
     iso_now,
     utc_now,
 )
+from backend.domain.supplier_identity.contact_linking import is_free_mail, match_free_mail_contact
 from backend.domain.supplier_identity.inn_extractor import normalize_inn, validate_inn_checksum
 from .pacing import PacingSettings
 from .deliverability import transient_health_metrics
@@ -3627,6 +3628,31 @@ class MailRepository(
                         if stored_email and stored_email != normalized_email:
                             raise ValueError("Email не совпадает с найденным сайтом поставщика.")
                         row = candidate
+
+                # GAP-003: a staff member's personal mailbox (yandex/gmail/...)
+                # says nothing about which company it belongs to, so the raw
+                # email must not mint a second supplier for a company already
+                # on this request. Reuse a card only on the narrow triple
+                # condition: same request, card still has no email, and the
+                # mailbox name is token-identical to the site name; anything
+                # ambiguous falls through to the old behaviour (no guessing).
+                if row is None and not normalized_host and is_free_mail(normalized_email):
+                    pending = connection.execute(
+                        """SELECT s.id, s.external_key, s.name, s.email, s.host,
+                                  COALESCE(p.inn, '') AS inn, gl.global_supplier_id
+                           FROM suppliers s
+                           JOIN request_suppliers rs ON rs.supplier_id=s.id AND rs.request_id=?
+                           LEFT JOIN supplier_profiles p ON p.supplier_id=s.id
+                           LEFT JOIN global_supplier_links gl ON gl.supplier_id=s.id
+                           WHERE s.workspace_id=? AND s.host<>'' AND COALESCE(s.email,'')=''
+                           ORDER BY s.id""",
+                        (request_id, workspace_id),
+                    ).fetchall()
+                    matched_id = match_free_mail_contact(
+                        normalized_email, [(int(c["id"]), str(c["host"])) for c in pending],
+                    )
+                    if matched_id is not None:
+                        row = next(c for c in pending if int(c["id"]) == matched_id)
 
             if row is not None:
                 resolved_id = int(row["id"])
