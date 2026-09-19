@@ -104,6 +104,42 @@ def worker2() -> None:
     print(json.dumps({k: v for k, v in st["worker2"].items() if k != "jobs"}, ensure_ascii=False))
 
 
+def savesent() -> None:
+    """A real mail client stores a copy of every sent letter in the sender's Sent folder; the direct provider sends of the harness do not.
+    Put the copies there (same Message-ID, same content) so that sync_sent has something real to import in BOTH directions."""
+    from datetime import datetime, UTC
+    from benchmarks.e2e_mail.scenarios_v2 import SCENARIOS
+    from mail.types import Attachment, OutgoingMessage, SendResult
+    repo, service = E.services()
+    st = E.state()
+    truth = json.loads((ROOT / "benchmarks" / "attachment_intelligence" / "ground_truth.json").read_text(encoding="utf-8"))
+    files = {f["id"]: f["file"] for f in truth["files"]}
+    r1 = st["requests"]["R1"]
+    saved = {"A": 0, "B": 0}
+    a_acc, a_tok = service._get_account_and_token(st["user_id"], st["workspace_id"], mail_account_id=st["account_a"], require_outgoing=False)
+    b_acc, b_tok = service._get_account_and_token(st["user_id"], st["workspace_id"], mail_account_id=st["account_b"], require_outgoing=False)
+    pa, pb = service._provider_for_account(a_acc, a_tok), service._provider_for_account(b_acc, b_tok)
+    for key, req in st["requests"].items():
+        msg = OutgoingMessage(from_email=E.A_EMAIL, to_email=E.B_EMAIL, subject=req["rfq_subject"], body_text="Добрый день! Просим прислать коммерческое предложение по позициям заявки. (E2E-тест, письмо между собственными ящиками)",
+                              body_html="", message_id=req["rfq_message_id"])
+        pa.save_sent_copy(a_tok, msg, SendResult(req["rfq_message_id"], None, datetime.now(UTC)))
+        saved["A"] += 1
+    for sc in SCENARIOS:
+        sent = st["sent"][sc["id"]]
+        atts = []
+        for fid, name in sc.get("attach", []):
+            path = ROOT / "benchmarks" / "attachment_intelligence" / "fixtures" / "files" / files[fid]
+            mime = {"pdf": "application/pdf", "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}[path.suffix.lstrip(".")]
+            atts.append(Attachment(filename=name, mime_type=mime, content=path.read_bytes()))
+        msg = OutgoingMessage(from_email=E.B_EMAIL, to_email=E.A_EMAIL, subject=sent["subject"], body_text=sc["body"], body_html="", message_id=sent["message_id"], attachments=atts)
+        assert msg.to_email in E.ALLOWED and msg.from_email in E.ALLOWED
+        pb.save_sent_copy(b_tok, msg, SendResult(sent["message_id"], None, datetime.now(UTC)))
+        saved["B"] += 1
+    st["savesent"] = saved
+    E.save(st)
+    print(json.dumps(saved))
+
+
 def _objects(repo, ids) -> dict:
     out = {}
     with repo.connect() as c:
@@ -147,7 +183,9 @@ def resync2() -> None:
     before = _counts(repo)
     ra = service.sync_incoming(st["user_id"], st["workspace_id"], max_messages=500, mail_account_id=st["account_a"])
     rb = service.sync_incoming(st["user_id"], st["workspace_id"], max_messages=500, mail_account_id=st["account_b"])
-    enq = repo.enqueue_missing_analysis_jobs(st["workspace_id"])
+    from datetime import datetime, timedelta, UTC
+    since = (datetime.fromisoformat(st["requests"]["R1"]["rfq_sent_at"]).astimezone(UTC) - timedelta(minutes=2)).isoformat()   # only this replay's window
+    enq = repo.enqueue_missing_analysis_jobs(st["workspace_id"], since=since)
     w = repo.run_analysis_jobs("worker-3", workspace_id=st["workspace_id"], limit=100)
     st["resync2"] = {"sync_A": {k: ra.get(k) for k in ("scanned", "imported", "unmatched", "skipped")}, "sync_B": {k: rb.get(k) for k in ("scanned", "imported", "unmatched", "skipped")},
                      "reconcile_enqueued": enq, "worker": {k: v for k, v in w.items() if k != "jobs"}, "before": before, "after": _counts(repo)}
@@ -219,8 +257,12 @@ def verify2() -> None:
         dup_messages = sum(1 for n in _objects(repo, ids).values() if n != 1)
         dup_facts = c.execute("SELECT COUNT(*) FROM (SELECT analysis_id, position FROM mail_facts GROUP BY analysis_id, position HAVING COUNT(*)>1) x").fetchone()[0]
         dup_facts += c.execute("SELECT COUNT(*) FROM (SELECT message_id, position, data_json FROM mail_attachment_facts GROUP BY message_id, position HAVING COUNT(*)>1) x").fetchone()[0]
-        dup_facts += c.execute("SELECT COUNT(*) FROM (SELECT message_kind, message_id, analysis_version FROM mail_analyses a JOIN mail_facts f ON f.analysis_id=a.id WHERE f.state='proposed' GROUP BY message_kind, message_id, analysis_version, a.id HAVING COUNT(DISTINCT a.id)>1) x").fetchone()[0]
-        paid = c.execute("SELECT COUNT(*), COALESCE(SUM(cost_rub),0) FROM mail_ai_reply_cache").fetchone()
+        dup_facts += c.execute("SELECT COUNT(*) FROM (SELECT f.message_kind, f.message_id FROM mail_facts f WHERE f.state='proposed' GROUP BY f.message_kind, f.message_id HAVING COUNT(DISTINCT f.analysis_id)>1) x").fetchone()[0]
+        paid_all = c.execute("SELECT COUNT(*), COALESCE(SUM(cost_rub),0) FROM mail_ai_reply_cache").fetchone()
+        msg_ids = [r[0] for r in c.execute("SELECT id FROM mail_messages WHERE message_id IN (%s)" % ",".join("?" * 20), [v["message_id"] for v in st["sent"].values()]).fetchall()]
+        inbox_ids = [r[0] for r in c.execute("SELECT id FROM mail_inbox_messages WHERE message_id IN (%s)" % ",".join("?" * 20), [v["message_id"] for v in st["sent"].values()]).fetchall()]
+        scen = c.execute("SELECT COUNT(*), COALESCE(SUM(r.cost_rub),0) FROM mail_ai_runs r JOIN mail_analyses a ON a.id=r.analysis_id WHERE r.provider<>'rules' AND ((a.message_kind='mail_message' AND a.message_id IN (%s)) OR (a.message_kind='inbox_message' AND a.message_id IN (%s)))" % (",".join("?" * len(msg_ids)) or "NULL", ",".join("?" * len(inbox_ids)) or "NULL"), msg_ids + inbox_ids).fetchone()
+        paid = (scen[0], scen[1])
         replays = c.execute("SELECT COALESCE(SUM(replays),0) FROM mail_ai_reply_cache").fetchone()[0]
         cost_runs = c.execute("SELECT COALESCE(SUM(cost_rub),0) FROM mail_ai_runs WHERE provider<>'rules'").fetchone()[0]
         dup_ai = c.execute("SELECT COUNT(*) FROM (SELECT request_key FROM mail_ai_reply_cache GROUP BY workspace_id, request_key HAVING COUNT(*)>1) x").fetchone()[0]
@@ -243,7 +285,7 @@ def verify2() -> None:
         "total_cost_within_cap": (paid[1] <= GLOBAL_EXPECT["max_total_cost_rub"], f"cost={round(paid[1], 5)} rub"),
     }
     summary = {"scenarios_passed": sum(r["passed"] for r in report), "scenarios": len(report), "ai_calls_paid": paid[0], "replays": replays, "duplicated_messages": dup_messages,
-               "duplicated_facts": dup_facts, "total_cost_rub": round(paid[1], 6), "ledger_cost_rub": round(cost_runs, 6), "total_sync_seconds": s2["sync_seconds"],
+               "duplicated_facts": dup_facts, "total_cost_rub": round(paid[1], 6), "unintended_history_spend": {"calls": paid_all[0] - paid[0], "cost_rub": round(paid_all[1] - paid[1], 6), "note": "first resync2 run reconciled the whole copied mailbox history (harness defect, fixed: since is now required)"}, "ledger_cost_rub": round(cost_runs, 6), "total_sync_seconds": s2["sync_seconds"],
                "async_analysis_seconds": w2["seconds"], "worker_jobs": {r["worker"]: r["done"] for r in w2["results"]}, "sentsync_runs": ss["runs"]}
     st["verify2"] = {"scenarios": report, "global": {k: {"ok": v[0], "detail": v[1]} for k, v in glob.items()}, "summary": summary}
     E.save(st)
@@ -261,7 +303,7 @@ def verify2() -> None:
 
 def main() -> None:
     stage = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"prep2": prep2, "rfq": E.rfq, "replies": E.replies, "sync2": sync2, "worker2": worker2, "sentsync": sentsync, "resync2": resync2, "verify2": verify2}.get(stage, lambda: sys.exit("stages: prep2 rfq replies sync2 worker2 sentsync resync2 verify2"))()
+    {"prep2": prep2, "rfq": E.rfq, "replies": E.replies, "sync2": sync2, "worker2": worker2, "savesent": savesent, "sentsync": sentsync, "resync2": resync2, "verify2": verify2}.get(stage, lambda: sys.exit("stages: prep2 rfq replies sync2 worker2 sentsync resync2 verify2"))()
 
 
 if __name__ == "__main__":

@@ -29,7 +29,7 @@ from .bounce import classify_bounce
 from .request_references import parse_request_reference_from_subject
 from .time_utils import iso_now
 
-ANALYSIS_VERSION = "mail-extract/v3"
+ANALYSIS_VERSION = "mail-extract/v4"
 STALE_IN_PROGRESS_MINUTES = 15
 MAX_ATTEMPTS = 3                      # provider errors per (message, hash, version) before manual review
 MAX_TEXT_CHARS = 6000                 # what may be sent to a model
@@ -127,6 +127,26 @@ def needs_extraction(text: str) -> bool:
     # which is not a signal that the supplier named a price (found by the real-mailbox E2E run).
     own_text = text.partition("\n")[2]
     return bool(_QUOTE_TERMS.search(own_text)) and not _ATTACHMENT.search(text)
+
+
+_PENDING_QUOTE = re.compile(
+    r"((готов\w*|подготов\w*|направим|направлю|пришл[её]м|пришлю|отправим|вышлем|вернёмся|вернемся|сообщим)[^.!?]{0,60}(предложени|кп\b|цен|расч[её]т|прайс)"
+    r"|(предложени|кп\b|цен\w*)[^.!?]{0,40}(позже|завтра|на днях|в ближайшее|после уточнения))", re.IGNORECASE)
+_ACKNOWLEDGEMENT = re.compile(r"(спасибо за (ваш )?(запрос|обращение)|запрос (получен|принят)|принят\w* в работу|получили ваш запрос|благодарим за обращение)", re.IGNORECASE)
+_MARKER_OR_DATE = re.compile(r"\[?SD-\d+\]?|\d{1,2}\.\d{1,2}\.\d{2,4}", re.IGNORECASE)
+
+
+def classify_acknowledgement(text: str) -> str | None:
+    """Deterministic, no model: a letter with NO price, SKU or quantity (no digit at all besides a request marker or a date) that says the
+    quote will come later (pending_quote) or that the request was received (acknowledgement). Neither is a quote."""
+    own = _MARKER_OR_DATE.sub(" ", text.partition("\n")[2])
+    if re.search(r"\d", own):
+        return None
+    if _PENDING_QUOTE.search(own):
+        return "pending_quote"
+    if _ACKNOWLEDGEMENT.search(own):
+        return "acknowledgement"
+    return None
 
 
 def looks_like_newsletter(text: str) -> bool:
@@ -502,7 +522,19 @@ class MessageAnalysisMixin:
                 # A letter that carries attachments and names no price in its own text: the offer is in the attachments (read by the
                 # attachment pipeline), the body has nothing for a model to extract. Found by the real-mailbox E2E run.
                 body_only_note = kind == "mail_message" and bool(message.get("attachment_count")) and not _PRICE_PATTERN.search(text)
-                if body_only_note or not needs_extraction(text):
+                ack = None if message.get("attachment_count") else classify_acknowledgement(text)
+                unresolved = outcome["match_method"] in ("", "candidates") or outcome["request_id"] is None
+                if ack:
+                    outcome.update(message_type=ack, result={"rule": ack})
+                    self._log_run(connection, workspace_id=workspace_id, analysis_id=analysis_id, reason="classify", stage="rules",
+                                  provider="rules", status="not_needed", chash=chash, version=version, detail=ack)
+                elif unresolved and not _PRICE_PATTERN.search(text):
+                    # routing -> request resolution -> extraction: a letter without a reliable request and without a price of its own
+                    # has no reason to be analysed before a human (or a rule) resolves the request
+                    outcome["result"] = {"rule": "awaiting_request_resolution"}
+                    self._log_run(connection, workspace_id=workspace_id, analysis_id=analysis_id, reason="classify", stage="rules",
+                                  provider="rules", status="not_needed", chash=chash, version=version, detail="awaiting_request_resolution")
+                elif body_only_note or not needs_extraction(text):
                     outcome["result"] = {"rule": "no_extractable_signal"}
                     self._log_run(connection, workspace_id=workspace_id, analysis_id=analysis_id, reason="classify", stage="rules",
                                   provider="rules", status="not_needed", chash=chash, version=version, detail="no_extractable_signal")
@@ -584,12 +616,17 @@ class MessageAnalysisMixin:
                     """UPDATE mail_facts SET state='superseded' WHERE workspace_id=? AND message_kind=? AND message_id=?
                        AND analysis_id<>? AND state='proposed'""", (workspace_id, kind, message_id, analysis_id))
             now = iso_now()
+            # source fact vs request-scoped fact: a fact belongs to a request only when the association is confirmed (thread, or
+            # [SD-n] marker with a known supplier). Otherwise it stays an unscoped source fact with provenance and NULL request.
+            scoped = outcome["match_method"] == "thread" or (outcome["match_method"] == "sd_label" and outcome["supplier_id"] is not None)
+            fact_request = outcome["request_id"] if scoped else None
+            fact_supplier = outcome["supplier_id"] if scoped else None
             for f in facts:
                 connection.execute(
                     """INSERT INTO mail_facts(workspace_id, analysis_id, message_kind, message_id, request_id, supplier_id, kind,
                            position, data_json, source_quote, source_start, source_end, state, created_at)
                        VALUES (?, ?, ?, ?, ?, ?, 'quote_item', ?, ?, ?, ?, ?, 'proposed', ?)""",
-                    (workspace_id, analysis_id, kind, message_id, outcome["request_id"], outcome["supplier_id"], f["position"],
+                    (workspace_id, analysis_id, kind, message_id, fact_request, fact_supplier, f["position"],
                      json.dumps(f["data"], ensure_ascii=False), f["source_quote"], f["source_start"], f["source_end"], now))
             connection.execute(
                 """UPDATE mail_analyses SET status=?, stage=?, message_type=?, is_relevant=?, match_method=?, request_id=?,
@@ -607,6 +644,35 @@ class MessageAnalysisMixin:
                                                             "facts": len(facts)}), now))
             connection.commit()
             return self._analysis_view(connection, analysis_id, cached=False, ai_calls=ai_calls)
+
+    def rebind_message_facts(self, workspace_id: int, kind: str, message_id: int, request_id: int, supplier_id: int | None, *,
+                             user_id: int | None = None, method: str = "manual_link") -> int:
+        """After a confirmed manual link: source facts of the message become facts of that request. No model call, no re-reading."""
+        now = iso_now()
+        with self.connect() as connection:
+            facts = connection.execute(
+                "SELECT id FROM mail_facts WHERE workspace_id=? AND message_kind=? AND message_id=? AND state='proposed' AND request_id IS NULL",
+                (workspace_id, kind, message_id)).fetchall()
+            for f in facts:
+                connection.execute("UPDATE mail_facts SET request_id=?, supplier_id=? WHERE id=?", (request_id, supplier_id, f["id"]))
+                connection.execute(
+                    "INSERT INTO mail_fact_bindings(workspace_id, fact_id, request_id, supplier_id, method, bound_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (workspace_id, f["id"], request_id, supplier_id, method, user_id, now))
+            analysis = connection.execute(
+                "SELECT id, status, review_reason, message_type FROM mail_analyses WHERE workspace_id=? AND message_kind=? AND message_id=? ORDER BY id DESC LIMIT 1",
+                (workspace_id, kind, message_id)).fetchone()
+            if analysis:
+                relinked = analysis["review_reason"] in ("ambiguous_request_link", "request_link_unknown", "supplier_unconfirmed", "unknown_sender")
+                connection.execute(
+                    "UPDATE mail_analyses SET request_id=?, supplier_id=?, match_method='manual', status=?, review_reason=?, updated_at=? WHERE id=?",
+                    (request_id, supplier_id, "final" if relinked else analysis["status"], "" if relinked else analysis["review_reason"], now, analysis["id"]))
+                if analysis["message_type"] == "quote" and facts and supplier_id:
+                    connection.execute(
+                        """INSERT INTO mail_analysis_events(workspace_id, analysis_id, event_type, payload_json, created_at) VALUES (?, ?, 'quote_received', ?, ?)
+                           ON CONFLICT(analysis_id, event_type) DO NOTHING""",
+                        (workspace_id, analysis["id"], json.dumps({"request_id": request_id, "supplier_id": supplier_id, "facts": len(facts)}), now))
+            connection.commit()
+        return len(facts)
 
     def _default_analysis_models(self) -> AnalysisModels | None:
         if not os.getenv("ROUTERAI_KEY"):

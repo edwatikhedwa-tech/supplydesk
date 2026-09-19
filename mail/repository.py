@@ -22,6 +22,8 @@ from .supplier_identity_evidence import SupplierIdentityEvidenceMixin
 from .supplier_merge import SupplierMergeMixin
 from .message_analysis import MessageAnalysisMixin
 from .attachment_analysis import AttachmentAnalysisMixin
+from .analysis_queue import AnalysisQueueMixin, intelligence_enabled
+from .attachment_intelligence import ANALYSIS_VERSION as ATTACHMENT_ANALYSIS_VERSION
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
 from .ai_chat_usage import AiChatUsageMixin
@@ -259,7 +261,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 class MailRepository(
     AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, SupportMixin, AiChatUsageMixin, AiConversationsMixin, TasksMixin,
     CanonicalCompaniesMixin, ContactIntelligenceMixin, TaskReminderDeliveryMixin, SupplierIdentityEvidenceMixin,
-    SupplierMergeMixin, MessageAnalysisMixin, AttachmentAnalysisMixin,
+    SupplierMergeMixin, MessageAnalysisMixin, AttachmentAnalysisMixin, AnalysisQueueMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
@@ -2195,7 +2197,10 @@ class MailRepository(
         user_id: int,
         account_id: int,
         messages: Iterable[Any],
+        enqueue_analysis: bool | None = None,
     ) -> dict[str, int]:
+        enqueue = intelligence_enabled() if enqueue_analysis is None else bool(enqueue_analysis)
+        enqueued = 0
         imported = 0
         skipped = 0
         unmatched = 0
@@ -2264,6 +2269,13 @@ class MailRepository(
                                                    (account_id, incoming.provider_message_id)).fetchone()
                     if inbox_row:
                         unmatched_ids.append(int(inbox_row[0]))
+                        if getattr(incoming, "attachments", None) and not connection.execute("SELECT 1 FROM mail_inbox_attachments WHERE inbox_message_id=? LIMIT 1", (int(inbox_row[0]),)).fetchone():
+                            for attachment in incoming.attachments:       # kept, not read: extraction waits for request resolution
+                                connection.execute(
+                                    "INSERT INTO mail_inbox_attachments(inbox_message_id, filename, mime_type, size_bytes, content) VALUES (?, ?, ?, ?, ?)",
+                                    (int(inbox_row[0]), attachment["filename"], attachment["mime_type"], int(attachment["size_bytes"]), attachment["content"]))
+                        if enqueue:
+                            enqueued += self.enqueue_analysis_for_message(connection, workspace_id, "inbox_message", int(inbox_row[0]))
                     continue
                 created_at = incoming.received_at.astimezone(UTC).isoformat()
                 connection.execute(
@@ -2278,6 +2290,8 @@ class MailRepository(
                         (message_id, attachment["filename"], attachment["mime_type"], int(attachment["size_bytes"]), attachment["content"]),
                     )
                 imported_ids.append(message_id)
+                if enqueue:
+                    enqueued += self.enqueue_analysis_for_message(connection, workspace_id, "mail_message", message_id, has_attachments=bool(getattr(incoming, "attachments", None)))
                 # One rule set for every inbound message in a supplier's thread (real reply =
                 # ownership evidence, bounce = deliverability evidence); see
                 # mail/supplier_identity_evidence.py -- contact intelligence is projected from it.
@@ -2319,7 +2333,7 @@ class MailRepository(
                 self._audit_connection(connection, workspace_id, user_id, "mail.incoming_imported", "mail_message", str(message_id), {"thread_id": thread["thread_id"], "bounce": bounce})
                 imported += 1
             connection.commit()
-        return {"imported": imported, "skipped": skipped, "unmatched": unmatched, "imported_message_ids": imported_ids, "unmatched_inbox_ids": unmatched_ids}
+        return {"imported": imported, "skipped": skipped, "unmatched": unmatched, "imported_message_ids": imported_ids, "unmatched_inbox_ids": unmatched_ids, "analysis_jobs_enqueued": enqueued}
 
     def import_sent_messages(
         self,
@@ -2341,12 +2355,20 @@ class MailRepository(
         with self.connect() as connection:
             if not self.database_url:
                 connection.execute("BEGIN IMMEDIATE")
+            own_mailboxes = {str(r[0]).strip().lower() for r in connection.execute("SELECT email FROM mail_accounts WHERE workspace_id=?", (workspace_id,)).fetchall()}
             for outgoing in messages:
                 duplicate = connection.execute(
                     "SELECT id FROM mail_sent_messages WHERE mail_account_id=? AND provider_message_id=?",
                     (account_id, outgoing.provider_message_id),
                 ).fetchone()
 
+                # Mail between two mailboxes of the same workspace is not supplier correspondence: the copy in the sender's Sent folder must not
+                # become a second object (nor a phantom supplier) of a letter that the recipient mailbox imports as inbound, or the workspace
+                # already stored as outbound. Order independent.
+                recipients_now = {c.strip().lower() for c in (getattr(outgoing, "recipient_emails", ()) or (outgoing.to_email,)) if "@" in c}
+                if recipients_now and recipients_now <= own_mailboxes:
+                    skipped += 1
+                    continue
                 parsed = parse_request_reference_from_subject(str(outgoing.subject or ""))
                 if parsed.status != "valid" or not parsed.email_reference:
                     invalid += 1
@@ -2821,11 +2843,18 @@ class MailRepository(
             connection.execute(
                 "UPDATE mail_inbox_messages SET status='matched' WHERE id=?", (inbox_message_id,),
             )
+            moved = connection.execute("SELECT filename, mime_type, size_bytes, content FROM mail_inbox_attachments WHERE inbox_message_id=? ORDER BY id", (inbox_message_id,)).fetchall()
+            for attachment in moved:                       # the files kept while the request was unknown now belong to the linked message
+                connection.execute("INSERT INTO mail_attachments(message_id, filename, mime_type, size_bytes, content) VALUES (?, ?, ?, ?, ?)",
+                                   (new_message_id, attachment["filename"], attachment["mime_type"], attachment["size_bytes"], attachment["content"]))
+            if moved and intelligence_enabled():
+                self._enqueue_job(connection, workspace_id, "mail_message", new_message_id, "attachments", ATTACHMENT_ANALYSIS_VERSION)
             self._audit_connection(
                 connection, workspace_id, user_id, "mail.inbox_attached", "mail_message", str(new_message_id),
                 {"inbox_message_id": inbox_message_id, "request_id": request_id, "supplier_id": supplier_id},
             )
             connection.commit()
+        self.rebind_message_facts(workspace_id, "inbox_message", inbox_message_id, request_id, supplier_id, user_id=user_id, method="attach_inbox_message")
         return {"message_id": new_message_id, "thread_id": thread_id, "request_id": request_id, "supplier_id": supplier_id}
 
     def manually_link_inbox_message(
