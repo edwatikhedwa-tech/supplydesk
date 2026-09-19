@@ -32,7 +32,7 @@ updated_at: 2026-09-19
 - Факт сохраняется, только если его цитата дословно есть в письме; SKU, которого нет в тексте, отбрасывается; цена > 0; валюта из списка.
 - Повторный анализ неизменного письма той же версии = 0 вызовов. Изменился текст (без цитируемой истории) → новый анализ. Иная версия → используется прежний результат, пока не запрошен `reprocess=True` (новый versioned анализ, старый сохраняется, его факты `superseded`).
 - Ошибка провайдера: письмо не блокируется, анализ `pending_retry`, до 3 попыток, затем manual review. Дневной бюджет `MAIL_ANALYSIS_DAILY_BUDGET_RUB` (по умолчанию 20 ₽ на workspace) проверяется до вызова.
-- Модели: `MAIL_ANALYSIS_CHEAP_MODEL` (по умолчанию `DEFAULT_MODEL` из `llm_fallback.py`), `MAIL_ANALYSIS_STRONG_MODEL` (не задана → эскалации нет, сразу manual review). Стоимость — по ценам каталога RouterAI (`catalog_estimate`); фактическая цена провайдера пока недоступна.
+- Модели: `MAIL_ANALYSIS_CHEAP_MODEL` (по умолчанию `DEFAULT_MODEL` из `llm_fallback.py`), `MAIL_ANALYSIS_STRONG_MODEL` (не задана → эскалации нет, сразу manual review). Стоимость — фактическая из ответа шлюза (`provider_reported`, поле `usage.cost`); если его нет — оценка по каталогу цен (`catalog_estimate`).
 - Downstream: `quote_received` закрывает открытые follow-up задачи «Связаться с поставщиком» этого поставщика в этой заявке; обработчик модель не вызывает.
 
 ## Изменения после benchmark на реальных вызовах (EDW-26, `docs/benchmarks/MAIL_ANALYSIS_BENCHMARK_20260919.md`)
