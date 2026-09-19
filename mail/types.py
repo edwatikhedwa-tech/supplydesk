@@ -147,6 +147,8 @@ class IncomingMessage:
     # Sent messages can address several suppliers, so importers must preserve
     # every explicit recipient rather than silently collapsing the list.
     recipient_emails: tuple[str, ...] = ()
+    # Real attachments of the message (filename, mime_type, content bytes). Bounded by the parser; empty for legacy providers.
+    attachments: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(slots=True)

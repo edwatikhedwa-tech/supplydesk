@@ -32,7 +32,7 @@ from ..types import (
     IncomingBatch,
     IncomingMessage,
 )
-from typing import Callable
+from typing import Callable, Any
 from .base import MailProvider
 
 log = logging.getLogger("mail.yandex")
@@ -687,7 +687,35 @@ class YandexMailProvider(MailProvider):
             folder=folder,
             direction="outbound" if direction == "outbound" else "inbound",
             recipient_emails=recipient_emails,
+            attachments=cls._extract_attachments(message),
         )
+
+    _MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+    _MAX_ATTACHMENTS_TOTAL_BYTES = 20 * 1024 * 1024
+    _MAX_ATTACHMENTS = 10
+
+    @classmethod
+    def _extract_attachments(cls, message) -> tuple[dict[str, Any], ...]:
+        """Real file attachments (not the CID images used by the HTML body), bounded in count and size."""
+        found: list[dict[str, Any]] = []
+        total = 0
+        for part in message.walk():
+            if part.is_multipart():
+                continue
+            filename = part.get_filename()
+            disposition = part.get_content_disposition()
+            if not filename and disposition != "attachment":
+                continue
+            if part.get("Content-ID") and part.get_content_type().lower().startswith("image/") and disposition != "attachment":
+                continue                                    # inline HTML image, handled by _extract_bodies
+            payload = part.get_payload(decode=True) or b""
+            if not payload or len(payload) > cls._MAX_ATTACHMENT_BYTES or total + len(payload) > cls._MAX_ATTACHMENTS_TOTAL_BYTES:
+                continue
+            if len(found) >= cls._MAX_ATTACHMENTS:
+                break
+            total += len(payload)
+            found.append({"filename": str(filename or "attachment")[:255], "mime_type": part.get_content_type().lower(), "size_bytes": len(payload), "content": payload})
+        return tuple(found)
 
     @classmethod
     def _extract_text(cls, message) -> str:

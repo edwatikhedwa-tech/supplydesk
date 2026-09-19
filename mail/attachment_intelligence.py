@@ -747,6 +747,15 @@ def _series(text: str) -> str:
     return t[0][:4] if t and t[0].isalpha() else ""
 
 
+def _position_keys(p: dict[str, Any]) -> set[str]:
+    """Article keys of a request position: its explicit SKU, or (real requests have none) the article-like tokens of its name."""
+    if p.get("sku"):
+        k = _sku_key(p["sku"])
+        return {k} if len(k) >= 3 else set()
+    found = re.findall(r"[A-Za-zА-Яа-я0-9][A-Za-zА-Яа-я0-9./-]*\d[A-Za-zА-Яа-я0-9./-]*", p.get("name") or "")
+    return {k for k in (_sku_key(t) for t in found) if len(k) >= 4 and re.search(r"[a-zа-я]", k) and re.search(r"\d", k) or len(k) >= 4 and k.isdigit()}
+
+
 def match_position(fact: dict[str, Any], positions: list[dict[str, Any]]) -> dict[str, Any]:
     """Deterministic matching of one extracted line to the request positions. Never returns 'exact' on partial evidence:
     doubt is 'ambiguous' (manual review); a similar-but-different product is 'analog'; nothing similar is 'unmatched'."""
@@ -754,16 +763,17 @@ def match_position(fact: dict[str, Any], positions: list[dict[str, Any]]) -> dic
     line_txt = f"{name_txt} {fact.get('sku') or ''}"
     name_win = _windows(name_txt)
     line_sku = _sku_key(fact.get("sku") or "")
-    keys = {p["pid"]: _sku_key(p["sku"]) for p in positions if p.get("sku") and len(_sku_key(p["sku"])) >= 3}
+    keys = {p["pid"]: _position_keys(p) for p in positions}
+    keys = {pid: ks for pid, ks in keys.items() if ks}
     # 1. article evidence. A line that states its own article is exact only when that article IS the position's article;
     #    another article that merely contains it (6306-2Z-ZWZ vs 6306-2Z) is a different product = analog, never exact.
-    hits = [pid for pid, k in keys.items() if (line_sku == k if line_sku else k in name_win)]
+    hits = [pid for pid, ks in keys.items() if any((line_sku == k) if line_sku else (k in name_win) for k in ks)]
     if len(hits) == 1:
         return {"status": "exact", "pid": hits[0], "candidates": hits, "reason": "sku"}
     if len(hits) > 1:
         return {"status": "ambiguous", "pid": None, "candidates": hits, "reason": "sku_several"}
     if line_sku:
-        near = [pid for pid, k in keys.items() if line_sku.startswith(k) or k in name_win]
+        near = [pid for pid, ks in keys.items() if any(line_sku.startswith(k) or k in name_win for k in ks)]
         if len(near) == 1:
             return {"status": "analog", "pid": near[0], "candidates": near, "reason": "article_extends_position_article"}
     codes = {t for t in tokens(line_txt) if len(re.sub(r"\D", "", t)) >= 4}

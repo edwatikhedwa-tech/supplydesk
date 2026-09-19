@@ -21,6 +21,7 @@ from .contact_intelligence import ContactIntelligenceMixin
 from .supplier_identity_evidence import SupplierIdentityEvidenceMixin
 from .supplier_merge import SupplierMergeMixin
 from .message_analysis import MessageAnalysisMixin
+from .attachment_analysis import AttachmentAnalysisMixin
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
 from .ai_chat_usage import AiChatUsageMixin
@@ -258,7 +259,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 class MailRepository(
     AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, SupportMixin, AiChatUsageMixin, AiConversationsMixin, TasksMixin,
     CanonicalCompaniesMixin, ContactIntelligenceMixin, TaskReminderDeliveryMixin, SupplierIdentityEvidenceMixin,
-    SupplierMergeMixin, MessageAnalysisMixin,
+    SupplierMergeMixin, MessageAnalysisMixin, AttachmentAnalysisMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
@@ -2198,6 +2199,7 @@ class MailRepository(
         imported = 0
         skipped = 0
         unmatched = 0
+        imported_ids: list[int] = []
         with self.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             for incoming in messages:
@@ -2256,6 +2258,12 @@ class MailRepository(
                     (thread["thread_id"], workspace_id, user_id, thread["request_id"], thread["supplier_id"], account_id, incoming.provider_message_id, incoming.message_id, incoming.in_reply_to, incoming.references, incoming.from_email, incoming.to_email, incoming.subject, incoming.body_text, incoming.body_html, created_at, created_at),
                 )
                 message_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
+                for attachment in getattr(incoming, "attachments", ()) or ():
+                    connection.execute(
+                        "INSERT INTO mail_attachments(message_id, filename, mime_type, size_bytes, content) VALUES (?, ?, ?, ?, ?)",
+                        (message_id, attachment["filename"], attachment["mime_type"], int(attachment["size_bytes"]), attachment["content"]),
+                    )
+                imported_ids.append(message_id)
                 # One rule set for every inbound message in a supplier's thread (real reply =
                 # ownership evidence, bounce = deliverability evidence); see
                 # mail/supplier_identity_evidence.py -- contact intelligence is projected from it.
@@ -2297,7 +2305,7 @@ class MailRepository(
                 self._audit_connection(connection, workspace_id, user_id, "mail.incoming_imported", "mail_message", str(message_id), {"thread_id": thread["thread_id"], "bounce": bounce})
                 imported += 1
             connection.commit()
-        return {"imported": imported, "skipped": skipped, "unmatched": unmatched}
+        return {"imported": imported, "skipped": skipped, "unmatched": unmatched, "imported_message_ids": imported_ids}
 
     def import_sent_messages(
         self,
