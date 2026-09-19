@@ -262,7 +262,7 @@ class FailuresBudgetVersionsTest(_Base):
 
     def test_content_change_is_a_new_analysis_and_version_change_needs_explicit_reprocess(self) -> None:
         message_id = self.inbound()
-        models = FakeModels(cheap=[good_answer(), good_answer(price=1900, source_quote=QUOTE_QUOTE)])
+        models = FakeModels(cheap=[good_answer(), good_answer()])
         v1 = self.repo.analyze_message(self.ws, message_id, models=models)
         with self.repo.connect() as c:                               # the same message, but the stored analysis is v0
             c.execute("UPDATE mail_analyses SET analysis_version='mail-extract/v0' WHERE id=?", (v1["id"],))

@@ -118,6 +118,26 @@ def _loose(value: str) -> str:
     return re.sub(r"[\s\-_./]+", "", value.casefold())
 
 
+_NUMBER = re.compile(r"\d[\d\s]*(?:[.,]\d+)?")
+_CURRENCY_MARKERS = {
+    "RUB": re.compile(r"₽|руб|\brub\b|\bр\.|\bр\b|\brur\b", re.IGNORECASE),
+    "USD": re.compile(r"\$|usd|доллар", re.IGNORECASE),
+    "EUR": re.compile(r"€|eur\b|евро", re.IGNORECASE),
+    "CNY": re.compile(r"cny|юан|¥|rmb", re.IGNORECASE),
+    "KZT": re.compile(r"kzt|тенге|₸", re.IGNORECASE),
+    "BYN": re.compile(r"byn|бел\.?\s*руб", re.IGNORECASE),
+}
+
+
+def _numbers_in(text: str) -> set[Decimal]:
+    found: set[Decimal] = set()
+    for raw in _NUMBER.findall(text):
+        value = _to_decimal(raw.replace(" ", "").replace("\u00a0", ""))
+        if value is not None:
+            found.add(value.normalize())
+    return found
+
+
 def _to_decimal(value: Any) -> Decimal | None:
     if isinstance(value, bool) or value is None:
         return None
@@ -154,10 +174,16 @@ def validate_extraction(data: Any, text: str) -> dict[str, Any]:
         if price is None or price <= 0:
             issues.append(f"item{index}:price_invalid")
             continue
+        if price.normalize() not in _numbers_in(quote):
+            issues.append(f"item{index}:price_not_in_quote")             # a price the quote does not contain is invented
+            continue
         currency = str(item.get("currency") or "").strip().upper()
         currency = _CURRENCY_ALIASES.get(currency, currency)
         if currency not in CURRENCIES:
             issues.append(f"item{index}:currency_invalid")
+            continue
+        if not _CURRENCY_MARKERS[currency].search(text):
+            issues.append(f"item{index}:currency_not_in_message")        # the letter does not show this currency
             continue
         quantity = _to_decimal(item.get("quantity"))
         if item.get("quantity") is not None and (quantity is None or quantity <= 0):
@@ -195,6 +221,9 @@ class ModelReply:
     cost_source: str = "none"
     latency_ms: int = 0
     error: str = ""
+    cached_tokens: int = 0
+    retries: int = 0          # extra PAID attempts inside one call (response-format fallbacks, empty answers)
+    endpoint: str = ""        # the upstream provider that really served the request, as reported by the gateway
 
 
 class AnalysisModels(Protocol):
@@ -212,6 +241,28 @@ class RouterAiAnalysisModels:
         self.client = client
         self.models = {"cheap": cheap_model or os.getenv("MAIL_ANALYSIS_CHEAP_MODEL") or DEFAULT_MODEL,
                        "strong": strong_model or os.getenv("MAIL_ANALYSIS_STRONG_MODEL") or None}
+        self._attempts: list[dict[str, Any]] = []
+        self._install_recorder()
+
+    def _install_recorder(self) -> None:
+        """Record the RAW usage of every completed attempt (the gateway returns the real cost, cached tokens and the
+        serving provider) without changing the client class: the SDK's `create` is wrapped on this instance only."""
+        completions = getattr(getattr(getattr(self.client, "_client", None), "chat", None), "completions", None)
+        if completions is None or getattr(completions.create, "_sd_recorder", False):
+            return
+        original, attempts = completions.create, self._attempts
+
+        def recording_create(*args: Any, **kwargs: Any) -> Any:
+            completion = original(*args, **kwargs)
+            usage = getattr(completion, "usage", None)
+            attempts.append({
+                "usage": usage.model_dump() if hasattr(usage, "model_dump") else {},
+                "endpoint": str(getattr(completion, "provider", "") or ""),
+            })
+            return completion
+
+        recording_create._sd_recorder = True  # type: ignore[attr-defined]
+        completions.create = recording_create
 
     def model_for(self, stage: str) -> str | None:
         return self.models.get(stage)
@@ -220,21 +271,38 @@ class RouterAiAnalysisModels:
         model = self.models[stage]
         before = self.client.usage.get(model)
         b_in, b_out = (before.input_tokens, before.output_tokens) if before else (0, 0)
+        self._attempts.clear()
         started = time.monotonic()
         try:
             data = self.client.complete_json(model, system, user, schema=schema, max_tokens=1024)
         except Exception as exc:  # noqa: BLE001 - provider failure is recorded, never raised into mail handling
             return ModelReply(None, model, error=f"{type(exc).__name__}: {exc}"[:300],
                               latency_ms=int((time.monotonic() - started) * 1000))
-        after = self.client.usage.get(model)
+        latency_ms = int((time.monotonic() - started) * 1000)
+        error = "" if data is not None else "no_valid_json"
+        if self._attempts:                       # measured: every paid attempt, real cost when the gateway reports it
+            usages = [a["usage"] for a in self._attempts]
+            costs = [u.get("cost") for u in usages]
+            provider_cost = sum(float(c) for c in costs) if all(isinstance(c, (int, float)) for c in costs) else None
+            tin = sum(int(u.get("prompt_tokens") or 0) for u in usages)
+            tout = sum(int(u.get("completion_tokens") or 0) for u in usages)
+            cached = sum(int((u.get("prompt_tokens_details") or {}).get("cached_tokens") or 0) for u in usages)
+            if provider_cost is not None:
+                cost, source = provider_cost, "provider_reported"
+            else:
+                prices = self.client.catalog.prices(model)
+                cost, source = tin * prices[0] + tout * prices[1], "catalog_estimate"
+            return ModelReply(data, model, input_tokens=tin, output_tokens=tout, cost_rub=cost, cost_source=source,
+                              latency_ms=latency_ms, error=error, cached_tokens=cached, retries=len(self._attempts) - 1,
+                              endpoint=self._attempts[-1]["endpoint"])
+        after = self.client.usage.get(model)     # fallback: difference of the client's per-model totals
         d_in = (after.input_tokens - b_in) if after else 0
         d_out = (after.output_tokens - b_out) if after else 0
         prices = self.client.catalog.prices(model)
         cost = d_in * prices[0] + d_out * prices[1]
         return ModelReply(data, model, input_tokens=d_in, output_tokens=d_out, cost_rub=cost,
                           cost_source="catalog_estimate" if prices != (0.0, 0.0) else "none",
-                          latency_ms=int((time.monotonic() - started) * 1000),
-                          error="" if data is not None else "no_valid_json")
+                          latency_ms=latency_ms, error=error)
 
 
 # --------------------------------------------------------------------------- repository mixin
@@ -267,11 +335,12 @@ class MessageAnalysisMixin:
                 (workspace_id, chash, analysis_id, analysis_id, version)).fetchone() else 0
         connection.execute(
             """INSERT INTO mail_ai_runs(workspace_id, analysis_id, reason, stage, provider, model, input_tokens,
-                   output_tokens, cost_rub, cost_source, latency_ms, status, error, detail, content_hash,
-                   analysis_version, repeat_of_same_content, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   output_tokens, cached_tokens, retries, endpoint, cost_rub, cost_source, latency_ms, status, error,
+                   detail, content_hash, analysis_version, repeat_of_same_content, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (workspace_id, analysis_id, reason, stage, provider, reply.model if reply else "",
              reply.input_tokens if reply else 0, reply.output_tokens if reply else 0,
+             reply.cached_tokens if reply else 0, reply.retries if reply else 0, reply.endpoint if reply else "",
              reply.cost_rub if reply else 0.0, reply.cost_source if reply else "none",
              reply.latency_ms if reply else 0, status, (error or (reply.error if reply else ""))[:300],
              detail[:300], chash, version, repeat, iso_now()))
