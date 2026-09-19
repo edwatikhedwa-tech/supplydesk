@@ -347,7 +347,8 @@ class MailService:
                 unmatched_count=result["unmatched"],
             )
             self.repository.mark_mail_error(account["id"], "", status="connected")
-            return {"ok": True, "scanned": batch.scanned_count, **result}
+            analysis = self._analyze_imported_messages(workspace_id, result.get("imported_message_ids") or [])
+            return {"ok": True, "scanned": batch.scanned_count, **result, **({"analysis": analysis} if analysis is not None else {})}
         except ProviderError as exc:
             self.repository.mark_mail_sync_error(account["id"], exc.message)
             # Keep SMTP sending available when the current grant is missing the new read-only IMAP scope.
@@ -356,6 +357,36 @@ class MailService:
             else:
                 self.repository.mark_mail_error(account["id"], exc.message)
             raise
+
+    def _analyze_imported_messages(self, workspace_id: int, message_ids: list[int]) -> list[dict[str, Any]] | None:
+        """Feature flag MAIL_INTELLIGENCE_ON_SYNC=1: analyse each newly imported message (body, then attachments).
+        Never breaks the sync: a failure is recorded in the result and the message stays for manual handling.
+        Synchronous on purpose for the controlled end-to-end run; production must run it from a queue (model latency is 1-80 s)."""
+        if os.getenv("MAIL_INTELLIGENCE_ON_SYNC") != "1" or not message_ids:
+            return None
+        out: list[dict[str, Any]] = []
+        vision = None
+        text_models = None
+        vision_model = os.getenv("MAIL_ATTACHMENT_VISION_MODEL", "").strip()
+        try:
+            text_models = self.repository._default_analysis_models()
+            if vision_model and text_models is not None:
+                from .message_analysis import RouterAiAnalysisModels
+                vision = RouterAiAnalysisModels(text_models.client, cheap_model=vision_model, strong_model=None)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("mail intelligence models unavailable: %s", exc)
+        for message_id in message_ids:
+            item: dict[str, Any] = {"message_id": message_id}
+            try:
+                item["body"] = self.repository.analyze_message(workspace_id, message_id, models=text_models)
+            except Exception as exc:  # noqa: BLE001
+                item["body_error"] = f"{type(exc).__name__}: {exc}"[:200]
+            try:
+                item["attachments"] = self.repository.analyze_message_attachments(workspace_id, message_id, vision=vision)
+            except Exception as exc:  # noqa: BLE001
+                item["attachments_error"] = f"{type(exc).__name__}: {exc}"[:200]
+            out.append(item)
+        return out
 
     def preview_sent(self, user_id: int, workspace_id: int, *, mail_account_id: int, request_id: int | None = None) -> dict[str, Any]:
         """Read only folder metadata; no body or database import happens here."""
