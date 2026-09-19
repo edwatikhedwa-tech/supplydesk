@@ -13,6 +13,22 @@ This file is the only canonical current-state source for SupplyDesk. It is a
 short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
 
+## Update 2026-09-19 (late) — attachments, async analysis, real-mailbox E2E (EDW-33/35/31/38)
+
+- **Attachment Intelligence** (`mail/attachment_intelligence.py`, migration 058): synthetic benchmark of 60 files, ground truth committed before the pipeline;
+  price P/R 100%, 0 invented facts, 0 false position matches, repeat = 0 calls. Report `docs/benchmarks/ATTACHMENT_INTELLIGENCE_BENCHMARK_20260919.md`.
+- **Inbound attachments are now stored** by the production parser/import (`mail_attachments`; unmatched letters: `mail_inbox_attachments`, kept unread until the request is resolved).
+- **Asynchronous analysis** (`mail/analysis_queue.py`, migration 059): sync = fetch -> persist -> deduplicate -> enqueue (same transaction); a worker does rules -> model if needed
+  -> validate -> facts. Crash-safe (model replies replayed from `mail_ai_reply_cache`), two-worker safe (claim token + lease), bounded reconcile (`since` required).
+- **Rules:** `acknowledgement` / `pending_quote` decided without a model; routing -> request resolution -> extraction; source fact (request NULL) vs request-scoped fact,
+  rebinding after a manual link without a model call (`mail_fact_bindings`).
+- **Cross-mailbox:** the inbound copy of a letter the workspace already sent, and Sent copies of mail between two workspace mailboxes, are not second objects.
+- **Feature flag `MAIL_INTELLIGENCE_ON_SYNC` is OFF by default and has NOT been enabled anywhere.** Canary for one workspace is the next stage (plan in Linear).
+- **Verified:** SQLite 876 tests OK; PostgreSQL 16 gate PASS (scratch, replay, upgrade, 152 tests). Real-mailbox E2E (two owner mailboxes, DB copy): first run 10/20 -> 17/20 after
+  three fixes; replay v2 19/20 with 8 paid calls, 0 duplicate messages/facts/paid calls. Reports: `docs/benchmarks/E2E_MAIL_BENCHMARK_20260919.md`, `docs/benchmarks/E2E_MAIL_REPLAY_V2_20260919.md`.
+- **Not verified:** real supplier letters/files (separate future gate), scans by e-mail, portable OCR (Windows-only now, EDW-34), S17 recall (follow-up task).
+- Diagnostic output must never contain secrets or ciphertext (`mail/diagnostics.py`, `tests/test_diagnostic_hygiene.py`).
+
 ## Update 2026-09-19 — Iteration 1 closed, Iteration 2 started
 
 Source of truth for the plan: Linear project «SupplyDesk AI Mail Intelligence» and the Documentation Pack
