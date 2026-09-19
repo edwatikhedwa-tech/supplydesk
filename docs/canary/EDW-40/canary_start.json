@@ -1,0 +1,15 @@
+{
+  "canary": "EDW-40 shadow canary",
+  "workspace_id": 1,
+  "started_at": "2026-09-19T15:53:16.794421+00:00",
+  "ends_at": "2026-10-03T15:53:16.794421+00:00",
+  "mode": "shadow (downstream_enabled = false)",
+  "daily_cap_rub": 1.0,
+  "weekly_cap_rub": 5.0,
+  "formats": ["mail body", "text PDF", "XLSX", "DOCX"],
+  "scans_and_images": "manual_review only (no OCR, no vision)",
+  "downstream_actions": "none (quote_received suppressed, follow-up closing off, no request/supplier/contact changes)",
+  "release_shadow": "NOT allowed without a separate owner decision, even if exit readiness reaches PASS",
+  "worker": "separate process (scripts/mail_intelligence_worker.py), interval 60 s",
+  "note": "counts and costs only: no letter bodies, addresses, commercial data or credentials in this directory"
+}
