@@ -3,8 +3,8 @@ document_id: STATE-001
 status: CURRENT
 canonical: true
 owner: project-control
-updated_at: 2026-09-16
-based_on_commit: pending-commit-TASK-CALENDAR-REMINDERS-20260916
+updated_at: 2026-09-19
+based_on_commit: d2221d8
 ---
 
 # Current State
@@ -12,6 +12,26 @@ based_on_commit: pending-commit-TASK-CALENDAR-REMINDERS-20260916
 This file is the only canonical current-state source for SupplyDesk. It is a
 short evidence snapshot, not a task diary. Older snapshots and chronology are
 preserved under [`ai/history/`](history/).
+
+## Update 2026-09-19 — Iteration 1 closed, Iteration 2 started
+
+Source of truth for the plan: Linear project «SupplyDesk AI Mail Intelligence» and the Documentation Pack
+(`docs/Solutions/…_Documentation_Pack_v1`, V1.5). Working branch `experiment/frontend-v2-greenfield-20260905`
+(pushed; canonical current — the state snapshot branch `state/current-20260917-2119` is archive only).
+
+- **Iteration 1 (Supplier Identity Integrity) — CLOSED (EDW-6).** Evidence-based identity
+  (`supplier_identity_evidence`, migration 053), contact intelligence as a projection of it (054), reversible
+  merge/unmerge (055), duplicate review queue (056; HTTP `/api/supplier-merge-candidates…` + `scripts/merge_review.py`),
+  different-INN hard guard, tenant isolation. See `docs/domain/SUPPLIER_MODEL.md` §8–§11.
+- **PostgreSQL gate — PASS (EDW-20, EDW-23).** `scripts/pg_gate.py` and `scripts/full_suite_compare.py` on a disposable
+  PostgreSQL 16: SQLite 780 pass / PostgreSQL 767 pass + 13 documented not-applicable, 0 unexplained. Fixed: `FOR UPDATE`
+  with outer join, schema-unscoped introspection, untyped NULL parameters.
+- **Open, not blocking:** EDW-22 (manual review of 24 historical duplicate pairs — deliberately NOT applied), EDW-24
+  (PostgreSQL connection pooling assessment), EDW-25 (CompatRow iteration consistency test).
+- **Iteration 2 (Mail Intelligence Core, EDW-7) — in progress, slice 1 done:** migration 057, `mail/message_analysis.py`,
+  `docs/domain/MAIL_ANALYSIS.md`. Analysis is invoked explicitly; it is NOT wired into live sync yet. No real model was
+  called in tests (scripted fake); real cost is unmeasured.
+- Working tree: no tracked-file changes; `docs/Solutions/` (Documentation Pack) is intentionally untracked.
 
 ## Last update
 

@@ -32,6 +32,7 @@ TEST_MODULES = [
     "tests.test_supplier_merge",
     "tests.test_supplier_merge_review",
     "tests.test_identity_vs_quality",
+    "tests.test_mail_analysis_core",
     "tests.test_supplier_dedup_p0_regression",
     "tests.test_contact_intelligence",
     "tests.test_contact_resolution_send_path",
@@ -91,7 +92,7 @@ def phase_scratch_replay(url: str) -> bool:
     repo = make_repo(db)
     print(f"[scratch] all migrations applied from zero in {time.time() - t0:.1f}s; tables={len(table_names(url, 'g_scratch'))}")
     need = {"supplier_identity_evidence", "canonical_company_contact_signal_revocations", "supplier_merges",
-            "supplier_merge_moves", "supplier_merge_candidates"}
+            "supplier_merge_moves", "supplier_merge_candidates", "mail_analyses", "mail_ai_runs", "mail_facts", "mail_analysis_events"}
     missing = need - table_names(url, "g_scratch")
     print(f"[scratch] new tables present: {sorted(need - missing)}; missing={sorted(missing)}")
     ok &= not missing

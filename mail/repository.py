@@ -20,6 +20,7 @@ from .canonical_companies import CanonicalCompaniesMixin
 from .contact_intelligence import ContactIntelligenceMixin
 from .supplier_identity_evidence import SupplierIdentityEvidenceMixin
 from .supplier_merge import SupplierMergeMixin
+from .message_analysis import MessageAnalysisMixin
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
 from .ai_chat_usage import AiChatUsageMixin
@@ -257,7 +258,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 class MailRepository(
     AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, SupportMixin, AiChatUsageMixin, AiConversationsMixin, TasksMixin,
     CanonicalCompaniesMixin, ContactIntelligenceMixin, TaskReminderDeliveryMixin, SupplierIdentityEvidenceMixin,
-    SupplierMergeMixin,
+    SupplierMergeMixin, MessageAnalysisMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
