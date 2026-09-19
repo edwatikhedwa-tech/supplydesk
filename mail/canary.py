@@ -355,6 +355,8 @@ class CanaryTickMixin:
             out["stopped_reason"] = st["stopped_reason"]
             return out
         out["active"] = True
+        # letters imported by a process that does not carry the flag (or before it): bounded by started_at, deduplicated by the job key
+        out["reconciled_jobs"] = self.enqueue_missing_analysis_jobs(workspace_id, since=st["started_at"], limit=200)
         findings = self.enforce_canary_safety(workspace_id, log_paths=log_paths)
         if not findings:
             summary = self.run_analysis_jobs(worker_id, limit=limit, workspace_id=workspace_id, models=models, vision=vision, canary_only=True)

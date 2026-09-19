@@ -114,6 +114,17 @@ class GatingTest(CanaryBase):
         self.assertIsNone(self.repo.claim_analysis_job("w", canary_only=True))
 
 
+class ReconcileInTickTest(CanaryBase):
+    def test_a_letter_imported_by_a_process_without_the_flag_is_picked_up_by_the_worker_but_history_is_not(self) -> None:
+        self.enable()
+        with mock.patch.dict(os.environ, {"MAIL_INTELLIGENCE_ON_SYNC": "0"}):        # the app process runs without the flag
+            self.receive(self.price_body(1), received=self.started + timedelta(minutes=1))
+            self.receive(self.price_body(2), received=self.started - timedelta(days=2))
+        self.assertEqual(self.jobs(), 0)
+        out = self.repo.canary_tick(self.ws, "w1", models=EchoModels())
+        self.assertEqual((out["reconciled_jobs"], self.jobs("done")), (1, 1))         # only the letter after started_at
+
+
 class BudgetTest(CanaryBase):
     class Pricey(EchoModels):
         cost = 0.04
