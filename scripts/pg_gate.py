@@ -33,6 +33,7 @@ TEST_MODULES = [
     "tests.test_supplier_merge_review",
     "tests.test_identity_vs_quality",
     "tests.test_mail_analysis_core",
+    "tests.test_mail_analysis_validation",
     "tests.test_supplier_dedup_p0_regression",
     "tests.test_contact_intelligence",
     "tests.test_contact_resolution_send_path",

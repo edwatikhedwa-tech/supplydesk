@@ -194,6 +194,9 @@ def evaluate(letter: dict, res: dict, runs: list[dict], fx: dict, raws: list[dic
         "cost_sources": sorted({r["cost_source"] for r in ai_runs}), "endpoints": sorted({r["endpoint"] for r in ai_runs if r["endpoint"]}),
         "models": sorted({r["model"] for r in ai_runs}), "run_statuses": [f"{r['stage']}:{r['status']}" for r in ai_runs],
         "run_details": [r["detail"] for r in ai_runs if r["detail"]],
+        "raw_cheap": raw_items(next((x["raw"] for x in raws if x["stage"] == "cheap"), None)),
+        "raw_strong": raw_items(next((x["raw"] for x in raws if x["stage"] == "strong"), None)),
+        "raw_cheap_type": (next((x["raw"] for x in raws if x["stage"] == "cheap"), None) or {}).get("message_type") if isinstance(next((x["raw"] for x in raws if x["stage"] == "cheap"), None), dict) else None,
     }
 
 
@@ -234,12 +237,16 @@ def main() -> int:
     ap.add_argument("--budget", type=float, default=25.0)
     ap.add_argument("--tag", default=datetime.now().strftime("%Y%m%d-%H%M%S"))
     ap.add_argument("--limit", type=int, default=0, help="only the first N letters (smoke test)")
+    ap.add_argument("--ids", default="", help="comma-separated letter ids (probe run)")
     args = ap.parse_args()
     load_env_key()
     os.environ["MAIL_ANALYSIS_DAILY_BUDGET_RUB"] = str(args.budget)
     from backend.integrations.llm.routerai_client import RouterAiClient
 
     letters = DATASET[: args.limit] if args.limit else DATASET
+    if args.ids:
+        wanted = set(args.ids.split(","))
+        letters = [x for x in DATASET if x["id"] in wanted]
     tmp = tempfile.TemporaryDirectory()
     db_path = Path(tmp.name) / "benchmark.sqlite3"
     repo = MailRepository(db_path)

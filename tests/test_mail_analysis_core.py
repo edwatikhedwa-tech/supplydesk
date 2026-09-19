@@ -194,7 +194,7 @@ class CascadeAndValidationTest(_Base):
         self.assertEqual(self.repo.mail_ai_cost_report(self.ws)["strong_escalations"], 1)
 
     def test_both_models_invalid_goes_to_manual_review_with_no_facts_and_bounded_calls(self) -> None:
-        models = FakeModels(cheap=[{"garbage": True}], strong=[{"message_type": "quote", "items": []}])
+        models = FakeModels(cheap=[{"garbage": True}], strong=[good_answer(price="дорого")])
         result = self.repo.analyze_message(self.ws, self.inbound(), models=models)
         self.assertEqual((result["status"], result["review_reason"], result["facts"], models.calls),
                          ("needs_review", "extraction_failed_validation", [], ["cheap", "strong"]))
@@ -224,8 +224,18 @@ class CascadeAndValidationTest(_Base):
         self.assertEqual(validate_extraction(good_answer(currency="XXX"), text)["issues"][:1], ["item0:currency_invalid"])
         self.assertEqual(validate_extraction(good_answer(price=0), text)["issues"][:1], ["item0:price_invalid"])
         self.assertEqual(validate_extraction(good_answer(currency="руб."), text)["facts"][0]["data"]["currency"], "RUB")
-        self.assertFalse(validate_extraction({"message_type": "quote", "items": []}, text)["ok"])
+        no_price = validate_extraction({"message_type": "quote", "items": []}, text)      # "quote" without any price
+        self.assertEqual((no_price["ok"], no_price["message_type"], no_price["issues"]), (True, "other", ["quote_without_price"]))
+        self.assertFalse(validate_extraction(good_answer(price="дорого"), text)["ok"])
         self.assertTrue(validate_extraction({"message_type": "decline", "items": []}, text)["ok"])
+
+
+class NoPointInPayingForMissingInformationTest(_Base):
+    def test_a_price_without_a_currency_goes_to_review_without_calling_the_strong_model(self) -> None:
+        message_id = self.inbound("Re: Запрос", "Подшипник 6205-2RS1: цена 1850.")
+        models = FakeModels(cheap=[{"message_type": "quote", "items": [good_answer(source_quote="Подшипник 6205-2RS1: цена 1850")["items"][0]]}])
+        result = self.repo.analyze_message(self.ws, message_id, models=models)
+        self.assertEqual((models.calls, result["status"], result["review_reason"]), (["cheap"], "needs_review", "letter_lacks_information"))
 
 
 class FailuresBudgetVersionsTest(_Base):

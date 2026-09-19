@@ -75,5 +75,42 @@ class GuessNeverBecomesFactTest(unittest.TestCase):
             self.assertTrue(validate_extraction(answer(price=price), TEXT)["facts"], price)
 
 
+    def test_a_price_written_in_the_letter_but_missing_from_the_answer_is_flagged(self) -> None:
+        text = normalize_text("Re", "Подшипник 6306-2Z: 780 руб./шт. без НДС, от 50 шт. — 730 руб.")
+        one = {"message_type": "quote", "items": [{"name": "Подшипник 6306-2Z", "sku": "6306-2Z", "price": 780, "currency": "RUB",
+                                                   "source_quote": "Подшипник 6306-2Z: 780 руб./шт."}]}
+        verdict = validate_extraction(one, text)
+        self.assertEqual((verdict["ok"], verdict["issues"]), (False, ["price_mentioned_not_extracted"]))
+        self.assertEqual(len(verdict["facts"]), 1)                  # the supported fact is kept, the doubt is recorded
+        two = {"message_type": "quote", "items": one["items"] + [{"name": "Подшипник 6306-2Z", "sku": "6306-2Z", "price": 730,
+                                                                  "currency": "RUB", "source_quote": "от 50 шт. — 730 руб."}]}
+        self.assertTrue(validate_extraction(two, text)["ok"])
+
+    def test_the_same_amount_in_different_formats_is_covered(self) -> None:
+        text = normalize_text("Re", "Подшипник 6205: 1 420,00 руб./шт.")
+        answer_ = {"message_type": "quote", "items": [{"name": "Подшипник", "price": 1420, "currency": "RUB", "source_quote": "1 420,00 руб./шт."}]}
+        self.assertTrue(validate_extraction(answer_, text)["ok"])
+
+
+    def test_a_price_range_is_not_a_price(self) -> None:
+        text = normalize_text("Re", "Кирпич облицовочный: 1 200–1 350 руб. за м2, точную цену подтвердим.")
+        verdict = validate_extraction({"message_type": "quote", "items": [{"name": "Кирпич", "price": 1200, "currency": "RUB",
+                                                                          "source_quote": "1 200–1 350 руб. за м2"}]}, text)
+        self.assertEqual((verdict["facts"], verdict["issues"][:1]), ([], ["item0:price_is_range"]))
+
+    def test_an_em_dash_between_the_item_and_its_price_is_not_a_range(self) -> None:
+        text = normalize_text("Re", "Rexroth R901025 — 18 400 ₽/шт. Подшипник 6205-2RS1 — 1 780 руб. за шт.")
+        for name, price, quote in (("R901025", 18400, "Rexroth R901025 — 18 400 ₽/шт."), ("6205", 1780, "Подшипник 6205-2RS1 — 1 780 руб. за шт.")):
+            verdict = validate_extraction({"message_type": "quote", "items": [{"name": name, "price": price, "currency": "RUB", "source_quote": quote}]}, text)
+            self.assertTrue(verdict["facts"], quote)
+        ranged = normalize_text("Re", "Цена от 1 200 до 1 350 руб. за м2")
+        self.assertEqual(validate_extraction({"message_type": "quote", "items": [{"name": "x", "price": 1350, "currency": "RUB", "source_quote": "от 1 200 до 1 350 руб. за м2"}]}, ranged)["facts"], [])
+
+    def test_an_item_without_a_price_is_ignored_not_an_error(self) -> None:
+        text = normalize_text("Акция", "Скидка 15% на билеты на форум.")
+        verdict = validate_extraction({"message_type": "other", "items": [{"name": "Билет", "price": None, "source_quote": "Скидка 15% на билеты"}]}, text)
+        self.assertEqual((verdict["ok"], verdict["facts"], verdict["issues"]), (True, [], []))
+
+
 if __name__ == "__main__":
     unittest.main()

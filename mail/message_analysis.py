@@ -34,6 +34,8 @@ STALE_IN_PROGRESS_MINUTES = 15
 MAX_ATTEMPTS = 3                      # provider errors per (message, hash, version) before manual review
 MAX_TEXT_CHARS = 6000                 # what may be sent to a model
 FOLLOWUP_TASK_TITLE = "Связаться с поставщиком"   # the fixed default of the "remind" action
+# issues that say the LETTER lacks the information: a stronger model cannot supply it -> manual review, no escalation
+UNFIXABLE_ISSUES = ("currency_not_in_message", "price_is_range")
 MESSAGE_TYPES = {"quote", "question", "decline", "invoice", "other"}
 CURRENCIES = {"RUB", "USD", "EUR", "CNY", "KZT", "BYN"}
 _CURRENCY_ALIASES = {"₽": "RUB", "РУБ": "RUB", "РУБ.": "RUB", "Р.": "RUB", "RUR": "RUB", "$": "USD", "€": "EUR",
@@ -43,20 +45,23 @@ _QUOTED_LINE = re.compile(r"^\s*>")
 _REPLY_MARKER = re.compile(r"^\s*(-{2,}\s*(original message|исходное сообщение|пересылаемое сообщение)|"
                            r"от:\s.+|from:\s.+|on .+ wrote:|.+ написал\(а\):)\s*$", re.IGNORECASE)
 # something worth extracting: a price-like number, a currency word or a quote-related term
-_EXTRACTABLE = re.compile(
-    r"(\d[\d\s.,]*\s*(₽|руб|р\.|rub|usd|eur|cny|юан|\$|€))|"
-    r"(цена|цены|стоимост|прайс|кп\b|коммерческ|предложен|счёт|счет|срок|наличи|отгруз|поставк|скидк)",
-    re.IGNORECASE,
-)
+_PRICE_PATTERN = re.compile(r"\d[\d\s.,]*\s*(₽|руб|р\.|rub|usd|eur|cny|юан|\$|€)", re.IGNORECASE)
+_QUOTE_TERMS = re.compile(r"(цен[аыуой]|стоимост|прайс|кп\b|коммерческ|предложен|счёт|счет|срок|наличи|отгруз|поставк|скидк)",
+                          re.IGNORECASE)
+_ATTACHMENT = re.compile(r"(во\s+вложени|вложени[еяю]|приложенн|прикреплен|прикрепил|attached|attachment|excel-файл)", re.IGNORECASE)
+_UNSUBSCRIBE = re.compile(r"(отписат|отписк|unsubscribe|рассылк)", re.IGNORECASE)
 
+_ITEM_KEYS = ["name", "brand", "sku", "quantity", "unit", "price", "currency", "vat_included", "lead_time_days", "source_quote"]
 EXTRACTION_SCHEMA: dict[str, Any] = {
     "type": "object",
+    "additionalProperties": False,
     "properties": {
         "message_type": {"type": "string", "enum": sorted(MESSAGE_TYPES)},
         "items": {
             "type": "array",
             "items": {
                 "type": "object",
+                "additionalProperties": False,
                 "properties": {
                     "name": {"type": "string"},
                     "brand": {"type": ["string", "null"]},
@@ -64,12 +69,12 @@ EXTRACTION_SCHEMA: dict[str, Any] = {
                     "quantity": {"type": ["number", "null"]},
                     "unit": {"type": ["string", "null"]},
                     "price": {"type": ["number", "null"]},
-                    "currency": {"type": ["string", "null"]},
+                    "currency": {"type": ["string", "null"], "enum": ["RUB", "USD", "EUR", "CNY", "KZT", "BYN", None]},
                     "vat_included": {"type": ["boolean", "null"]},
                     "lead_time_days": {"type": ["integer", "null"]},
                     "source_quote": {"type": "string"},
                 },
-                "required": ["name", "source_quote"],
+                "required": _ITEM_KEYS,
             },
         },
     },
@@ -77,10 +82,14 @@ EXTRACTION_SCHEMA: dict[str, Any] = {
 }
 
 SYSTEM_PROMPT = (
-    "Ты извлекаешь факты из ответа поставщика на запрос цены. Верни только JSON по схеме. "
-    "message_type: quote (есть цена/КП), question, decline (отказ), invoice, other. "
-    "В items включай ТОЛЬКО позиции, явно названные в письме. Ничего не выдумывай: если значения нет в тексте, "
-    "ставь null. source_quote — ДОСЛОВНАЯ цитата из письма, подтверждающая позицию и цену. "
+    "Ты извлекаешь факты из ответа поставщика на запрос цены. Верни ТОЛЬКО JSON строго по схеме, без пояснений.\n"
+    "message_type: quote — в письме названа цена хотя бы одной позиции; question — поставщик просит уточнений или обещает "
+    "цену позже; decline — отказ; invoice — счёт на оплату; other — всё остальное.\n"
+    "items: по одному элементу на КАЖДУЮ названную в письме цену (ступени цены по количеству — отдельные элементы). "
+    "Если цен в письме нет, items пустой. Не включай номер счёта, телефон, ИНН, артикул, дату и общую сумму счёта как цену.\n"
+    "price — число за единицу товара (без валюты и пробелов). currency — код: RUB (руб., ₽, р.), USD ($), EUR (€), CNY, KZT, "
+    "BYN; если валюта не названа — null. sku — артикул/модель/обозначение позиции, если оно явно написано в письме рядом с ценой (примеры: 6205-2RS1, NU 2210 E, LGMT 2/1, R901025, AB-7654/12), иначе null. Ничего не выдумывай: "
+    "нет в тексте — null. source_quote — ДОСЛОВНАЯ цитата из письма (одна строка), содержащая позицию и цену. "
     "Не оценивай массу, габариты и наличие, если их нет в тексте."
 )
 
@@ -110,8 +119,16 @@ def content_hash(text: str) -> str:
 
 
 def needs_extraction(text: str) -> bool:
-    """False when the message contains nothing an extractor could use (no price/currency/quote term)."""
-    return bool(_EXTRACTABLE.search(text))
+    """False when the message contains nothing an extractor could use: no price-like number, and either no quote
+    term at all or only an "it is in the attachment" note (attachments are a later iteration)."""
+    if _PRICE_PATTERN.search(text):
+        return True
+    return bool(_QUOTE_TERMS.search(text)) and not _ATTACHMENT.search(text)
+
+
+def looks_like_newsletter(text: str) -> bool:
+    """Unmatched mail that carries an unsubscribe / mass-mailing marker (used only for messages without a thread)."""
+    return bool(_UNSUBSCRIBE.search(text))
 
 
 def _loose(value: str) -> str:
@@ -127,6 +144,24 @@ _CURRENCY_MARKERS = {
     "KZT": re.compile(r"kzt|тенге|₸", re.IGNORECASE),
     "BYN": re.compile(r"byn|бел\.?\s*руб", re.IGNORECASE),
 }
+
+
+# a range is a tight hyphen/en dash between two amounts ("1 200–1 350 руб.") or "от X до Y"; an em dash with spaces
+# ("6205-2RS1 — 1 850 руб.") is only a separator between the item and its price
+_CUR = r"(?:₽|руб|р\.|rub|usd|eur|cny|юан|\$|€)"
+_RANGE = re.compile(rf"(\d[\d\s]*(?:[.,]\d+)?)[–-](\d[\d\s]*(?:[.,]\d+)?)\s*{_CUR}|"
+                    rf"от\s+(\d[\d\s]*(?:[.,]\d+)?)\s+до\s+(\d[\d\s]*(?:[.,]\d+)?)\s*{_CUR}", re.IGNORECASE)
+_PRICE_MENTION = re.compile(r"(\d[\d\s]*(?:[.,]\d+)?)\s*(?:₽|руб|р\.|rub|usd|eur|cny|юан|\$|€)", re.IGNORECASE)
+
+
+def price_mentions(text: str) -> set[Decimal]:
+    """Amounts the letter writes next to a currency ("1 850 руб.", "120 USD"): what an extraction should cover."""
+    out: set[Decimal] = set()
+    for raw in _PRICE_MENTION.findall(text):
+        value = _to_decimal(raw.replace(" ", "").replace(" ", ""))
+        if value is not None and value > 0:
+            out.add(value.normalize())
+    return out
 
 
 def _numbers_in(text: str) -> set[Decimal]:
@@ -170,15 +205,28 @@ def validate_extraction(data: Any, text: str) -> dict[str, Any]:
         if start < 0:
             issues.append(f"item{index}:source_quote_not_in_message")     # provenance is mandatory
             continue
+        if item.get("price") is None or str(item.get("price")).strip() == "":
+            continue            # an item that states no price is not a quote item (nothing to verify, nothing to keep)
         price = _to_decimal(item.get("price"))
+        if price is None and isinstance(item.get("price"), str):       # "34 руб." -> 34, but only if it holds ONE number
+            numbers = _numbers_in(str(item.get("price")))
+            price = next(iter(numbers)) if len(numbers) == 1 else None
         if price is None or price <= 0:
             issues.append(f"item{index}:price_invalid")
             continue
         if price.normalize() not in _numbers_in(quote):
             issues.append(f"item{index}:price_not_in_quote")             # a price the quote does not contain is invented
             continue
+        range_pairs = [(m[0] or m[2], m[1] or m[3]) for m in _RANGE.findall(quote)]
+        if any(price.normalize() in {_to_decimal(a.replace(" ", "")).normalize(), _to_decimal(b.replace(" ", "")).normalize()}
+               for a, b in range_pairs if _to_decimal(a.replace(" ", "")) and _to_decimal(b.replace(" ", ""))):
+            issues.append(f"item{index}:price_is_range")                 # "1 200-1 350 руб." is not a price
+            continue
         currency = str(item.get("currency") or "").strip().upper()
         currency = _CURRENCY_ALIASES.get(currency, currency)
+        if not currency:      # the model left it out: take it from the quote only when the quote shows exactly one currency
+            shown = [code for code, marker in _CURRENCY_MARKERS.items() if marker.search(quote)]
+            currency = shown[0] if len(shown) == 1 else ""
         if currency not in CURRENCIES:
             issues.append(f"item{index}:currency_invalid")
             continue
@@ -203,9 +251,18 @@ def validate_extraction(data: Any, text: str) -> dict[str, Any]:
                      "currency": currency, "vat_included": vat, "lead_time_days": lead},
             "source_quote": quote, "source_start": start, "source_end": start + len(quote), "position": index,
         })
-    ok = not issues and (message_type != "quote" or bool(facts))
+    if message_type == "quote" and facts:
+        # completeness: an amount written next to a currency that no fact carries may be a missed item (or an invoice
+        # total): not provable either way, so the answer is not "clean" -> the cascade decides (strong / review)
+        covered = {Decimal(str(f["data"]["price"])).normalize() for f in facts}
+        if price_mentions(text) - covered:
+            issues.append("price_mentioned_not_extracted")
+    if message_type == "quote" and not facts and not items:
+        # "a quote" that states no price (the offer is in an attachment, a range, "later"): not an error, not a quote
+        return {"ok": True, "message_type": "other", "facts": [], "issues": ["quote_without_price"]}
     if message_type == "quote" and not facts:
         issues.append("quote_without_valid_item")
+    ok = not issues
     return {"ok": ok, "message_type": message_type, "facts": facts, "issues": issues}
 
 
@@ -432,10 +489,10 @@ class MessageAnalysisMixin:
                 outcome.update(message_type="bounce", is_relevant=0, result={"rule": "bounce"})
                 self._log_run(connection, workspace_id=workspace_id, analysis_id=analysis_id, reason="classify", stage="rules",
                               provider="rules", status="not_needed", chash=chash, version=version, detail="bounce")
-            elif _is_bulk_sender(message["from_email"]):
+            elif _is_bulk_sender(message["from_email"]) or (kind == "inbox_message" and looks_like_newsletter(text)):
                 outcome.update(message_type="newsletter", is_relevant=0, result={"rule": "bulk_sender"})
                 self._log_run(connection, workspace_id=workspace_id, analysis_id=analysis_id, reason="classify", stage="rules",
-                              provider="rules", status="not_needed", chash=chash, version=version, detail="bulk_sender")
+                              provider="rules", status="not_needed", chash=chash, version=version, detail="bulk_sender_or_unsubscribe")
             else:
                 self._match_deterministically(connection, workspace_id, kind, message, outcome)
                 if not needs_extraction(text):
@@ -485,6 +542,10 @@ class MessageAnalysisMixin:
                     outcome["stage"] = stage
                     break
                 outcome["stage"] = stage
+                real_issues = [i for i in (verdict["issues"] if verdict else []) if i != "quote_without_valid_item"]
+                if stage == "cheap" and real_issues and all(any(u in i for u in UNFIXABLE_ISSUES) for i in real_issues):
+                    outcome["review_reason"] = "letter_lacks_information"     # do not pay a strong model for it
+                    break
             if outcome["status"] == "pending_retry":
                 pass
             elif validated is not None:
@@ -500,6 +561,10 @@ class MessageAnalysisMixin:
             outcome["status"], outcome["review_reason"] = "needs_review", outcome["review_reason"] or "request_link_unknown"
         elif outcome["status"] == "final" and outcome["match_method"] == "candidates":
             outcome["status"], outcome["review_reason"] = "needs_review", "ambiguous_request_link"
+        elif outcome["status"] == "final" and "price_mentioned_not_extracted" in (outcome["result"].get("issues") or []):
+            outcome["status"], outcome["review_reason"] = "needs_review", "incomplete_extraction"
+        elif outcome["status"] == "final" and outcome["match_method"] == "sd_label" and outcome["supplier_id"] is None:
+            outcome["status"], outcome["review_reason"] = "needs_review", "supplier_unconfirmed"
 
         with self.connect() as connection:
             connection.execute("BEGIN IMMEDIATE") if not self.database_url else None
@@ -564,6 +629,10 @@ class MessageAnalysisMixin:
                 if len(supplier) == 1:
                     outcome.update(match_method="sd_label", request_id=int(request["id"]), supplier_id=int(supplier[0]["supplier_id"]))
                     return
+                # the marker names the request exactly, but the sender is not a known supplier of it: the REQUEST is
+                # known, linking the SUPPLIER needs a human (evidence), so no downstream action fires
+                outcome.update(match_method="sd_label", request_id=int(request["id"]), supplier_id=None)
+                return
         candidates = self.suggest_requests_for_inbox(workspace_id, int(message["id"]))
         outcome["candidates"] = candidates[:5]
         outcome["match_method"] = "candidates" if candidates else ""
