@@ -54,7 +54,7 @@ class SupplierDedupP0RegressionTest(_Base):
 
         self.assertNotEqual(result["supplier_id"], sid)
         signals = self.repo.list_supplier_identity_evidence(self.ws, supplier_id=sid, email=PERSONAL)
-        self.assertTrue(signals and all(s["decision"] == "candidate" and s["strength"] == "weak" for s in signals))
+        self.assertTrue(signals and all(s["state"] == "candidate" and s["strength"] == "weak" for s in signals))
 
 
 if __name__ == "__main__":

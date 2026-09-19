@@ -457,22 +457,41 @@ test_two_suppliers_converging_to_the_same_final_email_are_blocked_as_duplicates`
 не поймает (узкий, не встречавшийся на практике край; отдельная задача,
 не расширяю эту без явного запроса). См. `ai/DEFERRED_FINDINGS.md`.
 
-## 8. Identity evidence: уровни связи контакта (2026-09-19, GAP-003 / EDW-13, EDW-14)
+## 8. Единая модель evidence и contact intelligence (2026-09-19, GAP-003 / EDW-13…EDW-17)
 
-Три уровня не смешиваются:
+**Один источник истины.** Таблица `supplier_identity_evidence` (`migrations/053`,
+`mail/supplier_identity_evidence.py`) хранит первичные доказательства и их происхождение.
+`canonical_company_contacts/signals` (contact intelligence, §7) — **проекция** этих фактов, а не
+самостоятельное хранилище: её единственный писатель — `_reconcile_contact_projection`.
 
-1. **Request-level association** — адрес использован для поставщика в конкретной заявке
-   (`request_id` в evidence + `request_suppliers`).
-2. **Supplier identity** — постоянная строка `suppliers` (и canonical company).
-3. **Contact evidence** — `supplier_identity_evidence` (`migrations/053`,
-   `mail/supplier_identity_evidence.py`): источник, сила, decision, обратимость.
+Три уровня (не смешиваются): связь в заявке (`assertion=association`, `request_id`), supplier identity
+(строка `suppliers`), evidence владения адресом (`assertion=ownership`).
+
+| Факт | Где хранится | Кто создаёт | Кто читает | Как отменяется | Как влияет на качество контакта |
+|---|---|---|---|---|---|
+| RFQ отправлен на адрес | evidence `rfq_sent` (association, medium) | постановка письма в очередь | UI/аудит заявки | не отменяется (это факт отправки) | никак: не владение и не сигнал |
+| Реальный ответ | evidence `inbound_reply` (ownership, strong, confirmed) | ЕДИНОЕ правило `_record_inbound_message_evidence` (live sync, backfill) | resolve identity; проекция | `revoke_supplier_contact` → `revoked` (липко) | сигнал `inbound_reply/strong` |
+| Bounce | evidence `hard/soft_bounce` (deliverability) | то же правило | проекция | не отменяется | сигнал `hard/soft_bounce`, влияет на `preferred` |
+| Подтверждение пользователя | `manual_confirmed` (ownership, strong) | `confirm_supplier_contact`, ручная привязка письма, merge | resolve identity; проекция | `revoke_supplier_contact` | сигнал `workspace_confirmed/weak` |
+| Итог звонка «Связаться» | `workspace_contact_result` (ownership, weak) | `record_contact_result` | проекция | — | сигнал `workspace_confirmed/weak` |
+| Сходство имени ящика с сайтом | `name_token_similarity` (weak, candidate) | `resolve_supplier_for_send` | review | `reject_supplier_contact` | никак |
+
+Состояния адреса: `candidate → confirmed | rejected`, `confirmed → revoked`; `ambiguous` вычисляется
+(подтверждённое владение у нескольких карточек). Решение человека липкое: новые автоматические
+сигналы после него дают только `candidate`.
 
 Правила:
-- `rfq_sent` пишется при постановке письма в очередь; `inbound_reply` — при реальном (не bounce, не
-  технический адрес) входящем письме, привязанном к треду по заголовкам; `manual_confirmed` — по решению
-  пользователя. Все три — `strong` + `linked`.
-- `resolve_supplier_for_send` переиспользует существующую identity для нового адреса **только** по
-  `strong+linked` не отменённому evidence в этом workspace; несколько кандидатов — отказ, не догадка.
-- Сходство username↔домен/название (`name_token_similarity`) — `weak` + `candidate`; никогда не связывает.
-- Разные подтверждённые ИНН — блокирующий конфликт (`backend/domain/supplier_identity/merge_guard.py`).
-- Не реализовано: UI/review candidate, обратимый merge/unmerge, миграция исторических дублей (EDW-14/16/17).
+- Identity переиспользуется для нового адреса **только** по `ownership + strong + confirmed`
+  (`sufficient_for_identity_reuse`). `rfq_sent` и слабые сигналы недостаточны; неоднозначность — отказ.
+- `revoke`/`merge`/`unmerge` меняют evidence и вызывают `sync_contact_intelligence_for_supplier`:
+  сигналы отозванного evidence помечаются в `canonical_company_contact_signal_revocations`
+  (`migrations/054`; история сигналов append-only), `preferred` без поддержки понижается до `secondary`.
+- Сигналы старого независимого пути (`source LIKE 'message:%' / 'contact_event:%'`) заменены evidence
+  и помечаются отозванными (не удаляются).
+- Обратимый merge (`mail/supplier_merge.py`, `migrations/055`): только внутри одного workspace; разные
+  подтверждённые ИНН — запрет даже с ручным подтверждением (`merge_guard`); неизвестный ИНН — только с
+  явным подтверждением; журнал `supplier_merge_moves`; unmerge возвращает строки построчно; тест
+  `RegistryCoverageTest` требует внести в реестр любую новую таблицу со ссылкой на `suppliers`.
+- Исторические дубли: `scripts/supplier_duplicates_dry_run.py` (read-only, отчёт без email). Старый
+  `supplier_identity_audit.py --apply-strict-safe` необратим и знает не все таблицы — не использовать.
+- Отдельно существует `supplier_evidence` (поля обогащения: ИНН, названия) — это другой контур.

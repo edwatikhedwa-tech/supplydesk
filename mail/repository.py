@@ -19,6 +19,7 @@ from .auth_accounts import AuthAccountsMixin
 from .canonical_companies import CanonicalCompaniesMixin
 from .contact_intelligence import ContactIntelligenceMixin
 from .supplier_identity_evidence import SupplierIdentityEvidenceMixin
+from .supplier_merge import SupplierMergeMixin
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
 from .ai_chat_usage import AiChatUsageMixin
@@ -256,6 +257,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 class MailRepository(
     AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, SupportMixin, AiChatUsageMixin, AiConversationsMixin, TasksMixin,
     CanonicalCompaniesMixin, ContactIntelligenceMixin, TaskReminderDeliveryMixin, SupplierIdentityEvidenceMixin,
+    SupplierMergeMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
@@ -2253,14 +2255,15 @@ class MailRepository(
                     (thread["thread_id"], workspace_id, user_id, thread["request_id"], thread["supplier_id"], account_id, incoming.provider_message_id, incoming.message_id, incoming.in_reply_to, incoming.references, incoming.from_email, incoming.to_email, incoming.subject, incoming.body_text, incoming.body_html, created_at, created_at),
                 )
                 message_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
-                if not bounce:
-                    # A real (non-bounce) message in this supplier's thread: strongest
-                    # evidence that the sender's address is a working contact of it.
-                    self._record_email_evidence_for_message(
-                        connection, workspace_id=workspace_id, supplier_id=int(thread["supplier_id"]),
-                        request_id=int(thread["request_id"]), message_id=message_id,
-                        direction="inbound", email=incoming.from_email,
-                    )
+                # One rule set for every inbound message in a supplier's thread (real reply =
+                # ownership evidence, bounce = deliverability evidence); see
+                # mail/supplier_identity_evidence.py -- contact intelligence is projected from it.
+                self._record_inbound_message_evidence(
+                    connection, workspace_id=workspace_id, supplier_id=int(thread["supplier_id"]),
+                    request_id=int(thread["request_id"]), message_id=message_id, from_email=incoming.from_email,
+                    subject=incoming.subject, body_text=incoming.body_text, body_html=getattr(incoming, "body_html", "") or "",
+                    occurred_at=created_at,
+                )
                 connection.execute(
                     """UPDATE mail_threads SET last_message_at=CASE WHEN last_message_at IS NULL OR last_message_at < ? THEN ? ELSE last_message_at END WHERE id=?""",
                     (created_at, created_at, thread["thread_id"]),
@@ -2776,10 +2779,11 @@ class MailRepository(
                  message["body_text"], message["body_html"], received_at, received_at),
             )
             new_message_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
-            self._record_email_evidence_for_message(
+            self._record_inbound_message_evidence(
                 connection, workspace_id=workspace_id, supplier_id=supplier_id, request_id=request_id,
-                message_id=new_message_id, direction="inbound", email=message["from_email"],
-                source_type="manual_confirmed",
+                message_id=new_message_id, from_email=message["from_email"] or "", subject=subject,
+                body_text=message["body_text"] or "", body_html=message["body_html"] or "",
+                occurred_at=received_at, confirmed_by_user=True,
             )
             connection.execute(
                 "UPDATE mail_threads SET last_message_at=CASE WHEN last_message_at IS NULL OR last_message_at < ? THEN ? ELSE last_message_at END WHERE id=?",
@@ -3420,6 +3424,8 @@ class MailRepository(
             supplier_id = int(connection.execute(
                 "SELECT id FROM suppliers WHERE workspace_id = ? AND external_key = ?", (workspace_id, external_key)
             ).fetchone()[0])
+            # A card merged away (EDW-16) is a hidden shell: its key resolves to the survivor.
+            supplier_id = self._follow_merge(connection, workspace_id, supplier_id)
             if request_id is not None:
                 connection.execute(
                     """INSERT INTO request_suppliers(request_id, supplier_id, position_keys_json, reason, source, updated_at)
@@ -3600,7 +3606,12 @@ class MailRepository(
                             demotion,
                         )
                 if stored_email and normalized_email not in {stored_email, effective_email}:
-                    raise ValueError("Email не совпадает с выбранным поставщиком.")
+                    # A contact with CONFIRMED ownership evidence for this very card (real reply,
+                    # manual confirmation, merged-in card's address) is a known contact of it too.
+                    if int(row["id"]) not in self._confirmed_supplier_ids_for_email(
+                        connection, workspace_id, normalized_email, request_id,
+                    ):
+                        raise ValueError("Email не совпадает с выбранным поставщиком.")
                 if effective_email:
                     normalized_email = effective_email
             else:
@@ -3682,6 +3693,17 @@ class MailRepository(
                     )
 
             if row is not None:
+                followed = self._follow_merge(connection, workspace_id, int(row["id"]))
+                if followed != int(row["id"]):
+                    row = connection.execute(
+                        """SELECT s.id, s.external_key, s.name, s.email, s.host,
+                                  COALESCE(p.inn, '') AS inn, gl.global_supplier_id
+                           FROM suppliers s
+                           LEFT JOIN supplier_profiles p ON p.supplier_id=s.id
+                           LEFT JOIN global_supplier_links gl ON gl.supplier_id=s.id
+                           WHERE s.id=? AND s.workspace_id=?""",
+                        (followed, workspace_id),
+                    ).fetchone()
                 resolved_id = int(row["id"])
                 stored_email = str(row["email"] or "").strip().lower()
                 if not stored_email and normalized_email:
@@ -4415,6 +4437,8 @@ class MailRepository(
                    LEFT JOIN supplier_profiles p ON p.supplier_id=s.id
                    LEFT JOIN global_supplier_links l ON l.supplier_id=s.id
                    WHERE s.workspace_id=? AND l.supplier_id IS NULL
+                     AND s.id NOT IN (SELECT merged_supplier_id FROM supplier_merges
+                                      WHERE workspace_id=s.workspace_id AND status='active')
                    ORDER BY s.name, s.host, s.id""",
                 (workspace_id,),
             ).fetchall()
@@ -7438,9 +7462,9 @@ class MailRepository(
                 (thread_id, workspace_id, user_id, request_id, supplier_id, account_id, message_id_header, in_reply_to, references_header, from_email, to_email, subject, body_text, body_html, now),
             )
             message_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
-            self._record_email_evidence_for_message(
+            self._record_rfq_evidence(
                 connection, workspace_id=workspace_id, supplier_id=supplier_id, request_id=request_id,
-                message_id=message_id, direction="outbound", email=to_email,
+                message_id=message_id, email=to_email, occurred_at=now,
             )
             connection.execute(
                 "INSERT INTO mail_message_integrity(message_id, state_schema_version, resend_of_message_id, created_at) VALUES (?, ?, ?, ?)",
@@ -7576,9 +7600,9 @@ class MailRepository(
             ),
         )
         message_id = int(connection.execute("SELECT LASTVAL()" if self.database_url else "SELECT last_insert_rowid()").fetchone()[0])
-        self._record_email_evidence_for_message(
+        self._record_rfq_evidence(
             connection, workspace_id=workspace_id, supplier_id=supplier_id, request_id=request_id,
-            message_id=message_id, direction="outbound", email=to_email,
+            message_id=message_id, email=to_email, occurred_at=now,
         )
         connection.execute(
             "INSERT INTO mail_message_integrity(message_id, state_schema_version, resend_of_message_id, created_at) VALUES (?, ?, ?, ?)",

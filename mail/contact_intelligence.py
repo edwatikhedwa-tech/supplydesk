@@ -26,7 +26,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from .bounce import classify_bounce, failed_recipients
+from .supplier_identity_evidence import is_contactable_person_address
 from .time_utils import iso_now
 
 UTC = timezone.utc
@@ -230,14 +230,14 @@ class ContactIntelligenceMixin:
         currently trusted.
         """
         last_hard = connection.execute(
-            """SELECT MAX(created_at) AS ts FROM canonical_company_contact_signals
+            """SELECT MAX(created_at) AS ts FROM (SELECT * FROM canonical_company_contact_signals sg WHERE NOT EXISTS (SELECT 1 FROM canonical_company_contact_signal_revocations rv WHERE rv.signal_id = sg.id)) AS active_signals
                WHERE canonical_company_id=? AND email=? AND signal_type='hard_bounce'""",
             (canonical_company_id, email),
         ).fetchone()["ts"]
         if not last_hard:
             return False
         last_positive = connection.execute(
-            f"""SELECT MAX(created_at) AS ts FROM canonical_company_contact_signals
+            f"""SELECT MAX(created_at) AS ts FROM (SELECT * FROM canonical_company_contact_signals sg WHERE NOT EXISTS (SELECT 1 FROM canonical_company_contact_signal_revocations rv WHERE rv.signal_id = sg.id)) AS active_signals
                WHERE canonical_company_id=? AND email=? AND signal_type IN
                ({','.join('?' * len(_POSITIVE_SIGNAL_TYPES))})""",
             (canonical_company_id, email, *_POSITIVE_SIGNAL_TYPES),
@@ -362,7 +362,7 @@ class ContactIntelligenceMixin:
             contact_id, current_status = int(created["id"]), "candidate"
 
         strong_ts = connection.execute(
-            f"""SELECT MAX(created_at) AS ts FROM canonical_company_contact_signals
+            f"""SELECT MAX(created_at) AS ts FROM (SELECT * FROM canonical_company_contact_signals sg WHERE NOT EXISTS (SELECT 1 FROM canonical_company_contact_signal_revocations rv WHERE rv.signal_id = sg.id)) AS active_signals
                WHERE canonical_company_id=? AND email=? AND signal_type IN
                ({','.join('?' * len(_STRONG_SIGNAL_TYPES))})""",
             (canonical_company_id, email, *_STRONG_SIGNAL_TYPES),
@@ -374,7 +374,7 @@ class ContactIntelligenceMixin:
             )
 
         distinct_workspaces = int(connection.execute(
-            f"""SELECT COUNT(DISTINCT workspace_id) AS n FROM canonical_company_contact_signals
+            f"""SELECT COUNT(DISTINCT workspace_id) AS n FROM (SELECT * FROM canonical_company_contact_signals sg WHERE NOT EXISTS (SELECT 1 FROM canonical_company_contact_signal_revocations rv WHERE rv.signal_id = sg.id)) AS active_signals
                WHERE canonical_company_id=? AND email=? AND signal_type IN
                ({','.join('?' * len(_POSITIVE_SIGNAL_TYPES))})""",
             (canonical_company_id, email, *_POSITIVE_SIGNAL_TYPES),
@@ -416,6 +416,20 @@ class ContactIntelligenceMixin:
                 (canonical_company_id, email, current_status, distinct_workspaces, int(has_strong),
                  f"{distinct_workspaces} independent workspaces confirmed + a strong signal was present", now),
             )
+        elif current_status == "preferred" and not unresolved_hard_bounce and not eligible:
+            # Supporting evidence was revoked / moved away (EDW-14): trust must follow the evidence.
+            connection.execute(
+                "UPDATE canonical_company_contacts SET status='secondary', updated_at=? WHERE id=?",
+                (now, contact_id),
+            )
+            connection.execute(
+                """INSERT INTO canonical_company_contact_promotions(
+                       canonical_company_id, email, from_status, to_status,
+                       confirming_workspace_count, had_strong_signal, reason, decided_at
+                   ) VALUES (?, ?, 'preferred', 'secondary', ?, ?, ?, ?)""",
+                (canonical_company_id, email, distinct_workspaces, int(has_strong),
+                 "supporting evidence is no longer sufficient", now),
+            )
         elif current_status == "preferred" and unresolved_hard_bounce:
             connection.execute(
                 "UPDATE canonical_company_contacts SET status='secondary', updated_at=? WHERE id=?",
@@ -441,47 +455,17 @@ class ContactIntelligenceMixin:
         canonical_company_id = self._ensure_canonical_company_id(connection, workspace_id, global_supplier_id)
         if canonical_company_id is None:
             return None
-        rows = connection.execute(
-            """SELECT m.id, m.from_email, m.subject, m.body_text, m.body_html, m.created_at
-               FROM mail_messages m
-               JOIN suppliers s ON s.id=m.supplier_id
-               JOIN global_supplier_links gl ON gl.supplier_id=s.id
-               WHERE gl.global_supplier_id=? AND s.workspace_id=? AND m.direction='inbound'""",
+        # EDW-14: contact intelligence is a PROJECTION of supplier_identity_evidence. This no
+        # longer derives signals from mail_messages itself (that was a second, independent rule
+        # set for the same inbound reply): evidence is (re)built from existing mail/events by
+        # the same rules as the live hooks, then projected by the single reconcile function.
+        supplier_ids = [int(r["id"]) for r in connection.execute(
+            """SELECT s.id FROM suppliers s JOIN global_supplier_links gl ON gl.supplier_id=s.id
+               WHERE gl.global_supplier_id=? AND s.workspace_id=?""",
             (global_supplier_id, workspace_id),
-        ).fetchall()
-        touched: set[str] = set()
-        for row in rows:
-            subject = row["subject"] or ""
-            body_text = row["body_text"] or ""
-            body_html = row["body_html"] or ""
-            from_email = row["from_email"] or ""
-            kind = classify_bounce(from_email=from_email, subject=subject, body_text=body_text)
-            created_at = row["created_at"] or now
-            if kind is None:
-                sender = _normalized_email(from_email)
-                if not sender or sender.startswith("mailer-daemon@") or sender.startswith("postmaster@"):
-                    continue
-                self._insert_contact_signal(
-                    connection, canonical_company_id=canonical_company_id, email=sender,
-                    signal_type="inbound_reply", strength="strong", workspace_id=workspace_id,
-                    source=f"message:{int(row['id'])}", basis="real inbound reply", created_at=created_at,
-                )
-                touched.add(sender)
-                continue
-            signal_type = "hard_bounce" if kind == "hard" else "soft_bounce"
-            addresses = {
-                _normalized_email(address)
-                for address in failed_recipients(body_text, body_html)
-                if _normalized_email(address)
-            }
-            for address in addresses:
-                self._insert_contact_signal(
-                    connection, canonical_company_id=canonical_company_id, email=address,
-                    signal_type=signal_type, strength="weak", workspace_id=workspace_id,
-                    source=f"message:{int(row['id'])}", basis=f"{kind} bounce", created_at=created_at,
-                )
-                touched.add(address)
-        for email in touched:
+        ).fetchall()]
+        self._backfill_evidence_for_suppliers(connection, workspace_id, supplier_ids)
+        for email in self._reconcile_contact_projection(connection, workspace_id, canonical_company_id):
             self._recompute_contact_status(connection, canonical_company_id, email, now)
         return canonical_company_id
 
@@ -566,16 +550,16 @@ class ContactIntelligenceMixin:
                 )
                 override_created = True
 
-            if global_supplier_id is not None and result in ("contact_confirmed", "new_email_provided"):
+            if result in ("contact_confirmed", "new_email_provided"):
                 signal_email = new_email_normalized if result == "new_email_provided" else _normalized_email(thread["supplier_email"])
-                canonical_company_id = self._ensure_canonical_company_id(connection, workspace_id, global_supplier_id)
-                if canonical_company_id is not None and signal_email:
-                    self._insert_contact_signal(
-                        connection, canonical_company_id=canonical_company_id, email=signal_email,
-                        signal_type="workspace_confirmed", strength="weak", workspace_id=workspace_id,
-                        source=f"contact_event:{event_id}", basis=comment or result, created_at=now,
+                if is_contactable_person_address(signal_email):
+                    # Primary fact goes to the evidence store; contact intelligence is projected from it.
+                    self._record_identity_evidence(
+                        connection, workspace_id=workspace_id, supplier_id=supplier_id, request_id=request_id,
+                        kind="email", value=signal_email, source_type="workspace_contact_result",
+                        source_id=f"contact_event:{event_id}", occurred_at=now, reason=comment or result,
                     )
-                    self._recompute_contact_status(connection, canonical_company_id, signal_email, now)
+                    self.sync_contact_intelligence_for_supplier(connection, workspace_id, supplier_id)
 
             self._audit_connection(
                 connection, workspace_id, user_id, "mail.contact_result.recorded",
@@ -620,24 +604,24 @@ class ContactIntelligenceMixin:
                 for row in contact_rows:
                     email = row["email"]
                     distinct_workspaces = int(connection.execute(
-                        f"""SELECT COUNT(DISTINCT workspace_id) AS n FROM canonical_company_contact_signals
+                        f"""SELECT COUNT(DISTINCT workspace_id) AS n FROM (SELECT * FROM canonical_company_contact_signals sg WHERE NOT EXISTS (SELECT 1 FROM canonical_company_contact_signal_revocations rv WHERE rv.signal_id = sg.id)) AS active_signals
                            WHERE canonical_company_id=? AND email=? AND signal_type IN
                            ({','.join('?' * len(_POSITIVE_SIGNAL_TYPES))})""",
                         (canonical_company_id, email, *_POSITIVE_SIGNAL_TYPES),
                     ).fetchone()["n"])
                     has_strong = int(connection.execute(
-                        f"""SELECT COUNT(*) AS n FROM canonical_company_contact_signals
+                        f"""SELECT COUNT(*) AS n FROM (SELECT * FROM canonical_company_contact_signals sg WHERE NOT EXISTS (SELECT 1 FROM canonical_company_contact_signal_revocations rv WHERE rv.signal_id = sg.id)) AS active_signals
                            WHERE canonical_company_id=? AND email=? AND signal_type IN
                            ({','.join('?' * len(_STRONG_SIGNAL_TYPES))})""",
                         (canonical_company_id, email, *_STRONG_SIGNAL_TYPES),
                     ).fetchone()["n"]) > 0
                     hard_bounces = int(connection.execute(
-                        """SELECT COUNT(*) AS n FROM canonical_company_contact_signals
+                        """SELECT COUNT(*) AS n FROM (SELECT * FROM canonical_company_contact_signals sg WHERE NOT EXISTS (SELECT 1 FROM canonical_company_contact_signal_revocations rv WHERE rv.signal_id = sg.id)) AS active_signals
                            WHERE canonical_company_id=? AND email=? AND signal_type='hard_bounce'""",
                         (canonical_company_id, email),
                     ).fetchone()["n"])
                     soft_bounces = int(connection.execute(
-                        """SELECT COUNT(*) AS n FROM canonical_company_contact_signals
+                        """SELECT COUNT(*) AS n FROM (SELECT * FROM canonical_company_contact_signals sg WHERE NOT EXISTS (SELECT 1 FROM canonical_company_contact_signal_revocations rv WHERE rv.signal_id = sg.id)) AS active_signals
                            WHERE canonical_company_id=? AND email=? AND signal_type='soft_bounce'""",
                         (canonical_company_id, email),
                     ).fetchone()["n"])

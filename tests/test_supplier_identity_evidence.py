@@ -105,20 +105,20 @@ class _Base(unittest.TestCase):
 
 
 class ConfirmedEvidenceReusesIdentityTest(_Base):
-    def test_rfq_sent_is_recorded_as_request_level_strong_evidence(self) -> None:
+    def test_rfq_sent_is_recorded_as_request_level_association_only(self) -> None:
         self._queue_rfq()
         rows = self.repo.list_supplier_identity_evidence(self.ws, email="info@termo-sfera.pro")
         self.assertEqual(
-            [(r["source_type"], r["strength"], r["decision"], r["request_id"]) for r in rows],
-            [("rfq_sent", "strong", "linked", self.req)],
+            [(r["source_type"], r["assertion"], r["strength"], r["request_id"]) for r in rows],
+            [("rfq_sent", "association", "medium", self.req)],
         )
 
     def test_real_reply_from_personal_address_becomes_strong_evidence_and_reuses_identity(self) -> None:
         sid = self._send_rfq_and_get_reply_from(PERSONAL)
         evidence = self.repo.list_supplier_identity_evidence(self.ws, supplier_id=sid, email=PERSONAL)
         self.assertEqual(
-            [(e["source_type"], e["strength"], e["decision"]) for e in evidence],
-            [("inbound_reply", "strong", "linked")],
+            [(e["source_type"], e["strength"], e["state"]) for e in evidence],
+            [("inbound_reply", "strong", "confirmed")],
         )
         before = self._count()
         result = self._send_to(PERSONAL)
@@ -152,7 +152,7 @@ class NoEvidenceNeverLinksTest(_Base):
         self.assertNotEqual(result["supplier_id"], sid)  # no evidence -> no automatic union
         candidates = self.repo.list_supplier_identity_evidence(self.ws, supplier_id=sid, email=PERSONAL)
         self.assertEqual(
-            [(c["source_type"], c["strength"], c["decision"]) for c in candidates],
+            [(c["source_type"], c["strength"], c["state"]) for c in candidates],
             [("name_token_similarity", "weak", "candidate")],
         )
 
@@ -203,11 +203,10 @@ class IsolationAndAmbiguityTest(_Base):
             self._send_to(PERSONAL)
         self.assertEqual(self._count(), before)  # nothing merged, nothing created
 
-    def test_reverted_evidence_is_ignored(self) -> None:
+    def test_revoked_evidence_is_ignored(self) -> None:
         sid = self._host_supplier()
         self.repo.confirm_supplier_contact(self.ws, self.user["id"], sid, PERSONAL)
-        with self.repo.connect() as c:
-            c.execute("UPDATE supplier_identity_evidence SET reverted_by_id=999")
+        self.repo.revoke_supplier_contact(self.ws, self.user["id"], sid, PERSONAL, reason="ошибка")
         self.assertNotEqual(self._send_to(PERSONAL)["supplier_id"], sid)
 
 
