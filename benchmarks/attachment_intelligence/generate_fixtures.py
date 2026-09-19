@@ -670,8 +670,7 @@ def main() -> None:
     if FILES.parent.exists():
         shutil.rmtree(FILES.parent)
     FILES.mkdir(parents=True)
-    (FILES.parent / ".gitattributes").write_text("files/* -text
-", encoding="utf-8")   # byte-exact checkout: the hashes in ground_truth.json must survive
+    (FILES.parent / ".gitattributes").write_text("files/* -text\n", encoding="utf-8")   # byte-exact checkout: the hashes in ground_truth.json must survive
     truth_docs: dict[str, dict] = {}
     built: dict[str, dict] = {}
     order = [d["id"] for d in DOCS]

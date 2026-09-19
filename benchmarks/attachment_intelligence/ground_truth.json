@@ -3978,7 +3978,7 @@
   {
    "file": "f25.pdf",
    "id": "s01",
-   "sha256": "66f45d4f455457ef3875a584a283639a5b9cc9e976fd32539dc72ac33a4c6811",
+   "sha256": "dd31295714a98851bf0cc5392b131ba255b660b12ffedf90a82fb2d255c72a5e",
    "bytes": 116020,
    "format": "scan_pdf",
    "category": "scanned",
@@ -4152,7 +4152,7 @@
   {
    "file": "f44.pdf",
    "id": "s02",
-   "sha256": "97b46914113ebbced9c3174a5152126239c709ae11cca2741cdcc644637af802",
+   "sha256": "74885b56ed455d812ce8583be7a332732aa5b779836b671dc1020a79c15f781e",
    "bytes": 126698,
    "format": "scan_pdf",
    "category": "scanned",
@@ -4374,7 +4374,7 @@
   {
    "file": "f32.pdf",
    "id": "s03",
-   "sha256": "2f4d4816157ed77abdc17b6064e1dbf7057bea8be9e188af85767892a8ea7ad0",
+   "sha256": "a7be1ead337ff53ea2129763600a7f2eb4d24044bdaaa9ba7ddd5556227f3344",
    "bytes": 243662,
    "format": "scan_pdf",
    "category": "damaged",
@@ -4596,7 +4596,7 @@
   {
    "file": "f38.pdf",
    "id": "s04",
-   "sha256": "25ca498103d467374bb0035b498945778ef9ba7eaef7dc88ba6efa3a9b86c08e",
+   "sha256": "ee9f62e92fed864804b8173573a5e7b2d92e57e102fd2a5146162a45d5fdae40",
    "bytes": 266241,
    "format": "scan_pdf",
    "category": "damaged",
@@ -4746,7 +4746,7 @@
   {
    "file": "f14.pdf",
    "id": "s05",
-   "sha256": "1f93bf9f610c43e5c585ed9d5c3cdaf5a9e923b6651d7bcdc6191acab5d6d477",
+   "sha256": "bc28d9e784d819c42420e91af1b9b59c838dfbf6523afbeba4bf9e28d38d608c",
    "bytes": 115163,
    "format": "scan_pdf",
    "category": "damaged",
@@ -4896,7 +4896,7 @@
   {
    "file": "f21.pdf",
    "id": "s06",
-   "sha256": "05701671d575a37a2ced041eac57d8b21c4969984cb9d0e7bc29d51ac0076328",
+   "sha256": "d79e89e27a273ee2ef9701c95ad662b454253a8f626e5c64b78996b6e3364981",
    "bytes": 170145,
    "format": "scan_pdf",
    "category": "scanned",
@@ -5262,7 +5262,7 @@
   {
    "file": "f29.pdf",
    "id": "s07",
-   "sha256": "8bbb988190eb9481a4d5fe86143c4da491002be37558e7ae8470cd16fe8641f9",
+   "sha256": "eef070c4210114089f239cea2ec243c20e77ac02f311f7d156098639a2c71fd9",
    "bytes": 127952,
    "format": "scan_pdf",
    "category": "damaged",
@@ -5460,7 +5460,7 @@
   {
    "file": "f17.pdf",
    "id": "s08",
-   "sha256": "db86c5691f3dd9a6c94aae0b9f581b0ba19898ef36877e49d3e133cb014b446a",
+   "sha256": "3f1270c5c47530c882d53a597e248601c56396e02ee2203e1a51dc0d829fbd50",
    "bytes": 13749,
    "format": "scan_pdf",
    "category": "damaged",
