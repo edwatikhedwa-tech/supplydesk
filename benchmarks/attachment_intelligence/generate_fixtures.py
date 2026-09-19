@@ -32,19 +32,26 @@ FILES = HERE / "fixtures" / "files"
 FONT = Path(r"C:\Windows\Fonts\arial.ttf")
 FONT_B = Path(r"C:\Windows\Fonts\arialbd.ttf")
 GENERATOR_VERSION = "1"
+# Recorded, not silent. Pre-run fixes are in git history (commits before the first pipeline run).
+CORRECTIONS = [
+    {"when": "after pipeline run a1", "kind": "benchmark-label correction", "what": "vat_mode was written as 'unspecified' for every document whose spec said 'incl' (generator mapping bug: key 'incl' vs 'included'); "
+     "the documents themselves state 'с НДС 20%'. Label now 'included'."},
+    {"when": "after pipeline run a1", "kind": "benchmark-fixture correction (layout, not a label)", "what": "column headers of styles ru_nosku / ru_old / en overlapped on the rendered page "
+     "(text PDFs and scans), so the header row was physically unreadable; column x positions and three header captions were shortened. No expected value changed."},
+]
 SEED = 20260919
 
 PAGE_W, PAGE_H, PDF_K = 1240, 1754, 0.48       # layout px -> pdf pt
 ROWS_PER_PAGE = 38
-COLS = {"n": 50, "name": 90, "sku": 600, "qty": 800, "unit": 870, "price": 940, "total": 1075, "old": 1075, "delivery": 1075}
+COLS = {"n": 50, "name": 90, "sku": 560, "qty": 770, "unit": 860, "price": 960, "total": 1085, "old": 1085, "delivery": 1085}
 
 STYLES = {
     "ru_std": (["n", "name", "sku", "qty", "unit", "price", "total"], ["№", "Наименование", "Артикул", "Кол-во", "Ед.", "Цена, руб.", "Сумма, руб."]),
-    "ru_nosku": (["n", "name", "qty", "unit", "price", "total"], ["№", "Наименование товара", "Количество", "Ед. изм.", "Цена за ед., руб.", "Стоимость, руб."]),
+    "ru_nosku": (["n", "name", "qty", "unit", "price", "total"], ["№", "Наименование товара", "Кол-во", "Ед. изм.", "Цена, руб.", "Стоимость"]),
     "ru_alt": (["name", "sku", "qty", "unit", "price", "total"], ["Позиция", "Арт.", "Кол.", "Ед.", "Цена/ед.", "Итого"]),
     "ru_deliv": (["n", "name", "sku", "qty", "unit", "price", "delivery"], ["№", "Наименование", "Артикул", "Кол-во", "Ед.", "Цена, руб.", "Срок, дн."]),
-    "ru_old": (["n", "name", "sku", "qty", "unit", "old", "price"], ["№", "Наименование", "Артикул", "Кол-во", "Ед.", "Старая цена", "Новая цена, руб."]),
-    "en": (["n", "name", "sku", "qty", "unit", "price", "total"], ["#", "Description", "Part No.", "Qty", "UoM", "Unit price, USD", "Amount, USD"]),
+    "ru_old": (["n", "name", "sku", "qty", "unit", "old", "price"], ["№", "Наименование", "Артикул", "Кол-во", "Ед.", "Старая цена", "Новая цена"]),
+    "en": (["n", "name", "sku", "qty", "unit", "price", "total"], ["#", "Description", "Part No.", "Qty", "UoM", "Price, USD", "Amount"]),
 }
 CUR_WORD = {"RUB": "руб.", "USD": "USD"}
 
@@ -156,7 +163,7 @@ def make_doc(rng: random.Random, spec: dict) -> dict:
     if not en:
         post.append(f"Р/с 40702810{rng.randint(10**9, 10**10 - 1)}, БИК 044525225")
     return {"spec": spec, "supplier": spec["sup"], "rid": spec["rid"], "lines": lines, "pre": pre, "post": post, "total": total, "cur": cur,
-            "vat": {"included": "included", "excl": "excluded"}.get(vat, "unspecified") if vat else "unspecified",
+            "vat": {"incl": "included", "excl": "excluded"}.get(vat, "unspecified"),
             "delivery_days": delivery["days"] if delivery else None, "style": spec.get("style", "ru_std"), "sup_info": sup}
 
 
@@ -164,7 +171,7 @@ def table_rows(doc: dict) -> tuple[list[str], list[str], list[list[str]], list[s
     keys, heads = STYLES[doc["style"]]
     cur = doc["cur"]
     if any(l["price_per"] == 100 for l in doc["lines"]):        # the header must say so, otherwise the label would be unknowable
-        heads = [h.replace("Цена, руб.", "Цена за 100 шт., руб.") for h in heads]
+        heads = [h.replace("Цена, руб.", "Цена за 100 шт., руб.") for h in heads]   # only spreadsheets use per_100 (no page layout to overflow)
     rows = []
     for i, ln in enumerate(doc["lines"], 1):
         unit = {"шт": "pcs"}.get(ln["unit"], ln["unit"]) if doc["style"] == "en" else ln["unit"]
@@ -795,7 +802,7 @@ def main() -> None:
         })
     catalog_gt = {rid: [{k: p[k] for k in ("pid", "name", "sku", "brand", "qty", "unit")} for p in r["positions"]] for rid, r in C.REQUESTS.items()}
     gt = {"benchmark": "attachment_intelligence", "generator_version": GENERATOR_VERSION, "seed": SEED,
-          "note": "Created by generate_fixtures.py BEFORE the first pipeline run. Labels are changed only for proven label errors, recorded as 'benchmark-label correction'.",
+          "corrections": CORRECTIONS, "note": "Created by generate_fixtures.py BEFORE the first pipeline run. Labels are changed only for proven label errors, recorded as 'benchmark-label correction'.",
           "requests": catalog_gt, "files": files_gt, "emails": emails_gt,
           "match_kinds": {"exact": "same product as the requested position (any spelling)", "analog": "a different product offered as an analog: must NOT be counted as an exact match",
                           "extra": "not requested: must stay unmatched", "ambiguous": "cannot be assigned to one position: must go to manual review"}}
