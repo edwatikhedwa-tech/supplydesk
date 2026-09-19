@@ -41,11 +41,11 @@ def load_env_key() -> None:
 class CappedModels:
     """Adds a hard rouble cap on top of the production adapter; records every call."""
 
-    def __init__(self, inner, cap: float) -> None:
-        self.inner, self.cap, self.spent, self.calls = inner, cap, 0.0, 0
+    def __init__(self, inner, cap: float, shared=None) -> None:
+        self.inner, self.cap, self.spent, self.calls, self.shared = inner, cap, 0.0, 0, shared
 
     def call(self, stage, system, user, schema):
-        if self.spent >= self.cap:
+        if self.spent + (self.shared.spent if self.shared else 0.0) >= self.cap:
             raise SystemExit(f"BUDGET CAP {self.cap} RUB reached after {self.calls} calls - stopped")
         reply = self.inner.call(stage, system, user, schema)
         self.calls += 1
@@ -59,18 +59,26 @@ def main() -> None:
     ap.add_argument("--no-ai", action="store_true")
     ap.add_argument("--budget", type=float, default=3.0, help="rouble cap for this benchmark (separate from the mail benchmark)")
     ap.add_argument("--model", default="mistralai/mistral-nemo")
+    ap.add_argument("--vision-model", default="", help="vision model for pages OCR could not finish (empty = off)")
+    ap.add_argument("--no-text-ai", action="store_true", help="do not send OCR rows to a text model (measured: no gain)")
     ap.add_argument("--emails", default="")
     args = ap.parse_args()
     inputs = json.loads((HERE / "inputs.json").read_text(encoding="utf-8"))
-    models = None
+    models = text_models = None
     if not args.no_ai:
         load_env_key()
         from backend.integrations.llm.routerai_client import RouterAiClient
         from mail.message_analysis import RouterAiAnalysisModels
         models = CappedModels(RouterAiAnalysisModels(RouterAiClient(), cheap_model=args.model, strong_model=None), args.budget)
+        text_models = None if args.no_text_ai else models
+    vision = None
+    if args.vision_model and models is not None:
+        vision = CappedModels(RouterAiAnalysisModels(models.inner.client, cheap_model=args.vision_model, strong_model=None), args.budget, shared=models)
     out_dir = ROOT / "results"
     out_dir.mkdir(exist_ok=True)
-    cache = AI.FileCache(out_dir / f"attachment_cache_{args.tag}.json")
+    cache_path = out_dir / f"attachment_cache_{args.tag}.json"
+    repeat = cache_path.exists()          # a second invocation on the same cache is the idempotency check: its report must not overwrite the first
+    cache = AI.FileCache(cache_path)
     wanted = set(filter(None, args.emails.split(",")))
     report = {"tag": args.tag, "version": AI.ANALYSIS_VERSION, "emails": [], "totals": {}}
     ai_calls = ocr_pages = cache_hits = analysed = 0
@@ -82,7 +90,7 @@ def main() -> None:
         results = []
         for att in email["attachments"]:
             data = (HERE / att["path"]).read_bytes()
-            r = AI.analyze_attachment(data, att["filename"], models=models, cache=cache)
+            r = AI.analyze_attachment(data, att["filename"], models=text_models, cache=cache, vision=vision)
             results.append(r)
             analysed += 1
             cache_hits += bool(r["cache_hit"])
@@ -93,8 +101,8 @@ def main() -> None:
             "sha256", "status", "kind", "parser", "needs_ocr", "is_quote", "currency", "vat_mode", "delivery_days", "reasons", "manual_review",
             "cache_hit", "latency_ms", "ocr_pages", "ai_calls", "facts", "unparsed")}} for a, r in zip(email["attachments"], results)], "merged": merged})
     report["totals"] = {"attachments": analysed, "cache_hits": cache_hits, "ai_calls": ai_calls, "ocr_pages": ocr_pages,
-                        "spent_rub": round(models.spent, 4) if models else 0.0, "seconds": round(time.time() - t0, 1)}
-    (out_dir / f"attachments_{args.tag}.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
+                        "spent_rub": round((models.spent + (vision.spent if vision else 0.0)), 4) if models else 0.0, "seconds": round(time.time() - t0, 1)}
+    (out_dir / (f"attachments_{args.tag}_repeat.json" if repeat else f"attachments_{args.tag}.json")).write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps(report["totals"], ensure_ascii=False))
 
 

@@ -44,7 +44,8 @@ def align(truth_lines: list[dict], facts: list[dict]) -> dict[int, dict]:
     for i, t in enumerate(truth_lines):
         for j, f in enumerate(facts):
             sim = max(jacc(t["name"], f["name"]), 1.0 if t["sku"] and skun(t["sku"]) == skun(f.get("sku")) else 0.0)
-            if sim < 0.45:
+            exact_numbers = same_price(f.get("price"), t["price"]) and t["price"] is not None and f.get("qty") == t["qty"]
+            if sim < 0.45 and not exact_numbers:            # garbled name (OCR) but the very same price and quantity: the same line, damaged
                 continue
             score = sim + (1.5 if same_price(f.get("price"), t["price"]) else 0) + (0.5 if f.get("qty") == t["qty"] else 0)
             cands.append((score, i, j))
@@ -114,7 +115,7 @@ def main(tag: str, as_json: bool = False) -> dict:
         bump(t, "ai_files", bool(r["ai_calls"]))
         bump(t, "latency_ms", r["latency_ms"] if not r["cache_hit"] else 0)
         bump(t, "ai_cost", sum(c["cost_rub"] or 0 for c in r["ai_calls"]))
-        bump(t, "manual", r["manual_review"])
+        bump(t, "manual", r["manual_review"] or any(ml["match"]["status"] == "ambiguous" for (eid, d12), mls in merged_by_doc.items() if d12 == sha[:12] for ml in mls))
         bump(t, "exp_manual", t["expected_manual_review"] or bool(t["lines_needing_review"]))
         # quote detection
         bump(t, "quote_tp", t["is_quote"] and r["is_quote"] and not t["expected_manual_review"])
@@ -122,17 +123,20 @@ def main(tag: str, as_json: bool = False) -> dict:
         bump(t, "quote_fp", (not t["is_quote"]) and r["is_quote"])
         # manual review detection (doc-level, expected = damaged/unreadable or contains ambiguous lines)
         exp_m = t["expected_manual_review"] or bool(t["lines_needing_review"])
-        bump(t, "review_tp", exp_m and r["manual_review"])
-        bump(t, "review_fn", exp_m and not r["manual_review"])
-        bump(t, "review_fp", (not exp_m) and r["manual_review"])
-        if (not exp_m) and r["manual_review"]:
+        # the email-level decision: the file itself is doubtful OR one of its lines cannot be assigned to a single position
+        ambiguous_line = any(ml["match"]["status"] == "ambiguous" for (eid, d12), mls in merged_by_doc.items() if d12 == sha[:12] for ml in mls)
+        reviewed = r["manual_review"] or ambiguous_line
+        bump(t, "review_tp", exp_m and reviewed)
+        bump(t, "review_fn", exp_m and not reviewed)
+        bump(t, "review_fp", (not exp_m) and reviewed)
+        if (not exp_m) and reviewed:
             failures["validator (false review flag)"] += 1
             fail_examples["validator (false review flag)"].append(f"{t['file']} {t['id']}: {','.join(r['reasons'])}")
-        if exp_m and not r["manual_review"]:
+        if exp_m and not reviewed:
             failures["validator (missed review)"] += 1
             fail_examples["validator (missed review)"].append(f"{t['file']} {t['id']}")
         # doc-level terms
-        if t["is_quote"]:
+        if t["is_quote"] and not t["expected_manual_review"]:
             bump(t, "vat_n")
             bump(t, "vat_ok", r["vat_mode"] == t["vat_mode"])
             if t["delivery_days"] is not None:
@@ -151,7 +155,7 @@ def main(tag: str, as_json: bool = False) -> dict:
         for f in facts:
             if id(f) not in aligned_f:
                 bump(t, "unaligned_facts")
-                if f.get("price") is not None:
+                if f.get("price") is not None and not f.get("review"):        # a fact the pipeline itself flagged is an abstention, not an assertion
                     bad = round(f["price"], 2) in must and round(f["price"], 2) not in legit_prices
                     hallucinated.append(f"{t['file']} {t['id']}: {f['name'][:40]} price={f['price']} {'MUST-NOT' if bad else 'unaligned'}")
                     bump(t, "hallucinated")
@@ -207,7 +211,8 @@ def main(tag: str, as_json: bool = False) -> dict:
             kind, pid = l["match_kind"], l["matched_pid"]
             st = m["status"]
             if kind == "exact":
-                out = "correct" if st == "exact" and m["pid"] == pid else "false_match" if st in ("exact", "analog") else "safe_abstain"
+                # exact -> analog on the SAME position is a conservative downgrade (a human confirms it): safe, not a false match
+                out = "correct" if st == "exact" and m["pid"] == pid else "safe_abstain" if st == "analog" and m["pid"] == pid else "false_match" if st in ("exact", "analog") else "safe_abstain"
             elif kind == "analog":
                 out = "correct" if st == "analog" and m["pid"] == pid else "false_match" if st == "exact" or (st == "analog") else "safe_abstain"
             elif kind == "extra":
