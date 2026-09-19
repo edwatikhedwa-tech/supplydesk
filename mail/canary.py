@@ -215,6 +215,10 @@ class CanaryMixin:
                 depths = [w["depth"] for w in window]
                 if depths[-1] > 0 and depths[-1] >= depths[0] and min(depths) >= 1 and not any(d < depths[0] for d in depths):
                     add("backlog_not_shrinking", f"depth {depths[0]} -> {depths[-1]} over {BACKLOG_WINDOW_MINUTES}+ min")
+            if not self.downstream_suppressed(workspace_id, c):
+                pass
+            elif c.execute("SELECT COUNT(*) AS n FROM mail_analysis_events WHERE workspace_id=? AND created_at>=?", (workspace_id, since)).fetchone()["n"]:
+                add("downstream_event_in_shadow_mode", "a quote_received event exists while shadow mode is on")
             leaked = self._scan_for_secrets(c, workspace_id, log_paths or [])
             if leaked:
                 add("secret_in_logs_or_diagnostics", leaked)
@@ -293,6 +297,9 @@ class CanaryMixin:
                 "attachments": {"processed": len(att), "manual_review": sum(1 for r in att if r["manual_review"]), "reused_same_bytes": sum(1 for r in att if r["reused_from"] is not None), "unreadable": sum(1 for r in att if r["status"] != "ok")},
                 "budget_pauses": q("SELECT COUNT(*) FROM mail_intelligence_stop_events WHERE workspace_id=? AND created_at>=? AND created_at<? AND kind='pause'"),
             }
+            metrics["manual_review_rate"] = round(metrics["manual_review"] / len(analyses), 4) if analyses else None
+            metrics["shadow_mode"] = self.downstream_suppressed(workspace_id, c)
+        metrics.update(self.shadow_audit_metrics(workspace_id, since, hi))
         return metrics
 
     def canary_snapshot_day(self, workspace_id: int, day: str) -> dict[str, Any]:

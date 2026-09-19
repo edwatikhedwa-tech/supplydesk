@@ -6,6 +6,9 @@
   check --workspace 1                  evaluates the stop rules now (stops the canary if one fires)
   metrics --workspace 1 [--day YYYY-MM-DD] [--write]   aggregate metrics; --write stores docs/canary/EDW-40/daily_<day>.json
   final --workspace 1 [--write]        summary of the period (marks a limited sample)
+  audit-list | audit-confirm --id N | audit-reject --id N --reason not_a_price|wrong_value|wrong_request|other   LOCAL review of price facts and request matches
+  shadow-status                        exit criteria and current shadow state
+  release-shadow --owner-approved      lifts shadow mode ONLY if the exit criteria are met
 Reports contain counts, costs and latencies only."""
 
 from __future__ import annotations
@@ -22,11 +25,14 @@ sys.path.insert(0, str(ROOT))
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=["status", "enable", "disable", "check", "metrics", "final"])
+    ap.add_argument("command", choices=["status", "enable", "disable", "check", "metrics", "final", "audit-list", "audit-confirm", "audit-reject", "shadow-status", "release-shadow"])
     ap.add_argument("--workspace", type=int, required=True)
     ap.add_argument("--owner-approved", action="store_true")
     ap.add_argument("--clear-stop", action="store_true")
     ap.add_argument("--day")
+    ap.add_argument("--id", type=int)
+    ap.add_argument("--reason", default="")
+    ap.add_argument("--state", default="pending")
     ap.add_argument("--write", action="store_true")
     a = ap.parse_args()
     from mail.repository import MailRepository
@@ -50,6 +56,18 @@ def main() -> int:
         if a.write:
             path = ROOT / "docs" / "canary" / "EDW-40" / f"daily_{day}.json"
             path.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+    elif a.command == "audit-list":
+        out = repo.audit_list(ws, state=a.state)          # LOCAL review view: contains source text, never commit or push this output
+    elif a.command == "audit-confirm":
+        out = repo.audit_review(ws, a.id, "confirmed")
+    elif a.command == "audit-reject":
+        out = repo.audit_review(ws, a.id, "rejected", a.reason)     # reasons: not_a_price | wrong_value | wrong_request | other (the first three stop the canary)
+    elif a.command == "shadow-status":
+        out = {"shadow_mode": repo.downstream_suppressed(ws), "exit_readiness": repo.shadow_exit_readiness(ws)}
+    elif a.command == "release-shadow":
+        if not a.owner_approved:
+            raise SystemExit("REFUSED: leaving shadow mode needs --owner-approved (an explicit owner decision) and met exit criteria.")
+        out = repo.release_shadow(ws, owner_approved=True)
     else:
         out = repo.canary_final_summary(ws)
         if a.write:

@@ -634,8 +634,14 @@ class MessageAnalysisMixin:
                 (outcome["status"], outcome["stage"], outcome["message_type"], outcome["is_relevant"], outcome["match_method"],
                  outcome["request_id"], outcome["supplier_id"], json.dumps(outcome["candidates"], ensure_ascii=False),
                  json.dumps(outcome["result"], ensure_ascii=False), outcome["review_reason"], attempts, now, analysis_id))
-            if (outcome["status"] == "final" and outcome["message_type"] == "quote" and facts
-                    and outcome["request_id"] and outcome["supplier_id"]):
+            if self.in_canary(workspace_id, connection):
+                self._audit_analysis(connection, workspace_id, kind, message_id, analysis_id, outcome, facts, stage=outcome["stage"])
+            event_wanted = (outcome["status"] == "final" and outcome["message_type"] == "quote" and facts and outcome["request_id"] and outcome["supplier_id"])
+            if event_wanted and self.downstream_suppressed(workspace_id, connection):
+                # shadow mode: the analysis is stored, the business consequence is NOT triggered (recorded for the audit)
+                self._audit(connection, workspace_id, "event_suppressed", kind, message_id, request_id=outcome["request_id"], supplier_id=outcome["supplier_id"],
+                            value={"event": "quote_received", "facts": len(facts)}, evidence={"analysis_id": analysis_id})
+            elif event_wanted:
                 connection.execute(
                     """INSERT INTO mail_analysis_events(workspace_id, analysis_id, event_type, payload_json, created_at)
                        VALUES (?, ?, 'quote_received', ?, ?)
@@ -644,6 +650,21 @@ class MessageAnalysisMixin:
                                                             "facts": len(facts)}), now))
             connection.commit()
             return self._analysis_view(connection, analysis_id, cached=False, ai_calls=ai_calls)
+
+    def _audit_analysis(self, connection: Any, workspace_id: int, kind: str, message_id: int, analysis_id: int, outcome: dict[str, Any], facts: list[dict[str, Any]], *, stage: str) -> None:
+        """Canary audit: one record per request-scoped price fact and one for the automatic request match. No letter text is copied."""
+        scoped = outcome["match_method"] == "thread" or (outcome["match_method"] == "sd_label" and outcome["supplier_id"] is not None)
+        if outcome["request_id"] and outcome["match_method"] in ("thread", "sd_label", "manual"):
+            self._audit(connection, workspace_id, "request_match", kind, message_id, request_id=outcome["request_id"], supplier_id=outcome["supplier_id"],
+                        match_method=outcome["match_method"], confidence="deterministic_rule", evidence={"analysis_id": analysis_id})
+        if not scoped:
+            return
+        for row in connection.execute("SELECT id, data_json, source_start, source_end FROM mail_facts WHERE analysis_id=? AND state='proposed' ORDER BY position", (analysis_id,)).fetchall():
+            d = json.loads(row["data_json"])
+            self._audit(connection, workspace_id, "price_fact", kind, message_id, request_id=outcome["request_id"], supplier_id=outcome["supplier_id"], fact_kind="mail_fact", fact_id=int(row["id"]),
+                        value={k: d.get(k) for k in ("price", "currency", "unit", "quantity", "sku")}, span={"source_start": row["source_start"], "source_end": row["source_end"]},
+                        match_method=outcome["match_method"], confidence="validated_verbatim",
+                        evidence={"analysis_id": analysis_id, "stage": stage, "checks": ["quote_verbatim", "price_in_quote", "currency_visible"], "issues": (outcome["result"] or {}).get("issues", [])})
 
     def rebind_message_facts(self, workspace_id: int, kind: str, message_id: int, request_id: int, supplier_id: int | None, *,
                              user_id: int | None = None, method: str = "manual_link") -> int:
@@ -666,7 +687,7 @@ class MessageAnalysisMixin:
                 connection.execute(
                     "UPDATE mail_analyses SET request_id=?, supplier_id=?, match_method='manual', status=?, review_reason=?, updated_at=? WHERE id=?",
                     (request_id, supplier_id, "final" if relinked else analysis["status"], "" if relinked else analysis["review_reason"], now, analysis["id"]))
-                if analysis["message_type"] == "quote" and facts and supplier_id:
+                if analysis["message_type"] == "quote" and facts and supplier_id and not self.downstream_suppressed(workspace_id, connection):
                     connection.execute(
                         """INSERT INTO mail_analysis_events(workspace_id, analysis_id, event_type, payload_json, created_at) VALUES (?, ?, 'quote_received', ?, ?)
                            ON CONFLICT(analysis_id, event_type) DO NOTHING""",
@@ -714,8 +735,11 @@ class MessageAnalysisMixin:
     # ------------------------------------------------------------------ downstream (no model calls)
     def process_analysis_events(self, workspace_id: int) -> dict[str, int]:
         """Act on analysis events. quote_received -> close the open default follow-up task(s) of that supplier in
-        that request (the awaited quote has arrived). Each event is handled at most once."""
+        that request (the awaited quote has arrived). Each event is handled at most once.
+        Shadow canary workspaces: does nothing at all (defence in depth; no event is created for them either)."""
         handled = closed = 0
+        if self.downstream_suppressed(workspace_id):
+            return {"events_handled": 0, "tasks_closed": 0, "suppressed_shadow": 1}
         with self.connect() as connection:
             events = connection.execute(
                 """SELECT id, analysis_id, payload_json FROM mail_analysis_events

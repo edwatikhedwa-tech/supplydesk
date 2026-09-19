@@ -109,6 +109,16 @@ class AttachmentAnalysisMixin:
                          json.dumps(line["loc"], ensure_ascii=False), line.get("source_text") or "", json.dumps(line["match"], ensure_ascii=False),
                          line.get("review") or "", _now()))
                 connection.commit()
+                if message["request_id"] and self.in_canary(workspace_id, connection):
+                    for f in connection.execute("SELECT id, data_json, loc_json, attachment_analysis_id, match_json FROM mail_attachment_facts WHERE workspace_id=? AND message_id=? ORDER BY position", (workspace_id, message_id)).fetchall():
+                        d = json.loads(f["data_json"])
+                        if d.get("price") is None:
+                            continue
+                        m = json.loads(f["match_json"] or "{}")
+                        self._audit(connection, workspace_id, "price_fact", "mail_message", message_id, request_id=message["request_id"], supplier_id=message["supplier_id"], fact_kind="attachment_fact", fact_id=int(f["id"]),
+                                    value={k: d.get(k) for k in ("price", "currency", "unit", "qty", "sku")}, span={"loc": json.loads(f["loc_json"])}, match_method="thread",
+                                    confidence=str(d.get("source") or "parser"), evidence={"attachment_analysis_id": f["attachment_analysis_id"], "position_match": m.get("status"), "position_match_reason": m.get("reason")})
+                    connection.commit()
             summary["facts"] = connection.execute("SELECT COUNT(*) AS n FROM mail_attachment_facts WHERE workspace_id=? AND message_id=?", (workspace_id, message_id)).fetchone()["n"]
         summary["conflicts"] = len(merged.get("conflicts") or [])
         summary["manual_review"] = bool(merged.get("manual_review"))

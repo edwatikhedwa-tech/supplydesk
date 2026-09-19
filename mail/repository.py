@@ -24,6 +24,7 @@ from .message_analysis import MessageAnalysisMixin
 from .attachment_analysis import AttachmentAnalysisMixin
 from .analysis_queue import AnalysisQueueMixin, intelligence_enabled
 from .canary import CanaryMixin, CanaryTickMixin
+from .canary_shadow import ShadowMixin
 from .attachment_intelligence import ANALYSIS_VERSION as ATTACHMENT_ANALYSIS_VERSION
 from .logistics_quotes import LogisticsQuotesMixin
 from .mail_templates import MailTemplatesMixin
@@ -262,7 +263,7 @@ def _readable_message(row: dict[str, Any]) -> dict[str, Any]:
 class MailRepository(
     AuthAccountsMixin, MailTemplatesMixin, LogisticsQuotesMixin, ThreadMetadataMixin, ThreadNotesMixin, SupportMixin, AiChatUsageMixin, AiConversationsMixin, TasksMixin,
     CanonicalCompaniesMixin, ContactIntelligenceMixin, TaskReminderDeliveryMixin, SupplierIdentityEvidenceMixin,
-    SupplierMergeMixin, MessageAnalysisMixin, AttachmentAnalysisMixin, AnalysisQueueMixin, CanaryMixin, CanaryTickMixin,
+    SupplierMergeMixin, MessageAnalysisMixin, AttachmentAnalysisMixin, AnalysisQueueMixin, CanaryMixin, CanaryTickMixin, ShadowMixin,
 ):
     def __init__(self, db_path: str | Path) -> None:
         self.database_url = os.getenv("DATABASE_URL", "").strip()
