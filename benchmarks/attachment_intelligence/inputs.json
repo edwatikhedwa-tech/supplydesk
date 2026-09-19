@@ -1,0 +1,1294 @@
+{
+ "requests": {
+  "R1": {
+   "name": "Подшипники и смазка для линии",
+   "positions": [
+    {
+     "pid": "R1-01",
+     "name": "Подшипник шариковый SKF 6205-2RS1",
+     "sku": "6205-2RS1",
+     "brand": "SKF",
+     "qty": 40,
+     "unit": "шт"
+    },
+    {
+     "pid": "R1-02",
+     "name": "Подшипник шариковый 6306-2Z HRB",
+     "sku": "6306-2Z",
+     "brand": "HRB",
+     "qty": 30,
+     "unit": "шт"
+    },
+    {
+     "pid": "R1-03",
+     "name": "Подшипник роликовый NU 2210 E",
+     "sku": "NU 2210 E",
+     "brand": "FAG",
+     "qty": 10,
+     "unit": "шт"
+    },
+    {
+     "pid": "R1-04",
+     "name": "Подшипник шариковый 6205ZZ",
+     "sku": "6205ZZ",
+     "brand": "GPZ",
+     "qty": 50,
+     "unit": "шт"
+    },
+    {
+     "pid": "R1-05",
+     "name": "Смазка пластичная SKF LGMT 2/1, 1 кг",
+     "sku": "LGMT 2/1",
+     "brand": "SKF",
+     "qty": 8,
+     "unit": "шт"
+    },
+    {
+     "pid": "R1-06",
+     "name": "Подшипник сферический роликовый 22212 E",
+     "sku": "22212 E",
+     "brand": "FAG",
+     "qty": 6,
+     "unit": "шт"
+    },
+    {
+     "pid": "R1-07",
+     "name": "Подшипник шариковый 6008-2RS",
+     "sku": "6008-2RS",
+     "brand": "SKF",
+     "qty": 24,
+     "unit": "шт"
+    },
+    {
+     "pid": "R1-08",
+     "name": "Подшипник роликовый конический 32210",
+     "sku": "32210",
+     "brand": "TIMKEN",
+     "qty": 12,
+     "unit": "шт"
+    },
+    {
+     "pid": "R1-09",
+     "name": "Смазка Литол-24, банка 800 г",
+     "sku": "ЛИТОЛ-24-800",
+     "brand": "Лукойл",
+     "qty": 20,
+     "unit": "шт"
+    },
+    {
+     "pid": "R1-10",
+     "name": "Втулка стяжная H 310",
+     "sku": "H 310",
+     "brand": "SKF",
+     "qty": 4,
+     "unit": "шт"
+    },
+    {
+     "pid": "R1-11",
+     "name": "Ремень клиновой SPA 1500",
+     "sku": "SPA 1500",
+     "brand": "Optibelt",
+     "qty": 16,
+     "unit": "шт"
+    },
+    {
+     "pid": "R1-12",
+     "name": "Звёздочка цепная 08B-1 z=18",
+     "sku": "08B-1-Z18",
+     "brand": "Россия",
+     "qty": 6,
+     "unit": "шт"
+    }
+   ]
+  },
+  "R2": {
+   "name": "Кирпич и огнеупоры",
+   "positions": [
+    {
+     "pid": "R2-01",
+     "name": "Кирпич облицовочный рядовой М150",
+     "sku": "КО-М150",
+     "brand": "Кирсанов",
+     "qty": 5000,
+     "unit": "шт"
+    },
+    {
+     "pid": "R2-02",
+     "name": "Кирпич шамотный ШБ-8",
+     "sku": "ШБ-8",
+     "brand": "Сухой Лог",
+     "qty": 800,
+     "unit": "шт"
+    },
+    {
+     "pid": "R2-03",
+     "name": "Кирпич шамотный ША-5",
+     "sku": "ША-5",
+     "brand": "Сухой Лог",
+     "qty": 600,
+     "unit": "шт"
+    },
+    {
+     "pid": "R2-04",
+     "name": "Кирпич печной полнотелый М200",
+     "sku": "КП-М200",
+     "brand": "Голицыно",
+     "qty": 1500,
+     "unit": "шт"
+    },
+    {
+     "pid": "R2-05",
+     "name": "Раствор огнеупорный, мешок 25 кг",
+     "sku": "РО-25",
+     "brand": "Керамик",
+     "qty": 40,
+     "unit": "меш"
+    },
+    {
+     "pid": "R2-06",
+     "name": "Кирпич керамический полнотелый красный",
+     "sku": "КК-ПТ",
+     "brand": "Кирсанов",
+     "qty": 3000,
+     "unit": "шт"
+    },
+    {
+     "pid": "R2-07",
+     "name": "Плитка облицовочная термостойкая 200x100",
+     "sku": "ПТ-200",
+     "brand": "Керамик",
+     "qty": 500,
+     "unit": "шт"
+    },
+    {
+     "pid": "R2-08",
+     "name": "Сетка кладочная 50x50, рулон",
+     "sku": "СК-50",
+     "brand": "Метиз",
+     "qty": 12,
+     "unit": "рул"
+    }
+   ]
+  },
+  "R3": {
+   "name": "Крепёж для монтажа",
+   "positions": [
+    {
+     "pid": "R3-01",
+     "name": "Болт DIN 933 M8x30 кл. 8.8 оцинкованный",
+     "sku": "DIN933-M8x30-88",
+     "brand": "Metiz",
+     "qty": 200,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-02",
+     "name": "Болт DIN 933 M8x40 кл. 8.8 оцинкованный",
+     "sku": "DIN933-M8x40-88",
+     "brand": "Metiz",
+     "qty": 200,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-03",
+     "name": "Болт DIN 933 M10x30 кл. 8.8 оцинкованный",
+     "sku": "DIN933-M10x30-88",
+     "brand": "Metiz",
+     "qty": 200,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-04",
+     "name": "Болт DIN 933 M10x40 кл. 8.8 оцинкованный",
+     "sku": "DIN933-M10x40-88",
+     "brand": "Metiz",
+     "qty": 200,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-05",
+     "name": "Болт DIN 933 M10x60 кл. 8.8 оцинкованный",
+     "sku": "DIN933-M10x60-88",
+     "brand": "Metiz",
+     "qty": 200,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-06",
+     "name": "Болт DIN 933 M12x40 кл. 8.8 оцинкованный",
+     "sku": "DIN933-M12x40-88",
+     "brand": "Metiz",
+     "qty": 200,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-07",
+     "name": "Болт DIN 933 M12x60 кл. 8.8 оцинкованный",
+     "sku": "DIN933-M12x60-88",
+     "brand": "Metiz",
+     "qty": 200,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-08",
+     "name": "Болт DIN 933 M12x80 кл. 8.8 оцинкованный",
+     "sku": "DIN933-M12x80-88",
+     "brand": "Metiz",
+     "qty": 200,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-09",
+     "name": "Гайка DIN 934 M8 кл. 8 оцинкованная",
+     "sku": "DIN934-M8-8",
+     "brand": "Metiz",
+     "qty": 400,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-10",
+     "name": "Гайка DIN 934 M10 кл. 8 оцинкованная",
+     "sku": "DIN934-M10-8",
+     "brand": "Metiz",
+     "qty": 400,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-11",
+     "name": "Гайка DIN 934 M12 кл. 8 оцинкованная",
+     "sku": "DIN934-M12-8",
+     "brand": "Metiz",
+     "qty": 400,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-12",
+     "name": "Гайка DIN 934 M16 кл. 8 оцинкованная",
+     "sku": "DIN934-M16-8",
+     "brand": "Metiz",
+     "qty": 400,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-13",
+     "name": "Гайка DIN 934 M20 кл. 8 оцинкованная",
+     "sku": "DIN934-M20-8",
+     "brand": "Metiz",
+     "qty": 400,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-14",
+     "name": "Шайба DIN 125 M8 оцинкованная",
+     "sku": "DIN125-M8",
+     "brand": "Metiz",
+     "qty": 500,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-15",
+     "name": "Шайба DIN 125 M10 оцинкованная",
+     "sku": "DIN125-M10",
+     "brand": "Metiz",
+     "qty": 500,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-16",
+     "name": "Шайба DIN 125 M12 оцинкованная",
+     "sku": "DIN125-M12",
+     "brand": "Metiz",
+     "qty": 500,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-17",
+     "name": "Шайба DIN 125 M16 оцинкованная",
+     "sku": "DIN125-M16",
+     "brand": "Metiz",
+     "qty": 500,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-18",
+     "name": "Шайба DIN 125 M20 оцинкованная",
+     "sku": "DIN125-M20",
+     "brand": "Metiz",
+     "qty": 500,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-19",
+     "name": "Шайба пружинная DIN 127 M8",
+     "sku": "DIN127-M8",
+     "brand": "Metiz",
+     "qty": 300,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-20",
+     "name": "Шайба пружинная DIN 127 M10",
+     "sku": "DIN127-M10",
+     "brand": "Metiz",
+     "qty": 300,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-21",
+     "name": "Шайба пружинная DIN 127 M12",
+     "sku": "DIN127-M12",
+     "brand": "Metiz",
+     "qty": 300,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-22",
+     "name": "Шайба пружинная DIN 127 M16",
+     "sku": "DIN127-M16",
+     "brand": "Metiz",
+     "qty": 300,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-23",
+     "name": "Шпилька резьбовая DIN 975 M8x50",
+     "sku": "DIN975-M8x50",
+     "brand": "Metiz",
+     "qty": 100,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-24",
+     "name": "Шпилька резьбовая DIN 975 M10x60",
+     "sku": "DIN975-M10x60",
+     "brand": "Metiz",
+     "qty": 100,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-25",
+     "name": "Шпилька резьбовая DIN 975 M12x80",
+     "sku": "DIN975-M12x80",
+     "brand": "Metiz",
+     "qty": 100,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-26",
+     "name": "Шпилька резьбовая DIN 975 M16x100",
+     "sku": "DIN975-M16x100",
+     "brand": "Metiz",
+     "qty": 100,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-27",
+     "name": "Шпилька резьбовая DIN 975 M8x100",
+     "sku": "DIN975-M8x100",
+     "brand": "Metiz",
+     "qty": 100,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-28",
+     "name": "Анкер клиновой 6x60",
+     "sku": "ANK-6x60",
+     "brand": "Fischer",
+     "qty": 100,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-29",
+     "name": "Анкер клиновой 8x80",
+     "sku": "ANK-8x80",
+     "brand": "Fischer",
+     "qty": 100,
+     "unit": "шт"
+    },
+    {
+     "pid": "R3-30",
+     "name": "Анкер клиновой 10x100",
+     "sku": "ANK-10x100",
+     "brand": "Fischer",
+     "qty": 100,
+     "unit": "шт"
+    }
+   ]
+  },
+  "R4": {
+   "name": "Печи-камины",
+   "positions": [
+    {
+     "pid": "R4-01",
+     "name": "Печь-камин «Каскад» чугунная",
+     "sku": "KASKAD-M",
+     "brand": "Термосфера",
+     "qty": 2,
+     "unit": "шт"
+    },
+    {
+     "pid": "R4-02",
+     "name": "Дымоход двустенный AB-7654/12",
+     "sku": "AB-7654/12",
+     "brand": "Ferrum",
+     "qty": 24,
+     "unit": "м"
+    },
+    {
+     "pid": "R4-03",
+     "name": "Стеклокерамика жаропрочная 400x300",
+     "sku": "SK-4030",
+     "brand": "Neoceram",
+     "qty": 4,
+     "unit": "шт"
+    },
+    {
+     "pid": "R4-04",
+     "name": "Шибер поворотный d115",
+     "sku": "SH-115",
+     "brand": "Ferrum",
+     "qty": 2,
+     "unit": "шт"
+    },
+    {
+     "pid": "R4-05",
+     "name": "Труба стальная d115, 1 м",
+     "sku": "TR-115-1",
+     "brand": "Ferrum",
+     "qty": 10,
+     "unit": "шт"
+    }
+   ]
+  }
+ },
+ "emails": [
+  {
+   "email_id": "m01",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "Re: Запрос на подшипники — КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f07.pdf",
+     "filename": "КП_Подшипник-Опт_f07.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m02",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП и условия поставки",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f28.pdf",
+     "filename": "КП_Подшипник-Опт_f28.pdf"
+    },
+    {
+     "path": "fixtures/files/f11.docx",
+     "filename": "КП_Подшипник-Опт_f11.docx"
+    }
+   ]
+  },
+  {
+   "email_id": "m03",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП кирпич",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f43.pdf",
+     "filename": "КП_МеталлТорг_f43.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m04",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "Коммерческое предложение",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f52.pdf",
+     "filename": "КП_МеталлТорг_f52.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m05",
+   "request_id": "R3",
+   "from_email": "krepezh@krepezh.example",
+   "from_name": "ИП Крепёжов А. В.",
+   "subject": "КП на крепёж (30 позиций)",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f51.pdf",
+     "filename": "КП_ИП_Крепёжов_А._В._f51.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m06",
+   "request_id": "R4",
+   "from_email": "manager@termosfera.example",
+   "from_name": "ООО «Термосфера»",
+   "subject": "КП: печи-камины",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f42.pdf",
+     "filename": "КП_Термосфера_f42.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m07",
+   "request_id": "R1",
+   "from_email": "office@tradeline.example",
+   "from_name": "Trade Line GmbH",
+   "subject": "Quotation for bearings",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f49.pdf",
+     "filename": "КП_Trade_Line_GmbH_f49.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m08",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "Прайс со сроками",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f33.pdf",
+     "filename": "КП_Подшипник-Опт_f33.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m09",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП (скидка от старой цены)",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f13.pdf",
+     "filename": "КП_МеталлТорг_f13.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m10",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП, часть позиций под заказ",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f55.pdf",
+     "filename": "КП_Подшипник-Опт_f55.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m11",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП в двух форматах",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f12.pdf",
+     "filename": "КП_Подшипник-Опт_f12.pdf"
+    },
+    {
+     "path": "fixtures/files/g01.xlsx",
+     "filename": "КП_Подшипник-Опт_g01.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m12",
+   "request_id": "R3",
+   "from_email": "krepezh@krepezh.example",
+   "from_name": "ИП Крепёжов А. В.",
+   "subject": "КП, обновлённая версия во втором файле",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f03.pdf",
+     "filename": "КП_ИП_Крепёжов_А._В._f03.pdf"
+    },
+    {
+     "path": "fixtures/files/g02.xlsx",
+     "filename": "КП_ИП_Крепёжов_А._В._g02.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m13",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "скан КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f25.pdf",
+     "filename": "КП_Подшипник-Опт_f25.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m14",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП (скан, чуть криво)",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f44.pdf",
+     "filename": "КП_Подшипник-Опт_f44.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m15",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f32.pdf",
+     "filename": "КП_МеталлТорг_f32.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m16",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f38.pdf",
+     "filename": "КП_МеталлТорг_f38.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m17",
+   "request_id": "R4",
+   "from_email": "manager@termosfera.example",
+   "from_name": "ООО «Термосфера»",
+   "subject": "КП со штампом",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f14.pdf",
+     "filename": "КП_Термосфера_f14.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m18",
+   "request_id": "R3",
+   "from_email": "krepezh@krepezh.example",
+   "from_name": "ИП Крепёжов А. В.",
+   "subject": "КП на крепёж",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f21.pdf",
+     "filename": "КП_ИП_Крепёжов_А._В._f21.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m19",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП (фото листа)",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f29.pdf",
+     "filename": "КП_Подшипник-Опт_f29.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m20",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f17.pdf",
+     "filename": "КП_МеталлТорг_f17.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m21",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП xlsx",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f56.xlsx",
+     "filename": "КП_Подшипник-Опт_f56.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m22",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП xlsx",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f10.xlsx",
+     "filename": "КП_МеталлТорг_f10.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m23",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "Re: КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f04.xlsx",
+     "filename": "КП_Подшипник-Опт_f04.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m24",
+   "request_id": "R4",
+   "from_email": "manager@termosfera.example",
+   "from_name": "ООО «Термосфера»",
+   "subject": "КП печи",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f48.xlsx",
+     "filename": "КП_Термосфера_f48.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m25",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП + условия на втором листе",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f02.xlsx",
+     "filename": "КП_МеталлТорг_f02.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m26",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП, старая и новая цена",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f54.xlsx",
+     "filename": "КП_Подшипник-Опт_f54.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m27",
+   "request_id": "R3",
+   "from_email": "krepezh@krepezh.example",
+   "from_name": "ИП Крепёжов А. В.",
+   "subject": "КП (цена за 100 шт.)",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f40.xlsx",
+     "filename": "КП_ИП_Крепёжов_А._В._f40.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m28",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f41.xlsx",
+     "filename": "КП_МеталлТорг_f41.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m29",
+   "request_id": "R1",
+   "from_email": "office@tradeline.example",
+   "from_name": "Trade Line GmbH",
+   "subject": "Offer",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f27.xlsx",
+     "filename": "КП_Trade_Line_GmbH_f27.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m30",
+   "request_id": "R3",
+   "from_email": "krepezh@krepezh.example",
+   "from_name": "ИП Крепёжов А. В.",
+   "subject": "КП на крепёж и предложение аналогов",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f06.xlsx",
+     "filename": "КП_ИП_Крепёжов_А._В._f06.xlsx"
+    },
+    {
+     "path": "fixtures/files/f53.docx",
+     "filename": "КП_ИП_Крепёжов_А._В._f53.docx"
+    }
+   ]
+  },
+  {
+   "email_id": "m31",
+   "request_id": "R3",
+   "from_email": "krepezh@krepezh.example",
+   "from_name": "ИП Крепёжов А. В.",
+   "subject": "Наш прайс целиком",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f30.xlsx",
+     "filename": "КП_ИП_Крепёжов_А._В._f30.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m32",
+   "request_id": "R3",
+   "from_email": "krepezh@krepezh.example",
+   "from_name": "ИП Крепёжов А. В.",
+   "subject": "КП с разделами",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f01.xlsx",
+     "filename": "КП_ИП_Крепёжов_А._В._f01.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m33",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f45.xlsx",
+     "filename": "КП_Подшипник-Опт_f45.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m34",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП: часть позиций под заказ",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f16.xlsx",
+     "filename": "КП_Подшипник-Опт_f16.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m35",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП со сроками по позициям",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f50.xlsx",
+     "filename": "КП_МеталлТорг_f50.xlsx"
+    }
+   ]
+  },
+  {
+   "email_id": "m36",
+   "request_id": "R4",
+   "from_email": "manager@termosfera.example",
+   "from_name": "ООО «Термосфера»",
+   "subject": "КП и техническое описание",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f36.xlsx",
+     "filename": "КП_Термосфера_f36.xlsx"
+    },
+    {
+     "path": "fixtures/files/f18.docx",
+     "filename": "КП_Термосфера_f18.docx"
+    }
+   ]
+  },
+  {
+   "email_id": "m37",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП docx",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f08.docx",
+     "filename": "КП_Подшипник-Опт_f08.docx"
+    }
+   ]
+  },
+  {
+   "email_id": "m38",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП docx",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f47.docx",
+     "filename": "КП_МеталлТорг_f47.docx"
+    }
+   ]
+  },
+  {
+   "email_id": "m39",
+   "request_id": "R4",
+   "from_email": "manager@termosfera.example",
+   "from_name": "ООО «Термосфера»",
+   "subject": "КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f20.docx",
+     "filename": "КП_Термосфера_f20.docx"
+    }
+   ]
+  },
+  {
+   "email_id": "m40",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП списком",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f26.docx",
+     "filename": "КП_Подшипник-Опт_f26.docx"
+    }
+   ]
+  },
+  {
+   "email_id": "m41",
+   "request_id": "R3",
+   "from_email": "krepezh@krepezh.example",
+   "from_name": "ИП Крепёжов А. В.",
+   "subject": "КП на крепёж",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f35.docx",
+     "filename": "КП_ИП_Крепёжов_А._В._f35.docx"
+    }
+   ]
+  },
+  {
+   "email_id": "m42",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "Фото КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f23.png",
+     "filename": "КП_Подшипник-Опт_f23.png"
+    }
+   ]
+  },
+  {
+   "email_id": "m43",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "Фото КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f34.jpg",
+     "filename": "КП_МеталлТорг_f34.jpg"
+    }
+   ]
+  },
+  {
+   "email_id": "m44",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "Фото прайса",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f09.jpg",
+     "filename": "КП_Подшипник-Опт_f09.jpg"
+    }
+   ]
+  },
+  {
+   "email_id": "m45",
+   "request_id": "R4",
+   "from_email": "manager@termosfera.example",
+   "from_name": "ООО «Термосфера»",
+   "subject": "Фото КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f22.png",
+     "filename": "КП_Термосфера_f22.png"
+    }
+   ]
+  },
+  {
+   "email_id": "m46",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП и скрин",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f05.jpg",
+     "filename": "КП_Подшипник-Опт_f05.jpg"
+    },
+    {
+     "path": "fixtures/files/f24.png",
+     "filename": "КП_Подшипник-Опт_f24.png"
+    }
+   ]
+  },
+  {
+   "email_id": "m47",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "Фото КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f39.jpg",
+     "filename": "КП_МеталлТорг_f39.jpg"
+    }
+   ]
+  },
+  {
+   "email_id": "m48",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f46.png",
+     "filename": "КП_МеталлТорг_f46.png"
+    }
+   ]
+  },
+  {
+   "email_id": "m49",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП (первый файл не открывается)",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f37.xlsx",
+     "filename": "КП_Подшипник-Опт_f37.xlsx"
+    },
+    {
+     "path": "fixtures/files/g03.pdf",
+     "filename": "КП_Подшипник-Опт_g03.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m50",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f15.pdf",
+     "filename": "КП_Подшипник-Опт_f15.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m51",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f19.pdf",
+     "filename": "КП_МеталлТорг_f19.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m52",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "Каталог продукции",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f31.docx",
+     "filename": "КП_МеталлТорг_f31.docx"
+    }
+   ]
+  },
+  {
+   "email_id": "m53",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/g03.pdf",
+     "filename": "КП_Подшипник-Опт_g03.pdf"
+    },
+    {
+     "path": "fixtures/files/g04.pdf",
+     "filename": "КП_Подшипник-Опт_g04.pdf"
+    }
+   ]
+  },
+  {
+   "email_id": "m54",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "КП в xlsx и docx",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f56.xlsx",
+     "filename": "КП_Подшипник-Опт_f56.xlsx"
+    },
+    {
+     "path": "fixtures/files/f08.docx",
+     "filename": "КП_Подшипник-Опт_f08.docx"
+    }
+   ]
+  },
+  {
+   "email_id": "m55",
+   "request_id": "R2",
+   "from_email": "zakaz@metalltorg.example",
+   "from_name": "АО «МеталлТорг»",
+   "subject": "КП, два файла",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f41.xlsx",
+     "filename": "КП_МеталлТорг_f41.xlsx"
+    },
+    {
+     "path": "fixtures/files/f47.docx",
+     "filename": "КП_МеталлТорг_f47.docx"
+    }
+   ]
+  },
+  {
+   "email_id": "m56",
+   "request_id": "R1",
+   "from_email": "sales@podshipnik-opt.example",
+   "from_name": "ООО «Подшипник-Опт»",
+   "subject": "Скан и таблица",
+   "body": "Добрый день! Направляем коммерческое предложение во вложении.",
+   "attachments": [
+    {
+     "path": "fixtures/files/f25.pdf",
+     "filename": "КП_Подшипник-Опт_f25.pdf"
+    },
+    {
+     "path": "fixtures/files/f04.xlsx",
+     "filename": "КП_Подшипник-Опт_f04.xlsx"
+    }
+   ]
+  }
+ ]
+}
