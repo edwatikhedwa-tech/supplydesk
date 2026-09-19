@@ -1393,8 +1393,8 @@
   {
    "file": "f51.pdf",
    "id": "t05",
-   "sha256": "d31df5015d9a1db8a77feb75c367dd877d2c7787c7b8c7b3ac4d34003f060246",
-   "bytes": 27642,
+   "sha256": "2446f0aeef1678d7cc0c6ebea64a375cb186b4db9c9771703e428640c04d821a",
+   "bytes": 27619,
    "format": "pdf",
    "category": "multi_position",
    "supplier": "S4",
@@ -1668,12 +1668,12 @@
      }
     },
     {
-     "name": "Гайка самоконтрящаяся M10 DIN 985",
-     "sku": "DIN985-M10",
+     "name": "Гайка самоконтрящаяся M14 DIN 985",
+     "sku": "DIN985-M14",
      "brand": "Metiz",
      "qty": 50,
      "unit": "шт",
-     "price": 4.07,
+     "price": 7.65,
      "currency": "RUB",
      "price_per": 1,
      "delivery_days": null,
@@ -1962,12 +1962,12 @@
      }
     },
     {
-     "name": "Гайка самоконтрящаяся M10 DIN 985",
-     "sku": "DIN985-M10",
+     "name": "Гайка самоконтрящаяся M14 DIN 985",
+     "sku": "DIN985-M14",
      "brand": "Metiz",
      "qty": 10,
      "unit": "шт",
-     "price": 4.07,
+     "price": 7.65,
      "currency": "RUB",
      "price_per": 1,
      "delivery_days": null,
@@ -2193,7 +2193,7 @@
    "must_not_extract": [
     {
      "field": "price",
-     "value": 178405.7,
+     "value": 178620.5,
      "why": "document total, not a unit price"
     },
     {
@@ -2263,7 +2263,7 @@
     },
     {
      "field": "price",
-     "value": 203.5,
+     "value": 382.5,
      "why": "line total, not a unit price"
     },
     {
@@ -2338,7 +2338,7 @@
     },
     {
      "field": "price",
-     "value": 40.7,
+     "value": 76.5,
      "why": "line total, not a unit price"
     },
     {
@@ -3978,7 +3978,7 @@
   {
    "file": "f25.pdf",
    "id": "s01",
-   "sha256": "dd31295714a98851bf0cc5392b131ba255b660b12ffedf90a82fb2d255c72a5e",
+   "sha256": "63ef0cdff95762e67d25be2e868d960520a2048b8ec96ded08acb8d1fdc6c574",
    "bytes": 116020,
    "format": "scan_pdf",
    "category": "scanned",
@@ -4152,7 +4152,7 @@
   {
    "file": "f44.pdf",
    "id": "s02",
-   "sha256": "74885b56ed455d812ce8583be7a332732aa5b779836b671dc1020a79c15f781e",
+   "sha256": "efeb4bd6a08a97e3e9fc162e284a5941f8f3215619e0e6193b837ab0b141f6cf",
    "bytes": 126698,
    "format": "scan_pdf",
    "category": "scanned",
@@ -4374,7 +4374,7 @@
   {
    "file": "f32.pdf",
    "id": "s03",
-   "sha256": "a7be1ead337ff53ea2129763600a7f2eb4d24044bdaaa9ba7ddd5556227f3344",
+   "sha256": "e1a50d588287fa50d20fd572aa8a306cf7fddb0375edec53637d627601c4e9c3",
    "bytes": 243662,
    "format": "scan_pdf",
    "category": "damaged",
@@ -4596,7 +4596,7 @@
   {
    "file": "f38.pdf",
    "id": "s04",
-   "sha256": "ee9f62e92fed864804b8173573a5e7b2d92e57e102fd2a5146162a45d5fdae40",
+   "sha256": "d1cf74669ec896fa97dfb667827495be3a78a5f13d628b21203aa8f3b55aeea7",
    "bytes": 266241,
    "format": "scan_pdf",
    "category": "damaged",
@@ -4746,7 +4746,7 @@
   {
    "file": "f14.pdf",
    "id": "s05",
-   "sha256": "bc28d9e784d819c42420e91af1b9b59c838dfbf6523afbeba4bf9e28d38d608c",
+   "sha256": "f16588fd58e395944604dfda53f6238cb12b89f1d1a3f695ce3ac7b73a750e68",
    "bytes": 115163,
    "format": "scan_pdf",
    "category": "damaged",
@@ -4896,7 +4896,7 @@
   {
    "file": "f21.pdf",
    "id": "s06",
-   "sha256": "d79e89e27a273ee2ef9701c95ad662b454253a8f626e5c64b78996b6e3364981",
+   "sha256": "31451975c2e98ca67edb4c816c4ad3ace4c1812557e20dd234cdb6c3dd8c913f",
    "bytes": 170145,
    "format": "scan_pdf",
    "category": "scanned",
@@ -5262,7 +5262,7 @@
   {
    "file": "f29.pdf",
    "id": "s07",
-   "sha256": "eef070c4210114089f239cea2ec243c20e77ac02f311f7d156098639a2c71fd9",
+   "sha256": "9da9cb754bc3fe9f71a8b2e67bfe7f246d6d58feca538166f95657473c675bfe",
    "bytes": 127952,
    "format": "scan_pdf",
    "category": "damaged",
@@ -5460,7 +5460,7 @@
   {
    "file": "f17.pdf",
    "id": "s08",
-   "sha256": "3f1270c5c47530c882d53a597e248601c56396e02ee2203e1a51dc0d829fbd50",
+   "sha256": "ce63b4f8d4fe875c7b536bc7b6d5ba2ff6ea314e5b024df5cdd147b1ba2a0bc9",
    "bytes": 13749,
    "format": "scan_pdf",
    "category": "damaged",
@@ -7653,8 +7653,8 @@
   {
    "file": "f06.xlsx",
    "id": "x10",
-   "sha256": "c2719aaade6efed24ccc7586bfcb63efb06987587f0a0d024aad34895b3f33b6",
-   "bytes": 3883,
+   "sha256": "dbfbf67de7364007abe331ee15da4d592e1dee55b41e8a61784e33572af27bb2",
+   "bytes": 3885,
    "format": "xlsx",
    "category": "multi_position",
    "supplier": "S4",
@@ -8336,12 +8336,12 @@
      }
     },
     {
-     "name": "Гайка самоконтрящаяся M10 DIN 985",
-     "sku": "DIN985-M10",
+     "name": "Гайка самоконтрящаяся M14 DIN 985",
+     "sku": "DIN985-M14",
      "brand": "Metiz",
      "qty": 10,
      "unit": "шт",
-     "price": 4.19,
+     "price": 7.88,
      "currency": "RUB",
      "price_per": 1,
      "delivery_days": null,
@@ -8358,7 +8358,7 @@
    "must_not_extract": [
     {
      "field": "price",
-     "value": 115367.9,
+     "value": 115404.8,
      "why": "document total, not a unit price"
     },
     {
@@ -8533,7 +8533,7 @@
     },
     {
      "field": "price",
-     "value": 41.9,
+     "value": 78.8,
      "why": "line total, not a unit price"
     }
    ],
